@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Liga Hypermotion 2025-26 · Probabilidades</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    :root {
+      --bg:       #0e1117; --surface: #161b25; --surface2: #1e2535;
+      --border:   #2a3347; --orange: #f97316;
+      --green:    #22c55e; --green-dim: #14532d;
+      --blue:     #3b82f6; --blue-dim: #1e3a5f;
+      --red:      #ef4444; --red-dim: #7f1d1d;
+      --text:     #e2e8f0; --muted: #64748b; --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; padding:28px 16px 64px; }
+
+    /* ── Header ── */
+    .header { max-width:940px; margin:0 auto 20px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+    .logo { width:50px; height:50px; background:linear-gradient(135deg,var(--orange),#dc2626); border-radius:13px; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:800; color:#fff; flex-shrink:0; }
+    .header-text h1 { font-size:1.4rem; font-weight:800; letter-spacing:-.5px; }
+    .header-text p  { font-size:.8rem; color:var(--muted); margin-top:2px; }
+    .header-actions { margin-left:auto; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .badge { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:6px 13px; font-size:.78rem; color:var(--muted); white-space:nowrap; }
+    .badge strong { color:var(--text); }
+
+    /* ── Status bar ── */
+    .status-bar { max-width:940px; margin:0 auto 14px; display:flex; align-items:center; gap:8px; font-size:.75rem; color:var(--muted); }
+    .status-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+    .status-dot.ok      { background:var(--green); }
+    .status-dot.loading { background:var(--orange); animation:pulse 1s ease-in-out infinite; }
+    .status-dot.error   { background:var(--red); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* ── Legend ── */
+    .legend { max-width:940px; margin:0 auto 14px; display:flex; gap:14px; flex-wrap:wrap; }
+    .legend-item { display:flex; align-items:center; gap:6px; font-size:.78rem; color:var(--muted); }
+    .legend-dot  { width:9px; height:9px; border-radius:50%; }
+
+    /* ── Card ── */
+    .card { max-width:940px; margin:0 auto; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+
+    /* ── Skeleton loading ── */
+    .skeleton { animation:shimmer 1.4s infinite; background:linear-gradient(90deg,var(--surface2) 25%,#253047 50%,var(--surface2) 75%); background-size:400% 100%; border-radius:4px; }
+    @keyframes shimmer { to { background-position:-400% 0; } }
+
+    table { width:100%; border-collapse:collapse; }
+    thead th { background:var(--surface2); padding:11px 14px; font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); text-align:left; }
+    thead th.right  { text-align:right; }
+    thead th.center { text-align:center; }
+    tbody tr { border-top:1px solid var(--border); transition:background .15s; }
+    tbody tr:hover { background:var(--surface2); }
+    tbody tr.zone-promo   { background:rgba(34,197,94,.04); }
+    tbody tr.zone-playoff { background:rgba(59,130,246,.04); }
+    tbody tr.zone-relega  { background:rgba(239,68,68,.04); }
+    tbody tr.zone-promo:hover   { background:rgba(34,197,94,.09); }
+    tbody tr.zone-playoff:hover { background:rgba(59,130,246,.09); }
+    tbody tr.zone-relega:hover  { background:rgba(239,68,68,.09); }
+    td { padding:10px 14px; vertical-align:middle; }
+    .pos { font-size:.82rem; font-weight:600; color:var(--muted); width:32px; text-align:center; }
+    .zone-bar { width:4px; height:26px; border-radius:3px; }
+    .zone-bar.promo   { background:var(--green); }
+    .zone-bar.playoff { background:var(--blue); }
+    .zone-bar.relega  { background:var(--red); }
+    .zone-bar.none    { background:transparent; }
+    .team-cell { display:flex; align-items:center; gap:10px; }
+    .team-avatar { width:34px; height:34px; border-radius:8px; background:#fff; flex-shrink:0; overflow:hidden; padding:3px; display:flex; align-items:center; justify-content:center; }
+    .team-avatar img { width:100%; height:100%; object-fit:contain; }
+    .team-avatar.fallback { background:var(--surface2); font-size:.68rem; font-weight:700; }
+    .team-name { font-size:.88rem; font-weight:500; }
+    .pts { font-size:1rem; font-weight:700; text-align:right; }
+    .prob-cell { min-width:115px; }
+    .prob-header { display:flex; justify-content:space-between; margin-bottom:4px; }
+    .prob-pct { font-size:.84rem; font-weight:600; }
+    .prob-bar-bg { height:5px; border-radius:3px; background:var(--border); overflow:hidden; }
+    .prob-bar-fill { height:100%; border-radius:3px; transition:width 1s cubic-bezier(.16,1,.3,1); }
+    .fill-green { background:linear-gradient(90deg,#16a34a,#4ade80); }
+    .fill-blue  { background:linear-gradient(90deg,#2563eb,#60a5fa); }
+    .fill-red   { background:linear-gradient(90deg,#b91c1c,#f87171); }
+    .prob-label { font-size:.68rem; color:var(--muted); font-weight:400; }
+    .zone-label-row td { padding:4px 14px; background:var(--surface2); border-top:1px solid var(--border); }
+    .zone-label-text { font-size:.68rem; font-weight:600; letter-spacing:.1em; text-transform:uppercase; }
+    .zone-label-text.green { color:var(--green); }
+    .zone-label-text.blue  { color:var(--blue); }
+    .zone-label-text.red   { color:var(--red); }
+    .zone-label-text.gray  { color:var(--muted); }
+
+    .footer { max-width:940px; margin:18px auto 0; font-size:.74rem; color:var(--muted); display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px; }
+    @media (max-width:600px) { .prob-cell{min-width:85px;} .team-name{font-size:.8rem;} thead th,td{padding:8px 9px;} }
+  </style>
+
+  <!-- SEO -->
+  <meta name="description" content="Simulación Monte Carlo para la Liga Hypermotion 2025-26. Probabilidades de ascenso, play-off y descenso para los 22 equipos de Segunda División." />
+  <meta name="robots" content="index, follow" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Liga Hypermotion 2025-26 · Probabilidades" />
+  <meta property="og:description" content="40 000 simulaciones Monte Carlo para predecir el final de la temporada en Segunda División." />
+  <meta property="og:type" content="website" />
+
+  <!-- Google AdSense Auto Ads -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3055585323326983"
+       crossorigin="anonymous"></script>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">H</div>
+  <div class="header-text">
+    <h1>Liga Hypermotion 2025‑26</h1>
+    <p>Simulación Monte Carlo · 40 000 iteraciones</p>
+  </div>
+  <div class="header-actions">
+    <div class="badge" id="badge-jornada">Cargando…</div>
+  </div>
+</div>
+
+<div class="status-bar">
+  <div class="status-dot loading" id="status-dot"></div>
+  <span id="status-text">Conectando con la API…</span>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div> Ascenso directo (1º-2º)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div> Play-off (3º-6º)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div> Descenso (19º-22º)</div>
+</div>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th style="width:12px"></th>
+        <th class="center" style="width:34px">#</th>
+        <th>Equipo</th>
+        <th class="right">Pts</th>
+        <th><span style="color:var(--green)">Ascenso directo</span><span class="prob-label"> top 2</span></th>
+        <th><span style="color:var(--blue)">Play-off</span><span class="prob-label"> top 6</span></th>
+        <th><span style="color:var(--red)">Descenso</span><span class="prob-label"> últimos 4</span></th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<div class="footer">
+  <span id="footer-update">—</span>
+  <span>Metodología: simulación estocástica con probabilidades históricas · <a href="privacy.html" style="color:var(--muted);text-decoration:underline">Política de privacidad</a></span>
+</div>
+
+<script>
+// ─── Config ───────────────────────────────────────────────────────────────
+const ESPN_URL      = 'https://site.api.espn.com/apis/v2/sports/soccer/esp.2/standings';
+const SIM_N         = 40000;
+const TOTAL_MD      = 42;
+const P_HOME        = 0.42;
+const P_DRAW        = 0.27;
+
+// ─── Seeded PRNG (mulberry32) ─────────────────────────────────────────────
+// Seed = current UTC hour → todos los usuarios de la misma hora ven resultados idénticos
+function mulberry32(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function hourSeed() {
+  const d = new Date();
+  return d.getUTCFullYear() * 1000000 + (d.getUTCMonth() + 1) * 10000 + d.getUTCDate() * 100 + d.getUTCHours();
+}
+let rng = Math.random;
+
+// Local logo fallbacks (key = ESPN displayName normalised)
+const LOCAL_LOGOS = {
+  'racing santander':  'logos/racing.png',
+  'almería':           'logos/almeria.png',
+  'deportivo la coruña':'logos/deportivo.png',
+  'castellón':         'logos/castellon.png',
+  'las palmas':        'logos/laspalmas.png',
+  'burgos':            'logos/burgos.png',
+  'eibar':             'logos/eibar.png',
+  'málaga':            'logos/malaga.png',
+  'fc andorra':        'logos/andorra.png',
+  'córdoba':           'logos/cordoba.png',
+  'sporting gijón':    'logos/sporting.png',
+  'ceuta':             'logos/ceuta.png',
+  'albacete':          'logos/albacete.png',
+  'granada':           'logos/granada.png',
+  'real valladolid':   'logos/valladolid.png',
+  'leganés':           'logos/leganes.png',
+  'real sociedad ii':  'logos/rsociedad.png',
+  'cádiz':             'logos/cadiz.png',
+  'huesca':            'logos/huesca.png',
+  'mirandés':          'logos/mirandes.png',
+  'real zaragoza':     'logos/zaragoza.png',
+  'cultural leonesa':  'logos/leonesa.png',
+};
+
+// ─── Known remaining fixtures (ESPN displayNames) ─────────────────────────
+const FIXTURES = {
+  38: [
+    ['FC Andorra','Albacete'], ['Deportivo La Coruña','Leganés'],
+    ['Real Zaragoza','Granada'], ['Cultural Leonesa','Cádiz'],
+    ['Castellón','Córdoba'], ['Eibar','Málaga'],
+    ['Racing Santander','Huesca'], ['Sporting Gijón','Ceuta'],
+    ['Real Sociedad II','Burgos'], ['Las Palmas','Real Valladolid'],
+    ['Almería','Mirandés'],
+  ],
+  '39_PARTIAL': [
+    ['Cádiz','Deportivo La Coruña'], ['Ceuta','Castellón'],
+    ['Albacete','Cultural Leonesa'], ['Burgos','Almería'],
+    ['Real Valladolid','Real Zaragoza'], ['Málaga','Sporting Gijón'],
+  ],
+  42: [
+    ['Castellón','Eibar'], ['Córdoba','Huesca'],
+    ['Deportivo La Coruña','Las Palmas'], ['Granada','Sporting Gijón'],
+    ['Leganés','Mirandés'], ['Almería','Real Valladolid'],
+    ['Ceuta','Albacete'], ['Racing Santander','Cádiz'],
+    ['Real Sociedad II','Cultural Leonesa'], ['Real Zaragoza','Málaga'],
+    ['FC Andorra','Burgos'],
+  ],
+};
+
+// ─── Simulation helpers ───────────────────────────────────────────────────
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = rng() * (i + 1) | 0;
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function randomMatchday(teams) {
+  const t = shuffle([...teams]);
+  const md = [];
+  for (let i = 0; i < t.length; i += 2) md.push([t[i], t[i+1]]);
+  return md;
+}
+
+function completeMatchday(known, teams) {
+  const used = new Set(known.flat());
+  const free = shuffle(teams.filter(t => !used.has(t)));
+  const extra = [];
+  for (let i = 0; i < free.length; i += 2) extra.push([free[i], free[i+1]]);
+  return [...known, ...extra];
+}
+
+function buildFixtures(teams, gp) {
+  const mds = [];
+  for (let md = gp + 1; md <= TOTAL_MD; md++) {
+    if (FIXTURES[md])        mds.push(FIXTURES[md]);
+    else if (md === 39)      mds.push(completeMatchday(FIXTURES['39_PARTIAL'], teams));
+    else                     mds.push(randomMatchday(teams));
+  }
+  return mds;
+}
+
+function simulate(standings) {
+  rng = mulberry32(hourSeed()); // semilla = hora UTC → resultados idénticos para todos
+  const names  = standings.map(t => t.name);
+  const counts = Object.fromEntries(names.map(n => [n, {t2:0, t6:0, b4:0}]));
+  const gp     = standings[0].gp;
+
+  for (let i = 0; i < SIM_N; i++) {
+    const pts = Object.fromEntries(standings.map(t => [t.name, t.pts]));
+    const gd  = Object.fromEntries(standings.map(t => [t.name, t.gf - t.gc]));
+    const gf  = Object.fromEntries(standings.map(t => [t.name, t.gf]));
+
+    for (const md of buildFixtures(names, gp)) {
+      for (const [h, a] of md) {
+        const r = rng();
+        let hp, ap, hg, ag;
+        if (r < P_HOME) {
+          hp = 3; ap = 0;
+          hg = (rng() * 2 | 0) + 1 + (rng() * 2 | 0);
+          ag = rng() * 2 | 0;
+        } else if (r < P_HOME + P_DRAW) {
+          hp = ap = 1;
+          hg = ag = rng() * 2 | 0;
+        } else {
+          hp = 0; ap = 3;
+          hg = rng() * 2 | 0;
+          ag = (rng() * 2 | 0) + 1 + (rng() * 2 | 0);
+        }
+        pts[h] += hp; pts[a] += ap;
+        gd[h] += hg - ag; gd[a] += ag - hg;
+        gf[h] += hg; gf[a] += ag;
+      }
+    }
+
+    const sorted = [...names].sort((a, b) =>
+      pts[b] !== pts[a] ? pts[b] - pts[a] :
+      gd[b]  !== gd[a]  ? gd[b] - gd[a]  :
+      gf[b]  - gf[a]);
+
+    sorted.forEach((name, idx) => {
+      const p = idx + 1;
+      if      (p <= 2)  counts[name].t2++;
+      else if (p <= 6)  counts[name].t6++;
+      else if (p >= 19) counts[name].b4++;
+    });
+  }
+
+  return Object.fromEntries(
+    names.map(n => [n, {
+      top2:    +(counts[n].t2 / SIM_N * 100).toFixed(1),
+      playoff: +(counts[n].t6 / SIM_N * 100).toFixed(1),
+      relega:  +(counts[n].b4 / SIM_N * 100).toFixed(1),
+    }])
+  );
+}
+
+// ─── ESPN fetch ───────────────────────────────────────────────────────────
+async function fetchStandings() {
+  const res  = await fetch(ESPN_URL);
+  if (!res.ok) throw new Error(`ESPN API ${res.status}`);
+  const data = await res.json();
+  const entries = data.children[0].standings.entries;
+  return entries.map((e, i) => {
+    const stat = name => (e.stats.find(s => s.name === name) || {}).value || 0;
+    const logo = (e.team.logos && e.team.logos[0]) ? e.team.logos[0].href : null;
+    return {
+      rank: i + 1,
+      name: e.team.displayName,
+      logo,
+      gp:   stat('gamesPlayed'),
+      pts:  stat('points'),
+      gf:   stat('pointsFor'),
+      gc:   stat('pointsAgainst'),
+    };
+  });
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────
+const ZONE_LABELS = {
+  1:  {text:'Ascenso directo',  cls:'green'},
+  3:  {text:'Play-off de ascenso', cls:'blue'},
+  7:  {text:'Zona de permanencia', cls:'gray'},
+  19: {text:'Descenso a Primera RFEF', cls:'red'},
+};
+
+function pctBar(pct, colorClass) {
+  const txt = pct === 0
+    ? `<span style="color:var(--muted)">—</span>`
+    : `${pct.toFixed(1)}%`;
+  return `<div class="prob-cell">
+    <div class="prob-header"><span class="prob-pct">${txt}</span></div>
+    <div class="prob-bar-bg">
+      <div class="prob-bar-fill ${colorClass}" style="width:0%" data-target="${pct}"></div>
+    </div>
+  </div>`;
+}
+
+function zoneOf(pos) {
+  if (pos <= 2)  return 'promo';
+  if (pos <= 6)  return 'playoff';
+  if (pos >= 19) return 'relega';
+  return 'none';
+}
+
+const INITIALS_COLORS = [
+  '#e11d48','#7c3aed','#2563eb','#0891b2','#059669','#ca8a04','#ea580c',
+  '#db2777','#4f46e5','#0284c7','#16a34a','#d97706','#dc2626','#9333ea',
+  '#0369a1','#15803d','#b45309','#be185d','#6d28d9','#0e7490','#166534','#92400e',
+];
+
+function initials(name) {
+  return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
+}
+
+function render(standings, results) {
+  const tbody = document.getElementById('tbody');
+  let html = '';
+
+  standings.forEach((t, i) => {
+    const z    = zoneOf(t.rank);
+    const res  = results[t.name] || {top2:0, playoff:0, relega:0};
+    const zRow = z !== 'none' ? `zone-${z}` : '';
+    const localLogo = LOCAL_LOGOS[t.name.toLowerCase()];
+    const espnLogo  = t.logo;
+
+    if (ZONE_LABELS[t.rank]) {
+      const {text, cls} = ZONE_LABELS[t.rank];
+      html += `<tr class="zone-label-row"><td colspan="7">
+        <span class="zone-label-text ${cls}">${text}</span></td></tr>`;
+    }
+
+    html += `<tr class="${zRow}">
+      <td style="padding:0 0 0 8px;width:12px"><div class="zone-bar ${z}"></div></td>
+      <td class="pos">${t.rank}</td>
+      <td>
+        <div class="team-cell">
+          <div class="team-avatar" id="av${i}">
+            <img src="${espnLogo || localLogo || ''}" alt="${t.name}" loading="lazy"
+              onerror="fallbackAvatar(${i},'${t.name}','${INITIALS_COLORS[i]}','${localLogo||''}')" />
+          </div>
+          <span class="team-name">${t.name}</span>
+        </div>
+      </td>
+      <td class="pts">${t.pts}</td>
+      <td>${pctBar(res.top2,   'fill-green')}</td>
+      <td>${pctBar(res.playoff,'fill-blue')}</td>
+      <td>${pctBar(res.relega, 'fill-red')}</td>
+    </tr>`;
+  });
+
+  tbody.innerHTML = html;
+
+  requestAnimationFrame(() => setTimeout(() => {
+    document.querySelectorAll('.prob-bar-fill').forEach(el => {
+      el.style.width = el.dataset.target + '%';
+    });
+  }, 80));
+}
+
+function fallbackAvatar(i, name, color, localLogo) {
+  const el = document.getElementById('av' + i);
+  if (!el) return;
+  if (localLogo) {
+    el.innerHTML = `<img src="${localLogo}" alt="${name}" />`;
+    return;
+  }
+  el.classList.add('fallback');
+  el.style.background = color;
+  el.style.color = '#fff';
+  el.style.fontSize = '.68rem';
+  el.style.fontWeight = '700';
+  el.innerHTML = initials(name);
+}
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────
+function renderSkeleton() {
+  let html = '';
+  for (let i = 0; i < 22; i++) {
+    html += `<tr><td style="padding:0 0 0 8px;width:12px"><div class="zone-bar none"></div></td>
+      <td class="pos"><div class="skeleton" style="width:18px;height:14px"></div></td>
+      <td><div class="team-cell">
+        <div class="team-avatar" style="background:var(--surface2)"></div>
+        <div class="skeleton" style="width:${90+Math.random()*60|0}px;height:14px"></div>
+      </div></td>
+      <td><div class="skeleton" style="width:24px;height:14px;margin-left:auto"></div></td>
+      <td><div class="skeleton" style="width:80px;height:14px"></div></td>
+      <td><div class="skeleton" style="width:80px;height:14px"></div></td>
+      <td><div class="skeleton" style="width:80px;height:14px"></div></td>
+    </tr>`;
+  }
+  document.getElementById('tbody').innerHTML = html;
+}
+
+// ─── Status helpers ────────────────────────────────────────────────────────
+function setStatus(type, text) {
+  document.getElementById('status-dot').className = `status-dot ${type}`;
+  document.getElementById('status-text').textContent = text;
+}
+
+function setBadge(gp) {
+  const remaining = TOTAL_MD - gp;
+  document.getElementById('badge-jornada').innerHTML =
+    `Jornada <strong>${gp}</strong> · ${remaining} jornada${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''}`;
+}
+
+// ─── Auto-refresh countdown ───────────────────────────────────────────────
+let refreshTimer = null;
+let countdownInterval = null;
+let nextRefreshAt = null;
+
+function msToNextHour() {
+  const now = new Date();
+  const next = new Date(now);
+  next.setUTCMinutes(0, 0, 0);
+  next.setUTCHours(now.getUTCHours() + 1);
+  return next - now;
+}
+
+function scheduleRefresh() {
+  clearTimeout(refreshTimer);
+  clearInterval(countdownInterval);
+  const ms = msToNextHour();
+  nextRefreshAt = Date.now() + ms;
+
+  countdownInterval = setInterval(() => {
+    const secs = Math.max(0, (nextRefreshAt - Date.now()) / 1000 | 0);
+    const m = (secs / 60 | 0).toString().padStart(2,'0');
+    const s = (secs % 60).toString().padStart(2,'0');
+    setStatus('ok', `Datos actualizados · próxima actualización en ${m}:${s}`);
+    if (secs === 0) clearInterval(countdownInterval);
+  }, 1000);
+
+  refreshTimer = setTimeout(() => triggerUpdate(), ms);
+}
+
+// ─── Main update flow ──────────────────────────────────────────────────────
+let isUpdating = false;
+
+async function triggerUpdate() {
+  if (isUpdating) return;
+  isUpdating = true;
+
+  try {
+    renderSkeleton();
+    setStatus('loading', 'Obteniendo clasificación…');
+    const standings = await fetchStandings();
+
+    setBadge(standings[0].gp);
+    setStatus('loading', 'Simulando 40 000 escenarios…');
+    await new Promise(r => setTimeout(r, 30)); // yield to browser
+
+    const results = simulate(standings);
+    render(standings, results);
+
+    const now = new Date();
+    document.getElementById('footer-update').textContent =
+      `Última actualización: ${now.toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'})} · Datos: ESPN API`;
+
+    scheduleRefresh();
+    setStatus('ok', ''); // countdown will overwrite
+  } catch (err) {
+    console.error(err);
+    setStatus('error', `Error al cargar datos: ${err.message} · Reintentando en 5 min…`);
+    refreshTimer = setTimeout(() => triggerUpdate(), 5 * 60 * 1000);
+  } finally {
+    isUpdating = false;
+  }
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────
+renderSkeleton();
+triggerUpdate();
+</script>
+</body>
+</html>
