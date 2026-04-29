@@ -41,6 +41,7 @@
 
     /* ── Card ── */
     .card { max-width:940px; margin:0 auto; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+    .table-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
 
     /* ── Skeleton loading ── */
     .skeleton { animation:shimmer 1.4s infinite; background:linear-gradient(90deg,var(--surface2) 25%,#253047 50%,var(--surface2) 75%); background-size:400% 100%; border-radius:4px; }
@@ -130,6 +131,7 @@
 </div>
 
 <div class="card">
+  <div class="table-scroll">
   <table>
     <thead>
       <tr>
@@ -144,6 +146,7 @@
     </thead>
     <tbody id="tbody"></tbody>
   </table>
+  </div>
 </div>
 
 <div class="footer">
