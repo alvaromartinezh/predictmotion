@@ -10,9 +10,17 @@
   <!-- End Google Tag Manager -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Liga Hypermotion 2025-26 · Probabilidades</title>
+  <!-- Performance: preconnect a recursos externos -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
+  <link rel="dns-prefetch" href="https://site.api.espn.com" />
+  <link rel="dns-prefetch" href="https://r2.thesportsdb.com" />
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <title>Liga Hypermotion 2025-26 · Probabilidades de Ascenso y Descenso</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
     :root {
       --bg:       #0e1117; --surface: #161b25; --surface2: #1e2535;
       --border:   #2a3347; --orange: #f97316;
@@ -100,15 +108,58 @@
     @media (max-width:600px) { .prob-cell{min-width:85px;} .team-name{font-size:.8rem;} thead th,td{padding:8px 9px;} }
   </style>
 
-  <!-- SEO -->
-  <meta name="description" content="Simulación Monte Carlo para la Liga Hypermotion 2025-26. Probabilidades de ascenso, play-off y descenso para los 22 equipos de Segunda División." />
-  <meta name="robots" content="index, follow" />
+  <!-- SEO principal -->
+  <meta name="description" content="Simulación Monte Carlo de la Liga Hypermotion 2025-26. Probabilidades en tiempo real de ascenso directo, play-off y descenso para los 22 equipos de Segunda División española." />
+  <meta name="keywords" content="Liga Hypermotion, Segunda División probabilidades, ascenso Segunda División, play-off ascenso, descenso Liga Hypermotion, predicción fútbol, simulación Segunda División 2025-26" />
+  <meta name="author" content="PredictMotion" />
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+  <meta name="theme-color" content="#0e1117" />
+  <meta name="application-name" content="PredictMotion" />
+  <meta name="geo.region" content="ES" />
   <link rel="canonical" href="https://predictmotion.netlify.app/" />
+  <link rel="alternate" hreflang="es" href="https://predictmotion.netlify.app/" />
 
-  <!-- Open Graph -->
-  <meta property="og:title" content="Liga Hypermotion 2025-26 · Probabilidades" />
-  <meta property="og:description" content="40 000 simulaciones Monte Carlo para predecir el final de la temporada en Segunda División." />
+  <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://predictmotion.netlify.app/" />
+  <meta property="og:title" content="Liga Hypermotion 2025-26 · Probabilidades de Ascenso y Descenso" />
+  <meta property="og:description" content="Simulación Monte Carlo de la Liga Hypermotion 2025-26. Probabilidades en tiempo real de ascenso directo, play-off y descenso para los 22 equipos de Segunda División." />
+  <meta property="og:image" content="https://r2.thesportsdb.com/images/media/league/badge/r7u6821688425700.png" />
+  <meta property="og:image:alt" content="Logo Liga Hypermotion" />
+  <meta property="og:locale" content="es_ES" />
+  <meta property="og:site_name" content="PredictMotion" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Liga Hypermotion 2025-26 · Probabilidades de Ascenso y Descenso" />
+  <meta name="twitter:description" content="40 000 simulaciones Monte Carlo para predecir el final de la temporada en Segunda División española." />
+  <meta name="twitter:image" content="https://r2.thesportsdb.com/images/media/league/badge/r7u6821688425700.png" />
+  <meta name="twitter:image:alt" content="Logo Liga Hypermotion" />
+
+  <!-- Structured Data (JSON-LD) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "PredictMotion – Liga Hypermotion 2025-26",
+    "description": "Simulador Monte Carlo para la Liga Hypermotion 2025-26. Probabilidades de ascenso directo, play-off y descenso para los 22 equipos de Segunda División española.",
+    "url": "https://predictmotion.netlify.app/",
+    "applicationCategory": "SportsApplication",
+    "operatingSystem": "Web",
+    "inLanguage": "es-ES",
+    "about": {
+      "@type": "SportsOrganization",
+      "name": "Liga Hypermotion",
+      "sport": "Soccer",
+      "url": "https://www.laliga.com/laliga-hypermotion"
+    },
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "EUR"
+    }
+  }
+  </script>
 
   <!-- Google AdSense Auto Ads -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3055585323326983"
