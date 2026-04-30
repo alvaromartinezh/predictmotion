@@ -95,6 +95,11 @@
     .result-badge.L { background:rgba(239,68,68,.2); color:var(--red); }
     .fixture-home { color:var(--muted); font-size:.75rem; }
 
+    /* ── Sort ── */
+    thead th[data-col] { cursor:pointer; user-select:none; }
+    thead th[data-col]:hover { color:var(--text); }
+    .sort-icon { color:var(--muted); font-size:.6rem; margin-left:3px; }
+
     /* ── Skeleton ── */
     .skeleton { animation:shimmer 1.4s infinite; background:linear-gradient(90deg,var(--surface2) 25%,#253047 50%,var(--surface2) 75%); background-size:400% 100%; border-radius:4px; }
     @keyframes shimmer { to { background-position:-400% 0; } }
@@ -180,15 +185,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <div class="card-header">Plantilla · Estadísticas individuales</div>
   <div class="table-scroll">
     <table>
-      <thead>
+      <thead id="squad-thead">
         <tr>
-          <th>Jugador</th>
-          <th class="center">Pos</th>
-          <th class="right">Min</th>
-          <th class="right">Goles</th>
-          <th class="right">Asist.</th>
-          <th class="right">Tarj. A</th>
-          <th class="right">Tarj. R</th>
+          <th data-col="name">Jugador<span class="sort-icon">⇅</span></th>
+          <th class="center" data-col="pos">Pos<span class="sort-icon">⇅</span></th>
+          <th class="right" data-col="appearances">Part.<span class="sort-icon">⇅</span></th>
+          <th class="right" data-col="goals">Goles<span class="sort-icon">⇅</span></th>
+          <th class="right" data-col="assists">Asist.<span class="sort-icon">⇅</span></th>
+          <th class="right" data-col="yellowCards">Tarj. A<span class="sort-icon">⇅</span></th>
+          <th class="right" data-col="redCards">Tarj. R<span class="sort-icon">⇅</span></th>
         </tr>
       </thead>
       <tbody id="squad-tbody">
@@ -208,6 +213,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 const ESPN_BASE   = 'https://site.api.espn.com/apis/site/v2/sports/soccer/esp.2';
 const ESPN_CORE   = 'https://sports.core.api.espn.com/v2/sports/soccer/leagues/esp.2';
 const ESPN_STAND  = 'https://site.api.espn.com/apis/v2/sports/soccer/esp.2/standings';
+// ESPN uses start year for European seasons: 2025-26 → season=2025
+const SEASON_PRIMARY   = 2025;
+const SEASON_FALLBACK  = 2026;
 const SIM_N       = 40000;
 const TOTAL_MD    = 42;
 const P_HOME      = 0.42;
@@ -322,23 +330,42 @@ async function fetchStandings() {
 }
 
 async function fetchSchedule() {
-  const res = await fetch(`${ESPN_BASE}/teams/${TEAM_ID}/schedule?season=2026`);
-  if (!res.ok) return null;
-  return res.json();
+  const seasons = [SEASON_PRIMARY, SEASON_FALLBACK, ''];
+  for (const s of seasons) {
+    try {
+      const url = s
+        ? `${ESPN_BASE}/teams/${TEAM_ID}/schedule?season=${s}`
+        : `${ESPN_BASE}/teams/${TEAM_ID}/schedule`;
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data.events && data.events.length > 0) return data;
+    } catch {}
+  }
+  return null;
 }
 
 async function fetchRoster() {
-  const res = await fetch(`${ESPN_BASE}/teams/${TEAM_ID}/roster`);
-  if (!res.ok) return null;
-  return res.json();
+  try {
+    const res = await fetch(`${ESPN_BASE}/teams/${TEAM_ID}/roster`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.athletes && data.athletes.length > 0) return data;
+  } catch {}
+  return null;
 }
 
 async function fetchAthleteStats(athleteId) {
-  try {
-    const res = await fetch(`${ESPN_CORE}/seasons/2026/types/2/athletes/${athleteId}/statistics/0`);
-    if (!res.ok) return null;
-    return res.json();
-  } catch { return null; }
+  for (const s of [SEASON_PRIMARY, SEASON_FALLBACK]) {
+    try {
+      const res = await fetch(`${ESPN_CORE}/seasons/${s}/types/2/athletes/${athleteId}/statistics/0`);
+      if (!res.ok) continue;
+      const data = await res.json();
+      const cats = data.splits && data.splits.categories;
+      if (cats && cats.length > 0) return data;
+    } catch {}
+  }
+  return null;
 }
 
 // ─── Status helpers ───────────────────────────────────────────────────────
@@ -387,6 +414,15 @@ function renderProbs(probs) {
 }
 
 // ─── Render: schedule ─────────────────────────────────────────────────────
+// ESPN returns score as either a number, string, or object {value, displayValue}
+function parseScore(s) {
+  if (s === null || s === undefined) return 0;
+  if (typeof s === 'number') return s;
+  if (typeof s === 'string') return parseInt(s) || 0;
+  if (typeof s === 'object') return parseInt(s.value ?? s.displayValue ?? 0) || 0;
+  return 0;
+}
+
 function renderSchedule(scheduleData) {
   if (!scheduleData || !scheduleData.events) {
     document.getElementById('results-tbody').innerHTML = '<tr><td colspan="5" style="color:var(--muted);padding:14px">Sin datos de partidos</td></tr>';
@@ -407,10 +443,10 @@ function renderSchedule(scheduleData) {
     const away = comp.competitors.find(c=>c.homeAway==='away');
     if (!home || !away) continue;
 
-    const isHome = home.team.id === TEAM_ID;
+    const isHome = String(home.team.id) === String(TEAM_ID);
     const opponent = isHome ? away.team.displayName : home.team.displayName;
-    const myScore  = isHome ? parseInt(home.score||0) : parseInt(away.score||0);
-    const oppScore = isHome ? parseInt(away.score||0) : parseInt(home.score||0);
+    const myScore  = isHome ? parseScore(home.score) : parseScore(away.score);
+    const oppScore = isHome ? parseScore(away.score) : parseScore(home.score);
 
     if (isCompleted) {
       let outcome = 'D';
@@ -461,45 +497,131 @@ function renderSchedule(scheduleData) {
 
 // ─── Render: squad ────────────────────────────────────────────────────────
 const POS_LABELS = { G:'POR', D:'DEF', M:'MED', F:'DEL' };
+let cachedSquad = [];
+let squadSortCol = 'posSort';
+let squadSortDir = 1;
+
+function squadRow(p) {
+  return `<tr>
+    <td>${p.name}</td>
+    <td class="center"><span class="player-pos">${p.pos}</span></td>
+    <td class="right">${p.appearances > 0 ? p.appearances : '<span style="color:var(--muted)">—</span>'}</td>
+    <td class="right" style="color:${p.goals>0?'var(--green)':'inherit'}">${p.goals > 0 ? '<strong>'+p.goals+'</strong>' : '—'}</td>
+    <td class="right" style="color:${p.assists>0?'var(--blue)':'inherit'}">${p.assists > 0 ? '<strong>'+p.assists+'</strong>' : '—'}</td>
+    <td class="right" style="color:${p.yellowCards>0?'#ca8a04':'inherit'}">${p.yellowCards > 0 ? p.yellowCards : '—'}</td>
+    <td class="right" style="color:${p.redCards>0?'var(--red)':'inherit'}">${p.redCards > 0 ? p.redCards : '—'}</td>
+  </tr>`;
+}
+
+function renderSquadRows() {
+  const sorted = [...cachedSquad].sort((a, b) => {
+    const av = a[squadSortCol], bv = b[squadSortCol];
+    if (typeof av === 'number') return (av - bv) * squadSortDir;
+    return String(av).localeCompare(String(bv)) * squadSortDir;
+  });
+  document.getElementById('squad-tbody').innerHTML = sorted.map(squadRow).join('');
+}
+
+function updateSortIcons() {
+  document.querySelectorAll('#squad-thead th[data-col]').forEach(th => {
+    const icon = th.querySelector('.sort-icon');
+    if (!icon) return;
+    if (th.dataset.col === squadSortCol) {
+      icon.textContent = squadSortDir === 1 ? '↑' : '↓';
+      icon.style.color = 'var(--text)';
+    } else {
+      icon.textContent = '⇅';
+      icon.style.color = '';
+    }
+  });
+}
+
+function initSquadSort() {
+  document.querySelectorAll('#squad-thead th[data-col]').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.col;
+      if (squadSortCol === col) {
+        squadSortDir *= -1;
+      } else {
+        squadSortCol = col;
+        squadSortDir = (col === 'name' || col === 'pos') ? 1 : -1;
+      }
+      renderSquadRows();
+      updateSortIcons();
+    });
+  });
+}
+
+function extractEmbeddedStats(athlete) {
+  const splits = athlete.statistics && athlete.statistics.splits;
+  if (!splits) return {};
+  const catMap = {};
+  for (const cat of (splits.categories || [])) {
+    catMap[cat.name] = {};
+    for (const s of (cat.stats || [])) catMap[cat.name][s.name] = s.value || 0;
+  }
+  const gen = catMap.general || {};
+  const off = catMap.offensive || {};
+  return {
+    appearances: gen.appearances || 0,
+    goals: off.totalGoals || gen.goals || 0,
+    assists: off.goalAssists || gen.assists || 0,
+    yellowCards: gen.yellowCards || 0,
+    redCards: gen.redCards || 0,
+  };
+}
 
 function renderSquad(rosterData, statsMap) {
-  if (!rosterData || !rosterData.athletes) {
+  if (!rosterData || !rosterData.athletes || rosterData.athletes.length === 0) {
     document.getElementById('squad-tbody').innerHTML = '<tr><td colspan="7" style="color:var(--muted);padding:14px">Plantilla no disponible</td></tr>';
     return;
   }
 
-  const players = [];
-  for (const group of rosterData.athletes) {
-    for (const athlete of (group.items || [])) {
+  cachedSquad = [];
+  const athletes = rosterData.athletes;
+  // New format: flat array of athlete objects (each has .displayName directly)
+  // Old format: array of position groups, each with .items array
+  const isFlat = athletes[0] && athletes[0].displayName !== undefined;
+
+  if (isFlat) {
+    for (const athlete of athletes) {
       const pos = athlete.position && athlete.position.abbreviation ? athlete.position.abbreviation : '—';
-      const posGroup = athlete.position && athlete.position.leaf !== false ? pos : pos;
-      const st = statsMap[athlete.id] || {};
-      players.push({
-        id: athlete.id,
+      const st = extractEmbeddedStats(athlete);
+      cachedSquad.push({
         name: athlete.displayName || athlete.fullName || '—',
         pos: POS_LABELS[pos] || pos,
         posSort: pos === 'G' ? 0 : pos === 'D' ? 1 : pos === 'M' ? 2 : 3,
-        minutes: st.minutes || 0,
-        goals: st.goals || 0,
-        assists: st.assists || 0,
-        yellowCards: st.yellowCards || 0,
-        redCards: st.redCards || 0,
+        appearances: st.appearances,
+        goals: st.goals,
+        assists: st.assists,
+        yellowCards: st.yellowCards,
+        redCards: st.redCards,
       });
+    }
+  } else {
+    for (const group of athletes) {
+      for (const athlete of (group.items || [])) {
+        const pos = athlete.position && athlete.position.abbreviation ? athlete.position.abbreviation : '—';
+        const st = statsMap[athlete.id] || {};
+        cachedSquad.push({
+          name: athlete.displayName || athlete.fullName || '—',
+          pos: POS_LABELS[pos] || pos,
+          posSort: pos === 'G' ? 0 : pos === 'D' ? 1 : pos === 'M' ? 2 : 3,
+          appearances: st.minutes || 0,
+          goals: st.goals || 0,
+          assists: st.assists || 0,
+          yellowCards: st.yellowCards || 0,
+          redCards: st.redCards || 0,
+        });
+      }
     }
   }
 
-  players.sort((a,b) => a.posSort !== b.posSort ? a.posSort - b.posSort : b.minutes - a.minutes);
-
-  document.getElementById('squad-tbody').innerHTML = players.map(p => `
-    <tr>
-      <td>${p.name}</td>
-      <td class="center"><span class="player-pos">${p.pos}</span></td>
-      <td class="right">${p.minutes > 0 ? p.minutes : '<span style="color:var(--muted)">—</span>'}</td>
-      <td class="right" style="color:${p.goals>0?'var(--green)':'inherit'}">${p.goals > 0 ? '<strong>'+p.goals+'</strong>' : '—'}</td>
-      <td class="right" style="color:${p.assists>0?'var(--blue)':'inherit'}">${p.assists > 0 ? '<strong>'+p.assists+'</strong>' : '—'}</td>
-      <td class="right" style="color:${p.yellowCards>0?'#ca8a04':'inherit'}">${p.yellowCards > 0 ? p.yellowCards : '—'}</td>
-      <td class="right" style="color:${p.redCards>0?'var(--red)':'inherit'}">${p.redCards > 0 ? p.redCards : '—'}</td>
-    </tr>`).join('');
+  squadSortCol = 'posSort';
+  squadSortDir = 1;
+  renderSquadRows();
+  updateSortIcons();
+  initSquadSort();
 }
 
 // ─── Fetch player stats in parallel (batched) ─────────────────────────────
@@ -593,7 +715,7 @@ async function triggerUpdate() {
       fetchRoster(),
     ]);
 
-    const teamData = standings.find(t => t.id === TEAM_ID);
+    const teamData = standings.find(t => String(t.id) === String(TEAM_ID));
     if (!teamData) throw new Error(`Equipo ${TEAM_ID} no encontrado en la clasificación`);
 
     renderTeamHeader(teamData);
@@ -605,10 +727,12 @@ async function triggerUpdate() {
     const probs = simulate(standings, teamData.name);
     renderProbs(probs);
 
-    // Fetch player stats
-    setStatus('loading','Cargando estadísticas de jugadores…');
+    // Player stats: if roster uses flat format (new ESPN API), stats are embedded.
+    // Otherwise fall back to fetching stats per-athlete.
     let statsMap = {};
-    if (rosterData && rosterData.athletes) {
+    const isFlat = rosterData && rosterData.athletes && rosterData.athletes[0] && rosterData.athletes[0].displayName !== undefined;
+    if (!isFlat && rosterData && rosterData.athletes) {
+      setStatus('loading','Cargando estadísticas de jugadores…');
       const ids = [];
       for (const group of rosterData.athletes) {
         for (const a of (group.items||[])) ids.push(a.id);
