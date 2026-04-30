@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-NG2T7CM4');</script>
+  <!-- End Google Tag Manager -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="dns-prefetch" href="https://site.api.espn.com" />
+  <link rel="dns-prefetch" href="https://sports.core.api.espn.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <title>Equipo · Liga Hypermotion 2025-26</title>
+
+  <style>
+    :root {
+      --bg:#0e1117; --surface:#161b25; --surface2:#1e2535;
+      --border:#2a3347; --orange:#f97316;
+      --green:#22c55e; --green-dim:#14532d;
+      --blue:#3b82f6; --blue-dim:#1e3a5f;
+      --red:#ef4444; --red-dim:#7f1d1d;
+      --text:#e2e8f0; --muted:#64748b; --radius:12px;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; padding:28px 16px 64px; }
+
+    /* ── Back ── */
+    .back-link { display:inline-flex; align-items:center; gap:6px; color:var(--muted); text-decoration:none; font-size:.82rem; margin-bottom:20px; max-width:940px; display:block; margin:0 auto 20px; transition:color .15s; }
+    .back-link:hover { color:var(--text); }
+
+    /* ── Header ── */
+    .header { max-width:940px; margin:0 auto 20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+    .team-logo-big { width:64px; height:64px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+    .team-logo-big img { width:100%; height:100%; object-fit:contain; }
+    .team-logo-big.fallback { border-radius:50%; font-size:1.1rem; font-weight:700; color:#fff; }
+    .header-text h1 { font-size:1.6rem; font-weight:800; letter-spacing:-.5px; }
+    .header-text p  { font-size:.8rem; color:var(--muted); margin-top:3px; }
+    .header-actions { margin-left:auto; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .badge { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:6px 13px; font-size:.78rem; color:var(--muted); white-space:nowrap; }
+    .badge strong { color:var(--text); }
+
+    /* ── Status ── */
+    .status-bar { max-width:940px; margin:0 auto 14px; display:flex; align-items:center; gap:8px; font-size:.75rem; color:var(--muted); }
+    .status-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+    .status-dot.ok      { background:var(--green); }
+    .status-dot.loading { background:var(--orange); animation:pulse 1s ease-in-out infinite; }
+    .status-dot.error   { background:var(--red); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* ── Grid stats ── */
+    .stats-grid { max-width:940px; margin:0 auto 16px; display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; }
+    .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; }
+    .stat-card .label { font-size:.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px; }
+    .stat-card .value { font-size:1.5rem; font-weight:800; }
+    .stat-card .sub   { font-size:.72rem; color:var(--muted); margin-top:2px; }
+
+    /* ── Prob section ── */
+    .probs-row { max-width:940px; margin:0 auto 16px; display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    .prob-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; }
+    .prob-card .p-label { font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.08em; margin-bottom:8px; }
+    .prob-card .p-pct   { font-size:2rem; font-weight:800; line-height:1; margin-bottom:10px; }
+    .prob-card .p-bar-bg { height:6px; border-radius:3px; background:var(--border); overflow:hidden; }
+    .prob-card .p-bar-fill { height:100%; border-radius:3px; transition:width 1s cubic-bezier(.16,1,.3,1); }
+    .prob-card.green { border-color:rgba(34,197,94,.25); background:rgba(34,197,94,.04); }
+    .prob-card.blue  { border-color:rgba(59,130,246,.25); background:rgba(59,130,246,.04); }
+    .prob-card.red   { border-color:rgba(239,68,68,.25);  background:rgba(239,68,68,.04); }
+    .fill-green { background:linear-gradient(90deg,#16a34a,#4ade80); }
+    .fill-blue  { background:linear-gradient(90deg,#2563eb,#60a5fa); }
+    .fill-red   { background:linear-gradient(90deg,#b91c1c,#f87171); }
+
+    /* ── Cards genéricos ── */
+    .card { max-width:940px; margin:0 auto 16px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+    .card-header { background:var(--surface2); padding:12px 16px; font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); border-bottom:1px solid var(--border); }
+
+    /* ── Tabla plantilla / resultados ── */
+    .table-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    table { width:100%; border-collapse:collapse; }
+    thead th { background:var(--surface2); padding:10px 14px; font-size:.7rem; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); text-align:left; white-space:nowrap; }
+    thead th.right  { text-align:right; }
+    thead th.center { text-align:center; }
+    tbody tr { border-top:1px solid var(--border); transition:background .15s; }
+    tbody tr:hover { background:var(--surface2); }
+    td { padding:9px 14px; vertical-align:middle; font-size:.84rem; white-space:nowrap; }
+    td.right  { text-align:right; }
+    td.center { text-align:center; }
+    .player-pos { font-size:.68rem; font-weight:600; padding:2px 7px; border-radius:4px; background:var(--surface2); color:var(--muted); }
+    .result-badge { display:inline-block; width:22px; height:22px; border-radius:4px; font-size:.72rem; font-weight:700; text-align:center; line-height:22px; }
+    .result-badge.W { background:rgba(34,197,94,.2); color:var(--green); }
+    .result-badge.D { background:rgba(100,116,139,.2); color:var(--muted); }
+    .result-badge.L { background:rgba(239,68,68,.2); color:var(--red); }
+    .fixture-home { color:var(--muted); font-size:.75rem; }
+
+    /* ── Skeleton ── */
+    .skeleton { animation:shimmer 1.4s infinite; background:linear-gradient(90deg,var(--surface2) 25%,#253047 50%,var(--surface2) 75%); background-size:400% 100%; border-radius:4px; }
+    @keyframes shimmer { to { background-position:-400% 0; } }
+    .sk-stat { height:18px; }
+    .sk-row td > div { height:13px; }
+
+    /* ── Footer ── */
+    .footer { max-width:940px; margin:18px auto 0; font-size:.74rem; color:var(--muted); display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px; }
+
+    @media (max-width:600px) {
+      .probs-row { grid-template-columns:1fr; }
+      .stats-grid { grid-template-columns:repeat(3,1fr); }
+      .prob-card .p-pct { font-size:1.5rem; }
+      thead th,td { padding:7px 9px; }
+    }
+  </style>
+
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3055585323326983" crossorigin="anonymous"></script>
+</head>
+<body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NG2T7CM4"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+
+<a class="back-link" href="index.html">&#8592; Volver a la clasificación</a>
+
+<div class="header">
+  <div class="team-logo-big" id="team-logo">
+    <div class="skeleton" style="width:64px;height:64px;border-radius:50%"></div>
+  </div>
+  <div class="header-text">
+    <h1 id="team-title">Cargando…</h1>
+    <p>Liga Hypermotion 2025‑26</p>
+  </div>
+  <div class="header-actions">
+    <div class="badge" id="badge-pos">—</div>
+  </div>
+</div>
+
+<div class="status-bar">
+  <div class="status-dot loading" id="status-dot"></div>
+  <span id="status-text">Conectando…</span>
+</div>
+
+<!-- Estadísticas actuales -->
+<div class="stats-grid" id="stats-grid">
+  <div class="stat-card"><div class="label">Puntos</div><div class="skeleton sk-stat"></div></div>
+  <div class="stat-card"><div class="label">Partidos</div><div class="skeleton sk-stat"></div></div>
+  <div class="stat-card"><div class="label">Victorias</div><div class="skeleton sk-stat"></div></div>
+  <div class="stat-card"><div class="label">Empates</div><div class="skeleton sk-stat"></div></div>
+  <div class="stat-card"><div class="label">Derrotas</div><div class="skeleton sk-stat"></div></div>
+  <div class="stat-card"><div class="label">Goles</div><div class="skeleton sk-stat"></div></div>
+  <div class="stat-card"><div class="label">GC</div><div class="skeleton sk-stat"></div></div>
+  <div class="stat-card"><div class="label">Diferencia</div><div class="skeleton sk-stat"></div></div>
+</div>
+
+<!-- Probabilidades Monte Carlo -->
+<div class="probs-row" id="probs-row">
+  <div class="prob-card green"><div class="p-label" style="color:var(--green)">Ascenso directo</div><div class="p-pct skeleton" style="height:32px;width:80px;border-radius:6px"></div></div>
+  <div class="prob-card blue"><div class="p-label" style="color:var(--blue)">Play-off</div><div class="p-pct skeleton" style="height:32px;width:80px;border-radius:6px"></div></div>
+  <div class="prob-card red"><div class="p-label" style="color:var(--red)">Descenso</div><div class="p-pct skeleton" style="height:32px;width:80px;border-radius:6px"></div></div>
+</div>
+
+<!-- Resultados recientes -->
+<div class="card" id="results-card">
+  <div class="card-header">Últimos partidos</div>
+  <div class="table-scroll">
+    <table><tbody id="results-tbody"><tr><td colspan="5"><div class="skeleton sk-row" style="height:13px;margin:10px 0"></div></td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- Próximos partidos -->
+<div class="card" id="upcoming-card">
+  <div class="card-header">Próximos partidos</div>
+  <div class="table-scroll">
+    <table><tbody id="upcoming-tbody"><tr><td colspan="4"><div class="skeleton" style="height:13px;margin:10px 0"></div></td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- Plantilla y estadísticas -->
+<div class="card" id="squad-card">
+  <div class="card-header">Plantilla · Estadísticas individuales</div>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Jugador</th>
+          <th class="center">Pos</th>
+          <th class="right">Min</th>
+          <th class="right">Goles</th>
+          <th class="right">Asist.</th>
+          <th class="right">Tarj. A</th>
+          <th class="right">Tarj. R</th>
+        </tr>
+      </thead>
+      <tbody id="squad-tbody">
+        <tr><td colspan="7"><div class="skeleton" style="height:13px;margin:10px 0"></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="footer">
+  <span id="footer-update">—</span>
+  <span>Datos: ESPN API · <a href="privacy.html" style="color:var(--muted);text-decoration:underline">Política de privacidad</a></span>
+</div>
+
+<script>
+// ─── Config ───────────────────────────────────────────────────────────────
+const ESPN_BASE   = 'https://site.api.espn.com/apis/site/v2/sports/soccer/esp.2';
+const ESPN_CORE   = 'https://sports.core.api.espn.com/v2/sports/soccer/leagues/esp.2';
+const ESPN_STAND  = 'https://site.api.espn.com/apis/v2/sports/soccer/esp.2/standings';
+const SIM_N       = 40000;
+const TOTAL_MD    = 42;
+const P_HOME      = 0.42;
+const P_DRAW      = 0.27;
+
+// ─── URL params ───────────────────────────────────────────────────────────
+const params  = new URLSearchParams(location.search);
+const TEAM_ID = params.get('id');
+const TEAM_NAME_HINT = params.get('name') || '';
+
+if (!TEAM_ID) {
+  document.getElementById('team-title').textContent = 'Equipo no encontrado';
+  document.getElementById('status-text').textContent = 'Falta el parámetro ?id=';
+}
+
+// ─── Seeded PRNG (mulberry32) ─────────────────────────────────────────────
+function mulberry32(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function hourSeed() {
+  const d = new Date();
+  return d.getUTCFullYear() * 1000000 + (d.getUTCMonth() + 1) * 10000 + d.getUTCDate() * 100 + d.getUTCHours();
+}
+let rng = Math.random;
+
+const LOCAL_LOGOS = {
+  'racing santander':'logos/racing.png','almería':'logos/almeria.png',
+  'deportivo la coruña':'logos/deportivo.png','castellón':'logos/castellon.png',
+  'las palmas':'logos/laspalmas.png','burgos':'logos/burgos.png',
+  'eibar':'logos/eibar.png','málaga':'logos/malaga.png',
+  'fc andorra':'logos/andorra.png','córdoba':'logos/cordoba.png',
+  'sporting gijón':'logos/sporting.png','ceuta':'logos/ceuta.png',
+  'albacete':'logos/albacete.png','granada':'logos/granada.png',
+  'real valladolid':'logos/valladolid.png','leganés':'logos/leganes.png',
+  'real sociedad ii':'logos/rsociedad.png','cádiz':'logos/cadiz.png',
+  'huesca':'logos/huesca.png','mirandés':'logos/mirandes.png',
+  'real zaragoza':'logos/zaragoza.png','cultural leonesa':'logos/leonesa.png',
+};
+
+const INITIALS_COLORS = [
+  '#e11d48','#7c3aed','#2563eb','#0891b2','#059669','#ca8a04','#ea580c',
+  '#db2777','#4f46e5','#0284c7','#16a34a','#d97706','#dc2626','#9333ea',
+];
+
+function initials(name) {
+  return name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+}
+
+// ─── Known fixtures (copy from index.html for simulation) ─────────────────
+const FIXTURES = {
+  38:[['FC Andorra','Albacete'],['Deportivo La Coruña','Leganés'],['Real Zaragoza','Granada'],['Cultural Leonesa','Cádiz'],['Castellón','Córdoba'],['Eibar','Málaga'],['Racing Santander','Huesca'],['Sporting Gijón','Ceuta'],['Real Sociedad II','Burgos'],['Las Palmas','Real Valladolid'],['Almería','Mirandés']],
+  '39_PARTIAL':[['Cádiz','Deportivo La Coruña'],['Ceuta','Castellón'],['Albacete','Cultural Leonesa'],['Burgos','Almería'],['Real Valladolid','Real Zaragoza'],['Málaga','Sporting Gijón']],
+  42:[['Castellón','Eibar'],['Córdoba','Huesca'],['Deportivo La Coruña','Las Palmas'],['Granada','Sporting Gijón'],['Leganés','Mirandés'],['Almería','Real Valladolid'],['Ceuta','Albacete'],['Racing Santander','Cádiz'],['Real Sociedad II','Cultural Leonesa'],['Real Zaragoza','Málaga'],['FC Andorra','Burgos']],
+};
+
+function shuffle(arr) {
+  for (let i=arr.length-1;i>0;i--){const j=rng()*(i+1)|0;[arr[i],arr[j]]=[arr[j],arr[i]];}
+  return arr;
+}
+function randomMatchday(teams){const t=shuffle([...teams]);const md=[];for(let i=0;i<t.length;i+=2)md.push([t[i],t[i+1]]);return md;}
+function completeMatchday(known,teams){const used=new Set(known.flat());const free=shuffle(teams.filter(t=>!used.has(t)));const extra=[];for(let i=0;i<free.length;i+=2)extra.push([free[i],free[i+1]]);return[...known,...extra];}
+function buildFixtures(teams,gp){const mds=[];for(let md=gp+1;md<=TOTAL_MD;md++){if(FIXTURES[md])mds.push(FIXTURES[md]);else if(md===39)mds.push(completeMatchday(FIXTURES['39_PARTIAL'],teams));else mds.push(randomMatchday(teams));}return mds;}
+
+function simulate(standings, teamName) {
+  rng = mulberry32(hourSeed());
+  const names  = standings.map(t=>t.name);
+  const counts = {t2:0, t6:0, b4:0};
+  const gp     = standings[0].gp;
+  for (let i=0;i<SIM_N;i++) {
+    const pts = Object.fromEntries(standings.map(t=>[t.name,t.pts]));
+    const gd  = Object.fromEntries(standings.map(t=>[t.name,t.gf-t.gc]));
+    const gf  = Object.fromEntries(standings.map(t=>[t.name,t.gf]));
+    for (const md of buildFixtures(names,gp)) {
+      for (const [h,a] of md) {
+        const r=rng(); let hp,ap,hg,ag;
+        if(r<P_HOME){hp=3;ap=0;hg=(rng()*2|0)+1+(rng()*2|0);ag=rng()*2|0;}
+        else if(r<P_HOME+P_DRAW){hp=ap=1;hg=ag=rng()*2|0;}
+        else{hp=0;ap=3;hg=rng()*2|0;ag=(rng()*2|0)+1+(rng()*2|0);}
+        pts[h]+=hp;pts[a]+=ap;gd[h]+=hg-ag;gd[a]+=ag-hg;gf[h]+=hg;gf[a]+=ag;
+      }
+    }
+    const sorted=[...names].sort((a,b)=>pts[b]!==pts[a]?pts[b]-pts[a]:gd[b]!==gd[a]?gd[b]-gd[a]:gf[b]-gf[a]);
+    const p=sorted.indexOf(teamName)+1;
+    if(p<=2)counts.t2++;else if(p<=6)counts.t6++;else if(p>=19)counts.b4++;
+  }
+  return {
+    top2:   +(counts.t2/SIM_N*100).toFixed(1),
+    playoff:+(counts.t6/SIM_N*100).toFixed(1),
+    relega: +(counts.b4/SIM_N*100).toFixed(1),
+  };
+}
+
+// ─── Fetch helpers ────────────────────────────────────────────────────────
+async function fetchStandings() {
+  const res  = await fetch(ESPN_STAND);
+  if (!res.ok) throw new Error(`Standings ${res.status}`);
+  const data = await res.json();
+  const entries = data.children[0].standings.entries;
+  return entries.map((e,i) => {
+    const stat = name => (e.stats.find(s=>s.name===name)||{}).value||0;
+    const logo = (e.team.logos && e.team.logos[0]) ? e.team.logos[0].href : null;
+    return { rank:i+1, id:e.team.id, name:e.team.displayName, logo,
+      gp:stat('gamesPlayed'), pts:stat('points'),
+      gf:stat('pointsFor'), gc:stat('pointsAgainst'),
+      wins:stat('wins'), draws:stat('ties'), losses:stat('losses') };
+  });
+}
+
+async function fetchSchedule() {
+  const res = await fetch(`${ESPN_BASE}/teams/${TEAM_ID}/schedule?season=2026`);
+  if (!res.ok) return null;
+  return res.json();
+}
+
+async function fetchRoster() {
+  const res = await fetch(`${ESPN_BASE}/teams/${TEAM_ID}/roster`);
+  if (!res.ok) return null;
+  return res.json();
+}
+
+async function fetchAthleteStats(athleteId) {
+  try {
+    const res = await fetch(`${ESPN_CORE}/seasons/2026/types/2/athletes/${athleteId}/statistics/0`);
+    if (!res.ok) return null;
+    return res.json();
+  } catch { return null; }
+}
+
+// ─── Status helpers ───────────────────────────────────────────────────────
+function setStatus(type, text) {
+  document.getElementById('status-dot').className = `status-dot ${type}`;
+  document.getElementById('status-text').textContent = text;
+}
+
+// ─── Render: stats grid ───────────────────────────────────────────────────
+function renderStatsGrid(t) {
+  const gd = t.gf - t.gc;
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card"><div class="label">Puntos</div><div class="value">${t.pts}</div></div>
+    <div class="stat-card"><div class="label">Partidos</div><div class="value">${t.gp}</div></div>
+    <div class="stat-card"><div class="label">Victorias</div><div class="value" style="color:var(--green)">${t.wins}</div></div>
+    <div class="stat-card"><div class="label">Empates</div><div class="value" style="color:var(--muted)">${t.draws}</div></div>
+    <div class="stat-card"><div class="label">Derrotas</div><div class="value" style="color:var(--red)">${t.losses}</div></div>
+    <div class="stat-card"><div class="label">Goles a favor</div><div class="value">${t.gf}</div></div>
+    <div class="stat-card"><div class="label">Goles en contra</div><div class="value">${t.gc}</div></div>
+    <div class="stat-card"><div class="label">Diferencia</div><div class="value" style="color:${gd>=0?'var(--green)':'var(--red)'}">${gd>=0?'+':''}${gd}</div></div>
+  `;
+}
+
+// ─── Render: probabilities ────────────────────────────────────────────────
+function renderProbs(probs) {
+  document.getElementById('probs-row').innerHTML = `
+    <div class="prob-card green">
+      <div class="p-label" style="color:var(--green)">Ascenso directo <span style="color:var(--muted);font-weight:400">top 2</span></div>
+      <div class="p-pct" style="color:var(--green)">${probs.top2===0?'—':probs.top2.toFixed(1)+'%'}</div>
+      <div class="p-bar-bg"><div class="p-bar-fill fill-green" style="width:0%" data-target="${probs.top2}"></div></div>
+    </div>
+    <div class="prob-card blue">
+      <div class="p-label" style="color:var(--blue)">Play-off <span style="color:var(--muted);font-weight:400">top 6</span></div>
+      <div class="p-pct" style="color:var(--blue)">${probs.playoff===0?'—':probs.playoff.toFixed(1)+'%'}</div>
+      <div class="p-bar-bg"><div class="p-bar-fill fill-blue" style="width:0%" data-target="${probs.playoff}"></div></div>
+    </div>
+    <div class="prob-card red">
+      <div class="p-label" style="color:var(--red)">Descenso <span style="color:var(--muted);font-weight:400">últimos 4</span></div>
+      <div class="p-pct" style="color:var(--red)">${probs.relega===0?'—':probs.relega.toFixed(1)+'%'}</div>
+      <div class="p-bar-bg"><div class="p-bar-fill fill-red" style="width:0%" data-target="${probs.relega}"></div></div>
+    </div>
+  `;
+  requestAnimationFrame(() => setTimeout(() => {
+    document.querySelectorAll('.p-bar-fill').forEach(el => { el.style.width = el.dataset.target + '%'; });
+  }, 80));
+}
+
+// ─── Render: schedule ─────────────────────────────────────────────────────
+function renderSchedule(scheduleData) {
+  if (!scheduleData || !scheduleData.events) {
+    document.getElementById('results-tbody').innerHTML = '<tr><td colspan="5" style="color:var(--muted);padding:14px">Sin datos de partidos</td></tr>';
+    document.getElementById('upcoming-tbody').innerHTML = '<tr><td colspan="4" style="color:var(--muted);padding:14px">Sin datos de partidos</td></tr>';
+    return;
+  }
+
+  const now = new Date();
+  const played   = [];
+  const upcoming = [];
+
+  for (const ev of scheduleData.events) {
+    const comp = ev.competitions && ev.competitions[0];
+    if (!comp) continue;
+    const date = new Date(comp.date);
+    const isCompleted = comp.status && comp.status.type && comp.status.type.completed;
+    const home = comp.competitors.find(c=>c.homeAway==='home');
+    const away = comp.competitors.find(c=>c.homeAway==='away');
+    if (!home || !away) continue;
+
+    const isHome = home.team.id === TEAM_ID;
+    const opponent = isHome ? away.team.displayName : home.team.displayName;
+    const myScore  = isHome ? parseInt(home.score||0) : parseInt(away.score||0);
+    const oppScore = isHome ? parseInt(away.score||0) : parseInt(home.score||0);
+
+    if (isCompleted) {
+      let outcome = 'D';
+      if (myScore > oppScore) outcome = 'W';
+      else if (myScore < oppScore) outcome = 'L';
+      played.push({ date, opponent, myScore, oppScore, outcome, isHome,
+        round: ev.week && ev.week.number ? `J${ev.week.number}` : '' });
+    } else if (date > now) {
+      upcoming.push({ date, opponent, isHome,
+        round: ev.week && ev.week.number ? `J${ev.week.number}` : '' });
+    }
+  }
+
+  played.sort((a,b)=>b.date-a.date);
+  upcoming.sort((a,b)=>a.date-b.date);
+
+  const last5 = played.slice(0,8);
+  const next5 = upcoming.slice(0,5);
+
+  const formatDate = d => d.toLocaleDateString('es-ES',{day:'2-digit',month:'short'});
+  const formatTime = d => d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+
+  if (last5.length) {
+    document.getElementById('results-tbody').innerHTML = last5.map(m => `
+      <tr>
+        <td style="color:var(--muted);font-size:.75rem">${m.round}</td>
+        <td style="color:var(--muted);font-size:.75rem">${formatDate(m.date)}</td>
+        <td>${m.isHome ? '' : '<span class="fixture-home">A · </span>'}${m.opponent}</td>
+        <td class="center"><strong>${m.myScore}–${m.oppScore}</strong></td>
+        <td class="center"><span class="result-badge ${m.outcome}">${m.outcome==='W'?'V':m.outcome==='L'?'D':'E'}</span></td>
+      </tr>`).join('');
+  } else {
+    document.getElementById('results-tbody').innerHTML = '<tr><td colspan="5" style="color:var(--muted);padding:14px">Sin resultados disponibles</td></tr>';
+  }
+
+  if (next5.length) {
+    document.getElementById('upcoming-tbody').innerHTML = next5.map(m => `
+      <tr>
+        <td style="color:var(--muted);font-size:.75rem">${m.round}</td>
+        <td style="color:var(--muted);font-size:.75rem">${formatDate(m.date)}</td>
+        <td>${m.isHome ? '' : '<span class="fixture-home">A · </span>'}${m.opponent}</td>
+        <td style="color:var(--muted);font-size:.75rem">${formatTime(m.date)}</td>
+      </tr>`).join('');
+  } else {
+    document.getElementById('upcoming-tbody').innerHTML = '<tr><td colspan="4" style="color:var(--muted);padding:14px">Sin próximos partidos disponibles</td></tr>';
+  }
+}
+
+// ─── Render: squad ────────────────────────────────────────────────────────
+const POS_LABELS = { G:'POR', D:'DEF', M:'MED', F:'DEL' };
+
+function renderSquad(rosterData, statsMap) {
+  if (!rosterData || !rosterData.athletes) {
+    document.getElementById('squad-tbody').innerHTML = '<tr><td colspan="7" style="color:var(--muted);padding:14px">Plantilla no disponible</td></tr>';
+    return;
+  }
+
+  const players = [];
+  for (const group of rosterData.athletes) {
+    for (const athlete of (group.items || [])) {
+      const pos = athlete.position && athlete.position.abbreviation ? athlete.position.abbreviation : '—';
+      const posGroup = athlete.position && athlete.position.leaf !== false ? pos : pos;
+      const st = statsMap[athlete.id] || {};
+      players.push({
+        id: athlete.id,
+        name: athlete.displayName || athlete.fullName || '—',
+        pos: POS_LABELS[pos] || pos,
+        posSort: pos === 'G' ? 0 : pos === 'D' ? 1 : pos === 'M' ? 2 : 3,
+        minutes: st.minutes || 0,
+        goals: st.goals || 0,
+        assists: st.assists || 0,
+        yellowCards: st.yellowCards || 0,
+        redCards: st.redCards || 0,
+      });
+    }
+  }
+
+  players.sort((a,b) => a.posSort !== b.posSort ? a.posSort - b.posSort : b.minutes - a.minutes);
+
+  document.getElementById('squad-tbody').innerHTML = players.map(p => `
+    <tr>
+      <td>${p.name}</td>
+      <td class="center"><span class="player-pos">${p.pos}</span></td>
+      <td class="right">${p.minutes > 0 ? p.minutes : '<span style="color:var(--muted)">—</span>'}</td>
+      <td class="right" style="color:${p.goals>0?'var(--green)':'inherit'}">${p.goals > 0 ? '<strong>'+p.goals+'</strong>' : '—'}</td>
+      <td class="right" style="color:${p.assists>0?'var(--blue)':'inherit'}">${p.assists > 0 ? '<strong>'+p.assists+'</strong>' : '—'}</td>
+      <td class="right" style="color:${p.yellowCards>0?'#ca8a04':'inherit'}">${p.yellowCards > 0 ? p.yellowCards : '—'}</td>
+      <td class="right" style="color:${p.redCards>0?'var(--red)':'inherit'}">${p.redCards > 0 ? p.redCards : '—'}</td>
+    </tr>`).join('');
+}
+
+// ─── Fetch player stats in parallel (batched) ─────────────────────────────
+async function fetchAllAthleteStats(athleteIds) {
+  const BATCH = 6;
+  const statsMap = {};
+  for (let i = 0; i < athleteIds.length; i += BATCH) {
+    const batch = athleteIds.slice(i, i + BATCH);
+    const results = await Promise.allSettled(batch.map(id => fetchAthleteStats(id)));
+    results.forEach((r, idx) => {
+      if (r.status !== 'fulfilled' || !r.value) return;
+      const id = batch[idx];
+      const cats = r.value.splits && r.value.splits.categories;
+      if (!cats) return;
+      const get = (catName, statName) => {
+        const cat = cats.find(c => c.name === catName);
+        if (!cat) return 0;
+        const s = cat.stats && cat.stats.find(s => s.name === statName);
+        return s ? (s.value || 0) : 0;
+      };
+      statsMap[id] = {
+        minutes:     get('general', 'minutesPlayed') || get('passing', 'minutesPlayed') || get('scoring', 'minutesPlayed'),
+        goals:       get('scoring', 'goals') || get('general', 'goals'),
+        assists:     get('scoring', 'assists') || get('general', 'assists'),
+        yellowCards: get('general', 'yellowCards'),
+        redCards:    get('general', 'redCards'),
+      };
+    });
+  }
+  return statsMap;
+}
+
+// ─── Header logo ──────────────────────────────────────────────────────────
+function renderTeamHeader(t) {
+  document.title = `${t.name} · Liga Hypermotion 2025-26`;
+  document.getElementById('team-title').textContent = t.name;
+  document.getElementById('badge-pos').innerHTML = `<strong>${t.rank}º</strong> clasificado`;
+
+  const localLogo = LOCAL_LOGOS[t.name.toLowerCase()];
+  const logoEl = document.getElementById('team-logo');
+  if (t.logo || localLogo) {
+    logoEl.innerHTML = `<img src="${t.logo || localLogo}" alt="${t.name}"
+      onerror="this.parentElement.innerHTML='<span>${initials(t.name)}</span>';this.parentElement.classList.add('fallback');this.parentElement.style.background='#2563eb';" />`;
+  } else {
+    logoEl.classList.add('fallback');
+    logoEl.style.background = '#2563eb';
+    logoEl.innerHTML = `<span>${initials(t.name)}</span>`;
+  }
+}
+
+// ─── Auto-refresh ────────────────────────────────────────────────────────
+let refreshTimer = null;
+let countdownInterval = null;
+let nextRefreshAt = null;
+
+function msToNextHour() {
+  const now = new Date();
+  const next = new Date(now);
+  next.setUTCMinutes(0,0,0);
+  next.setUTCHours(now.getUTCHours()+1);
+  return next - now;
+}
+
+function scheduleRefresh() {
+  clearTimeout(refreshTimer);
+  clearInterval(countdownInterval);
+  const ms = msToNextHour();
+  nextRefreshAt = Date.now() + ms;
+  countdownInterval = setInterval(() => {
+    const secs = Math.max(0,(nextRefreshAt-Date.now())/1000|0);
+    const m=(secs/60|0).toString().padStart(2,'0');
+    const s=(secs%60).toString().padStart(2,'0');
+    setStatus('ok',`Datos actualizados · próxima actualización en ${m}:${s}`);
+    if(secs===0) clearInterval(countdownInterval);
+  },1000);
+  refreshTimer = setTimeout(()=>triggerUpdate(), ms);
+}
+
+// ─── Main flow ────────────────────────────────────────────────────────────
+let isUpdating = false;
+
+async function triggerUpdate() {
+  if (!TEAM_ID || isUpdating) return;
+  isUpdating = true;
+  try {
+    setStatus('loading','Obteniendo clasificación…');
+
+    const [standings, scheduleData, rosterData] = await Promise.all([
+      fetchStandings(),
+      fetchSchedule(),
+      fetchRoster(),
+    ]);
+
+    const teamData = standings.find(t => t.id === TEAM_ID);
+    if (!teamData) throw new Error(`Equipo ${TEAM_ID} no encontrado en la clasificación`);
+
+    renderTeamHeader(teamData);
+    renderStatsGrid(teamData);
+    renderSchedule(scheduleData);
+
+    setStatus('loading','Simulando 40 000 escenarios…');
+    await new Promise(r=>setTimeout(r,30));
+    const probs = simulate(standings, teamData.name);
+    renderProbs(probs);
+
+    // Fetch player stats
+    setStatus('loading','Cargando estadísticas de jugadores…');
+    let statsMap = {};
+    if (rosterData && rosterData.athletes) {
+      const ids = [];
+      for (const group of rosterData.athletes) {
+        for (const a of (group.items||[])) ids.push(a.id);
+      }
+      statsMap = await fetchAllAthleteStats(ids);
+    }
+    renderSquad(rosterData, statsMap);
+
+    const now = new Date();
+    document.getElementById('footer-update').textContent =
+      `Última actualización: ${now.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})} · Datos: ESPN API`;
+
+    scheduleRefresh();
+    setStatus('ok','');
+  } catch(err) {
+    console.error(err);
+    setStatus('error',`Error: ${err.message} · Reintentando en 5 min…`);
+    refreshTimer = setTimeout(()=>triggerUpdate(), 5*60*1000);
+  } finally {
+    isUpdating = false;
+  }
+}
+
+if (TEAM_ID) triggerUpdate();
+</script>
+</body>
+</html>
