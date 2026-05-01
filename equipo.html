@@ -168,7 +168,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <div class="card" id="results-card">
   <div class="card-header">Últimos partidos</div>
   <div class="table-scroll">
-    <table><tbody id="results-tbody"><tr><td colspan="5"><div class="skeleton sk-row" style="height:13px;margin:10px 0"></div></td></tr></tbody></table>
+    <table><tbody id="results-tbody"><tr><td colspan="4"><div class="skeleton sk-row" style="height:13px;margin:10px 0"></div></td></tr></tbody></table>
   </div>
 </div>
 
@@ -176,7 +176,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <div class="card" id="upcoming-card">
   <div class="card-header">Próximos partidos</div>
   <div class="table-scroll">
-    <table><tbody id="upcoming-tbody"><tr><td colspan="4"><div class="skeleton" style="height:13px;margin:10px 0"></div></td></tr></tbody></table>
+    <table><tbody id="upcoming-tbody"><tr><td colspan="3"><div class="skeleton" style="height:13px;margin:10px 0"></div></td></tr></tbody></table>
   </div>
 </div>
 
@@ -345,6 +345,24 @@ async function fetchSchedule() {
   return null;
 }
 
+async function fetchUpcoming() {
+  try {
+    const today = new Date();
+    const fmt = d => d.toISOString().slice(0,10).replace(/-/g,'');
+    const end = new Date(today); end.setMonth(end.getMonth() + 3);
+    const url = `${ESPN_BASE}/scoreboard?dates=${fmt(today)}-${fmt(end)}&limit=200`;
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const data = await res.json();
+    const events = data.events || [];
+    return events.filter(ev => {
+      const comp = ev.competitions && ev.competitions[0];
+      if (!comp) return false;
+      return comp.competitors.some(c => String(c.team.id) === String(TEAM_ID));
+    });
+  } catch { return []; }
+}
+
 async function fetchRoster() {
   try {
     const res = await fetch(`${ESPN_BASE}/teams/${TEAM_ID}/roster`);
@@ -423,76 +441,83 @@ function parseScore(s) {
   return 0;
 }
 
-function renderSchedule(scheduleData) {
-  if (!scheduleData || !scheduleData.events) {
-    document.getElementById('results-tbody').innerHTML = '<tr><td colspan="5" style="color:var(--muted);padding:14px">Sin datos de partidos</td></tr>';
-    document.getElementById('upcoming-tbody').innerHTML = '<tr><td colspan="4" style="color:var(--muted);padding:14px">Sin datos de partidos</td></tr>';
+function extractMatchData(ev) {
+  const comp = ev.competitions && ev.competitions[0];
+  if (!comp) return null;
+  const home = comp.competitors.find(c=>c.homeAway==='home');
+  const away = comp.competitors.find(c=>c.homeAway==='away');
+  if (!home || !away) return null;
+  const isHome = String(home.team.id) === String(TEAM_ID);
+  return {
+    date: new Date(comp.date),
+    isHome,
+    opponent: isHome ? away.team.displayName : home.team.displayName,
+    myScore:  isHome ? parseScore(home.score) : parseScore(away.score),
+    oppScore: isHome ? parseScore(away.score) : parseScore(home.score),
+    completed: !!(comp.status && comp.status.type && comp.status.type.completed),
+  };
+}
+
+function renderResults(played) {
+  // Sort ascending by date to assign sequential jornada numbers, then take last 8
+  const byDate = [...played].sort((a,b) => a.date - b.date);
+  byDate.forEach((m, i) => { m.round = `J${i + 1}`; });
+  const last8 = byDate.slice(-8).reverse();
+
+  if (!last8.length) {
+    document.getElementById('results-tbody').innerHTML =
+      '<tr><td colspan="4" style="color:var(--muted);padding:14px">Sin resultados disponibles</td></tr>';
     return;
   }
+  document.getElementById('results-tbody').innerHTML = last8.map(m => `
+    <tr>
+      <td style="color:var(--muted);font-size:.75rem">${m.round}</td>
+      <td>${m.isHome ? '' : '<span class="fixture-home">A · </span>'}${m.opponent}</td>
+      <td class="center"><strong>${m.myScore}–${m.oppScore}</strong></td>
+      <td class="center"><span class="result-badge ${m.outcome}">${m.outcome==='W'?'V':m.outcome==='L'?'D':'E'}</span></td>
+    </tr>`).join('');
+}
 
-  const now = new Date();
-  const played   = [];
-  const upcoming = [];
+function renderUpcoming(upcomingEvents, gp) {
+  const sorted = [...upcomingEvents].sort((a,b) => a.date - b.date).slice(0, 5);
+  if (!sorted.length) {
+    document.getElementById('upcoming-tbody').innerHTML =
+      '<tr><td colspan="3" style="color:var(--muted);padding:14px">Sin próximos partidos disponibles</td></tr>';
+    return;
+  }
+  sorted.forEach((m, i) => { m.round = `J${gp + i + 1}`; });
+  document.getElementById('upcoming-tbody').innerHTML = sorted.map(m => `
+    <tr>
+      <td style="color:var(--muted);font-size:.75rem">${m.round}</td>
+      <td>${m.isHome ? '' : '<span class="fixture-home">A · </span>'}${m.opponent}</td>
+      <td style="color:var(--muted);font-size:.75rem">${m.date.toLocaleTimeString('es-ES',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
+    </tr>`).join('');
+}
 
-  for (const ev of scheduleData.events) {
-    const comp = ev.competitions && ev.competitions[0];
-    if (!comp) continue;
-    const date = new Date(comp.date);
-    const isCompleted = comp.status && comp.status.type && comp.status.type.completed;
-    const home = comp.competitors.find(c=>c.homeAway==='home');
-    const away = comp.competitors.find(c=>c.homeAway==='away');
-    if (!home || !away) continue;
+function renderSchedule(scheduleData, upcomingEvents, gp) {
+  const played = [];
 
-    const isHome = String(home.team.id) === String(TEAM_ID);
-    const opponent = isHome ? away.team.displayName : home.team.displayName;
-    const myScore  = isHome ? parseScore(home.score) : parseScore(away.score);
-    const oppScore = isHome ? parseScore(away.score) : parseScore(home.score);
-
-    if (isCompleted) {
+  if (scheduleData && scheduleData.events) {
+    for (const ev of scheduleData.events) {
+      const m = extractMatchData(ev);
+      if (!m || !m.completed) continue;
       let outcome = 'D';
-      if (myScore > oppScore) outcome = 'W';
-      else if (myScore < oppScore) outcome = 'L';
-      played.push({ date, opponent, myScore, oppScore, outcome, isHome,
-        round: ev.week && ev.week.number ? `J${ev.week.number}` : '' });
-    } else if (date > now) {
-      upcoming.push({ date, opponent, isHome,
-        round: ev.week && ev.week.number ? `J${ev.week.number}` : '' });
+      if (m.myScore > m.oppScore) outcome = 'W';
+      else if (m.myScore < m.oppScore) outcome = 'L';
+      played.push({ ...m, outcome });
     }
   }
 
-  played.sort((a,b)=>b.date-a.date);
-  upcoming.sort((a,b)=>a.date-b.date);
+  const upcoming = upcomingEvents.map(ev => extractMatchData(ev)).filter(Boolean);
 
-  const last5 = played.slice(0,8);
-  const next5 = upcoming.slice(0,5);
-
-  const formatDate = d => d.toLocaleDateString('es-ES',{day:'2-digit',month:'short'});
-  const formatTime = d => d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
-
-  if (last5.length) {
-    document.getElementById('results-tbody').innerHTML = last5.map(m => `
-      <tr>
-        <td style="color:var(--muted);font-size:.75rem">${m.round}</td>
-        <td style="color:var(--muted);font-size:.75rem">${formatDate(m.date)}</td>
-        <td>${m.isHome ? '' : '<span class="fixture-home">A · </span>'}${m.opponent}</td>
-        <td class="center"><strong>${m.myScore}–${m.oppScore}</strong></td>
-        <td class="center"><span class="result-badge ${m.outcome}">${m.outcome==='W'?'V':m.outcome==='L'?'D':'E'}</span></td>
-      </tr>`).join('');
+  if (!played.length) {
+    document.getElementById('results-tbody').innerHTML =
+      '<tr><td colspan="4" style="color:var(--muted);padding:14px">Sin resultados disponibles</td></tr>';
   } else {
-    document.getElementById('results-tbody').innerHTML = '<tr><td colspan="5" style="color:var(--muted);padding:14px">Sin resultados disponibles</td></tr>';
+    renderResults(played);
   }
 
-  if (next5.length) {
-    document.getElementById('upcoming-tbody').innerHTML = next5.map(m => `
-      <tr>
-        <td style="color:var(--muted);font-size:.75rem">${m.round}</td>
-        <td style="color:var(--muted);font-size:.75rem">${formatDate(m.date)}</td>
-        <td>${m.isHome ? '' : '<span class="fixture-home">A · </span>'}${m.opponent}</td>
-        <td style="color:var(--muted);font-size:.75rem">${formatTime(m.date)}</td>
-      </tr>`).join('');
-  } else {
-    document.getElementById('upcoming-tbody').innerHTML = '<tr><td colspan="4" style="color:var(--muted);padding:14px">Sin próximos partidos disponibles</td></tr>';
-  }
+  renderUpcoming(upcoming, gp);
 }
 
 // ─── Render: squad ────────────────────────────────────────────────────────
@@ -505,11 +530,11 @@ function squadRow(p) {
   return `<tr>
     <td>${p.name}</td>
     <td class="center"><span class="player-pos">${p.pos}</span></td>
-    <td class="right">${p.appearances > 0 ? p.appearances : '<span style="color:var(--muted)">—</span>'}</td>
-    <td class="right" style="color:${p.goals>0?'var(--green)':'inherit'}">${p.goals > 0 ? '<strong>'+p.goals+'</strong>' : '—'}</td>
-    <td class="right" style="color:${p.assists>0?'var(--blue)':'inherit'}">${p.assists > 0 ? '<strong>'+p.assists+'</strong>' : '—'}</td>
-    <td class="right" style="color:${p.yellowCards>0?'#ca8a04':'inherit'}">${p.yellowCards > 0 ? p.yellowCards : '—'}</td>
-    <td class="right" style="color:${p.redCards>0?'var(--red)':'inherit'}">${p.redCards > 0 ? p.redCards : '—'}</td>
+    <td class="right">${p.appearances > 0 ? p.appearances : '<span style="color:var(--muted)">0</span>'}</td>
+    <td class="right" style="color:${p.goals>0?'var(--green)':'var(--muted)'}">${p.goals > 0 ? '<strong>'+p.goals+'</strong>' : '0'}</td>
+    <td class="right" style="color:${p.assists>0?'var(--blue)':'var(--muted)'}">${p.assists > 0 ? '<strong>'+p.assists+'</strong>' : '0'}</td>
+    <td class="right" style="color:${p.yellowCards>0?'#ca8a04':'var(--muted)'}">${p.yellowCards > 0 ? p.yellowCards : '0'}</td>
+    <td class="right" style="color:${p.redCards>0?'var(--red)':'var(--muted)'}">${p.redCards > 0 ? p.redCards : '0'}</td>
   </tr>`;
 }
 
@@ -709,10 +734,11 @@ async function triggerUpdate() {
   try {
     setStatus('loading','Obteniendo clasificación…');
 
-    const [standings, scheduleData, rosterData] = await Promise.all([
+    const [standings, scheduleData, rosterData, upcomingEvents] = await Promise.all([
       fetchStandings(),
       fetchSchedule(),
       fetchRoster(),
+      fetchUpcoming(),
     ]);
 
     const teamData = standings.find(t => String(t.id) === String(TEAM_ID));
@@ -720,7 +746,7 @@ async function triggerUpdate() {
 
     renderTeamHeader(teamData);
     renderStatsGrid(teamData);
-    renderSchedule(scheduleData);
+    renderSchedule(scheduleData, upcomingEvents, teamData.gp);
 
     setStatus('loading','Simulando 40 000 escenarios…');
     await new Promise(r=>setTimeout(r,30));
