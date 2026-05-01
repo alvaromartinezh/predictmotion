@@ -699,30 +699,18 @@ function renderTeamHeader(t) {
 
 // ─── Auto-refresh ────────────────────────────────────────────────────────
 let refreshTimer = null;
-let countdownInterval = null;
-let nextRefreshAt = null;
 
 function msToNextHour() {
   const now = new Date();
   const next = new Date(now);
-  next.setUTCMinutes(0,0,0);
-  next.setUTCHours(now.getUTCHours()+1);
+  next.setUTCMinutes(0, 0, 0);
+  next.setUTCHours(now.getUTCHours() + 1);
   return next - now;
 }
 
 function scheduleRefresh() {
   clearTimeout(refreshTimer);
-  clearInterval(countdownInterval);
-  const ms = msToNextHour();
-  nextRefreshAt = Date.now() + ms;
-  countdownInterval = setInterval(() => {
-    const secs = Math.max(0,(nextRefreshAt-Date.now())/1000|0);
-    const m=(secs/60|0).toString().padStart(2,'0');
-    const s=(secs%60).toString().padStart(2,'0');
-    setStatus('ok',`Datos actualizados · próxima actualización en ${m}:${s}`);
-    if(secs===0) clearInterval(countdownInterval);
-  },1000);
-  refreshTimer = setTimeout(()=>triggerUpdate(), ms);
+  refreshTimer = setTimeout(()=>triggerUpdate(), msToNextHour());
 }
 
 // ─── Main flow ────────────────────────────────────────────────────────────
