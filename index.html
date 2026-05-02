@@ -204,6 +204,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <th class="center" style="width:34px">#</th>
         <th>Equipo</th>
         <th class="right">Pts</th>
+        <th class="right" style="color:var(--muted);font-size:.75rem">PJ</th>
         <th><span style="color:var(--green)">Ascenso directo</span><span class="prob-label"> top 2</span></th>
         <th><span style="color:var(--blue)">Play-off</span><span class="prob-label"> top 6</span></th>
         <th><span style="color:var(--red)">Descenso</span><span class="prob-label"> últimos 4</span></th>
@@ -332,15 +333,20 @@ function simulate(standings) {
   rng = mulberry32(hourSeed()); // semilla = hora UTC → resultados idénticos para todos
   const names  = standings.map(t => t.name);
   const counts = Object.fromEntries(names.map(n => [n, {t2:0, t6:0, b4:0}]));
-  const gp     = standings[0].gp;
+  const minGp  = Math.min(...standings.map(t => t.gp));
+  const teamGp = Object.fromEntries(standings.map(t => [t.name, t.gp]));
 
   for (let i = 0; i < SIM_N; i++) {
     const pts = Object.fromEntries(standings.map(t => [t.name, t.pts]));
     const gd  = Object.fromEntries(standings.map(t => [t.name, t.gf - t.gc]));
     const gf  = Object.fromEntries(standings.map(t => [t.name, t.gf]));
 
-    for (const md of buildFixtures(names, gp)) {
+    let mdNum = minGp;
+    for (const md of buildFixtures(names, minGp)) {
+      mdNum++;
       for (const [h, a] of md) {
+        // Saltarse el partido si ambos equipos ya lo han jugado (resultado ya en sus puntos)
+        if (teamGp[h] >= mdNum && teamGp[a] >= mdNum) continue;
         const r = rng();
         let hp, ap, hg, ag;
         if (r < P_HOME) {
@@ -458,7 +464,7 @@ function render(standings, results) {
 
     if (ZONE_LABELS[t.rank]) {
       const {text, cls} = ZONE_LABELS[t.rank];
-      html += `<tr class="zone-label-row"><td colspan="7">
+      html += `<tr class="zone-label-row"><td colspan="8">
         <span class="zone-label-text ${cls}">${text}</span></td></tr>`;
     }
 
@@ -475,6 +481,7 @@ function render(standings, results) {
         </div>
       </td>
       <td class="pts">${t.pts}</td>
+      <td class="right" style="color:var(--muted);font-size:.8rem">${t.gp}</td>
       <td>${pctBar(res.top2,   'fill-green')}</td>
       <td>${pctBar(res.playoff,'fill-blue')}</td>
       <td>${pctBar(res.relega, 'fill-red')}</td>
@@ -515,6 +522,7 @@ function renderSkeleton() {
         <div class="team-avatar" style="background:var(--surface2)"></div>
         <div class="skeleton" style="width:${90+Math.random()*60|0}px;height:14px"></div>
       </div></td>
+      <td><div class="skeleton" style="width:24px;height:14px;margin-left:auto"></div></td>
       <td><div class="skeleton" style="width:24px;height:14px;margin-left:auto"></div></td>
       <td><div class="skeleton" style="width:80px;height:14px"></div></td>
       <td><div class="skeleton" style="width:80px;height:14px"></div></td>
@@ -564,7 +572,7 @@ async function triggerUpdate() {
     setStatus('loading', 'Obteniendo clasificación…');
     const standings = await fetchStandings();
 
-    setBadge(standings[0].gp);
+    setBadge(Math.max(...standings.map(t => t.gp)));
     setStatus('loading', 'Simulando 40 000 escenarios…');
     await new Promise(r => setTimeout(r, 30)); // yield to browser
 

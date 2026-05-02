@@ -508,7 +508,7 @@ function renderSchedule(scheduleData, upcomingEvents, gp) {
     }
   }
 
-  const upcoming = upcomingEvents.map(ev => extractMatchData(ev)).filter(Boolean);
+  const upcoming = upcomingEvents.map(ev => extractMatchData(ev)).filter(m => m && !m.completed);
 
   if (!played.length) {
     document.getElementById('results-tbody').innerHTML =
