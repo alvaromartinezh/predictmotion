@@ -240,9 +240,11 @@ function mulberry32(seed) {
     return ((t ^ t >>> 14) >>> 0) / 4294967296;
   };
 }
-function hourSeed() {
-  const d = new Date();
-  return d.getUTCFullYear() * 1000000 + (d.getUTCMonth() + 1) * 10000 + d.getUTCDate() * 100 + d.getUTCHours();
+function standingsSeed(standings) {
+  const str = standings.map(t => `${t.name}:${t.pts}:${t.gp}`).join('|');
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = Math.imul(31, h) + str.charCodeAt(i) | 0;
+  return h >>> 0;
 }
 let rng = Math.random;
 
@@ -285,7 +287,7 @@ function completeMatchday(known,teams){const used=new Set(known.flat());const fr
 function buildFixtures(teams,gp){const mds=[];for(let md=gp+1;md<=TOTAL_MD;md++){if(FIXTURES[md])mds.push(FIXTURES[md]);else if(md===39)mds.push(completeMatchday(FIXTURES['39_PARTIAL'],teams));else mds.push(randomMatchday(teams));}return mds;}
 
 function simulate(standings, teamName) {
-  rng = mulberry32(hourSeed());
+  rng = mulberry32(standingsSeed(standings));
   const names  = standings.map(t=>t.name);
   const counts = {t2:0, t6:0, b4:0};
   const gp     = standings[0].gp;
@@ -697,22 +699,6 @@ function renderTeamHeader(t) {
   }
 }
 
-// ─── Auto-refresh ────────────────────────────────────────────────────────
-let refreshTimer = null;
-
-function msToNextHour() {
-  const now = new Date();
-  const next = new Date(now);
-  next.setUTCMinutes(0, 0, 0);
-  next.setUTCHours(now.getUTCHours() + 1);
-  return next - now;
-}
-
-function scheduleRefresh() {
-  clearTimeout(refreshTimer);
-  refreshTimer = setTimeout(()=>triggerUpdate(), msToNextHour());
-}
-
 // ─── Main flow ────────────────────────────────────────────────────────────
 let isUpdating = false;
 
@@ -759,12 +745,10 @@ async function triggerUpdate() {
     document.getElementById('footer-update').textContent =
       `Última actualización: ${now.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})} · Datos: ESPN API`;
 
-    scheduleRefresh();
     setStatus('ok','');
   } catch(err) {
     console.error(err);
-    setStatus('error',`Error: ${err.message} · Reintentando en 5 min…`);
-    refreshTimer = setTimeout(()=>triggerUpdate(), 5*60*1000);
+    setStatus('error',`Error: ${err.message}`);
   } finally {
     isUpdating = false;
   }

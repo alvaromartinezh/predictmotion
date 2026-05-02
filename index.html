@@ -108,6 +108,10 @@
     .fill-blue  { background:linear-gradient(90deg,#2563eb,#60a5fa); }
     .fill-red   { background:linear-gradient(90deg,#b91c1c,#f87171); }
     .prob-label { font-size:.68rem; color:var(--muted); font-weight:400; }
+    .live-badge { display:inline-flex; align-items:center; gap:4px; background:rgba(239,68,68,.15); border:1px solid rgba(239,68,68,.3); border-radius:4px; padding:1px 5px; font-size:.65rem; font-weight:700; color:var(--red); margin-left:6px; white-space:nowrap; vertical-align:middle; }
+    .live-dot   { width:5px; height:5px; border-radius:50%; background:var(--red); animation:pulse 1s ease-in-out infinite; flex-shrink:0; }
+    .live-clock { color:var(--muted); font-weight:400; }
+    .pts-live   { color:var(--orange); }
     .zone-label-row td { padding:4px 14px; background:var(--surface2); border-top:1px solid var(--border); }
     .zone-label-text { font-size:.68rem; font-weight:600; letter-spacing:.1em; text-transform:uppercase; }
     .zone-label-text.green { color:var(--green); }
@@ -249,9 +253,11 @@ function mulberry32(seed) {
     return ((t ^ t >>> 14) >>> 0) / 4294967296;
   };
 }
-function hourSeed() {
-  const d = new Date();
-  return d.getUTCFullYear() * 1000000 + (d.getUTCMonth() + 1) * 10000 + d.getUTCDate() * 100 + d.getUTCHours();
+function standingsSeed(standings) {
+  const str = standings.map(t => `${t.name}:${t.pts}:${t.gp}`).join('|');
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = Math.imul(31, h) + str.charCodeAt(i) | 0;
+  return h >>> 0;
 }
 let rng = Math.random;
 
@@ -341,7 +347,7 @@ function buildFixtures(teams, gp) {
 }
 
 function simulate(standings) {
-  rng = mulberry32(hourSeed()); // semilla = hora UTC → resultados idénticos para todos
+  rng = mulberry32(standingsSeed(standings));
   const names  = standings.map(t => t.name);
   const counts = Object.fromEntries(names.map(n => [n, {t2:0, t6:0, b4:0}]));
   const minGp  = Math.min(...standings.map(t => t.gp));
@@ -401,6 +407,49 @@ function simulate(standings) {
 }
 
 // ─── ESPN fetch ───────────────────────────────────────────────────────────
+async function fetchLiveScores() {
+  try {
+    const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/esp.2/scoreboard');
+    if (!res.ok) return [];
+    const data = await res.json();
+    const live = [];
+    for (const event of (data.events || [])) {
+      if (event.status.type.state !== 'in') continue;
+      const comp = event.competitions[0];
+      const home = comp.competitors.find(c => c.homeAway === 'home');
+      const away = comp.competitors.find(c => c.homeAway === 'away');
+      if (!home || !away) continue;
+      live.push({
+        homeId:    home.team.id,
+        homeName:  home.team.displayName,
+        homeScore: parseInt(home.score) || 0,
+        awayId:    away.team.id,
+        awayName:  away.team.displayName,
+        awayScore: parseInt(away.score) || 0,
+        clock:     event.status.displayClock || '',
+      });
+    }
+    return live;
+  } catch { return []; }
+}
+
+function applyLiveScores(standings, liveMatches) {
+  if (!liveMatches.length) return standings;
+  const adjusted = standings.map(t => ({ ...t }));
+  for (const m of liveMatches) {
+    const home = adjusted.find(t => String(t.id) === String(m.homeId));
+    const away = adjusted.find(t => String(t.id) === String(m.awayId));
+    if (!home || !away) continue;
+    const hpts = m.homeScore > m.awayScore ? 3 : m.homeScore === m.awayScore ? 1 : 0;
+    const apts = m.awayScore > m.homeScore ? 3 : m.homeScore === m.awayScore ? 1 : 0;
+    home.pts += hpts; home.gp += 1;
+    away.pts += apts; away.gp += 1;
+    home.live = { score: `${m.homeScore}–${m.awayScore}`, clock: m.clock };
+    away.live = { score: `${m.homeScore}–${m.awayScore}`, clock: m.clock };
+  }
+  return adjusted;
+}
+
 async function fetchStandings() {
   const res  = await fetch(ESPN_URL);
   if (!res.ok) throw new Error(`ESPN API ${res.status}`);
@@ -489,9 +538,10 @@ function render(standings, results) {
               onerror="fallbackAvatar(${i},'${t.name}','${INITIALS_COLORS[i]}','${localLogo||''}')" />
           </div>
           <a class="team-name team-link" href="equipo.html?id=${t.id}&name=${encodeURIComponent(t.name)}">${t.name}</a>
+          ${t.live ? `<span class="live-badge"><span class="live-dot"></span>${t.live.score}<span class="live-clock"> ${t.live.clock}</span></span>` : ''}
         </div>
       </td>
-      <td class="pts">${t.pts}</td>
+      <td class="pts${t.live ? ' pts-live' : ''}">${t.pts}</td>
       <td class="right" style="color:var(--muted);font-size:.8rem">${t.gp}</td>
       <td>${pctBar(res.top2,   'fill-green')}</td>
       <td>${pctBar(res.playoff,'fill-blue')}</td>
@@ -555,51 +605,39 @@ function setBadge(gp) {
     `Jornada <strong>${gp}</strong> · ${remaining} jornada${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''}`;
 }
 
-// ─── Auto-refresh countdown ───────────────────────────────────────────────
-let refreshTimer = null;
-
-function msToNextHour() {
-  const now = new Date();
-  const next = new Date(now);
-  next.setUTCMinutes(0, 0, 0);
-  next.setUTCHours(now.getUTCHours() + 1);
-  return next - now;
-}
-
-function scheduleRefresh() {
-  clearTimeout(refreshTimer);
-  refreshTimer = setTimeout(() => triggerUpdate(), msToNextHour());
-}
-
 // ─── Main update flow ──────────────────────────────────────────────────────
+let liveTimer  = null;
 let isUpdating = false;
 
-async function triggerUpdate() {
+async function triggerUpdate(silent = false) {
   if (isUpdating) return;
   isUpdating = true;
 
   try {
-    renderSkeleton();
-    setStatus('loading', 'Obteniendo clasificación…');
-    const standings = await fetchStandings();
+    if (!silent) renderSkeleton();
+    setStatus('loading', silent ? 'Actualizando marcadores…' : 'Obteniendo clasificación…');
+
+    const [standings, liveMatches] = await Promise.all([fetchStandings(), fetchLiveScores()]);
+    const adjusted = applyLiveScores(standings, liveMatches);
 
     setBadge(Math.max(...standings.map(t => t.gp)));
     setStatus('loading', 'Simulando 40 000 escenarios…');
-    await new Promise(r => setTimeout(r, 30)); // yield to browser
+    await new Promise(r => setTimeout(r, 30));
 
-    const results = simulate(standings);
-    render(standings, results);
+    const results = simulate(adjusted);
+    render(adjusted, results);
 
     const now = new Date();
     document.getElementById('footer-update').textContent =
       `Última actualización: ${now.toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'})} · Datos: ESPN API`;
 
-    scheduleRefresh();
+    clearTimeout(liveTimer);
+    if (liveMatches.length > 0) liveTimer = setTimeout(() => triggerUpdate(true), 60_000);
+
     setStatus('ok', '');
   } catch (err) {
     console.error(err);
-    setStatus('error', `Error al cargar datos: ${err.message} · Reintentando en 5 min…`);
-    refreshTimer = setTimeout(() => triggerUpdate(), 5 * 60 * 1000);
+    setStatus('error', `Error al cargar datos: ${err.message}`);
   } finally {
     isUpdating = false;
   }
