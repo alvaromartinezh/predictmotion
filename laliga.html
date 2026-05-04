@@ -21,16 +21,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="/media/twitter_profile.png" />
   <link rel="apple-touch-icon" href="/media/twitter_profile.png" />
-  <!-- Performance: preconnect a recursos externos -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
   <link rel="dns-prefetch" href="https://site.api.espn.com" />
-  <link rel="dns-prefetch" href="https://r2.thesportsdb.com" />
-  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;600;700;800&family=Inconsolata:wght@400;600;700&display=swap" rel="stylesheet" />
 
-  <title>Liga Hypermotion 2025-26 · Probabilidades de Ascenso y Descenso</title>
+  <title>LaLiga 2025-26 · Probabilidades Champions, Europa y Descenso</title>
   <style>
     :root {
       --bg:        #060916;
@@ -44,6 +41,8 @@
       --blue-dim:  rgba(61,142,245,.06);
       --red:       #f53050;
       --red-dim:   rgba(245,48,80,.06);
+      --conf:      #a78bfa;
+      --conf-dim:  rgba(167,139,250,.06);
       --text:      #dce8fa;
       --muted:     #4d6285;
       --radius:    8px;
@@ -59,7 +58,6 @@
       padding:0 16px 80px; overflow-x:hidden;
     }
 
-    /* ── Header wrap ── */
     .header-wrap {
       margin:0 -16px 22px;
       border-top:3px solid var(--accent);
@@ -99,15 +97,6 @@
     }
     .league-btn:not(.active):hover { color:var(--text); border-color:var(--muted); }
 
-    /* ── Status bar ── */
-    .status-bar { max-width:940px; margin:0 auto 14px; display:flex; align-items:center; gap:8px; font-size:.7rem; color:var(--muted); letter-spacing:.02em; }
-    .status-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
-    .status-dot.ok      { background:var(--green); }
-    .status-dot.loading { background:var(--accent); animation:pulse 1s ease-in-out infinite; }
-    .status-dot.error   { background:var(--red); }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-
-    /* ── Legend ── */
     .legend { max-width:940px; margin:0 auto 16px; display:flex; gap:7px; flex-wrap:wrap; }
     .legend-item {
       display:flex; align-items:center; gap:6px; font-size:.67rem; color:var(--muted);
@@ -117,15 +106,12 @@
     }
     .legend-dot { width:7px; height:7px; border-radius:50%; }
 
-    /* ── Card ── */
     .card { max-width:940px; margin:0 auto; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
     .table-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
 
-    /* ── Skeleton ── */
     .skeleton { animation:shimmer 1.4s infinite; background:linear-gradient(90deg,var(--surface2) 25%,#1e3055 50%,var(--surface2) 75%); background-size:400% 100%; border-radius:4px; }
     @keyframes shimmer { to { background-position:-400% 0; } }
 
-    /* ── Table ── */
     table { width:100%; border-collapse:collapse; }
     thead th {
       background:var(--surface2); padding:10px 14px;
@@ -138,17 +124,20 @@
     tbody tr { border-top:1px solid var(--border); transition:background .12s; }
     tbody tr:hover { background:var(--surface2); }
     tbody tr.zone-promo   { background:var(--green-dim); }
-    tbody tr.zone-playoff { background:var(--blue-dim); }
+    tbody tr.zone-europa  { background:var(--blue-dim); }
+    tbody tr.zone-conf    { background:var(--conf-dim); }
     tbody tr.zone-relega  { background:var(--red-dim); }
     tbody tr.zone-promo:hover   { background:rgba(0,201,122,.1); }
-    tbody tr.zone-playoff:hover { background:rgba(61,142,245,.1); }
+    tbody tr.zone-europa:hover  { background:rgba(61,142,245,.1); }
+    tbody tr.zone-conf:hover    { background:rgba(167,139,250,.1); }
     tbody tr.zone-relega:hover  { background:rgba(245,48,80,.1); }
     td { padding:10px 14px; vertical-align:middle; }
 
     .pos { font-family:'Barlow Condensed',sans-serif; font-size:1.05rem; font-weight:700; color:var(--muted); width:36px; text-align:center; }
     .zone-bar { width:3px; height:26px; border-radius:2px; }
     .zone-bar.promo   { background:var(--green); box-shadow:0 0 8px rgba(0,201,122,.38); }
-    .zone-bar.playoff { background:var(--blue);  box-shadow:0 0 8px rgba(61,142,245,.38); }
+    .zone-bar.europa  { background:var(--blue);  box-shadow:0 0 8px rgba(61,142,245,.38); }
+    .zone-bar.conf    { background:var(--conf);  box-shadow:0 0 8px rgba(167,139,250,.38); }
     .zone-bar.relega  { background:var(--red);   box-shadow:0 0 8px rgba(245,48,80,.38); }
     .zone-bar.none    { background:transparent; }
 
@@ -170,6 +159,7 @@
     .prob-bar-fill { height:100%; border-radius:2px; transition:width 1.1s cubic-bezier(.16,1,.3,1); }
     .fill-green { background:linear-gradient(90deg,#009960,#00c97a); }
     .fill-blue  { background:linear-gradient(90deg,#1f6ec4,#3d8ef5); }
+    .fill-conf  { background:linear-gradient(90deg,#7c5cf0,#a78bfa); }
     .fill-red   { background:linear-gradient(90deg,#c01535,#f53050); }
     .prob-label { font-size:.62rem; color:var(--muted); font-weight:400; }
 
@@ -182,37 +172,39 @@
     }
     .live-dot   { width:5px; height:5px; border-radius:50%; background:var(--red); animation:pulse 1s ease-in-out infinite; flex-shrink:0; }
     .live-clock { color:var(--muted); font-weight:400; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
     .zone-label-row td { padding:4px 14px 4px 20px; background:var(--surface2); border-top:1px solid var(--border); }
     .zone-label-text {
       font-family:'Barlow Condensed',sans-serif;
       font-size:.68rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
     }
-    .zone-label-text.green { color:var(--green); }
-    .zone-label-text.blue  { color:var(--blue); }
-    .zone-label-text.red   { color:var(--red); }
-    .zone-label-text.gray  { color:var(--muted); }
+    .zone-label-text.green  { color:var(--green); }
+    .zone-label-text.blue   { color:var(--blue); }
+    .zone-label-text.violet { color:var(--conf); }
+    .zone-label-text.red    { color:var(--red); }
+    .zone-label-text.gray   { color:var(--muted); }
 
     .footer { max-width:940px; margin:18px auto 0; font-size:.7rem; color:var(--muted); display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px; }
     @media (max-width:600px) { .prob-cell{min-width:82px;} .team-name{font-size:.78rem;} thead th,td{padding:8px 9px;} .header-text h1{font-size:1.45rem;} }
   </style>
 
   <!-- SEO principal -->
-  <meta name="description" content="Simulación Monte Carlo de la Liga Hypermotion 2025-26. Probabilidades en tiempo real de ascenso directo, play-off y descenso para los 22 equipos de Segunda División española." />
-  <meta name="keywords" content="Liga Hypermotion, Segunda División probabilidades, ascenso Segunda División, play-off ascenso, descenso Liga Hypermotion, predicción fútbol, simulación Segunda División 2025-26" />
+  <meta name="description" content="Simulación Monte Carlo de LaLiga 2025-26. Probabilidades en tiempo real de Champions League, Europa League, Conference League y descenso para los 20 equipos de Primera División española." />
+  <meta name="keywords" content="LaLiga probabilidades, Primera División clasificación, Champions League probabilidad, descenso LaLiga, predicción LaLiga 2025-26, simulación fútbol español" />
   <meta name="author" content="PredictMotion" />
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
   <meta name="theme-color" content="#060916" />
   <meta name="application-name" content="PredictMotion" />
   <meta name="geo.region" content="ES" />
-  <link rel="canonical" href="https://predictmotion.com/" />
-  <link rel="alternate" hreflang="es" href="https://predictmotion.com/" />
+  <link rel="canonical" href="https://predictmotion.com/laliga" />
+  <link rel="alternate" hreflang="es" href="https://predictmotion.com/laliga" />
 
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://predictmotion.com/" />
-  <meta property="og:title" content="Liga Hypermotion 2025-26 · Probabilidades de Ascenso y Descenso" />
-  <meta property="og:description" content="Simulación Monte Carlo de la Liga Hypermotion 2025-26. Probabilidades en tiempo real de ascenso directo, play-off y descenso para los 22 equipos de Segunda División." />
+  <meta property="og:url" content="https://predictmotion.com/laliga" />
+  <meta property="og:title" content="LaLiga 2025-26 · Probabilidades Champions, Europa y Descenso" />
+  <meta property="og:description" content="Simulación Monte Carlo de LaLiga 2025-26. Probabilidades en tiempo real de Champions League, Europa League y descenso para los 20 equipos de Primera División." />
   <meta property="og:image" content="https://predictmotion.com/media/twitter_profile.png" />
   <meta property="og:image:alt" content="Logo PredictMotion" />
   <meta property="og:locale" content="es_ES" />
@@ -220,8 +212,8 @@
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Liga Hypermotion 2025-26 · Probabilidades de Ascenso y Descenso" />
-  <meta name="twitter:description" content="40 000 simulaciones Monte Carlo para predecir el final de la temporada en Segunda División española." />
+  <meta name="twitter:title" content="LaLiga 2025-26 · Probabilidades Champions, Europa y Descenso" />
+  <meta name="twitter:description" content="40 000 simulaciones Monte Carlo para predecir el final de la temporada en LaLiga 2025-26." />
   <meta name="twitter:image" content="https://predictmotion.com/media/twitter_profile.png" />
   <meta name="twitter:image:alt" content="Logo PredictMotion" />
 
@@ -230,17 +222,17 @@
   {
     "@context": "https://schema.org",
     "@type": "WebApplication",
-    "name": "PredictMotion – Liga Hypermotion 2025-26",
-    "description": "Simulador Monte Carlo para la Liga Hypermotion 2025-26. Probabilidades de ascenso directo, play-off y descenso para los 22 equipos de Segunda División española.",
-    "url": "https://predictmotion.com/",
+    "name": "PredictMotion – LaLiga 2025-26",
+    "description": "Simulador Monte Carlo para LaLiga 2025-26. Probabilidades de Champions League, Europa League, Conference League y descenso para los 20 equipos de Primera División española.",
+    "url": "https://predictmotion.com/laliga",
     "applicationCategory": "SportsApplication",
     "operatingSystem": "Web",
     "inLanguage": "es-ES",
     "about": {
       "@type": "SportsOrganization",
-      "name": "Liga Hypermotion",
+      "name": "LaLiga",
       "sport": "Soccer",
-      "url": "https://www.laliga.com/laliga-hypermotion"
+      "url": "https://www.laliga.com"
     },
     "offers": {
       "@type": "Offer",
@@ -264,9 +256,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <div class="header-wrap">
 <div class="header">
-  <div class="logo"><img src="https://r2.thesportsdb.com/images/media/league/badge/r7u6821688425700.png" alt="Liga Hypermotion" /></div>
+  <div class="logo"><img id="league-logo" src="" alt="LaLiga" /></div>
   <div class="header-text">
-    <h1>Liga Hypermotion 2025‑26</h1>
+    <h1>LaLiga 2025‑26</h1>
   </div>
   <div class="header-actions">
     <div class="badge" id="badge-jornada">Cargando…</div>
@@ -275,8 +267,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 </div>
 
 <nav class="league-nav">
-  <a class="league-btn" href="laliga.html">LaLiga</a>
-  <span class="league-btn active">Liga Hypermotion</span>
+  <span class="league-btn active">LaLiga</span>
+  <a class="league-btn" href="index.html">Liga Hypermotion</a>
 </nav>
 
 <div class="legend" id="legend"></div>
@@ -284,18 +276,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <div class="card">
   <div class="table-scroll">
   <table>
-    <thead>
-      <tr>
-        <th style="width:12px"></th>
-        <th class="center" style="width:34px">#</th>
-        <th>Equipo</th>
-        <th class="right">Pts</th>
-        <th class="right" style="color:var(--muted);font-size:.75rem">PJ</th>
-        <th><span style="color:var(--green)">Ascenso directo</span></th>
-        <th><span style="color:var(--blue)">Play-off</span></th>
-        <th><span style="color:var(--red)">Descenso</span></th>
-      </tr>
-    </thead>
+    <thead id="thead"></thead>
     <tbody id="tbody"></tbody>
   </table>
   </div>
@@ -307,33 +288,35 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 </div>
 
 <script>
-// ─── League config — añadir aquí nuevas ligas cuando se expanda ───────────
+// ─── League config ────────────────────────────────────────────────────────
 const LEAGUE = {
-  espnCode:    'esp.2',
-  promoSlots:  2,   // ascenso directo (top N)
-  playoffTop:  6,   // clasifican al play-off (incluye los directos)
-  relegSlots:  4,   // últimos N descienden
+  espnCode:    'esp.1',
+  promoSlots:  4,   // Champions League (top N)
+  europaSlots: 6,   // Europa League (posiciones N+1 a este valor)
+  confSlots:   7,   // Conference League (posición exacta)
+  relegSlots:  3,   // últimos N descienden
   labels: {
-    promo:   'Ascenso directo',
-    playoff: 'Play-off de ascenso',
-    perma:   'Zona de permanencia',
-    relega:  'Descenso a Primera RFEF',
+    promo:   'Champions League',
+    europa:  'Europa League',
+    conf:    'Conference League',
+    perma:   'Permanencia',
+    relega:  'Descenso a Segunda',
   },
 };
 
 const ESPN_STANDINGS  = `https://site.api.espn.com/apis/v2/sports/soccer/${LEAGUE.espnCode}/standings`;
 const ESPN_SCOREBOARD = `https://site.api.espn.com/apis/site/v2/sports/soccer/${LEAGUE.espnCode}/scoreboard`;
 const SIM_N  = 40000;
-const P_HOME = 0.42;
-const P_DRAW = 0.27;
+const P_HOME = 0.46;
+const P_DRAW = 0.25;
 
 const COLOR_PALETTE = [
   '#e11d48','#7c3aed','#2563eb','#0891b2','#059669','#ca8a04','#ea580c',
   '#db2777','#4f46e5','#0284c7','#16a34a','#d97706','#dc2626','#9333ea',
-  '#0369a1','#15803d','#b45309','#be185d','#6d28d9','#0e7490','#166534','#92400e',
+  '#0369a1','#15803d','#b45309','#be185d','#6d28d9','#0e7490',
 ];
 
-let cachedNumTeams = 22;
+let cachedNumTeams = 20;
 
 // ─── Seeded PRNG (mulberry32) ─────────────────────────────────────────────
 function mulberry32(seed) {
@@ -352,10 +335,11 @@ function standingsSeed(standings) {
 }
 let rng = Math.random;
 
-// ─── Zone helpers — todo derivado del config, sin números hardcodeados ────
+// ─── Zone helpers — todo derivado del config ──────────────────────────────
 function zoneOf(pos, numTeams) {
   if (pos <= LEAGUE.promoSlots) return 'promo';
-  if (pos <= LEAGUE.playoffTop) return 'playoff';
+  if (pos <= LEAGUE.europaSlots) return 'europa';
+  if (pos <= LEAGUE.confSlots) return 'conf';
   if (pos > numTeams - LEAGUE.relegSlots) return 'relega';
   return 'none';
 }
@@ -363,19 +347,39 @@ function zoneOf(pos, numTeams) {
 function getZoneLabels(numTeams) {
   const relegStart = numTeams - LEAGUE.relegSlots + 1;
   return {
-    1:                        { text: LEAGUE.labels.promo,   cls: 'green' },
-    [LEAGUE.promoSlots + 1]:  { text: LEAGUE.labels.playoff, cls: 'blue'  },
-    [LEAGUE.playoffTop + 1]:  { text: LEAGUE.labels.perma,   cls: 'gray'  },
-    [relegStart]:             { text: LEAGUE.labels.relega,  cls: 'red'   },
+    1:                          { text: LEAGUE.labels.promo,  cls: 'green'  },
+    [LEAGUE.promoSlots + 1]:    { text: LEAGUE.labels.europa, cls: 'blue'   },
+    [LEAGUE.europaSlots + 1]:   { text: LEAGUE.labels.conf,   cls: 'violet' },
+    [LEAGUE.confSlots + 1]:     { text: LEAGUE.labels.perma,  cls: 'gray'   },
+    [relegStart]:               { text: LEAGUE.labels.relega, cls: 'red'    },
   };
 }
 
 function renderLegend(numTeams) {
   const relegStart = numTeams - LEAGUE.relegSlots + 1;
+  const confStart  = LEAGUE.europaSlots + 1;
+  const confRange  = confStart === LEAGUE.confSlots ? `${confStart}º` : `${confStart}º–${LEAGUE.confSlots}º`;
   document.getElementById('legend').innerHTML = `
     <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div> ${LEAGUE.labels.promo} (1º–${LEAGUE.promoSlots}º)</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div> Play-off (${LEAGUE.promoSlots + 1}º–${LEAGUE.playoffTop}º)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div> ${LEAGUE.labels.europa} (${LEAGUE.promoSlots + 1}º–${LEAGUE.europaSlots}º)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--conf)"></div> ${LEAGUE.labels.conf} (${confRange})</div>
     <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div> Descenso (${relegStart}º–${numTeams}º)</div>
+  `;
+}
+
+function renderTableHeader() {
+  document.getElementById('thead').innerHTML = `
+    <tr>
+      <th style="width:12px"></th>
+      <th class="center" style="width:34px">#</th>
+      <th>Equipo</th>
+      <th class="right">Pts</th>
+      <th class="right" style="color:var(--muted);font-size:.75rem">PJ</th>
+      <th><span style="color:var(--green)">${LEAGUE.labels.promo}</span></th>
+      <th><span style="color:var(--blue)">${LEAGUE.labels.europa}</span></th>
+      <th><span style="color:var(--conf)">${LEAGUE.labels.conf}</span></th>
+      <th><span style="color:var(--red)">${LEAGUE.labels.relega}</span></th>
+    </tr>
   `;
 }
 
@@ -407,7 +411,7 @@ function simulate(standings) {
   const totalMd  = 2 * (numTeams - 1);
   rng = mulberry32(standingsSeed(standings));
   const names  = standings.map(t => t.name);
-  const counts = Object.fromEntries(names.map(n => [n, { t2: 0, t6: 0, b4: 0 }]));
+  const counts = Object.fromEntries(names.map(n => [n, { champ: 0, europa: 0, conf: 0, relega: 0 }]));
   const minGp  = Math.min(...standings.map(t => t.gp));
   const teamGp = Object.fromEntries(standings.map(t => [t.name, t.gp]));
 
@@ -448,17 +452,19 @@ function simulate(standings) {
 
     sorted.forEach((name, idx) => {
       const p = idx + 1;
-      if      (p <= LEAGUE.promoSlots)             counts[name].t2++;
-      else if (p <= LEAGUE.playoffTop)             counts[name].t6++;
-      else if (p > numTeams - LEAGUE.relegSlots)   counts[name].b4++;
+      if      (p <= LEAGUE.promoSlots)             counts[name].champ++;
+      else if (p <= LEAGUE.europaSlots)            counts[name].europa++;
+      else if (p <= LEAGUE.confSlots)              counts[name].conf++;
+      else if (p > numTeams - LEAGUE.relegSlots)   counts[name].relega++;
     });
   }
 
   return Object.fromEntries(
     names.map(n => [n, {
-      top2:    +(counts[n].t2 / SIM_N * 100).toFixed(1),
-      playoff: +(counts[n].t6 / SIM_N * 100).toFixed(1),
-      relega:  +(counts[n].b4 / SIM_N * 100).toFixed(1),
+      champ:  +(counts[n].champ  / SIM_N * 100).toFixed(1),
+      europa: +(counts[n].europa / SIM_N * 100).toFixed(1),
+      conf:   +(counts[n].conf   / SIM_N * 100).toFixed(1),
+      relega: +(counts[n].relega / SIM_N * 100).toFixed(1),
     }])
   );
 }
@@ -467,8 +473,9 @@ function simulate(standings) {
 async function fetchLiveScores() {
   try {
     const res = await fetch(ESPN_SCOREBOARD);
-    if (!res.ok) return [];
+    if (!res.ok) return { matches: [], logo: null };
     const data = await res.json();
+    const logo = data.leagues?.[0]?.logos?.[0]?.href ?? null;
     const live = [];
     for (const event of (data.events || [])) {
       if (event.status.type.state !== 'in') continue;
@@ -486,8 +493,8 @@ async function fetchLiveScores() {
         clock:     event.status.displayClock || '',
       });
     }
-    return live;
-  } catch { return []; }
+    return { matches: live, logo };
+  } catch { return { matches: [], logo: null }; }
 }
 
 function applyLiveScores(standings, liveMatches) {
@@ -556,13 +563,13 @@ function render(standings, results) {
 
   standings.forEach((t, i) => {
     const z    = zoneOf(t.rank, numTeams);
-    const res  = results[t.name] || { top2: 0, playoff: 0, relega: 0 };
+    const res  = results[t.name] || { champ: 0, europa: 0, conf: 0, relega: 0 };
     const zRow = z !== 'none' ? `zone-${z}` : '';
     const color = COLOR_PALETTE[i % COLOR_PALETTE.length];
 
     if (zoneLabels[t.rank]) {
       const { text, cls } = zoneLabels[t.rank];
-      html += `<tr class="zone-label-row"><td colspan="8">
+      html += `<tr class="zone-label-row"><td colspan="9">
         <span class="zone-label-text ${cls}">${text}</span></td></tr>`;
     }
 
@@ -581,9 +588,10 @@ function render(standings, results) {
       </td>
       <td class="pts${t.live ? ' pts-live' : ''}">${t.pts}</td>
       <td class="right" style="color:var(--muted);font-size:.8rem">${t.gp}</td>
-      <td>${pctBar(res.top2,    'fill-green')}</td>
-      <td>${pctBar(res.playoff, 'fill-blue')}</td>
-      <td>${pctBar(res.relega,  'fill-red')}</td>
+      <td>${pctBar(res.champ,  'fill-green')}</td>
+      <td>${pctBar(res.europa, 'fill-blue')}</td>
+      <td>${pctBar(res.conf,   'fill-conf')}</td>
+      <td>${pctBar(res.relega, 'fill-red')}</td>
     </tr>`;
   });
 
@@ -622,13 +630,11 @@ function renderSkeleton(n = cachedNumTeams) {
       <td><div class="skeleton" style="width:80px;height:14px"></div></td>
       <td><div class="skeleton" style="width:80px;height:14px"></div></td>
       <td><div class="skeleton" style="width:80px;height:14px"></div></td>
+      <td><div class="skeleton" style="width:80px;height:14px"></div></td>
     </tr>`;
   }
   document.getElementById('tbody').innerHTML = html;
 }
-
-// ─── Status / Badge ────────────────────────────────────────────────────────
-function setStatus() {}
 
 function setBadge(gp) {
   document.getElementById('badge-jornada').innerHTML = `Jornada <strong>${gp}</strong>`;
@@ -645,8 +651,14 @@ async function triggerUpdate(silent = false) {
   try {
     if (!silent) renderSkeleton();
 
-    const [standings, liveMatches] = await Promise.all([fetchStandings(), fetchLiveScores()]);
+    const [standings, { matches: liveMatches, logo }] = await Promise.all([fetchStandings(), fetchLiveScores()]);
     cachedNumTeams = standings.length;
+
+    if (logo) {
+      const logoEl = document.getElementById('league-logo');
+      if (logoEl) logoEl.src = logo;
+    }
+
     const adjusted = applyLiveScores(standings, liveMatches);
 
     if (liveMatches.length > 0) {
@@ -659,6 +671,7 @@ async function triggerUpdate(silent = false) {
     }
 
     renderLegend(standings.length);
+    renderTableHeader();
     setBadge(Math.max(...standings.map(t => t.gp)));
     await new Promise(r => setTimeout(r, 30));
 
@@ -680,6 +693,7 @@ async function triggerUpdate(silent = false) {
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────
+renderTableHeader();
 renderSkeleton();
 triggerUpdate();
 </script>
