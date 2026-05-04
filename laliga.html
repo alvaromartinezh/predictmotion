@@ -290,11 +290,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <script>
 // ─── League config ────────────────────────────────────────────────────────
 const LEAGUE = {
-  espnCode:    'esp.1',
-  promoSlots:  4,   // Champions League (top N)
-  europaSlots: 6,   // Europa League (posiciones N+1 a este valor)
-  confSlots:   7,   // Conference League (posición exacta)
-  relegSlots:  3,   // últimos N descienden
+  espnCode: 'esp.1',
+  // Slots de fallback — solo se usan si la API no devuelve notas de zona
+  promoSlots:  4,
+  europaSlots: 5,
+  confSlots:   6,
+  relegSlots:  3,
   labels: {
     promo:   'Champions League',
     europa:  'Europa League',
@@ -303,6 +304,36 @@ const LEAGUE = {
     relega:  'Descenso a Segunda',
   },
 };
+
+// ─── Zonas desde API ──────────────────────────────────────────────────────
+// Mapea el campo note.description de ESPN → clave de zona interna
+function noteToZone(desc) {
+  if (!desc) return 'none';
+  const d = desc.toLowerCase();
+  if (d.includes('champion'))   return 'promo';
+  if (d.includes('europa'))     return 'europa';
+  if (d.includes('conference')) return 'conf';
+  if (d.includes('relegat'))    return 'relega';
+  return 'none';
+}
+
+// Deriva los slots de corte a partir de las notas de zona que devuelve la API.
+// Si la API no tiene notas (inicio de temporada), usa los valores de LEAGUE como fallback.
+function deriveSlots(standings) {
+  let promo = 0, europa = 0, conf = 0, relega = 0;
+  standings.forEach(t => {
+    if (t.zone === 'promo')  promo  = Math.max(promo,  t.rank);
+    if (t.zone === 'europa') europa = Math.max(europa, t.rank);
+    if (t.zone === 'conf')   conf   = Math.max(conf,   t.rank);
+    if (t.zone === 'relega') relega++;
+  });
+  return {
+    promoSlots:  promo  || LEAGUE.promoSlots,
+    europaSlots: europa || LEAGUE.europaSlots,
+    confSlots:   conf   || LEAGUE.confSlots,
+    relegSlots:  relega || LEAGUE.relegSlots,
+  };
+}
 
 const ESPN_STANDINGS  = `https://site.api.espn.com/apis/v2/sports/soccer/${LEAGUE.espnCode}/standings`;
 const ESPN_SCOREBOARD = `https://site.api.espn.com/apis/site/v2/sports/soccer/${LEAGUE.espnCode}/scoreboard`;
@@ -335,33 +366,36 @@ function standingsSeed(standings) {
 }
 let rng = Math.random;
 
-// ─── Zone helpers — todo derivado del config ──────────────────────────────
-function zoneOf(pos, numTeams) {
-  if (pos <= LEAGUE.promoSlots) return 'promo';
-  if (pos <= LEAGUE.europaSlots) return 'europa';
-  if (pos <= LEAGUE.confSlots) return 'conf';
-  if (pos > numTeams - LEAGUE.relegSlots) return 'relega';
+// ─── Zone helpers — todo derivado de slots (obtenidos de la API) ──────────
+function zoneOf(pos, slots, numTeams) {
+  if (pos <= slots.promoSlots)           return 'promo';
+  if (pos <= slots.europaSlots)          return 'europa';
+  if (pos <= slots.confSlots)            return 'conf';
+  if (pos > numTeams - slots.relegSlots) return 'relega';
   return 'none';
 }
 
-function getZoneLabels(numTeams) {
-  const relegStart = numTeams - LEAGUE.relegSlots + 1;
+function getZoneLabels(numTeams, slots) {
+  const relegStart = numTeams - slots.relegSlots + 1;
   return {
-    1:                          { text: LEAGUE.labels.promo,  cls: 'green'  },
-    [LEAGUE.promoSlots + 1]:    { text: LEAGUE.labels.europa, cls: 'blue'   },
-    [LEAGUE.europaSlots + 1]:   { text: LEAGUE.labels.conf,   cls: 'violet' },
-    [LEAGUE.confSlots + 1]:     { text: LEAGUE.labels.perma,  cls: 'gray'   },
-    [relegStart]:               { text: LEAGUE.labels.relega, cls: 'red'    },
+    1:                        { text: LEAGUE.labels.promo,  cls: 'green'  },
+    [slots.promoSlots + 1]:   { text: LEAGUE.labels.europa, cls: 'blue'   },
+    [slots.europaSlots + 1]:  { text: LEAGUE.labels.conf,   cls: 'violet' },
+    [slots.confSlots + 1]:    { text: LEAGUE.labels.perma,  cls: 'gray'   },
+    [relegStart]:             { text: LEAGUE.labels.relega, cls: 'red'    },
   };
 }
 
-function renderLegend(numTeams) {
-  const relegStart = numTeams - LEAGUE.relegSlots + 1;
-  const confStart  = LEAGUE.europaSlots + 1;
-  const confRange  = confStart === LEAGUE.confSlots ? `${confStart}º` : `${confStart}º–${LEAGUE.confSlots}º`;
+function renderLegend(numTeams, slots) {
+  const relegStart = numTeams - slots.relegSlots + 1;
+  const confStart  = slots.europaSlots + 1;
+  const confRange  = confStart === slots.confSlots ? `${confStart}º` : `${confStart}º–${slots.confSlots}º`;
+  const europaRange = slots.promoSlots + 1 === slots.europaSlots
+    ? `${slots.promoSlots + 1}º`
+    : `${slots.promoSlots + 1}º–${slots.europaSlots}º`;
   document.getElementById('legend').innerHTML = `
-    <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div> ${LEAGUE.labels.promo} (1º–${LEAGUE.promoSlots}º)</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div> ${LEAGUE.labels.europa} (${LEAGUE.promoSlots + 1}º–${LEAGUE.europaSlots}º)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div> ${LEAGUE.labels.promo} (1º–${slots.promoSlots}º)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div> ${LEAGUE.labels.europa} (${europaRange})</div>
     <div class="legend-item"><div class="legend-dot" style="background:var(--conf)"></div> ${LEAGUE.labels.conf} (${confRange})</div>
     <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div> Descenso (${relegStart}º–${numTeams}º)</div>
   `;
@@ -406,7 +440,7 @@ function buildFixtures(names, gp, totalMd) {
 }
 
 // ─── Simulation ───────────────────────────────────────────────────────────
-function simulate(standings) {
+function simulate(standings, slots) {
   const numTeams = standings.length;
   const totalMd  = 2 * (numTeams - 1);
   rng = mulberry32(standingsSeed(standings));
@@ -452,10 +486,10 @@ function simulate(standings) {
 
     sorted.forEach((name, idx) => {
       const p = idx + 1;
-      if      (p <= LEAGUE.promoSlots)             counts[name].champ++;
-      else if (p <= LEAGUE.europaSlots)            counts[name].europa++;
-      else if (p <= LEAGUE.confSlots)              counts[name].conf++;
-      else if (p > numTeams - LEAGUE.relegSlots)   counts[name].relega++;
+      if      (p <= slots.promoSlots)             counts[name].champ++;
+      else if (p <= slots.europaSlots)            counts[name].europa++;
+      else if (p <= slots.confSlots)              counts[name].conf++;
+      else if (p > numTeams - slots.relegSlots)   counts[name].relega++;
     });
   }
 
@@ -527,6 +561,7 @@ async function fetchStandings() {
       id:     e.team.id,
       name:   e.team.displayName,
       logo,
+      zone:   noteToZone(e.note?.description),   // zona desde la API de ESPN
       gp:     stat('gamesPlayed'),
       pts:    stat('points'),
       gf:     stat('pointsFor'),
@@ -555,14 +590,14 @@ function initials(name) {
   return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
 }
 
-function render(standings, results) {
+function render(standings, results, slots) {
   const numTeams   = standings.length;
-  const zoneLabels = getZoneLabels(numTeams);
+  const zoneLabels = getZoneLabels(numTeams, slots);
   const tbody = document.getElementById('tbody');
   let html = '';
 
   standings.forEach((t, i) => {
-    const z    = zoneOf(t.rank, numTeams);
+    const z    = zoneOf(t.rank, slots, numTeams);
     const res  = results[t.name] || { champ: 0, europa: 0, conf: 0, relega: 0 };
     const zRow = z !== 'none' ? `zone-${z}` : '';
     const color = COLOR_PALETTE[i % COLOR_PALETTE.length];
@@ -654,6 +689,9 @@ async function triggerUpdate(silent = false) {
     const [standings, { matches: liveMatches, logo }] = await Promise.all([fetchStandings(), fetchLiveScores()]);
     cachedNumTeams = standings.length;
 
+    // Derivar slots de zona desde los datos de la API (se auto-actualiza cada temporada)
+    const slots = deriveSlots(standings);
+
     if (logo) {
       const logoEl = document.getElementById('league-logo');
       if (logoEl) logoEl.src = logo;
@@ -670,13 +708,13 @@ async function triggerUpdate(silent = false) {
       adjusted.forEach((t, i) => { t.rank = i + 1; });
     }
 
-    renderLegend(standings.length);
+    renderLegend(standings.length, slots);
     renderTableHeader();
     setBadge(Math.max(...standings.map(t => t.gp)));
     await new Promise(r => setTimeout(r, 30));
 
-    const results = simulate(adjusted);
-    render(adjusted, results);
+    const results = simulate(adjusted, slots);
+    render(adjusted, results, slots);
 
     const now = new Date();
     document.getElementById('footer-update').textContent =
