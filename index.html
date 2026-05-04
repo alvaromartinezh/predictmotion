@@ -252,7 +252,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <div class="logo"><img src="https://r2.thesportsdb.com/images/media/league/badge/r7u6821688425700.png" alt="Liga Hypermotion" /></div>
   <div class="header-text">
     <h1>Liga Hypermotion 2025‑26</h1>
-    <p>Simulación Monte Carlo · 40 000 iteraciones</p>
   </div>
   <div class="header-actions">
     <div class="badge" id="badge-jornada">Cargando…</div>
@@ -260,10 +259,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 </div>
 </div>
 
-<div class="status-bar">
-  <div class="status-dot loading" id="status-dot"></div>
-  <span id="status-text">Conectando con la API…</span>
-</div>
 
 <div class="legend">
   <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div> Ascenso directo (1º-2º)</div>
@@ -293,7 +288,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <div class="footer">
   <span id="footer-update">—</span>
-  <span>Metodología: simulación estocástica con probabilidades históricas · <a href="privacy.html" style="color:var(--muted);text-decoration:underline">Política de privacidad</a></span>
+  <span>© 2025 PredictMotion · Todos los derechos reservados · <a href="privacy.html" style="color:var(--muted);text-decoration:underline">Política de privacidad</a></span>
 </div>
 
 <script>
@@ -655,15 +650,10 @@ function renderSkeleton() {
 }
 
 // ─── Status helpers ────────────────────────────────────────────────────────
-function setStatus(type, text) {
-  document.getElementById('status-dot').className = `status-dot ${type}`;
-  document.getElementById('status-text').textContent = text;
-}
+function setStatus() {}
 
 function setBadge(gp) {
-  const remaining = TOTAL_MD - gp;
-  document.getElementById('badge-jornada').innerHTML =
-    `Jornada <strong>${gp}</strong> · ${remaining} jornada${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''}`;
+  document.getElementById('badge-jornada').innerHTML = `Jornada <strong>${gp}</strong>`;
 }
 
 // ─── Main update flow ──────────────────────────────────────────────────────
