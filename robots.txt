@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://predictmotion.netlify.app/sitemap.xml
+Sitemap: https://predictmotion.com/sitemap.xml
