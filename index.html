@@ -260,11 +260,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 </div>
 
 
-<div class="legend">
-  <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div> Ascenso directo (1º-2º)</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div> Play-off (3º-6º)</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div> Descenso (19º-22º)</div>
-</div>
+<div class="legend" id="legend"></div>
 
 <div class="card">
   <div class="table-scroll">
@@ -292,15 +288,35 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 </div>
 
 <script>
-// ─── Config ───────────────────────────────────────────────────────────────
-const ESPN_URL      = 'https://site.api.espn.com/apis/v2/sports/soccer/esp.2/standings';
-const SIM_N         = 40000;
-const TOTAL_MD      = 42;
-const P_HOME        = 0.42;
-const P_DRAW        = 0.27;
+// ─── League config — añadir aquí nuevas ligas cuando se expanda ───────────
+const LEAGUE = {
+  espnCode:    'esp.2',
+  promoSlots:  2,   // ascenso directo (top N)
+  playoffTop:  6,   // clasifican al play-off (incluye los directos)
+  relegSlots:  4,   // últimos N descienden
+  labels: {
+    promo:   'Ascenso directo',
+    playoff: 'Play-off de ascenso',
+    perma:   'Zona de permanencia',
+    relega:  'Descenso a Primera RFEF',
+  },
+};
+
+const ESPN_STANDINGS  = `https://site.api.espn.com/apis/v2/sports/soccer/${LEAGUE.espnCode}/standings`;
+const ESPN_SCOREBOARD = `https://site.api.espn.com/apis/site/v2/sports/soccer/${LEAGUE.espnCode}/scoreboard`;
+const SIM_N  = 40000;
+const P_HOME = 0.42;
+const P_DRAW = 0.27;
+
+const COLOR_PALETTE = [
+  '#e11d48','#7c3aed','#2563eb','#0891b2','#059669','#ca8a04','#ea580c',
+  '#db2777','#4f46e5','#0284c7','#16a34a','#d97706','#dc2626','#9333ea',
+  '#0369a1','#15803d','#b45309','#be185d','#6d28d9','#0e7490','#166534','#92400e',
+];
+
+let cachedNumTeams = 22;
 
 // ─── Seeded PRNG (mulberry32) ─────────────────────────────────────────────
-// Seed = current UTC hour → todos los usuarios de la misma hora ven resultados idénticos
 function mulberry32(seed) {
   return function() {
     seed |= 0; seed = seed + 0x6D2B79F5 | 0;
@@ -317,56 +333,32 @@ function standingsSeed(standings) {
 }
 let rng = Math.random;
 
-// Local logo fallbacks (key = ESPN displayName normalised)
-const LOCAL_LOGOS = {
-  'racing santander':  'logos/racing.png',
-  'almería':           'logos/almeria.png',
-  'deportivo la coruña':'logos/deportivo.png',
-  'castellón':         'logos/castellon.png',
-  'las palmas':        'logos/laspalmas.png',
-  'burgos':            'logos/burgos.png',
-  'eibar':             'logos/eibar.png',
-  'málaga':            'logos/malaga.png',
-  'fc andorra':        'logos/andorra.png',
-  'córdoba':           'logos/cordoba.png',
-  'sporting gijón':    'logos/sporting.png',
-  'ceuta':             'logos/ceuta.png',
-  'albacete':          'logos/albacete.png',
-  'granada':           'logos/granada.png',
-  'real valladolid':   'logos/valladolid.png',
-  'leganés':           'logos/leganes.png',
-  'real sociedad ii':  'logos/rsociedad.png',
-  'cádiz':             'logos/cadiz.png',
-  'huesca':            'logos/huesca.png',
-  'mirandés':          'logos/mirandes.png',
-  'real zaragoza':     'logos/zaragoza.png',
-  'cultural leonesa':  'logos/leonesa.png',
-};
+// ─── Zone helpers — todo derivado del config, sin números hardcodeados ────
+function zoneOf(pos, numTeams) {
+  if (pos <= LEAGUE.promoSlots) return 'promo';
+  if (pos <= LEAGUE.playoffTop) return 'playoff';
+  if (pos > numTeams - LEAGUE.relegSlots) return 'relega';
+  return 'none';
+}
 
-// ─── Known remaining fixtures (ESPN displayNames) ─────────────────────────
-const FIXTURES = {
-  38: [
-    ['FC Andorra','Albacete'], ['Deportivo La Coruña','Leganés'],
-    ['Real Zaragoza','Granada'], ['Cultural Leonesa','Cádiz'],
-    ['Castellón','Córdoba'], ['Eibar','Málaga'],
-    ['Racing Santander','Huesca'], ['Sporting Gijón','Ceuta'],
-    ['Real Sociedad II','Burgos'], ['Las Palmas','Real Valladolid'],
-    ['Almería','Mirandés'],
-  ],
-  '39_PARTIAL': [
-    ['Cádiz','Deportivo La Coruña'], ['Ceuta','Castellón'],
-    ['Albacete','Cultural Leonesa'], ['Burgos','Almería'],
-    ['Real Valladolid','Real Zaragoza'], ['Málaga','Sporting Gijón'],
-  ],
-  42: [
-    ['Castellón','Eibar'], ['Córdoba','Huesca'],
-    ['Deportivo La Coruña','Las Palmas'], ['Granada','Sporting Gijón'],
-    ['Leganés','Mirandés'], ['Almería','Real Valladolid'],
-    ['Ceuta','Albacete'], ['Racing Santander','Cádiz'],
-    ['Real Sociedad II','Cultural Leonesa'], ['Real Zaragoza','Málaga'],
-    ['FC Andorra','Burgos'],
-  ],
-};
+function getZoneLabels(numTeams) {
+  const relegStart = numTeams - LEAGUE.relegSlots + 1;
+  return {
+    1:                        { text: LEAGUE.labels.promo,   cls: 'green' },
+    [LEAGUE.promoSlots + 1]:  { text: LEAGUE.labels.playoff, cls: 'blue'  },
+    [LEAGUE.playoffTop + 1]:  { text: LEAGUE.labels.perma,   cls: 'gray'  },
+    [relegStart]:             { text: LEAGUE.labels.relega,  cls: 'red'   },
+  };
+}
+
+function renderLegend(numTeams) {
+  const relegStart = numTeams - LEAGUE.relegSlots + 1;
+  document.getElementById('legend').innerHTML = `
+    <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div> ${LEAGUE.labels.promo} (1º–${LEAGUE.promoSlots}º)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div> Play-off (${LEAGUE.promoSlots + 1}º–${LEAGUE.playoffTop}º)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div> Descenso (${relegStart}º–${numTeams}º)</div>
+  `;
+}
 
 // ─── Simulation helpers ───────────────────────────────────────────────────
 function shuffle(arr) {
@@ -377,35 +369,26 @@ function shuffle(arr) {
   return arr;
 }
 
-function randomMatchday(teams) {
-  const t = shuffle([...teams]);
+function randomMatchday(names) {
+  const t = shuffle([...names]);
   const md = [];
-  for (let i = 0; i < t.length; i += 2) md.push([t[i], t[i+1]]);
+  for (let i = 0; i < t.length; i += 2) md.push([t[i], t[i + 1]]);
   return md;
 }
 
-function completeMatchday(known, teams) {
-  const used = new Set(known.flat());
-  const free = shuffle(teams.filter(t => !used.has(t)));
-  const extra = [];
-  for (let i = 0; i < free.length; i += 2) extra.push([free[i], free[i+1]]);
-  return [...known, ...extra];
-}
-
-function buildFixtures(teams, gp) {
+function buildFixtures(names, gp, totalMd) {
   const mds = [];
-  for (let md = gp + 1; md <= TOTAL_MD; md++) {
-    if (FIXTURES[md])        mds.push(FIXTURES[md]);
-    else if (md === 39)      mds.push(completeMatchday(FIXTURES['39_PARTIAL'], teams));
-    else                     mds.push(randomMatchday(teams));
-  }
+  for (let md = gp + 1; md <= totalMd; md++) mds.push(randomMatchday(names));
   return mds;
 }
 
+// ─── Simulation ───────────────────────────────────────────────────────────
 function simulate(standings) {
+  const numTeams = standings.length;
+  const totalMd  = 2 * (numTeams - 1);
   rng = mulberry32(standingsSeed(standings));
   const names  = standings.map(t => t.name);
-  const counts = Object.fromEntries(names.map(n => [n, {t2:0, t6:0, b4:0}]));
+  const counts = Object.fromEntries(names.map(n => [n, { t2: 0, t6: 0, b4: 0 }]));
   const minGp  = Math.min(...standings.map(t => t.gp));
   const teamGp = Object.fromEntries(standings.map(t => [t.name, t.gp]));
 
@@ -415,10 +398,9 @@ function simulate(standings) {
     const gf  = Object.fromEntries(standings.map(t => [t.name, t.gf]));
 
     let mdNum = minGp;
-    for (const md of buildFixtures(names, minGp)) {
+    for (const md of buildFixtures(names, minGp, totalMd)) {
       mdNum++;
       for (const [h, a] of md) {
-        // Saltarse el partido si ambos equipos ya lo han jugado (resultado ya en sus puntos)
         if (teamGp[h] >= mdNum && teamGp[a] >= mdNum) continue;
         const r = rng();
         let hp, ap, hg, ag;
@@ -435,21 +417,21 @@ function simulate(standings) {
           ag = (rng() * 2 | 0) + 1 + (rng() * 2 | 0);
         }
         pts[h] += hp; pts[a] += ap;
-        gd[h] += hg - ag; gd[a] += ag - hg;
-        gf[h] += hg; gf[a] += ag;
+        gd[h]  += hg - ag; gd[a] += ag - hg;
+        gf[h]  += hg;      gf[a] += ag;
       }
     }
 
     const sorted = [...names].sort((a, b) =>
       pts[b] !== pts[a] ? pts[b] - pts[a] :
       gd[b]  !== gd[a]  ? gd[b] - gd[a]  :
-      gf[b]  - gf[a]);
+      gf[b] - gf[a]);
 
     sorted.forEach((name, idx) => {
       const p = idx + 1;
-      if      (p <= 2)  counts[name].t2++;
-      else if (p <= 6)  counts[name].t6++;
-      else if (p >= 19) counts[name].b4++;
+      if      (p <= LEAGUE.promoSlots)             counts[name].t2++;
+      else if (p <= LEAGUE.playoffTop)             counts[name].t6++;
+      else if (p > numTeams - LEAGUE.relegSlots)   counts[name].b4++;
     });
   }
 
@@ -465,7 +447,7 @@ function simulate(standings) {
 // ─── ESPN fetch ───────────────────────────────────────────────────────────
 async function fetchLiveScores() {
   try {
-    const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/esp.2/scoreboard');
+    const res = await fetch(ESPN_SCOREBOARD);
     if (!res.ok) return [];
     const data = await res.json();
     const live = [];
@@ -507,7 +489,7 @@ function applyLiveScores(standings, liveMatches) {
 }
 
 async function fetchStandings() {
-  const res  = await fetch(ESPN_URL);
+  const res  = await fetch(ESPN_STANDINGS);
   if (!res.ok) throw new Error(`ESPN API ${res.status}`);
   const data = await res.json();
   const entries = data.children[0].standings.entries;
@@ -515,29 +497,22 @@ async function fetchStandings() {
     const stat = name => (e.stats.find(s => s.name === name) || {}).value || 0;
     const logo = (e.team.logos && e.team.logos[0]) ? e.team.logos[0].href : null;
     return {
-      rank: i + 1,
-      id:   e.team.id,
-      name: e.team.displayName,
+      rank:   i + 1,
+      id:     e.team.id,
+      name:   e.team.displayName,
       logo,
-      gp:   stat('gamesPlayed'),
-      pts:  stat('points'),
-      gf:   stat('pointsFor'),
-      gc:   stat('pointsAgainst'),
-      wins: stat('wins'),
-      draws:stat('ties'),
-      losses:stat('losses'),
+      gp:     stat('gamesPlayed'),
+      pts:    stat('points'),
+      gf:     stat('pointsFor'),
+      gc:     stat('pointsAgainst'),
+      wins:   stat('wins'),
+      draws:  stat('ties'),
+      losses: stat('losses'),
     };
   });
 }
 
 // ─── Render ───────────────────────────────────────────────────────────────
-const ZONE_LABELS = {
-  1:  {text:'Ascenso directo',  cls:'green'},
-  3:  {text:'Play-off de ascenso', cls:'blue'},
-  7:  {text:'Zona de permanencia', cls:'gray'},
-  19: {text:'Descenso a Primera RFEF', cls:'red'},
-};
-
 function pctBar(pct, colorClass) {
   const txt = pct === 0
     ? `<span style="color:var(--muted)">—</span>`
@@ -550,36 +525,24 @@ function pctBar(pct, colorClass) {
   </div>`;
 }
 
-function zoneOf(pos) {
-  if (pos <= 2)  return 'promo';
-  if (pos <= 6)  return 'playoff';
-  if (pos >= 19) return 'relega';
-  return 'none';
-}
-
-const INITIALS_COLORS = [
-  '#e11d48','#7c3aed','#2563eb','#0891b2','#059669','#ca8a04','#ea580c',
-  '#db2777','#4f46e5','#0284c7','#16a34a','#d97706','#dc2626','#9333ea',
-  '#0369a1','#15803d','#b45309','#be185d','#6d28d9','#0e7490','#166534','#92400e',
-];
-
 function initials(name) {
   return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
 }
 
 function render(standings, results) {
+  const numTeams   = standings.length;
+  const zoneLabels = getZoneLabels(numTeams);
   const tbody = document.getElementById('tbody');
   let html = '';
 
   standings.forEach((t, i) => {
-    const z    = zoneOf(t.rank);
-    const res  = results[t.name] || {top2:0, playoff:0, relega:0};
+    const z    = zoneOf(t.rank, numTeams);
+    const res  = results[t.name] || { top2: 0, playoff: 0, relega: 0 };
     const zRow = z !== 'none' ? `zone-${z}` : '';
-    const localLogo = LOCAL_LOGOS[t.name.toLowerCase()];
-    const espnLogo  = t.logo;
+    const color = COLOR_PALETTE[i % COLOR_PALETTE.length];
 
-    if (ZONE_LABELS[t.rank]) {
-      const {text, cls} = ZONE_LABELS[t.rank];
+    if (zoneLabels[t.rank]) {
+      const { text, cls } = zoneLabels[t.rank];
       html += `<tr class="zone-label-row"><td colspan="8">
         <span class="zone-label-text ${cls}">${text}</span></td></tr>`;
     }
@@ -590,8 +553,8 @@ function render(standings, results) {
       <td>
         <div class="team-cell">
           <div class="team-avatar" id="av${i}">
-            <img src="${espnLogo || localLogo || ''}" alt="${t.name}" loading="lazy"
-              onerror="fallbackAvatar(${i},'${t.name}','${INITIALS_COLORS[i]}','${localLogo||''}')" />
+            <img src="${t.logo || ''}" alt="${t.name}" loading="lazy"
+              onerror="fallbackAvatar(${i},'${t.name}','${color}')" />
           </div>
           <a class="team-name team-link" href="equipo.html?id=${t.id}&name=${encodeURIComponent(t.name)}">${t.name}</a>
           ${t.live ? `<span class="live-badge"><span class="live-dot"></span>${t.live.score}<span class="live-clock"> ${t.live.clock}</span></span>` : ''}
@@ -599,9 +562,9 @@ function render(standings, results) {
       </td>
       <td class="pts${t.live ? ' pts-live' : ''}">${t.pts}</td>
       <td class="right" style="color:var(--muted);font-size:.8rem">${t.gp}</td>
-      <td>${pctBar(res.top2,   'fill-green')}</td>
-      <td>${pctBar(res.playoff,'fill-blue')}</td>
-      <td>${pctBar(res.relega, 'fill-red')}</td>
+      <td>${pctBar(res.top2,    'fill-green')}</td>
+      <td>${pctBar(res.playoff, 'fill-blue')}</td>
+      <td>${pctBar(res.relega,  'fill-red')}</td>
     </tr>`;
   });
 
@@ -614,13 +577,9 @@ function render(standings, results) {
   }, 80));
 }
 
-function fallbackAvatar(i, name, color, localLogo) {
+function fallbackAvatar(i, name, color) {
   const el = document.getElementById('av' + i);
   if (!el) return;
-  if (localLogo) {
-    el.innerHTML = `<img src="${localLogo}" alt="${name}" />`;
-    return;
-  }
   el.classList.add('fallback');
   el.style.background = color;
   el.style.color = '#fff';
@@ -630,14 +589,14 @@ function fallbackAvatar(i, name, color, localLogo) {
 }
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────
-function renderSkeleton() {
+function renderSkeleton(n = cachedNumTeams) {
   let html = '';
-  for (let i = 0; i < 22; i++) {
+  for (let i = 0; i < n; i++) {
     html += `<tr><td style="padding:0 0 0 8px;width:12px"><div class="zone-bar none"></div></td>
       <td class="pos"><div class="skeleton" style="width:18px;height:14px"></div></td>
       <td><div class="team-cell">
         <div class="team-avatar" style="background:var(--surface2)"></div>
-        <div class="skeleton" style="width:${90+Math.random()*60|0}px;height:14px"></div>
+        <div class="skeleton" style="width:${90 + Math.random() * 60 | 0}px;height:14px"></div>
       </div></td>
       <td><div class="skeleton" style="width:24px;height:14px;margin-left:auto"></div></td>
       <td><div class="skeleton" style="width:24px;height:14px;margin-left:auto"></div></td>
@@ -649,7 +608,7 @@ function renderSkeleton() {
   document.getElementById('tbody').innerHTML = html;
 }
 
-// ─── Status helpers ────────────────────────────────────────────────────────
+// ─── Status / Badge ────────────────────────────────────────────────────────
 function setStatus() {}
 
 function setBadge(gp) {
@@ -666,9 +625,9 @@ async function triggerUpdate(silent = false) {
 
   try {
     if (!silent) renderSkeleton();
-    setStatus('loading', silent ? 'Actualizando marcadores…' : 'Obteniendo clasificación…');
 
     const [standings, liveMatches] = await Promise.all([fetchStandings(), fetchLiveScores()]);
+    cachedNumTeams = standings.length;
     const adjusted = applyLiveScores(standings, liveMatches);
 
     if (liveMatches.length > 0) {
@@ -680,8 +639,8 @@ async function triggerUpdate(silent = false) {
       adjusted.forEach((t, i) => { t.rank = i + 1; });
     }
 
+    renderLegend(standings.length);
     setBadge(Math.max(...standings.map(t => t.gp)));
-    setStatus('loading', 'Simulando 40 000 escenarios…');
     await new Promise(r => setTimeout(r, 30));
 
     const results = simulate(adjusted);
@@ -689,15 +648,13 @@ async function triggerUpdate(silent = false) {
 
     const now = new Date();
     document.getElementById('footer-update').textContent =
-      `Última actualización: ${now.toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'})} · Datos: ESPN API`;
+      `Última actualización: ${now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })} · Datos: ESPN API`;
 
     clearTimeout(liveTimer);
     if (liveMatches.length > 0) liveTimer = setTimeout(() => triggerUpdate(true), 60_000);
 
-    setStatus('ok', '');
   } catch (err) {
     console.error(err);
-    setStatus('error', `Error al cargar datos: ${err.message}`);
   } finally {
     isUpdating = false;
   }
