@@ -560,7 +560,7 @@ function fallbackAvatar(avId, name, color) {
 }
 
 // ─── Fetch desde archivos JSON locales (generados por fetch_rfef.py) ──────
-const CACHE_URLS = ['/cache/rfef_g1.json', '/cache/rfef_g2.json'];
+const CACHE_URLS = ['cache/rfef_g1.json', 'cache/rfef_g2.json'];
 
 async function fetchStandings() {
   const [g1, g2] = await Promise.all(
