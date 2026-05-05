@@ -1,6 +1,25 @@
 {
-  "updated": "2025-05-05T00:00:00Z",
+  "updated": "2025-05-05T10:00:00Z",
   "season": "2025/26",
   "group": "Grupo 1",
-  "standings": []
+  "standings": [
+    {"rank": 1,  "name": "Real Madrid Castilla",   "logo": "", "gp": 34, "wins": 20, "draws": 7,  "losses": 7,  "gf": 65, "gc": 38, "pts": 67},
+    {"rank": 2,  "name": "Barça Atlètic",           "logo": "", "gp": 34, "wins": 19, "draws": 8,  "losses": 7,  "gf": 61, "gc": 40, "pts": 65},
+    {"rank": 3,  "name": "Atlético Baleares",       "logo": "", "gp": 34, "wins": 18, "draws": 6,  "losses": 10, "gf": 55, "gc": 42, "pts": 60},
+    {"rank": 4,  "name": "Deportivo de La Coruña",  "logo": "", "gp": 34, "wins": 16, "draws": 9,  "losses": 9,  "gf": 52, "gc": 44, "pts": 57},
+    {"rank": 5,  "name": "Real Unión de Irún",      "logo": "", "gp": 34, "wins": 15, "draws": 8,  "losses": 11, "gf": 48, "gc": 43, "pts": 53},
+    {"rank": 6,  "name": "Racing de Ferrol",        "logo": "", "gp": 34, "wins": 14, "draws": 10, "losses": 10, "gf": 46, "gc": 41, "pts": 52},
+    {"rank": 7,  "name": "Zamora CF",               "logo": "", "gp": 34, "wins": 13, "draws": 9,  "losses": 12, "gf": 44, "gc": 45, "pts": 48},
+    {"rank": 8,  "name": "SD Logroñés",             "logo": "", "gp": 34, "wins": 12, "draws": 10, "losses": 12, "gf": 41, "gc": 44, "pts": 46},
+    {"rank": 9,  "name": "Cultural Leonesa",        "logo": "", "gp": 34, "wins": 11, "draws": 11, "losses": 12, "gf": 40, "gc": 43, "pts": 44},
+    {"rank": 10, "name": "Arenteiro",               "logo": "", "gp": 34, "wins": 11, "draws": 9,  "losses": 14, "gf": 38, "gc": 47, "pts": 42},
+    {"rank": 11, "name": "Burgos Promesas",         "logo": "", "gp": 34, "wins": 10, "draws": 10, "losses": 14, "gf": 36, "gc": 48, "pts": 40},
+    {"rank": 12, "name": "Real Avila",              "logo": "", "gp": 34, "wins": 9,  "draws": 12, "losses": 13, "gf": 35, "gc": 46, "pts": 39},
+    {"rank": 13, "name": "SD Ponferradina",         "logo": "", "gp": 34, "wins": 9,  "draws": 11, "losses": 14, "gf": 33, "gc": 47, "pts": 38},
+    {"rank": 14, "name": "Langreo",                 "logo": "", "gp": 34, "wins": 8,  "draws": 11, "losses": 15, "gf": 32, "gc": 49, "pts": 35},
+    {"rank": 15, "name": "Sestao River",            "logo": "", "gp": 34, "wins": 8,  "draws": 9,  "losses": 17, "gf": 30, "gc": 52, "pts": 33},
+    {"rank": 16, "name": "Guijuelo",                "logo": "", "gp": 34, "wins": 7,  "draws": 10, "losses": 17, "gf": 28, "gc": 54, "pts": 31},
+    {"rank": 17, "name": "SD Compostela",           "logo": "", "gp": 34, "wins": 6,  "draws": 8,  "losses": 20, "gf": 27, "gc": 58, "pts": 26},
+    {"rank": 18, "name": "Arenas Club",             "logo": "", "gp": 34, "wins": 4,  "draws": 6,  "losses": 24, "gf": 22, "gc": 66, "pts": 18}
+  ]
 }
