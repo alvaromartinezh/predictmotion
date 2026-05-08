@@ -12,9 +12,7 @@ import sys
 import time
 import requests
 import tweepy
-from datetime import datetime, timezone
 from pathlib import Path
-from playwright.sync_api import sync_playwright
 
 # ── Credenciales ────────────────────────────────────────────────────────────
 BASE = Path(__file__).parent
@@ -23,9 +21,9 @@ TWITTER_DIR = BASE / "TWITTER"
 def _read(filename):
     return (TWITTER_DIR / filename).read_text().strip()
 
-API_KEY            = _read("Consumer_key.txt")
-API_SECRET         = _read("Consumer_key_secret.txt")
-ACCESS_TOKEN       = _read("access_token.txt")
+API_KEY             = _read("Consumer_key.txt")
+API_SECRET          = _read("Consumer_key_secret.txt")
+ACCESS_TOKEN        = _read("access_token.txt")
 ACCESS_TOKEN_SECRET = _read("access_token_secret.txt")
 
 # ── Configuración de ligas ───────────────────────────────────────────────────
@@ -53,25 +51,6 @@ def get_client():
         access_token_secret=ACCESS_TOKEN_SECRET,
     )
 
-def get_api_v1():
-    auth = tweepy.OAuth1UserHandler(API_KEY, API_SECRET, ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
-    return tweepy.API(auth)
-
-# ── Captura de pantalla ──────────────────────────────────────────────────────
-def screenshot(url, path):
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page(viewport={"width": 900, "height": 700})
-        page.goto(url, wait_until="networkidle", timeout=30000)
-        # Esperar a que la tabla cargue (buscamos filas de la tabla)
-        try:
-            page.wait_for_selector("tbody tr", timeout=15000)
-        except Exception:
-            pass
-        time.sleep(2)
-        page.screenshot(path=str(path))
-        browser.close()
-
 # ── ESPN API ─────────────────────────────────────────────────────────────────
 def fetch_standings(espn_code):
     url = f"https://site.api.espn.com/apis/v2/sports/soccer/{espn_code}/standings"
@@ -88,7 +67,8 @@ def fetch_standings(espn_code):
                 "pj":   int(stats.get("gamesPlayed", 0)),
             })
         return teams
-    except Exception:
+    except Exception as ex:
+        print(f"[ESPN standings error] {ex}")
         return []
 
 def fetch_scoreboard(espn_code):
@@ -103,16 +83,17 @@ def fetch_scoreboard(espn_code):
             home = next(c for c in competitors if c["homeAway"] == "home")
             away = next(c for c in competitors if c["homeAway"] == "away")
             matches.append({
-                "id":        event["id"],
-                "state":     event["status"]["type"]["state"],  # pre / in / post
-                "clock":     event["status"].get("displayClock", ""),
-                "home":      home["team"]["displayName"],
-                "away":      away["team"]["displayName"],
-                "score_h":   home.get("score", "0"),
-                "score_a":   away.get("score", "0"),
+                "id":      event["id"],
+                "state":   event["status"]["type"]["state"],
+                "clock":   event["status"].get("displayClock", ""),
+                "home":    home["team"]["displayName"],
+                "away":    away["team"]["displayName"],
+                "score_h": home.get("score", "0"),
+                "score_a": away.get("score", "0"),
             })
         return matches
-    except Exception:
+    except Exception as ex:
+        print(f"[ESPN scoreboard error] {ex}")
         return []
 
 # ── Generación de texto ──────────────────────────────────────────────────────
@@ -139,7 +120,7 @@ def text_weekend(espn_code, teams):
         )
         if second:
             txt += f"\n🥈 {second['name']} ({second['pts']} pts)"
-        txt += f"\n\n Champions, Europa y descenso · Probabilidades en vivo 👇\n{league['url']}"
+        txt += f"\n\nChampions, Europa y descenso · Probabilidades en vivo 👇\n{league['url']}"
 
     return txt[:280]
 
@@ -162,16 +143,11 @@ def text_match_end(match, espn_code):
     )
     return txt[:280]
 
-# ── Tweet con imagen ─────────────────────────────────────────────────────────
-def post_tweet(text, img_path):
-    try:
-        api_v1 = get_api_v1()
-        media = api_v1.media_upload(str(img_path))
-        client = get_client()
-        client.create_tweet(text=text, media_ids=[media.media_id])
-        print(f"[OK] Tweet publicado: {text[:60]}...")
-    except Exception as e:
-        print(f"[ERROR] {e}")
+# ── Tweet ────────────────────────────────────────────────────────────────────
+def post_tweet(text):
+    client = get_client()
+    client.create_tweet(text=text)
+    print(f"[OK] Tweet publicado: {text[:80]}...")
 
 # ── Estado persistente ───────────────────────────────────────────────────────
 def load_state():
@@ -185,7 +161,6 @@ def save_state(state):
 # ── Modo: weekend ────────────────────────────────────────────────────────────
 def mode_weekend():
     print("[weekend] Generando tweets de tabla...")
-    img = BASE / "screenshot_tmp.png"
     for espn_code, league in LEAGUES.items():
         teams = fetch_standings(espn_code)
         text = text_weekend(espn_code, teams)
@@ -193,19 +168,15 @@ def mode_weekend():
             print(f"[SKIP] Sin datos para {league['name']}")
             continue
         try:
-            screenshot(league["url"], img)
-            post_tweet(text, img)
+            post_tweet(text)
         except Exception as e:
             print(f"[ERROR] {league['name']}: {e}")
         time.sleep(5)
-    if img.exists():
-        img.unlink()
 
 # ── Modo: matches ────────────────────────────────────────────────────────────
 def mode_matches():
     print("[matches] Comprobando partidos en curso...")
     state = load_state()
-    img = BASE / "screenshot_tmp.png"
     changed = False
 
     for espn_code, league in LEAGUES.items():
@@ -213,33 +184,26 @@ def mode_matches():
         for m in matches:
             mid = m["id"]
 
-            # Inicio de partido
             if m["state"] == "in" and mid not in state["tweeted_start"]:
                 print(f"[START] {m['home']} vs {m['away']}")
-                text = text_match_start(m, espn_code)
                 try:
-                    screenshot(league["url"], img)
-                    post_tweet(text, img)
+                    post_tweet(text_match_start(m, espn_code))
                     state["tweeted_start"].append(mid)
                     changed = True
                 except Exception as e:
                     print(f"[ERROR] {e}")
                 time.sleep(5)
 
-            # Fin de partido
             if m["state"] == "post" and mid not in state["tweeted_end"]:
                 print(f"[END] {m['home']} {m['score_h']}-{m['score_a']} {m['away']}")
-                text = text_match_end(m, espn_code)
                 try:
-                    screenshot(league["url"], img)
-                    post_tweet(text, img)
+                    post_tweet(text_match_end(m, espn_code))
                     state["tweeted_end"].append(mid)
                     changed = True
                 except Exception as e:
                     print(f"[ERROR] {e}")
                 time.sleep(5)
 
-    # Limpiar IDs viejos (más de 500 entradas)
     if len(state["tweeted_start"]) > 500:
         state["tweeted_start"] = state["tweeted_start"][-200:]
     if len(state["tweeted_end"]) > 500:
@@ -247,9 +211,6 @@ def mode_matches():
 
     if changed:
         save_state(state)
-
-    if img.exists():
-        img.unlink()
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
@@ -260,5 +221,4 @@ if __name__ == "__main__":
         mode_matches()
     else:
         print(f"Modo desconocido: {mode}")
-        print("Uso: python twitter_bot.py [weekend|matches]")
         sys.exit(1)
