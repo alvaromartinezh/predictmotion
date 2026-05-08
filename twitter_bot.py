@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-PredictMotion Bluesky Bot
+PredictMotion Bot — Notificaciones WhatsApp
 
 Modos de uso:
-  python twitter_bot.py weekend   — post general de tabla (cron viernes/sábado/domingo 12:00)
+  python twitter_bot.py weekend   — aviso de tabla (cron viernes/sábado/domingo 12:00)
   python twitter_bot.py matches   — detecta inicio y fin de partidos (cron cada 5 min vie/sáb/dom)
 """
 
@@ -12,15 +12,11 @@ import sys
 import time
 import requests
 from pathlib import Path
-from atproto import Client
-from playwright.sync_api import sync_playwright
+from urllib.parse import quote
 
-# ── Credenciales ─────────────────────────────────────────────────────────────
-BASE = Path(__file__).parent
-BLUESKY_DIR = BASE / "BLUESKY"
-
-HANDLE   = (BLUESKY_DIR / "HANDLE.txt").read_text().strip()
-APP_PASS = (BLUESKY_DIR / "APP.txt").read_text().strip()
+# ── Credenciales WhatsApp (CallMeBot) ─────────────────────────────────────────
+WA_PHONE  = "34666739947"
+WA_APIKEY = "7920575"
 
 # ── Configuración de ligas ────────────────────────────────────────────────────
 LEAGUES = {
@@ -36,27 +32,23 @@ LEAGUES = {
     },
 }
 
+BASE       = Path(__file__).parent
 STATE_FILE = BASE / "twitter_state.json"
 
-# ── Bluesky client ────────────────────────────────────────────────────────────
-def get_client():
-    client = Client()
-    client.login(HANDLE, APP_PASS)
-    return client
-
-# ── Captura de pantalla ───────────────────────────────────────────────────────
-def screenshot(url, path):
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page(viewport={"width": 900, "height": 700})
-        page.goto(url, wait_until="networkidle", timeout=30000)
-        try:
-            page.wait_for_selector("tbody tr", timeout=15000)
-        except Exception:
-            pass
-        time.sleep(2)
-        page.screenshot(path=str(path))
-        browser.close()
+# ── WhatsApp ──────────────────────────────────────────────────────────────────
+def send_whatsapp(text):
+    url = (
+        f"https://api.callmebot.com/whatsapp.php"
+        f"?phone={WA_PHONE}&text={quote(text)}&apikey={WA_APIKEY}"
+    )
+    try:
+        r = requests.get(url, timeout=15)
+        if r.status_code == 200:
+            print(f"[WhatsApp OK] {text[:60]}...")
+        else:
+            print(f"[WhatsApp ERROR] {r.status_code} {r.text[:100]}")
+    except Exception as e:
+        print(f"[WhatsApp ERROR] {e}")
 
 # ── ESPN API ──────────────────────────────────────────────────────────────────
 def fetch_standings(espn_code):
@@ -145,88 +137,59 @@ def text_match_end(match, espn_code):
         f"{league['short']} · Así quedan las probabilidades de ascenso y descenso 👇\n{league['url']}"
     )
 
-# ── Post con imagen ───────────────────────────────────────────────────────────
-def post(text, img_path=None):
-    client = get_client()
-    if img_path and img_path.exists():
-        img_data = img_path.read_bytes()
-        client.send_image(text=text, image=img_data, image_alt="Tabla de clasificación · predictmotion.com")
-    else:
-        client.send_post(text=text)
-    print(f"[OK] Post publicado: {text[:80]}...")
-
 # ── Estado persistente ────────────────────────────────────────────────────────
 def load_state():
     if STATE_FILE.exists():
         return json.loads(STATE_FILE.read_text())
-    return {"tweeted_start": [], "tweeted_end": []}
+    return {"notified_start": [], "notified_end": []}
 
 def save_state(state):
     STATE_FILE.write_text(json.dumps(state, indent=2))
 
 # ── Modo: weekend ─────────────────────────────────────────────────────────────
 def mode_weekend():
-    print("[weekend] Generando posts de tabla...")
-    img = BASE / "screenshot_tmp.png"
+    print("[weekend] Generando avisos de tabla...")
     for espn_code, league in LEAGUES.items():
         teams = fetch_standings(espn_code)
         text = text_weekend(espn_code, teams)
         if not text:
             print(f"[SKIP] Sin datos para {league['name']}")
             continue
-        try:
-            screenshot(league["url"], img)
-            post(text, img)
-        except Exception as e:
-            print(f"[ERROR] {league['name']}: {e}")
-        time.sleep(5)
-    if img.exists():
-        img.unlink()
+        send_whatsapp(text)
+        time.sleep(3)
 
 # ── Modo: matches ─────────────────────────────────────────────────────────────
 def mode_matches():
     print("[matches] Comprobando partidos en curso...")
     state = load_state()
-    img = BASE / "screenshot_tmp.png"
     changed = False
 
-    for espn_code, league in LEAGUES.items():
+    for espn_code in LEAGUES:
         matches = fetch_scoreboard(espn_code)
         for m in matches:
             mid = m["id"]
 
-            if m["state"] == "in" and mid not in state["tweeted_start"]:
+            if m["state"] == "in" and mid not in state["notified_start"]:
                 print(f"[START] {m['home']} vs {m['away']}")
-                try:
-                    screenshot(league["url"], img)
-                    post(text_match_start(m, espn_code), img)
-                    state["tweeted_start"].append(mid)
-                    changed = True
-                except Exception as e:
-                    print(f"[ERROR] {e}")
-                time.sleep(5)
+                send_whatsapp(text_match_start(m, espn_code))
+                state["notified_start"].append(mid)
+                changed = True
+                time.sleep(3)
 
-            if m["state"] == "post" and mid not in state["tweeted_end"]:
+            if m["state"] == "post" and mid not in state["notified_end"]:
                 print(f"[END] {m['home']} {m['score_h']}-{m['score_a']} {m['away']}")
-                try:
-                    screenshot(league["url"], img)
-                    post(text_match_end(m, espn_code), img)
-                    state["tweeted_end"].append(mid)
-                    changed = True
-                except Exception as e:
-                    print(f"[ERROR] {e}")
-                time.sleep(5)
+                send_whatsapp(text_match_end(m, espn_code))
+                state["notified_end"].append(mid)
+                changed = True
+                time.sleep(3)
 
-    if len(state["tweeted_start"]) > 500:
-        state["tweeted_start"] = state["tweeted_start"][-200:]
-    if len(state["tweeted_end"]) > 500:
-        state["tweeted_end"] = state["tweeted_end"][-200:]
+    if len(state["notified_start"]) > 500:
+        state["notified_start"] = state["notified_start"][-200:]
+    if len(state["notified_end"]) > 500:
+        state["notified_end"] = state["notified_end"][-200:]
 
     if changed:
         save_state(state)
-
-    if img.exists():
-        img.unlink()
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
