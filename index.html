@@ -195,6 +195,107 @@
 
     .footer { max-width:940px; margin:18px auto 0; font-size:.7rem; color:var(--muted); display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px; }
     @media (max-width:600px) { .prob-cell{min-width:82px;} .team-name{font-size:.78rem;} thead th,td{padding:8px 9px;} .header-text h1{font-size:1.45rem;} }
+
+    /* ── Play-off de Ascenso ─────────────────────────────────────── */
+    .playoff-section { max-width:940px; margin:28px auto 0; }
+    .section-label {
+      font-family:'Barlow Condensed',sans-serif;
+      font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.16em;
+      color:var(--muted); margin-bottom:12px; padding-left:2px;
+    }
+    .playoff-card {
+      background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+      overflow-x:auto;
+    }
+
+    /* Bracket grid */
+    .bracket-grid {
+      display:grid;
+      grid-template-columns: 1fr 28px minmax(160px,200px) 28px 1fr;
+      padding:24px 20px;
+      min-width:520px;
+    }
+
+    /* Left team slots */
+    .bkg-lt { grid-column:1; grid-row:1; display:flex; justify-content:flex-end; align-items:center; padding-bottom:10px; }
+    .bkg-lb { grid-column:1; grid-row:2; display:flex; justify-content:flex-end; align-items:center; padding-top:10px; }
+
+    /* Left connector – spans both rows */
+    .bkg-cl { grid-column:2; grid-row:1 / span 2; display:flex; flex-direction:column; }
+    .bkg-cl .ch { flex:1; border-right:2px solid var(--border); border-bottom:2px solid var(--border); border-bottom-right-radius:5px; }
+    .bkg-cl .cb { flex:1; border-right:2px solid var(--border); border-top:2px solid var(--border); border-top-right-radius:5px; }
+
+    /* Final center – spans both rows */
+    .bkg-cf {
+      grid-column:3; grid-row:1 / span 2;
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:9px;
+      background:var(--surface2); border:1px solid rgba(230,161,23,.28);
+      border-radius:8px; padding:18px 12px; text-align:center;
+      margin:0 2px;
+    }
+    .bk-final-title {
+      font-family:'Barlow Condensed',sans-serif;
+      font-size:.88rem; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
+      color:var(--accent);
+    }
+    .bk-final-badge {
+      font-family:'Barlow Condensed',sans-serif;
+      font-size:.63rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+      color:var(--green); background:rgba(0,201,122,.08); border:1px solid rgba(0,201,122,.2);
+      border-radius:20px; padding:3px 10px;
+    }
+    .bk-finalist {
+      width:100%; background:var(--surface); border:1px solid var(--border);
+      border-radius:5px; padding:8px 10px; font-size:.77rem; font-weight:500;
+      display:flex; align-items:center; gap:6px; min-height:34px;
+    }
+    .bk-finalist img { width:18px; height:18px; object-fit:contain; flex-shrink:0; }
+    .bk-finalist .fin-name { color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .bk-finalist .fin-tbd { color:var(--muted); font-size:.73rem; font-style:italic; }
+    .bk-vs { font-family:'Barlow Condensed',sans-serif; font-size:.7rem; font-weight:700; letter-spacing:.1em; color:var(--muted); text-transform:uppercase; }
+
+    /* Right connector – spans both rows */
+    .bkg-cr { grid-column:4; grid-row:1 / span 2; display:flex; flex-direction:column; }
+    .bkg-cr .ch { flex:1; border-left:2px solid var(--border); border-bottom:2px solid var(--border); border-bottom-left-radius:5px; }
+    .bkg-cr .cb { flex:1; border-left:2px solid var(--border); border-top:2px solid var(--border); border-top-left-radius:5px; }
+
+    /* Right team slots */
+    .bkg-rt { grid-column:5; grid-row:1; display:flex; justify-content:flex-start; align-items:center; padding-bottom:10px; }
+    .bkg-rb { grid-column:5; grid-row:2; display:flex; justify-content:flex-start; align-items:center; padding-top:10px; }
+
+    /* Team card inside bracket */
+    .bk-team {
+      background:var(--surface2); border:1px solid var(--border); border-left:3px solid var(--blue);
+      border-radius:6px; padding:9px 10px; display:flex; align-items:center; gap:8px;
+      width:100%;
+    }
+    .bk-team-pos {
+      font-family:'Barlow Condensed',sans-serif; font-size:.78rem; font-weight:700;
+      color:var(--blue); width:22px; text-align:center; flex-shrink:0;
+    }
+    .bk-team-logo { width:24px; height:24px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+    .bk-team-logo img { width:100%; height:100%; object-fit:contain; }
+    .bk-team-logo.fallback { background:var(--surface); font-size:.55rem; font-weight:700; border-radius:4px; color:#fff; }
+    .bk-team-info { flex:1; min-width:0; }
+    .bk-team-name { font-size:.8rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .bk-team-p { font-size:.63rem; color:var(--muted); margin-top:2px; line-height:1.4; }
+    .bk-team-p .pf { color:var(--blue); font-weight:600; }
+    .bk-team-p .pw { color:var(--green); font-weight:600; }
+
+    /* Semi-final sub-labels above each column */
+    .bracket-semi-labels {
+      display:grid;
+      grid-template-columns: 1fr 28px minmax(160px,200px) 28px 1fr;
+      padding:0 20px; min-width:520px;
+    }
+    .semi-lbl {
+      font-family:'Barlow Condensed',sans-serif;
+      font-size:.65rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase;
+      color:var(--muted); padding-bottom:6px;
+    }
+    .semi-lbl.left { grid-column:1; text-align:right; }
+    .semi-lbl.center { grid-column:3; text-align:center; color:var(--accent); }
+    .semi-lbl.right { grid-column:5; text-align:left; }
   </style>
 
   <!-- SEO principal -->
@@ -277,7 +378,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <nav class="league-nav">
   <a class="league-btn" href="laliga.html">LaLiga</a>
   <span class="league-btn active">Liga Hypermotion</span>
-  <a class="league-btn" href="primera-rfef.html">1ª RFEF</a>
 </nav>
 
 <div class="legend" id="legend"></div>
@@ -299,6 +399,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </thead>
     <tbody id="tbody"></tbody>
   </table>
+  </div>
+</div>
+
+<div class="playoff-section" id="playoff-section" style="display:none">
+  <div class="section-label">Play-off de Ascenso — Probabilidades &amp; Cuadro</div>
+  <div class="playoff-card" id="playoff-card">
+    <div class="bracket-semi-labels" id="bracket-semi-labels"></div>
+    <div class="bracket-grid" id="bracket-grid"></div>
   </div>
 </div>
 
@@ -402,13 +510,39 @@ function buildFixtures(names, gp, totalMd) {
   return mds;
 }
 
+// ─── Play-off: simula eliminatoria a doble partido ────────────────────────
+function simTwoLegs(home, away) {
+  let h = 0, a = 0;
+  // Leg 1 – home en casa
+  const r1 = rng();
+  if (r1 < P_HOME) {
+    h += (rng() * 2 | 0) + 1 + (rng() * 2 | 0); a += rng() * 2 | 0;
+  } else if (r1 < P_HOME + P_DRAW) {
+    const g = rng() * 2 | 0; h += g; a += g;
+  } else {
+    h += rng() * 2 | 0; a += (rng() * 2 | 0) + 1 + (rng() * 2 | 0);
+  }
+  // Leg 2 – away en casa (roles invertidos)
+  const r2 = rng();
+  if (r2 < P_HOME) {
+    a += (rng() * 2 | 0) + 1 + (rng() * 2 | 0); h += rng() * 2 | 0;
+  } else if (r2 < P_HOME + P_DRAW) {
+    const g = rng() * 2 | 0; h += g; a += g;
+  } else {
+    a += rng() * 2 | 0; h += (rng() * 2 | 0) + 1 + (rng() * 2 | 0);
+  }
+  if (h > a) return home;
+  if (a > h) return away;
+  return rng() < 0.5 ? home : away;  // empate → penaltis
+}
+
 // ─── Simulation ───────────────────────────────────────────────────────────
 function simulate(standings) {
   const numTeams = standings.length;
   const totalMd  = 2 * (numTeams - 1);
   rng = mulberry32(standingsSeed(standings));
   const names  = standings.map(t => t.name);
-  const counts = Object.fromEntries(names.map(n => [n, { t2: 0, t6: 0, b4: 0 }]));
+  const counts = Object.fromEntries(names.map(n => [n, { t2: 0, t6: 0, b4: 0, psf: 0, pf: 0, pw: 0 }]));
   const minGp  = Math.min(...standings.map(t => t.gp));
   const teamGp = Object.fromEntries(standings.map(t => [t.name, t.gp]));
 
@@ -453,13 +587,31 @@ function simulate(standings) {
       else if (p <= LEAGUE.playoffTop)             counts[name].t6++;
       else if (p > numTeams - LEAGUE.relegSlots)   counts[name].b4++;
     });
+
+    // Simulación del play-off: 3º vs 6º  y  4º vs 5º
+    if (sorted.length >= LEAGUE.playoffTop) {
+      const sf1H = sorted[LEAGUE.promoSlots];          // 3º
+      const sf1A = sorted[LEAGUE.playoffTop - 1];      // 6º
+      const sf2H = sorted[LEAGUE.promoSlots + 1];      // 4º
+      const sf2A = sorted[LEAGUE.playoffTop - 2];      // 5º
+      counts[sf1H].psf++; counts[sf1A].psf++;
+      counts[sf2H].psf++; counts[sf2A].psf++;
+      const w1 = simTwoLegs(sf1H, sf1A);
+      const w2 = simTwoLegs(sf2H, sf2A);
+      counts[w1].pf++; counts[w2].pf++;
+      const wf = simTwoLegs(w1, w2);
+      counts[wf].pw++;
+    }
   }
 
   return Object.fromEntries(
     names.map(n => [n, {
-      top2:    +(counts[n].t2 / SIM_N * 100).toFixed(1),
-      playoff: +(counts[n].t6 / SIM_N * 100).toFixed(1),
-      relega:  +(counts[n].b4 / SIM_N * 100).toFixed(1),
+      top2:    +(counts[n].t2  / SIM_N * 100).toFixed(1),
+      playoff: +(counts[n].t6  / SIM_N * 100).toFixed(1),
+      relega:  +(counts[n].b4  / SIM_N * 100).toFixed(1),
+      pSemi:   +(counts[n].psf / SIM_N * 100).toFixed(1),
+      pFinal:  +(counts[n].pf  / SIM_N * 100).toFixed(1),
+      pWin:    +(counts[n].pw  / SIM_N * 100).toFixed(1),
     }])
   );
 }
@@ -608,6 +760,94 @@ function fallbackAvatar(i, name, color) {
   el.innerHTML = initials(name);
 }
 
+// ─── Bracket del play-off ─────────────────────────────────────────────────
+function fallbackBkAvatar(id, name, color) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('fallback');
+  el.style.background = color;
+  el.style.color = '#fff';
+  el.innerHTML = initials(name);
+}
+
+function renderBracket(standings, results) {
+  if (standings.length < LEAGUE.playoffTop) return;
+
+  const p3 = standings[LEAGUE.promoSlots];          // 3º
+  const p4 = standings[LEAGUE.promoSlots + 1];      // 4º
+  const p5 = standings[LEAGUE.playoffTop - 2];      // 5º
+  const p6 = standings[LEAGUE.playoffTop - 1];      // 6º
+
+  function teamCard(t) {
+    const res   = results[t.name] || {};
+    const pf    = res.pFinal || 0;
+    const pw    = res.pWin   || 0;
+    const si    = standings.findIndex(s => s.name === t.name);
+    const color = COLOR_PALETTE[si % COLOR_PALETTE.length];
+    const avId  = `bkav_${t.id}`;
+    return `<div class="bk-team">
+      <div class="bk-team-pos">${t.rank}º</div>
+      <div class="bk-team-logo" id="${avId}">
+        <img src="${t.logo || ''}" alt="${t.name}" loading="lazy"
+          onerror="fallbackBkAvatar('${avId}','${t.name.replace(/'/g,"\\'")}','${color}')" />
+      </div>
+      <div class="bk-team-info">
+        <div class="bk-team-name">${t.name}</div>
+        <div class="bk-team-p">
+          <span class="pf">${pf > 0 ? pf.toFixed(1) + '%' : '—'}</span> final
+          &nbsp;·&nbsp;
+          <span class="pw">${pw > 0 ? pw.toFixed(1) + '%' : '—'}</span> ascenso
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function finalistSlot(id, t) {
+    if (!t) {
+      return `<div class="bk-finalist" id="${id}"><span class="fin-tbd">Por determinar</span></div>`;
+    }
+    const color = COLOR_PALETTE[standings.findIndex(s => s.name === t.name) % COLOR_PALETTE.length];
+    const avId  = `bkfin_av_${t.id}`;
+    const res   = results[t.name] || {};
+    const pw    = res.pWin || 0;
+    return `<div class="bk-finalist" id="${id}">
+      <div class="bk-team-logo" id="${avId}" style="width:18px;height:18px">
+        <img src="${t.logo || ''}" alt="${t.name}" loading="lazy"
+          onerror="fallbackBkAvatar('${avId}','${t.name.replace(/'/g,"\\'")}','${color}')" style="width:18px;height:18px" />
+      </div>
+      <span class="fin-name">${t.name}</span>
+      <span style="margin-left:auto;font-family:'Inconsolata',monospace;font-size:.7rem;color:var(--green);white-space:nowrap">${pw > 0 ? pw.toFixed(1) + '%' : ''}</span>
+    </div>`;
+  }
+
+  // Favoritos a final: el equipo con mayor pFinal de cada eliminatoria
+  const likelyL = (results[p3.name] || {}).pFinal >= (results[p6.name] || {}).pFinal ? p3 : p6;
+  const likelyR = (results[p4.name] || {}).pFinal >= (results[p5.name] || {}).pFinal ? p4 : p5;
+
+  document.getElementById('bracket-semi-labels').innerHTML = `
+    <div class="semi-lbl left">Semifinal 1 · 3º vs 6º</div>
+    <div class="semi-lbl center">Final</div>
+    <div class="semi-lbl right">Semifinal 2 · 4º vs 5º</div>
+  `;
+
+  document.getElementById('bracket-grid').innerHTML = `
+    <div class="bkg-lt">${teamCard(p3)}</div>
+    <div class="bkg-cl"><div class="ch"></div><div class="cb"></div></div>
+    <div class="bkg-cf">
+      ${finalistSlot('bk-fin-l', likelyL)}
+      <div class="bk-final-title">Final</div>
+      <div class="bk-final-badge">→ Ascenso a Primera</div>
+      ${finalistSlot('bk-fin-r', likelyR)}
+    </div>
+    <div class="bkg-cr"><div class="ch"></div><div class="cb"></div></div>
+    <div class="bkg-rt">${teamCard(p4)}</div>
+    <div class="bkg-lb">${teamCard(p6)}</div>
+    <div class="bkg-rb">${teamCard(p5)}</div>
+  `;
+
+  document.getElementById('playoff-section').style.display = '';
+}
+
 // ─── Skeleton ─────────────────────────────────────────────────────────────
 function renderSkeleton(n = cachedNumTeams) {
   let html = '';
@@ -665,6 +905,7 @@ async function triggerUpdate(silent = false) {
 
     const results = simulate(adjusted);
     render(adjusted, results);
+    renderBracket(adjusted, results);
 
     const now = new Date();
     document.getElementById('footer-update').textContent =
