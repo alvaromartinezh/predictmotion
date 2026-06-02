@@ -194,19 +194,15 @@
     /* ── Bracket full (dieciseisavos → final) ── */
     .bracket-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
     .bracket-body {
-      display:flex; align-items:stretch;
-      min-height:640px; min-width:1080px;
+      display:flex; align-items:flex-start;
     }
 
-    /* Round column */
+    /* Round column — height fija para que justify-content:space-around funcione */
     .bk-round {
       display:flex; flex-direction:column; justify-content:space-around;
-      width:130px; flex-shrink:0; padding:0 2px;
+      height:640px; width:108px; flex-shrink:0; padding:0 2px;
     }
-    .bk-round.r32  { width:138px; }
-    .bk-round.r16  { width:130px; }
-    .bk-round.qf   { width:130px; }
-    .bk-round.sf   { width:130px; }
+    .bk-round.r32  { width:118px; }
 
     /* Match pair in a round */
     .bk-match { display:flex; flex-direction:column; gap:2px; }
@@ -222,8 +218,8 @@
     .bk-slot-name { font-size:.72rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; }
     .bk-slot-pct  { font-family:'Barlow Condensed',sans-serif; font-size:.7rem; font-weight:700; color:var(--green); white-space:nowrap; }
 
-    /* Connector column */
-    .bk-conn { width:18px; flex-shrink:0; display:flex; flex-direction:column; }
+    /* Connector column — misma altura fija que los rounds */
+    .bk-conn { height:640px; width:16px; flex-shrink:0; display:flex; flex-direction:column; }
     .bk-conn-pair { flex:1; display:flex; flex-direction:column; }
     .bk-conn-pair .ch { flex:1; border-right:2px solid var(--border); border-bottom:2px solid var(--border); border-bottom-right-radius:4px; }
     .bk-conn-pair .cb { flex:1; border-right:2px solid var(--border); border-top:2px solid var(--border); border-top-right-radius:4px; }
@@ -232,7 +228,7 @@
 
     /* Final center */
     .bk-final-col {
-      width:160px; flex-shrink:0;
+      height:640px; width:140px; flex-shrink:0;
       display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
       padding:20px 12px; text-align:center;
       background:var(--surface2); border:1px solid rgba(230,161,23,.28);
@@ -333,7 +329,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <div class="header-wrap">
 <div class="header">
-  <div class="logo"><img src="https://a.espncdn.com/i/teamlogos/soccer/500/fifa.png" alt="FIFA World Cup" onerror="this.src='https://r2.thesportsdb.com/images/media/league/badge/fi8fsa1557776075.png'" /></div>
+  <div class="logo" style="font-size:2.2rem;filter:drop-shadow(0 2px 12px rgba(230,161,23,.3))">🏆</div>
   <div class="header-text">
     <h1>Copa del Mundo 2026</h1>
     <p>USA · Canadá · México · 48 Selecciones</p>
@@ -520,68 +516,31 @@ function simulateGroups(groups) {
   );
 }
 
-// ─── Knockout bracket simulation ─────────────────────────────────────────
-// teams32: array of 32 team objects in bracket order [slot0..slot31]
-// Left half = slots 0-15, right half = slots 16-31
-function simulateKnockout(teams32) {
-  const n = teams32.length; // 32
-  if (n < 2) return {};
-
-  const counts = Object.fromEntries(teams32.map(t => [t.id, { r16:0, r8:0, r4:0, r2:0, win:0 }]));
-
-  for (let iter = 0; iter < SIM_N; iter++) {
-    let current = [...teams32];
-    const rounds = ['r16','r8','r4','r2','win'];
-    let roundIdx = 0;
-
-    while (current.length > 1) {
-      const next = [];
-      for (let i = 0; i < current.length; i += 2) {
-        const winner = simMatch(current[i].id, current[i+1].id, true);
-        // Find winner team object
-        const wt = winner === current[i].id ? current[i] : current[i+1];
-        if (rounds[roundIdx]) counts[wt.id][rounds[roundIdx]]++;
-        next.push(wt);
-      }
-      current = next;
-      roundIdx++;
-    }
-  }
-
-  return Object.fromEntries(
-    teams32.map(t => [t.id, {
-      pR16: +(counts[t.id].r16 / SIM_N * 100).toFixed(1),
-      pQF:  +(counts[t.id].r8  / SIM_N * 100).toFixed(1),
-      pSF:  +(counts[t.id].r4  / SIM_N * 100).toFixed(1),
-      pF:   +(counts[t.id].r2  / SIM_N * 100).toFixed(1),
-      pWin: +(counts[t.id].win / SIM_N * 100).toFixed(1),
-    }])
-  );
-}
-
 // ─── Build bracket teams array from group results ────────────────────────
 // Uses simplified seeding: 1A vs 2B, 1C vs 2D, … (interleaved pairs)
 // Returns array of 32 team objects
-function buildBracketOrder(groups, groupResults) {
-  const winners  = [];
+function buildBracketOrder(groups) {
+  const winners   = [];
   const runnersUp = [];
-  const thirds   = [];
+  const thirds    = [];
 
+  // Ordenar cada grupo por clasificación actual (pts, dg, gf)
   groups.forEach(g => {
-    const sorted = [...g.entries].sort((a, b) => {
-      const ra = groupResults[a.id] || {}, rb = groupResults[b.id] || {};
-      return (rb.p1st || 0) - (ra.p1st || 0) ||
-             (b.pts - a.pts) ||
-             ((b.gf - b.gc) - (a.gf - a.gc));
-    });
+    const sorted = [...g.entries].sort((a, b) =>
+      b.pts !== a.pts ? b.pts - a.pts :
+      (b.gf - b.gc) !== (a.gf - a.gc) ? (b.gf - b.gc) - (a.gf - a.gc) :
+      b.gf - a.gf
+    );
     if (sorted[0]) winners.push(sorted[0]);
     if (sorted[1]) runnersUp.push(sorted[1]);
     if (sorted[2]) thirds.push(sorted[2]);
   });
 
-  // Sort thirds by advance probability (best 8 go through)
+  // Mejores terceros: ordenar por pts, dg, gf (simplificado)
   thirds.sort((a, b) =>
-    ((groupResults[b.id] || {}).pAdv || 0) - ((groupResults[a.id] || {}).pAdv || 0)
+    b.pts !== a.pts ? b.pts - a.pts :
+    (b.gf - b.gc) !== (a.gf - a.gc) ? (b.gf - b.gc) - (a.gf - a.gc) :
+    b.gf - a.gf
   );
   const best8thirds = thirds.slice(0, 8);
 
@@ -715,172 +674,111 @@ function fallbackBkFlag(id, name, color) {
   el.innerHTML = initials(name).slice(0, 2);
 }
 
-function slotHTML(t, pct, colorIdx, roundKey) {
+function slotHTML(t, colorIdx, slotId) {
   if (!t || t.id === '_empty') {
-    return `<div class="bk-slot empty"><span class="bk-slot-name" style="color:var(--muted);font-size:.65rem">TBD</span></div>`;
+    return `<div class="bk-slot empty"><span class="bk-slot-name" style="color:var(--muted);font-size:.62rem">TBD</span></div>`;
   }
   const color = COLOR_PALETTE[colorIdx % COLOR_PALETTE.length];
-  const avId  = `bkf_${roundKey}_${t.id}`;
-  const pctTxt = pct > 0 ? pct.toFixed(1) + '%' : '';
+  const avId  = `bkf_${slotId}`;
   return `<div class="bk-slot">
     <div class="bk-slot-flag" id="${avId}">
       <img src="${t.logo || ''}" alt="${t.name}" loading="lazy"
         onerror="fallbackBkFlag('${avId}','${t.name.replace(/'/g,"\\'")}','${color}')" />
     </div>
     <span class="bk-slot-name">${t.name}</span>
-    ${pctTxt ? `<span class="bk-slot-pct">${pctTxt}</span>` : ''}
   </div>`;
 }
 
-function renderBracket(bracket32, koResults) {
-  // Organize into left (0-15) and right (16-31) halves
+// Genera una columna de ronda con los matches dados
+function roundColHTML(matches, colorOffset, prefix) {
+  const rClass = matches.length === 8 ? ' r32' : '';
+  const items = matches.map((m, mi) => {
+    const t1 = m ? m[0] : null;
+    const t2 = m ? m[1] : null;
+    return `<div class="bk-match">
+      ${slotHTML(t1, colorOffset + mi * 2,     prefix + mi + 'a')}
+      ${slotHTML(t2, colorOffset + mi * 2 + 1, prefix + mi + 'b')}
+    </div>`;
+  }).join('');
+  return `<div class="bk-round${rClass}">${items}</div>`;
+}
+
+// Genera columna de conectores (N pares de corchete)
+function connHTML(numPairs, rev) {
+  const pairs = Array.from({ length: numPairs }, () =>
+    `<div class="bk-conn-pair"><div class="ch"></div><div class="cb"></div></div>`
+  ).join('');
+  return `<div class="bk-conn${rev ? ' rev' : ''}">${pairs}</div>`;
+}
+
+function renderBracket(bracket32) {
   const left  = bracket32.slice(0, 16);
   const right = bracket32.slice(16, 32);
 
-  // For each half, build 4 rounds: [R32 matches], [R16 matches], [QF matches], [SF match]
-  // R32: pairs from the bracket order
-  function buildRounds(halfTeams, side) {
-    // halfTeams has 16 teams in bracket order: [m1t1, m1t2, m2t1, m2t2, ...]
-    const r32 = [];
-    for (let i = 0; i < halfTeams.length; i += 2) {
-      r32.push([halfTeams[i], halfTeams[i+1]]);
-    }
-    return r32; // 8 first-round matches
+  // Construye los 8 pares de dieciseisavos de cada mitad
+  function toPairs(half) {
+    const pairs = [];
+    for (let i = 0; i < half.length; i += 2) pairs.push([half[i], half[i + 1]]);
+    return pairs; // 8 pares
   }
 
-  const leftR32  = buildRounds(left, 'left');
-  const rightR32 = buildRounds(right, 'right');
+  // Rondas: [dieciseisavos(8), octavos(4), cuartos(2), semis(1)]
+  // Solo dieciseisavos tiene equipos reales; el resto son TBD
+  function emptyRound(n) { return Array.from({ length: n }, () => [null, null]); }
 
-  // Determine projected winner for each match
-  function likelyWinner(t1, t2) {
-    if (!t1 || t1.id === '_empty') return t2;
-    if (!t2 || t2.id === '_empty') return t1;
-    const p1 = (koResults[t1.id] || {}).pWin || 0;
-    const p2 = (koResults[t2.id] || {}).pWin || 0;
-    return p1 >= p2 ? t1 : t2;
-  }
+  const leftRounds  = [toPairs(left),  emptyRound(4), emptyRound(2), emptyRound(1)];
+  const rightRounds = [toPairs(right), emptyRound(4), emptyRound(2), emptyRound(1)];
 
-  // Build projected rounds for each half
-  function buildProjectedTree(r32, prefix) {
-    const rounds = [r32];
-    let prev = r32;
-    while (prev.length > 1) {
-      const next = [];
-      for (let i = 0; i < prev.length; i += 2) {
-        const t1 = likelyWinner(prev[i][0], prev[i][1]);
-        const t2 = likelyWinner(prev[i+1][0], prev[i+1][1]);
-        next.push([t1, t2]);
-      }
-      rounds.push(next);
-      prev = next;
-    }
-    return rounds; // [r32(8), r16(4), qf(2), sf(1)]
-  }
-
-  const leftTree  = buildProjectedTree(leftR32, 'l');
-  const rightTree = buildProjectedTree(rightR32, 'r');
-
-  // Final projected winner
-  const finL = likelyWinner(leftTree[3][0][0], leftTree[3][0][1]);
-  const finR = likelyWinner(rightTree[3][0][0], rightTree[3][0][1]);
-
-  // Round names
-  const ROUND_LABELS = ['Dieciseisavos', 'Octavos', 'Cuartos', 'Semifinal'];
-
-  // Build round columns HTML
-  function roundColHTML(matches, roundKey, colorOffset) {
-    const items = matches.map((m, mi) => {
-      const t1 = m[0], t2 = m[1];
-      return `<div class="bk-match">
-        ${slotHTML(t1, 0, colorOffset + mi * 2,     roundKey + mi + 'a')}
-        ${slotHTML(t2, 0, colorOffset + mi * 2 + 1, roundKey + mi + 'b')}
-      </div>`;
-    }).join('');
-    return `<div class="bk-round">${items}</div>`;
-  }
-
-  // Connector column HTML (N brackets between prev round and next)
-  function connHTML(numPairs, rev) {
-    const pairs = Array.from({ length: numPairs }, () =>
-      `<div class="bk-conn-pair"><div class="ch"></div><div class="cb"></div></div>`
-    ).join('');
-    return `<div class="bk-conn${rev ? ' rev' : ''}">${pairs}</div>`;
-  }
-
-  // Finalist slot
-  function finalistHTML(t, side) {
-    if (!t || t.id === '_empty') {
-      return `<div class="bk-finalist"><span class="fin-tbd">Por determinar</span></div>`;
-    }
-    const color = COLOR_PALETTE[0];
-    const avId  = `bkfin_${side}`;
-    const pw = (koResults[t.id] || {}).pWin || 0;
-    return `<div class="bk-finalist">
-      <img id="${avId}" src="${t.logo || ''}" alt="${t.name}" loading="lazy"
-        onerror="fallbackBkFlag('${avId}','${t.name.replace(/'/g,"\\'")}','${color}')" />
-      <span class="fin-name">${t.name}</span>
-      ${pw > 0 ? `<span class="fin-pct">${pw.toFixed(1)}%</span>` : ''}
-    </div>`;
-  }
-
-  // Build round keys for result lookup
-  const roundKeys = ['r32', 'r16', 'qf', 'sf'];
-
-  // LEFT side columns (R32 → R16 → QF → SF → center)
-  // El número de conectores entre ronda N y ronda N+1 es el número de matches de la ronda N+1
-  // (cada conector agrupa 2 slots del nivel exterior en 1 slot del nivel interior)
+  // Conectores izquierda: R32→R16: 4 pares, R16→QF: 2, QF→SF: 1, SF→Final: 1
+  const L_CONN = [4, 2, 1];
   let leftHTML = '';
-  leftTree.forEach((matches, ri) => {
-    leftHTML += roundColHTML(matches, roundKeys[ri], ri * 16);
-    if (ri < leftTree.length - 1) {
-      leftHTML += connHTML(leftTree[ri + 1].length, false);
-    }
+  leftRounds.forEach((matches, ri) => {
+    leftHTML += roundColHTML(matches, ri * 16, 'l' + ri);
+    if (ri < leftRounds.length - 1) leftHTML += connHTML(L_CONN[ri], false);
   });
   leftHTML += connHTML(1, false); // SF → Final
 
-  // RIGHT side columns (centro ← SF ← QF ← R16 ← R32, espejado)
+  // Conectores derecha (de centro hacia afuera): Final→SF: 1, SF→QF: 1, QF→R16: 2, R16→R32: 4
+  const R_CONN = [1, 2, 4];
   let rightHTML = '';
-  const rightReversed = [...rightTree].reverse(); // [sf(1), qf(2), r16(4), r32(8)]
   rightHTML += connHTML(1, true); // Final → SF
-  rightReversed.forEach((matches, ri) => {
-    if (ri > 0) {
-      // El conector desde el nivel interior (ri-1) al nivel exterior (ri)
-      // tiene tantos pares como matches del nivel INTERIOR
-      rightHTML += connHTML(rightReversed[ri - 1].length, true);
-    }
-    rightHTML += roundColHTML(matches, roundKeys[rightTree.length - 1 - ri], ri * 16 + 8);
+  const rightRev = [...rightRounds].reverse(); // [sf(1), qf(2), r16(4), r32(8)]
+  rightRev.forEach((matches, ri) => {
+    if (ri > 0) rightHTML += connHTML(R_CONN[ri - 1], true);
+    rightHTML += roundColHTML(matches, ri * 16 + 8, 'r' + ri);
   });
+
+  // Ancho de columnas para las etiquetas (debe coincidir con CSS)
+  const W = { r32: 118, other: 108, conn: 16, final: 140 };
+  const LABELS = ['Dieciseisavos', 'Octavos', 'Cuartos', 'Semifinal'];
+
+  function buildLabels(labels, reverse) {
+    const list = reverse ? [...labels].reverse() : labels;
+    return list.map((lbl, i) => {
+      const isR32 = reverse ? i === list.length - 1 : i === 0;
+      const w = isR32 ? W.r32 : W.other;
+      const connBefore = (reverse && i > 0) ? `<div class="bk-lbl" style="width:${W.conn}px"></div>` : '';
+      const connAfter  = (!reverse && i < list.length - 1) ? `<div class="bk-lbl" style="width:${W.conn}px"></div>` : '';
+      return `${connBefore}<div class="bk-lbl" style="width:${w}px">${lbl}</div>${connAfter}`;
+    }).join('');
+  }
+
+  document.getElementById('bracket-labels').innerHTML =
+    buildLabels(LABELS, false) +
+    `<div class="bk-lbl" style="width:${W.conn}px"></div>` +
+    `<div class="bk-lbl highlight" style="width:${W.final}px">Final</div>` +
+    `<div class="bk-lbl" style="width:${W.conn}px"></div>` +
+    buildLabels(LABELS, true);
 
   document.getElementById('bracket-body').innerHTML =
     leftHTML +
     `<div class="bk-final-col">
-      ${finalistHTML(finL, 'l')}
+      <div class="bk-finalist"><span class="fin-tbd">TBD</span></div>
       <div class="bk-final-title">Final</div>
       <div class="bk-final-badge">Campeón del Mundo</div>
-      ${finalistHTML(finR, 'r')}
+      <div class="bk-finalist"><span class="fin-tbd">TBD</span></div>
     </div>` +
     rightHTML;
-
-  // Build labels
-  const lblWidth = { r32: 138, conn: 18, r16: 130, qf: 130, sf: 130, final: 160 };
-  const leftLabels = ROUND_LABELS.map((lbl, i) => {
-    const w = i === 0 ? lblWidth.r32 : lblWidth.r16;
-    const conn = i < ROUND_LABELS.length - 1 ? `<div class="bk-lbl" style="width:${lblWidth.conn}px"></div>` : '';
-    return `<div class="bk-lbl" style="width:${w}px">${lbl}</div>` + conn;
-  }).join('');
-
-  // connector SF→Final
-  const sfConnLbl = `<div class="bk-lbl" style="width:${lblWidth.conn}px"></div>`;
-  const finalLbl  = `<div class="bk-lbl highlight" style="width:${lblWidth.final}px">Final</div>`;
-  const rightConnLbl = `<div class="bk-lbl" style="width:${lblWidth.conn}px"></div>`;
-  const rightLabels = [...ROUND_LABELS].reverse().map((lbl, i) => {
-    const w = i === ROUND_LABELS.length - 1 ? lblWidth.r32 : lblWidth.r16;
-    const conn = i > 0 ? `<div class="bk-lbl" style="width:${lblWidth.conn}px"></div>` : '';
-    return conn + `<div class="bk-lbl" style="width:${w}px">${lbl}</div>`;
-  }).join('');
-
-  document.getElementById('bracket-labels').innerHTML =
-    leftLabels + sfConnLbl + finalLbl + rightConnLbl + rightLabels;
 
   document.getElementById('bracket-section').style.display = '';
 }
@@ -990,10 +888,9 @@ async function triggerUpdate(silent = false) {
     const groupResults = simulateGroups(adjusted);
     renderGroups(adjusted, groupResults);
 
-    // Build and render bracket
-    const bracket32 = buildBracketOrder(adjusted, groupResults);
-    const koResults  = simulateKnockout(bracket32);
-    renderBracket(bracket32, koResults);
+    // Cuadro: solo dieciseisavos basado en clasificación actual
+    const bracket32 = buildBracketOrder(adjusted);
+    renderBracket(bracket32);
 
     const now = new Date();
     document.getElementById('footer-update').textContent =
@@ -1003,6 +900,7 @@ async function triggerUpdate(silent = false) {
     if (liveMatches.length > 0) liveTimer = setTimeout(() => triggerUpdate(true), 60_000);
 
   } catch (err) {
+    document.getElementById('badge-phase').textContent = '—';
     if (err.message !== 'no-groups') {
       document.getElementById('error-banner').textContent =
         `No hay datos disponibles todavía. El Mundial FIFA 2026 comienza el 11 de junio de 2026.`;
