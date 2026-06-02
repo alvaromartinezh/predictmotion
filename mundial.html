@@ -312,48 +312,64 @@
     .stage-arrow { margin-left:auto; font-size:.65rem; color:var(--muted); transition:transform .22s; }
     .stage-acc[open] > .stage-sum .stage-arrow { transform:rotate(90deg); }
 
-    /* ── Match cards ── */
+    /* ── Jornada acordeón (dentro de fase de grupos) ── */
+    .jornada-acc { border-bottom:1px solid var(--border); }
+    .jornada-acc:last-child { border-bottom:none; }
+    .jornada-sum {
+      list-style:none; cursor:pointer;
+      display:flex; align-items:center; gap:8px;
+      padding:7px 16px 7px 26px; user-select:none;
+      background:rgba(61,142,245,.04); transition:background .12s;
+    }
+    .jornada-sum::-webkit-details-marker { display:none; }
+    .jornada-sum:hover { background:rgba(61,142,245,.08); }
+    .jornada-acc[open] > .jornada-sum { background:rgba(61,142,245,.06); border-bottom:1px solid var(--border); }
+    .jornada-lbl { font-family:'Barlow Condensed',sans-serif; font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--blue); }
+    .jornada-detail { font-size:.65rem; color:var(--muted); }
+    .jornada-arrow { margin-left:auto; font-size:.6rem; color:var(--muted); transition:transform .2s; }
+    .jornada-acc[open] > .jornada-sum .jornada-arrow { transform:rotate(90deg); }
+
+    /* ── Match cards (compactos) ── */
     .match-card {
       display:flex; align-items:center; gap:0;
-      padding:9px 16px; border-bottom:1px solid var(--border);
+      padding:5px 12px; border-bottom:1px solid var(--border);
       transition:background .12s;
     }
     .match-card:last-child { border-bottom:none; }
     .match-card:hover { background:var(--surface2); }
     .match-card.mc-live { background:rgba(245,48,80,.04); }
-    .match-card.mc-post .mc-score { color:var(--text); }
 
-    .mc-team { display:flex; align-items:center; gap:8px; flex:1; min-width:0; overflow:hidden; }
+    .mc-team { display:flex; align-items:center; gap:6px; flex:1; min-width:0; overflow:hidden; }
     .mc-team.home { justify-content:flex-end; }
-    .mc-logo { width:26px; height:18px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+    .mc-logo { width:22px; height:15px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
     .mc-logo img { width:100%; height:100%; object-fit:contain; }
-    .mc-logo.fallback { background:var(--surface2); font-size:.48rem; font-weight:700; color:var(--text); border-radius:2px; }
-    .mc-name { font-size:.8rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .mc-logo.fallback { background:var(--surface2); font-size:.42rem; font-weight:700; color:var(--text); border-radius:2px; }
+    .mc-name { font-size:.74rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .mc-team.home .mc-name { text-align:right; }
 
     .mc-center {
-      width:170px; flex-shrink:0; text-align:center;
-      display:flex; flex-direction:column; align-items:center; gap:2px; padding:0 8px;
+      width:148px; flex-shrink:0; text-align:center;
+      display:flex; flex-direction:column; align-items:center; gap:1px; padding:0 6px;
     }
-    .mc-score { font-family:'Inconsolata',monospace; font-size:1.05rem; font-weight:700; letter-spacing:.05em; color:var(--green); }
+    .mc-score { font-family:'Inconsolata',monospace; font-size:.92rem; font-weight:700; letter-spacing:.04em; color:var(--green); }
     .mc-score.live { color:var(--red); }
-    .mc-time-disp { font-family:'Barlow Condensed',sans-serif; font-size:1rem; font-weight:700; color:var(--accent); letter-spacing:.04em; }
+    .mc-time-disp { font-family:'Barlow Condensed',sans-serif; font-size:.88rem; font-weight:700; color:var(--accent); letter-spacing:.03em; }
     .mc-clock-badge {
       display:inline-flex; align-items:center; gap:3px;
-      font-size:.65rem; font-weight:700; color:var(--red);
-      background:rgba(245,48,80,.1); border:1px solid rgba(245,48,80,.25); border-radius:4px; padding:1px 5px;
+      font-size:.6rem; font-weight:700; color:var(--red);
+      background:rgba(245,48,80,.1); border:1px solid rgba(245,48,80,.25); border-radius:3px; padding:1px 4px;
     }
-    .mc-clock-dot { width:5px; height:5px; border-radius:50%; background:var(--red); animation:pulse 1s ease-in-out infinite; }
-    .mc-date-str { font-size:.66rem; color:var(--muted); }
-    .mc-venue-str { font-size:.6rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; }
+    .mc-clock-dot { width:4px; height:4px; border-radius:50%; background:var(--red); animation:pulse 1s ease-in-out infinite; }
+    .mc-date-str { font-size:.6rem; color:var(--muted); }
+    .mc-venue-str { font-size:.56rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:144px; }
 
-    .matches-msg { padding:22px 16px; text-align:center; font-size:.8rem; color:var(--muted); }
+    .matches-msg { padding:16px 14px; text-align:center; font-size:.76rem; color:var(--muted); }
     .matches-msg.err { color:var(--red); }
 
     @media (max-width:520px) {
-      .mc-center { width:110px; }
+      .mc-center { width:100px; }
       .mc-venue-str { display:none; }
-      .mc-name { font-size:.72rem; }
+      .mc-name { font-size:.68rem; }
     }
 
     /* Coming soon */
@@ -440,9 +456,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <!-- Pestañas de sección -->
 <div class="page-tabs" id="page-tabs" style="display:none">
-  <button class="page-tab active" onclick="showSection('partidos')">Partidos</button>
-  <button class="page-tab" onclick="showSection('grupos')">Grupos</button>
-  <button class="page-tab" onclick="showSection('cuadro')">Cuadro</button>
+  <button class="page-tab" data-section="grupos"   onclick="showSection('grupos')">Grupos</button>
+  <button class="page-tab" data-section="cuadro"   onclick="showSection('cuadro')">Cuadro</button>
+  <button class="page-tab" data-section="partidos" onclick="showSection('partidos')">Partidos</button>
 </div>
 
 <!-- Leyenda (solo visible en pestaña Grupos) -->
@@ -894,27 +910,33 @@ function renderBracket(bracket) {
 // ─── Pestañas de sección ─────────────────────────────────────────────────
 function showSection(name) {
   document.querySelectorAll('.page-tab').forEach(b =>
-    b.classList.toggle('active', b.textContent.trim().toLowerCase() === name ||
-      (name === 'partidos' && b.textContent.includes('Partidos')) ||
-      (name === 'grupos'   && b.textContent.includes('Grupos'))   ||
-      (name === 'cuadro'   && b.textContent.includes('Cuadro'))
-    )
+    b.classList.toggle('active', b.dataset.section === name)
   );
-  document.getElementById('schedule-section').style.display = name === 'partidos' ? '' : 'none';
-  document.getElementById('legend').style.display          = name === 'grupos'    ? '' : 'none';
-  document.getElementById('groups-section').style.display  = name === 'grupos'    ? '' : 'none';
-  document.getElementById('bracket-section').style.display = name === 'cuadro'    ? '' : 'none';
+  document.getElementById('schedule-section').style.display  = name === 'partidos' ? '' : 'none';
+  document.getElementById('legend').style.display            = name === 'grupos'   ? '' : 'none';
+  document.getElementById('groups-section').style.display    = name === 'grupos'   ? '' : 'none';
+  document.getElementById('bracket-section').style.display   = name === 'cuadro'   ? '' : 'none';
 }
 
-// ─── Calendario de fases (extraído de la API ESPN) ────────────────────────
+// ─── Fase de grupos activa hasta el 28 Jun UTC ───────────────────────────
+const GROUP_STAGE_END = new Date('2026-06-28T07:00Z');
+
+// ─── Calendario de fases ──────────────────────────────────────────────────
 const CALENDAR_ES = [
-  { id:'grupo', label:'Fase de Grupos',         detail:'11–27 Jun',       start:'20260611', end:'20260628' },
-  { id:'d32',   label:'Dieciseisavos de Final',  detail:'28 Jun – 3 Jul', start:'20260628', end:'20260704' },
-  { id:'r16',   label:'Octavos de Final',        detail:'4–7 Jul',         start:'20260704', end:'20260710' },
-  { id:'qf',    label:'Cuartos de Final',        detail:'9–11 Jul',        start:'20260709', end:'20260712' },
-  { id:'sf',    label:'Semifinales',             detail:'14–15 Jul',       start:'20260714', end:'20260716' },
-  { id:'3rd',   label:'Tercer y Cuarto Puesto',  detail:'18 Jul',          start:'20260718', end:'20260719' },
-  { id:'final', label:'Gran Final',              detail:'19 Jul',          start:'20260719', end:'20260722' },
+  { id:'grupo', label:'Fase de Grupos',         detail:'11–27 Jun',      start:'20260611', end:'20260628' },
+  { id:'d32',   label:'Dieciseisavos de Final',  detail:'28 Jun–3 Jul',   start:'20260628', end:'20260704' },
+  { id:'r16',   label:'Octavos de Final',        detail:'4–7 Jul',        start:'20260704', end:'20260710' },
+  { id:'qf',    label:'Cuartos de Final',        detail:'9–11 Jul',       start:'20260709', end:'20260712' },
+  { id:'sf',    label:'Semifinales',             detail:'14–15 Jul',      start:'20260714', end:'20260716' },
+  { id:'3rd',   label:'Tercer y Cuarto Puesto',  detail:'18 Jul',         start:'20260718', end:'20260719' },
+  { id:'final', label:'Gran Final',              detail:'19 Jul',         start:'20260719', end:'20260722' },
+];
+
+// Jornadas dentro de la fase de grupos
+const JORNADAS = [
+  { id:'j1', label:'Jornada 1', detail:'11–16 Jun', start:'20260611', end:'20260617' },
+  { id:'j2', label:'Jornada 2', detail:'17–21 Jun', start:'20260617', end:'20260622' },
+  { id:'j3', label:'Jornada 3', detail:'22–27 Jun', start:'20260622', end:'20260628' },
 ];
 
 function buildScheduleAccordion() {
@@ -927,7 +949,7 @@ function buildScheduleAccordion() {
         <span class="stage-arrow">▶</span>
       </summary>
       <div class="stage-matches" id="stage-${s.id}">
-        <div class="matches-msg">Cargando partidos…</div>
+        <div class="matches-msg">Cargando…</div>
       </div>
     </details>`).join('');
 
@@ -935,13 +957,58 @@ function buildScheduleAccordion() {
     det.addEventListener('toggle', function () {
       if (!this.open || this.dataset.loaded) return;
       this.dataset.loaded = '1';
-      loadStageMatches(this.dataset.start, this.dataset.end, document.getElementById('stage-' + this.dataset.id));
+      const stageId  = this.dataset.id;
+      const container = document.getElementById('stage-' + stageId);
+      if (stageId === 'grupo') {
+        buildJornadasAccordion(container);
+      } else {
+        loadStageMatches(this.dataset.start, this.dataset.end, container);
+      }
     });
   });
 
-  // Abrir automáticamente la primera fase con datos
-  const first = wrap.querySelector('details');
-  if (first) { first.open = true; }
+  // Abrir automáticamente la fase actual
+  const now = new Date();
+  const activeStage = CALENDAR_ES.find(s => now >= new Date(s.start.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3') + 'T07:00Z')
+    && now < new Date(s.end.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3') + 'T07:00Z'));
+  const toOpen = activeStage
+    ? wrap.querySelector(`details[data-id="${activeStage.id}"]`)
+    : wrap.querySelector('details');
+  if (toOpen) toOpen.open = true;
+}
+
+function buildJornadasAccordion(container) {
+  container.innerHTML = JORNADAS.map(j => `
+    <details class="jornada-acc" data-start="${j.start}" data-end="${j.end}">
+      <summary class="jornada-sum">
+        <span class="jornada-lbl">${j.label}</span>
+        <span class="jornada-detail">${j.detail}</span>
+        <span class="jornada-arrow">▶</span>
+      </summary>
+      <div class="jornada-matches" id="jornada-${j.id}">
+        <div class="matches-msg">Cargando…</div>
+      </div>
+    </details>`).join('');
+
+  container.querySelectorAll('.jornada-acc').forEach(det => {
+    det.addEventListener('toggle', function () {
+      if (!this.open || this.dataset.loaded) return;
+      this.dataset.loaded = '1';
+      const matchesEl = this.querySelector('.jornada-matches');
+      loadStageMatches(this.dataset.start, this.dataset.end, matchesEl);
+    });
+  });
+
+  // Abrir la jornada activa o la primera
+  const now = new Date();
+  const activeJ = JORNADAS.find(j =>
+    now >= new Date(j.start.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3') + 'T07:00Z') &&
+    now < new Date(j.end.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3') + 'T07:00Z')
+  );
+  const toOpen = activeJ
+    ? container.querySelector(`details[data-start="${activeJ.start}"]`)
+    : container.querySelector('details');
+  if (toOpen) toOpen.open = true;
 }
 
 async function loadStageMatches(start, end, container) {
@@ -952,12 +1019,12 @@ async function loadStageMatches(start, end, container) {
     const data = await res.json();
     const events = (data.events || []).sort((a, b) => new Date(a.date) - new Date(b.date));
     if (!events.length) {
-      container.innerHTML = '<div class="matches-msg">No hay partidos programados todavía.</div>';
+      container.innerHTML = '<div class="matches-msg">Sin partidos en este período.</div>';
       return;
     }
     container.innerHTML = events.map(renderMatchCard).join('');
   } catch {
-    container.innerHTML = '<div class="matches-msg err">Error al cargar los partidos. Inténtalo de nuevo.</div>';
+    container.innerHTML = '<div class="matches-msg err">Error al cargar. Inténtalo de nuevo.</div>';
   }
 }
 
@@ -1130,11 +1197,12 @@ async function triggerUpdate(silent = false) {
     document.getElementById('coming-soon').style.display = 'none';
     renderLegend(adjusted.length);
 
-    // Inicializar pestañas y acordeón de partidos (solo la primera vez)
+    // Inicializar pestañas (solo la primera vez que llegan datos)
     if (document.getElementById('page-tabs').style.display === 'none') {
       document.getElementById('page-tabs').style.display = '';
       buildScheduleAccordion();
-      showSection('partidos');
+      // Pestaña inicial: Grupos durante la fase de grupos; Cuadro después
+      showSection(new Date() < GROUP_STAGE_END ? 'grupos' : 'cuadro');
     }
 
     const maxGp = Math.max(...adjusted.flatMap(g => g.entries.map(t => t.gp)));
