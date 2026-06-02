@@ -791,13 +791,9 @@ function renderBracket(bracket32, koResults) {
   function roundColHTML(matches, roundKey, colorOffset) {
     const items = matches.map((m, mi) => {
       const t1 = m[0], t2 = m[1];
-      const ko1 = koResults[t1 ? t1.id : ''] || {};
-      const ko2 = koResults[t2 ? t2.id : ''] || {};
-      const p1  = roundKey === 'r32' ? (ko1.pR16 || 0) : roundKey === 'r16' ? (ko1.pQF || 0) : roundKey === 'qf' ? (ko1.pSF || 0) : (ko1.pF || 0);
-      const p2  = roundKey === 'r32' ? (ko2.pR16 || 0) : roundKey === 'r16' ? (ko2.pQF || 0) : roundKey === 'qf' ? (ko2.pSF || 0) : (ko2.pF || 0);
       return `<div class="bk-match">
-        ${slotHTML(t1, p1, colorOffset + mi * 2, roundKey + mi + 'a')}
-        ${slotHTML(t2, p2, colorOffset + mi * 2 + 1, roundKey + mi + 'b')}
+        ${slotHTML(t1, 0, colorOffset + mi * 2,     roundKey + mi + 'a')}
+        ${slotHTML(t2, 0, colorOffset + mi * 2 + 1, roundKey + mi + 'b')}
       </div>`;
     }).join('');
     return `<div class="bk-round">${items}</div>`;
@@ -831,22 +827,27 @@ function renderBracket(bracket32, koResults) {
   const roundKeys = ['r32', 'r16', 'qf', 'sf'];
 
   // LEFT side columns (R32 → R16 → QF → SF → center)
+  // El número de conectores entre ronda N y ronda N+1 es el número de matches de la ronda N+1
+  // (cada conector agrupa 2 slots del nivel exterior en 1 slot del nivel interior)
   let leftHTML = '';
   leftTree.forEach((matches, ri) => {
     leftHTML += roundColHTML(matches, roundKeys[ri], ri * 16);
-    if (ri < leftTree.length - 1) leftHTML += connHTML(matches.length, false);
+    if (ri < leftTree.length - 1) {
+      leftHTML += connHTML(leftTree[ri + 1].length, false);
+    }
   });
-  // Connector from SF to final
-  leftHTML += connHTML(1, false);
+  leftHTML += connHTML(1, false); // SF → Final
 
-  // RIGHT side columns (center ← SF ← QF ← R16 ← R32 mirrored)
+  // RIGHT side columns (centro ← SF ← QF ← R16 ← R32, espejado)
   let rightHTML = '';
-  // Right side is mirrored: first the SF→QF→R16→R32
   const rightReversed = [...rightTree].reverse(); // [sf(1), qf(2), r16(4), r32(8)]
-  // Connector from final to SF
-  rightHTML += connHTML(1, true);
+  rightHTML += connHTML(1, true); // Final → SF
   rightReversed.forEach((matches, ri) => {
-    if (ri > 0) rightHTML += connHTML(matches.length, true);
+    if (ri > 0) {
+      // El conector desde el nivel interior (ri-1) al nivel exterior (ri)
+      // tiene tantos pares como matches del nivel INTERIOR
+      rightHTML += connHTML(rightReversed[ri - 1].length, true);
+    }
     rightHTML += roundColHTML(matches, roundKeys[rightTree.length - 1 - ri], ri * 16 + 8);
   });
 
