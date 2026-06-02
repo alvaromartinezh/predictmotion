@@ -277,6 +277,85 @@
       .bk-lbl-final { width:110px; }
     }
 
+    /* ── Pestañas de sección ── */
+    .page-tabs { max-width:1100px; margin:0 auto 18px; display:flex; gap:6px; flex-wrap:wrap; }
+    .page-tab {
+      padding:8px 22px; border-radius:20px;
+      font-family:'Barlow Condensed',sans-serif;
+      font-size:.76rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em;
+      border:1px solid var(--border); background:var(--surface2); color:var(--muted);
+      cursor:pointer; transition:color .15s, border-color .15s, background .15s;
+    }
+    .page-tab.active { background:rgba(230,161,23,.10); border-color:rgba(230,161,23,.45); color:var(--accent); }
+    .page-tab:hover:not(.active) { color:var(--text); border-color:var(--muted); }
+
+    /* ── Acordeón de fases ── */
+    .schedule-wrap { max-width:1100px; margin:0 auto; }
+    .stage-acc {
+      background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+      margin-bottom:8px; overflow:hidden;
+    }
+    .stage-sum {
+      list-style:none; cursor:pointer;
+      display:flex; align-items:center; gap:10px;
+      padding:12px 18px; user-select:none;
+      transition:background .12s;
+    }
+    .stage-sum::-webkit-details-marker { display:none; }
+    .stage-sum:hover { background:var(--surface2); }
+    .stage-acc[open] > .stage-sum { background:var(--surface2); border-bottom:1px solid var(--border); }
+    .stage-name {
+      font-family:'Barlow Condensed',sans-serif;
+      font-size:.8rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--text);
+    }
+    .stage-detail { font-size:.7rem; color:var(--muted); }
+    .stage-arrow { margin-left:auto; font-size:.65rem; color:var(--muted); transition:transform .22s; }
+    .stage-acc[open] > .stage-sum .stage-arrow { transform:rotate(90deg); }
+
+    /* ── Match cards ── */
+    .match-card {
+      display:flex; align-items:center; gap:0;
+      padding:9px 16px; border-bottom:1px solid var(--border);
+      transition:background .12s;
+    }
+    .match-card:last-child { border-bottom:none; }
+    .match-card:hover { background:var(--surface2); }
+    .match-card.mc-live { background:rgba(245,48,80,.04); }
+    .match-card.mc-post .mc-score { color:var(--text); }
+
+    .mc-team { display:flex; align-items:center; gap:8px; flex:1; min-width:0; overflow:hidden; }
+    .mc-team.home { justify-content:flex-end; }
+    .mc-logo { width:26px; height:18px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+    .mc-logo img { width:100%; height:100%; object-fit:contain; }
+    .mc-logo.fallback { background:var(--surface2); font-size:.48rem; font-weight:700; color:var(--text); border-radius:2px; }
+    .mc-name { font-size:.8rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .mc-team.home .mc-name { text-align:right; }
+
+    .mc-center {
+      width:170px; flex-shrink:0; text-align:center;
+      display:flex; flex-direction:column; align-items:center; gap:2px; padding:0 8px;
+    }
+    .mc-score { font-family:'Inconsolata',monospace; font-size:1.05rem; font-weight:700; letter-spacing:.05em; color:var(--green); }
+    .mc-score.live { color:var(--red); }
+    .mc-time-disp { font-family:'Barlow Condensed',sans-serif; font-size:1rem; font-weight:700; color:var(--accent); letter-spacing:.04em; }
+    .mc-clock-badge {
+      display:inline-flex; align-items:center; gap:3px;
+      font-size:.65rem; font-weight:700; color:var(--red);
+      background:rgba(245,48,80,.1); border:1px solid rgba(245,48,80,.25); border-radius:4px; padding:1px 5px;
+    }
+    .mc-clock-dot { width:5px; height:5px; border-radius:50%; background:var(--red); animation:pulse 1s ease-in-out infinite; }
+    .mc-date-str { font-size:.66rem; color:var(--muted); }
+    .mc-venue-str { font-size:.6rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; }
+
+    .matches-msg { padding:22px 16px; text-align:center; font-size:.8rem; color:var(--muted); }
+    .matches-msg.err { color:var(--red); }
+
+    @media (max-width:520px) {
+      .mc-center { width:110px; }
+      .mc-venue-str { display:none; }
+      .mc-name { font-size:.72rem; }
+    }
+
     /* Coming soon */
     .coming-soon {
       max-width:600px; margin:60px auto; text-align:center;
@@ -340,7 +419,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <div class="header-wrap">
 <div class="header">
-  <div class="logo"><img id="league-logo" src="https://a.espncdn.com/i/leaguelogos/soccer/500-dark/4.png" alt="Copa del Mundo 2026" style="width:100%;height:100%;object-fit:contain" /></div>
+  <div class="logo"><img id="league-logo" src="/media/mundial_logo.png" alt="Copa del Mundo 2026" style="width:100%;height:100%;object-fit:contain" /></div>
   <div class="header-text">
     <h1>Copa del Mundo 2026</h1>
     <p>USA · Canadá · México · 48 Selecciones</p>
@@ -358,7 +437,21 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 </nav>
 
 <div class="error-banner" id="error-banner"></div>
-<div class="legend" id="legend"></div>
+
+<!-- Pestañas de sección -->
+<div class="page-tabs" id="page-tabs" style="display:none">
+  <button class="page-tab active" onclick="showSection('partidos')">Partidos</button>
+  <button class="page-tab" onclick="showSection('grupos')">Grupos</button>
+  <button class="page-tab" onclick="showSection('cuadro')">Cuadro</button>
+</div>
+
+<!-- Leyenda (solo visible en pestaña Grupos) -->
+<div class="legend" id="legend" style="display:none"></div>
+
+<!-- Partidos por fase -->
+<div id="schedule-section" style="display:none">
+  <div class="schedule-wrap" id="schedule-wrap"></div>
+</div>
 
 <!-- Groups section -->
 <div class="section-wrap" id="groups-section" style="display:none">
@@ -368,7 +461,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <!-- Bracket section -->
 <div class="section-wrap" id="bracket-section" style="display:none">
-  <div class="section-label">Cuadro Eliminatorio — Dieciseisavos a Final</div>
+  <div class="section-label">Cuadro Eliminatorio</div>
   <div class="bracket-scroll">
     <div class="bracket-wrap-inner">
       <div class="bracket-labels" id="bracket-labels"></div>
@@ -798,6 +891,139 @@ function renderBracket(bracket) {
   document.getElementById('bracket-section').style.display = '';
 }
 
+// ─── Pestañas de sección ─────────────────────────────────────────────────
+function showSection(name) {
+  document.querySelectorAll('.page-tab').forEach(b =>
+    b.classList.toggle('active', b.textContent.trim().toLowerCase() === name ||
+      (name === 'partidos' && b.textContent.includes('Partidos')) ||
+      (name === 'grupos'   && b.textContent.includes('Grupos'))   ||
+      (name === 'cuadro'   && b.textContent.includes('Cuadro'))
+    )
+  );
+  document.getElementById('schedule-section').style.display = name === 'partidos' ? '' : 'none';
+  document.getElementById('legend').style.display          = name === 'grupos'    ? '' : 'none';
+  document.getElementById('groups-section').style.display  = name === 'grupos'    ? '' : 'none';
+  document.getElementById('bracket-section').style.display = name === 'cuadro'    ? '' : 'none';
+}
+
+// ─── Calendario de fases (extraído de la API ESPN) ────────────────────────
+const CALENDAR_ES = [
+  { id:'grupo', label:'Fase de Grupos',         detail:'11–27 Jun',       start:'20260611', end:'20260628' },
+  { id:'d32',   label:'Dieciseisavos de Final',  detail:'28 Jun – 3 Jul', start:'20260628', end:'20260704' },
+  { id:'r16',   label:'Octavos de Final',        detail:'4–7 Jul',         start:'20260704', end:'20260710' },
+  { id:'qf',    label:'Cuartos de Final',        detail:'9–11 Jul',        start:'20260709', end:'20260712' },
+  { id:'sf',    label:'Semifinales',             detail:'14–15 Jul',       start:'20260714', end:'20260716' },
+  { id:'3rd',   label:'Tercer y Cuarto Puesto',  detail:'18 Jul',          start:'20260718', end:'20260719' },
+  { id:'final', label:'Gran Final',              detail:'19 Jul',          start:'20260719', end:'20260722' },
+];
+
+function buildScheduleAccordion() {
+  const wrap = document.getElementById('schedule-wrap');
+  wrap.innerHTML = CALENDAR_ES.map(s => `
+    <details class="stage-acc" data-start="${s.start}" data-end="${s.end}" data-id="${s.id}">
+      <summary class="stage-sum">
+        <span class="stage-name">${s.label}</span>
+        <span class="stage-detail">${s.detail}</span>
+        <span class="stage-arrow">▶</span>
+      </summary>
+      <div class="stage-matches" id="stage-${s.id}">
+        <div class="matches-msg">Cargando partidos…</div>
+      </div>
+    </details>`).join('');
+
+  wrap.querySelectorAll('details.stage-acc').forEach(det => {
+    det.addEventListener('toggle', function () {
+      if (!this.open || this.dataset.loaded) return;
+      this.dataset.loaded = '1';
+      loadStageMatches(this.dataset.start, this.dataset.end, document.getElementById('stage-' + this.dataset.id));
+    });
+  });
+
+  // Abrir automáticamente la primera fase con datos
+  const first = wrap.querySelector('details');
+  if (first) { first.open = true; }
+}
+
+async function loadStageMatches(start, end, container) {
+  try {
+    const url = `${ESPN_SCOREBOARD}?dates=${start}-${end}&limit=100`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    const events = (data.events || []).sort((a, b) => new Date(a.date) - new Date(b.date));
+    if (!events.length) {
+      container.innerHTML = '<div class="matches-msg">No hay partidos programados todavía.</div>';
+      return;
+    }
+    container.innerHTML = events.map(renderMatchCard).join('');
+  } catch {
+    container.innerHTML = '<div class="matches-msg err">Error al cargar los partidos. Inténtalo de nuevo.</div>';
+  }
+}
+
+function renderMatchCard(ev) {
+  const comp  = ev.competitions?.[0];
+  if (!comp) return '';
+  const home  = comp.competitors?.find(c => c.homeAway === 'home');
+  const away  = comp.competitors?.find(c => c.homeAway === 'away');
+  if (!home || !away) return '';
+
+  const state = ev.status?.type?.state;   // 'pre' | 'in' | 'post'
+  const clock = ev.status?.displayClock || '';
+  const venue = comp.venue?.fullName || '';
+
+  const dt      = new Date(ev.date);
+  const dateStr = dt.toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short' });
+  const timeStr = dt.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
+
+  const hScore = parseInt(home.score) || 0;
+  const aScore = parseInt(away.score) || 0;
+
+  let centerHTML;
+  if (state === 'post') {
+    centerHTML = `<div class="mc-score">${hScore} – ${aScore}</div>`;
+  } else if (state === 'in') {
+    centerHTML = `<div class="mc-score live">${hScore} – ${aScore}</div>
+      <div class="mc-clock-badge"><div class="mc-clock-dot"></div>${clock}</div>`;
+  } else {
+    centerHTML = `<div class="mc-time-disp">${timeStr}</div>`;
+  }
+
+  const hLogo = home.team?.logos?.[0]?.href || '';
+  const aLogo = away.team?.logos?.[0]?.href || '';
+  const hId = `mch_${ev.id}`, aId = `mca_${ev.id}`;
+  const cardCls = state === 'in' ? ' mc-live' : state === 'post' ? ' mc-post' : '';
+
+  return `<div class="match-card${cardCls}">
+    <div class="mc-team home">
+      <span class="mc-name">${home.team.displayName}</span>
+      <div class="mc-logo" id="${hId}">
+        <img src="${hLogo}" alt="${home.team.displayName}" loading="lazy"
+          onerror="fallbackMcLogo('${hId}','${home.team.abbreviation || home.team.displayName.slice(0,3).toUpperCase()}')" />
+      </div>
+    </div>
+    <div class="mc-center">
+      ${centerHTML}
+      <div class="mc-date-str">${dateStr}</div>
+      <div class="mc-venue-str">${venue}</div>
+    </div>
+    <div class="mc-team away">
+      <div class="mc-logo" id="${aId}">
+        <img src="${aLogo}" alt="${away.team.displayName}" loading="lazy"
+          onerror="fallbackMcLogo('${aId}','${away.team.abbreviation || away.team.displayName.slice(0,3).toUpperCase()}')" />
+      </div>
+      <span class="mc-name">${away.team.displayName}</span>
+    </div>
+  </div>`;
+}
+
+function fallbackMcLogo(id, abbr) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('fallback');
+  el.innerHTML = abbr.slice(0, 3);
+}
+
 // ─── ESPN fetch ───────────────────────────────────────────────────────────
 async function fetchGroups() {
   const res = await fetch(ESPN_STANDINGS);
@@ -903,7 +1129,13 @@ async function triggerUpdate(silent = false) {
     numGroupsGlobal = adjusted.length;
     document.getElementById('coming-soon').style.display = 'none';
     renderLegend(adjusted.length);
-    document.getElementById('groups-section').style.display = '';
+
+    // Inicializar pestañas y acordeón de partidos (solo la primera vez)
+    if (document.getElementById('page-tabs').style.display === 'none') {
+      document.getElementById('page-tabs').style.display = '';
+      buildScheduleAccordion();
+      showSection('partidos');
+    }
 
     const maxGp = Math.max(...adjusted.flatMap(g => g.entries.map(t => t.gp)));
     document.getElementById('badge-phase').innerHTML =
