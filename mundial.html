@@ -340,7 +340,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <div class="header-wrap">
 <div class="header">
-  <div class="logo" style="font-size:2.2rem;filter:drop-shadow(0 2px 12px rgba(230,161,23,.3))">🏆</div>
+  <div class="logo"><img id="league-logo" src="https://a.espncdn.com/i/leaguelogos/soccer/500-dark/4.png" alt="Copa del Mundo 2026" style="width:100%;height:100%;object-fit:contain" /></div>
   <div class="header-text">
     <h1>Copa del Mundo 2026</h1>
     <p>USA · Canadá · México · 48 Selecciones</p>
@@ -443,10 +443,10 @@ function simMatch(h, a, knockout) {
 // ─── Group stage Monte Carlo ──────────────────────────────────────────────
 function simulateGroups(groups) {
   rng = mulberry32(groupsSeed(groups));
-  const NUM_GROUPS    = groups.length;         // 12 for 2026
-  const DIRECT_SLOTS  = 2;                     // top 2 advance directly
-  const BEST3_TOTAL   = Math.min(8, NUM_GROUPS);  // 8 best 3rd-place teams advance
-  // Each group: 4 teams, single round-robin (6 matches)
+  const NUM_GROUPS  = groups.length;
+  // Formato clásico (8 grupos): solo top 2 pasan, no hay mejores terceros
+  // Formato ampliado (12 grupos): 8 mejores terceros pasan
+  const BEST3_TOTAL = NUM_GROUPS <= 8 ? 0 : Math.min(8, NUM_GROUPS);
 
   // per-team counters: [1st, 2nd, 3rd, eliminated]
   const counts = {};
@@ -530,14 +530,13 @@ function simulateGroups(groups) {
 }
 
 // ─── Build bracket teams array from group results ────────────────────────
-// Uses simplified seeding: 1A vs 2B, 1C vs 2D, … (interleaved pairs)
-// Returns array of 32 team objects
+// Devuelve 16 equipos (formato 8 grupos) o 32 equipos (formato 12 grupos)
 function buildBracketOrder(groups) {
+  const n = groups.length;
   const winners   = [];
   const runnersUp = [];
   const thirds    = [];
 
-  // Ordenar cada grupo por clasificación actual (pts, dg, gf)
   groups.forEach(g => {
     const sorted = [...g.entries].sort((a, b) =>
       b.pts !== a.pts ? b.pts - a.pts :
@@ -549,30 +548,37 @@ function buildBracketOrder(groups) {
     if (sorted[2]) thirds.push(sorted[2]);
   });
 
-  // Mejores terceros: ordenar por pts, dg, gf (simplificado)
+  if (n <= 8) {
+    // Formato clásico: 8 grupos, 16 clasificados (octavos de final)
+    // Mitad izquierda: 1A vs 2B, 1C vs 2D, 1E vs 2F, 1G vs 2H
+    // Mitad derecha:   1B vs 2A, 1D vs 2C, 1F vs 2E, 1H vs 2G
+    const bracket = [];
+    for (let i = 0; i < n; i += 2) {
+      bracket.push(winners[i]       || EMPTY_TEAM);  // 1A
+      bracket.push(runnersUp[i + 1] || EMPTY_TEAM);  // 2B
+    }
+    for (let i = 0; i < n; i += 2) {
+      bracket.push(winners[i + 1]   || EMPTY_TEAM);  // 1B
+      bracket.push(runnersUp[i]     || EMPTY_TEAM);  // 2A
+    }
+    return bracket;  // 16 equipos
+  }
+
+  // Formato ampliado: 12 grupos, 32 clasificados (dieciseisavos)
   thirds.sort((a, b) =>
     b.pts !== a.pts ? b.pts - a.pts :
     (b.gf - b.gc) !== (a.gf - a.gc) ? (b.gf - b.gc) - (a.gf - a.gc) :
     b.gf - a.gf
   );
-  const best8thirds = thirds.slice(0, 8);
-
-  // Construir 32 slots: 12 primeros + 12 segundos + 8 mejores terceros
-  // Emparejamiento: 1A vs 2B, 1B vs 2A, 1C vs 2D, ... (cada par de grupos consecutivos)
+  const best8 = thirds.slice(0, 8);
   const bracket = [];
-  const n = groups.length;  // 12 en el Mundial 2026
-
   for (let i = 0; i < n; i += 2) {
-    bracket.push(winners[i]     || EMPTY_TEAM);
+    bracket.push(winners[i]       || EMPTY_TEAM);
     bracket.push(runnersUp[i + 1] || EMPTY_TEAM);
     bracket.push(winners[i + 1]   || EMPTY_TEAM);
     bracket.push(runnersUp[i]     || EMPTY_TEAM);
   }
-  // Slots 24-31: los 8 mejores terceros se enfrentan entre sí
-  for (let i = 0; i < 8; i++) {
-    bracket.push(best8thirds[i] || EMPTY_TEAM);
-  }
-
+  for (let i = 0; i < 8; i++) bracket.push(best8[i] || EMPTY_TEAM);
   while (bracket.length < 32) bracket.push(EMPTY_TEAM);
   return bracket.slice(0, 32);
 }
@@ -590,9 +596,11 @@ function pBar(pct, cls) {
   </div>`;
 }
 
-function teamZoneClass(rank, n) {
-  if (rank <= 2) return 'z-promo';      // top 2 = direct advance
-  if (rank === 3) return 'z-maybes';    // 3rd = maybe best 3rd
+let numGroupsGlobal = 8;  // se actualiza cuando llegan los datos
+
+function teamZoneClass(rank) {
+  if (rank <= 2) return 'z-promo';
+  if (rank === 3 && numGroupsGlobal > 8) return 'z-maybes';  // solo en formato 12 grupos
   return 'z-out';
 }
 
@@ -609,7 +617,7 @@ function renderGroups(groups, groupResults) {
     const rows = entries.map((t, i) => {
       const res  = groupResults[t.id] || {};
       const pAdv = res.pAdv || 0;
-      const zone = teamZoneClass(t.rank, entries.length);
+      const zone = teamZoneClass(t.rank);
       const color = COLOR_PALETTE[i % COLOR_PALETTE.length];
       const avId  = `gav_${gi}_${t.id}`;
       return `<tr class="${zone}">
@@ -684,7 +692,7 @@ function fallbackBkFlag(id, name, color) {
 
 function slotHTML(t, colorIdx, slotId) {
   if (!t || t.id === '_empty') {
-    return `<div class="bk-slot empty"><span class="bk-slot-name" style="color:var(--muted);font-size:.62rem">TBD</span></div>`;
+    return `<div class="bk-slot empty"><span class="bk-slot-name" style="color:var(--muted);font-size:.62rem">—</span></div>`;
   }
   const color = COLOR_PALETTE[colorIdx % COLOR_PALETTE.length];
   const avId  = `bkf_${slotId}`;
@@ -719,61 +727,71 @@ function connHTML(numPairs, rev) {
   return `<div class="bk-conn${rev ? ' rev' : ''}">${pairs}</div>`;
 }
 
-function renderBracket(bracket32) {
-  const left  = bracket32.slice(0, 16);
-  const right = bracket32.slice(16, 32);
+function renderBracket(bracket) {
+  const total = bracket.length;          // 16 u 32
+  const half  = total / 2;               // 8 o 16
+  const left  = bracket.slice(0, half);
+  const right = bracket.slice(half);
 
-  // Construye los 8 pares de dieciseisavos de cada mitad
-  function toPairs(half) {
-    const pairs = [];
-    for (let i = 0; i < half.length; i += 2) pairs.push([half[i], half[i + 1]]);
-    return pairs; // 8 pares
+  function toPairs(arr) {
+    const p = [];
+    for (let i = 0; i < arr.length; i += 2) p.push([arr[i], arr[i + 1]]);
+    return p;
   }
-
-  // Rondas: [dieciseisavos(8), octavos(4), cuartos(2), semis(1)]
-  // Solo dieciseisavos tiene equipos reales; el resto son TBD
   function emptyRound(n) { return Array.from({ length: n }, () => [null, null]); }
 
-  const leftRounds  = [toPairs(left),  emptyRound(4), emptyRound(2), emptyRound(1)];
-  const rightRounds = [toPairs(right), emptyRound(4), emptyRound(2), emptyRound(1)];
+  // Construir las rondas: primera con equipos reales, resto vacías
+  function buildRounds(halfTeams) {
+    const first = toPairs(halfTeams);   // 4 u 8 matches
+    const rounds = [first];
+    let cur = first.length;
+    while (cur > 1) {
+      cur = Math.floor(cur / 2);
+      rounds.push(emptyRound(cur));
+    }
+    return rounds;  // [primera(4u8), siguiente(2u4), ..., semis(1)]
+  }
 
-  // Conectores izquierda: R32→R16: 4 pares, R16→QF: 2, QF→SF: 1, SF→Final: 1
-  const L_CONN = [4, 2, 1];
+  const leftRounds  = buildRounds(left);
+  const rightRounds = buildRounds(right);
+  const numRounds   = leftRounds.length;  // 3 para 16 equipos, 4 para 32
+
+  // Etiquetas de ronda según tamaño del bracket
+  const ALL_LABELS = ['Dieciseisavos', 'Octavos', 'Cuartos', 'Semifinal'];
+  const LABELS = ALL_LABELS.slice(ALL_LABELS.length - numRounds);
+  // 16 equipos → ['Octavos','Cuartos','Semifinal']
+  // 32 equipos → ['Dieciseisavos','Octavos','Cuartos','Semifinal']
+
+  // Conectores: entre ronda ri y ri+1 → next_round.length pares
   let leftHTML = '';
   leftRounds.forEach((matches, ri) => {
     leftHTML += roundColHTML(matches, ri * 16, 'l' + ri);
-    if (ri < leftRounds.length - 1) leftHTML += connHTML(L_CONN[ri], false);
+    if (ri < numRounds - 1) leftHTML += connHTML(leftRounds[ri + 1].length, false);
   });
-  leftHTML += connHTML(1, false); // SF → Final
+  leftHTML += connHTML(1, false);  // SF → Final
 
-  // Conectores derecha (de centro hacia afuera): Final→SF: 1, SF→QF: 1, QF→R16: 2, R16→R32: 4
-  const R_CONN = [1, 2, 4];
   let rightHTML = '';
-  rightHTML += connHTML(1, true); // Final → SF
-  const rightRev = [...rightRounds].reverse(); // [sf(1), qf(2), r16(4), r32(8)]
+  rightHTML += connHTML(1, true);  // Final → SF
+  const rightRev = [...rightRounds].reverse();  // de interior a exterior
   rightRev.forEach((matches, ri) => {
-    if (ri > 0) rightHTML += connHTML(R_CONN[ri - 1], true);
+    if (ri > 0) rightHTML += connHTML(rightRev[ri - 1].length, true);
     rightHTML += roundColHTML(matches, ri * 16 + 8, 'r' + ri);
   });
 
-  const LABELS = ['Dieciseisavos', 'Octavos', 'Cuartos', 'Semifinal'];
-  const C = '<div class="bk-lbl-conn"></div>';  // placeholder de conector
+  // Etiquetas
+  const C = '<div class="bk-lbl-conn"></div>';
   const F = '<div class="bk-lbl-final highlight" style="font-family:\'Barlow Condensed\',sans-serif;font-size:.6rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;text-align:center;color:var(--accent)">Final</div>';
-
-  // Izquierda: R32 C R16 C QF C SF
-  const lblL = LABELS.map((l, i) => `<div class="bk-lbl${i===0?' highlight':''}">${l}</div>${i < LABELS.length - 1 ? C : ''}`).join('');
-  // Derecha: SF C QF C R16 C R32 (espejo)
-  const lblR = [...LABELS].reverse().map((l, i) => `${i > 0 ? C : ''}<div class="bk-lbl${i===LABELS.length-1?' highlight':''}">${l}</div>`).join('');
-
+  const lblL = LABELS.map((l, i) => `<div class="bk-lbl">${l}</div>${i < LABELS.length - 1 ? C : ''}`).join('');
+  const lblR = [...LABELS].reverse().map((l, i) => `${i > 0 ? C : ''}<div class="bk-lbl">${l}</div>`).join('');
   document.getElementById('bracket-labels').innerHTML = lblL + C + F + C + lblR;
 
   document.getElementById('bracket-body').innerHTML =
     leftHTML +
     `<div class="bk-final-col">
-      <div class="bk-finalist"><span class="fin-tbd">TBD</span></div>
+      <div class="bk-finalist"><span class="fin-tbd">Por determinar</span></div>
       <div class="bk-final-title">Final</div>
       <div class="bk-final-badge">Campeón del Mundo</div>
-      <div class="bk-finalist"><span class="fin-tbd">TBD</span></div>
+      <div class="bk-finalist"><span class="fin-tbd">Por determinar</span></div>
     </div>` +
     rightHTML;
 
@@ -786,13 +804,13 @@ async function fetchGroups() {
   if (!res.ok) throw new Error(`ESPN ${res.status}`);
   const data = await res.json();
 
-  // Extraer logo de la competición desde la respuesta de ESPN
-  const leagueLogo = data.leagues?.[0]?.logos?.find(l => l.rel?.includes('dark') || l.rel?.includes('default'))?.href
+  // Actualizar logo con el que devuelva ESPN si difiere del default
+  const leagueLogo = data.leagues?.[0]?.logos?.find(l => l.rel?.includes('dark'))?.href
                   || data.leagues?.[0]?.logos?.[0]?.href
                   || null;
   if (leagueLogo) {
-    const logoEl = document.querySelector('.logo');
-    if (logoEl) logoEl.innerHTML = `<img src="${leagueLogo}" alt="FIFA World Cup" style="width:100%;height:100%;object-fit:contain" />`;
+    const img = document.getElementById('league-logo');
+    if (img) img.src = leagueLogo;
   }
 
   const children = data.children || [];
@@ -862,10 +880,11 @@ function applyLive(groups, liveMatches) {
 }
 
 // ─── Render legend ────────────────────────────────────────────────────────
-function renderLegend() {
+function renderLegend(numGroups) {
+  const has3rd = numGroups > 8;
   document.getElementById('legend').innerHTML = `
-    <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Clasificado directo (1º–2º)</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div>Posible mejor 3º (8 de 12)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Clasificado (1º–2º de grupo)</div>
+    ${has3rd ? `<div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div>Posible mejor 3º (8 de ${numGroups})</div>` : ''}
     <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>Eliminado</div>
   `;
 }
@@ -881,8 +900,9 @@ async function triggerUpdate(silent = false) {
     const [groups, liveMatches] = await Promise.all([fetchGroups(), fetchLiveScores()]);
     const adjusted = applyLive(groups, liveMatches);
 
+    numGroupsGlobal = adjusted.length;
     document.getElementById('coming-soon').style.display = 'none';
-    renderLegend();
+    renderLegend(adjusted.length);
     document.getElementById('groups-section').style.display = '';
 
     const maxGp = Math.max(...adjusted.flatMap(g => g.entries.map(t => t.gp)));
