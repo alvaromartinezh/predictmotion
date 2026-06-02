@@ -386,7 +386,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 const ESPN_STANDINGS  = 'https://site.api.espn.com/apis/v2/sports/soccer/fifa.world/standings';
 const ESPN_SCOREBOARD = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard';
 
-const SIM_N  = 20000;
+const SIM_N  = 5000;
 const P_HOME = 0.37;   // venue neutral — ligera ventaja al equipo listado primero
 const P_DRAW = 0.27;
 
@@ -544,27 +544,22 @@ function buildBracketOrder(groups) {
   );
   const best8thirds = thirds.slice(0, 8);
 
-  // Build 32-slot bracket
-  // Left half (16): alternating W and RU from first 8 groups
-  // Right half (16): remaining + best 3rds
+  // Construir 32 slots: 12 primeros + 12 segundos + 8 mejores terceros
+  // Emparejamiento: 1A vs 2B, 1B vs 2A, 1C vs 2D, ... (cada par de grupos consecutivos)
   const bracket = [];
+  const n = groups.length;  // 12 en el Mundial 2026
 
-  // Pairs: 1A vs 2B, 1C vs 2D, etc. for first 8 groups
-  for (let i = 0; i < Math.min(8, winners.length); i += 2) {
+  for (let i = 0; i < n; i += 2) {
     bracket.push(winners[i]     || EMPTY_TEAM);
-    bracket.push(runnersUp[i+1] || best8thirds.shift() || EMPTY_TEAM);
-    bracket.push(winners[i+1]   || EMPTY_TEAM);
-    bracket.push(runnersUp[i]   || best8thirds.shift() || EMPTY_TEAM);
+    bracket.push(runnersUp[i + 1] || EMPTY_TEAM);
+    bracket.push(winners[i + 1]   || EMPTY_TEAM);
+    bracket.push(runnersUp[i]     || EMPTY_TEAM);
   }
-  // Right half: remaining groups
-  for (let i = 8; i < Math.min(12, winners.length); i += 2) {
-    bracket.push(winners[i]     || EMPTY_TEAM);
-    bracket.push(runnersUp[i+1] || best8thirds.shift() || EMPTY_TEAM);
-    bracket.push(winners[i+1]   || EMPTY_TEAM);
-    bracket.push(runnersUp[i]   || best8thirds.shift() || EMPTY_TEAM);
+  // Slots 24-31: los 8 mejores terceros se enfrentan entre sí
+  for (let i = 0; i < 8; i++) {
+    bracket.push(best8thirds[i] || EMPTY_TEAM);
   }
 
-  // Pad to 32 with empty slots
   while (bracket.length < 32) bracket.push(EMPTY_TEAM);
   return bracket.slice(0, 32);
 }
@@ -789,7 +784,15 @@ async function fetchGroups() {
   if (!res.ok) throw new Error(`ESPN ${res.status}`);
   const data = await res.json();
 
-  // ESPN returns children[] with one entry per group
+  // Extraer logo de la competición desde la respuesta de ESPN
+  const leagueLogo = data.leagues?.[0]?.logos?.find(l => l.rel?.includes('dark') || l.rel?.includes('default'))?.href
+                  || data.leagues?.[0]?.logos?.[0]?.href
+                  || null;
+  if (leagueLogo) {
+    const logoEl = document.querySelector('.logo');
+    if (logoEl) logoEl.innerHTML = `<img src="${leagueLogo}" alt="FIFA World Cup" style="width:100%;height:100%;object-fit:contain" />`;
+  }
+
   const children = data.children || [];
   if (!children.length) throw new Error('no-groups');
 
