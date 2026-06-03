@@ -3,3 +3,6 @@ CLAUDE.md
 TWITTER/
 BLUESKY/
 twitter_state.json
+mundial_bot/.env
+mundial_bot/output/
+mundial_bot/state.db

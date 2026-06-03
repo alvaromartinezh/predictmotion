@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Barlow:wght@400;500;600&family=Inconsolata:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:      #0d1b2e;
+    --surface: #112240;
+    --surface2:#162a4a;
+    --border:  #1e3a5f;
+    --text:    #e8f4ff;
+    --muted:   #6b8cae;
+    --accent:  #f5a800;
+    --green:   #00c97a;
+    --green-dim: rgba(0,201,122,.10);
+    --blue:    #3d8ef5;
+    --blue-dim:  rgba(61,142,245,.10);
+    --red:     #f53050;
+    --red-dim:   rgba(245,48,80,.08);
+  }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow', sans-serif;
+    width: 640px;
+    padding: 0;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    margin: 20px;
+  }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #0d1b2e 0%, #162a4a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-left { display: flex; flex-direction: column; gap: 2px; }
+  .grupo-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.7rem;
+    font-weight: 800;
+    letter-spacing: .06em;
+    color: var(--text);
+    text-transform: uppercase;
+  }
+  .competition {
+    font-size: .72rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    font-weight: 500;
+  }
+  .header-logo {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+  .pm-badge {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: .65rem;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    opacity: .85;
+  }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    background: var(--surface2);
+    padding: 8px 14px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: .65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--muted);
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  thead th.r { text-align: right; }
+  tbody tr { border-top: 1px solid var(--border); }
+  tbody tr.z-promo  { background: var(--green-dim); }
+  tbody tr.z-third  { background: var(--blue-dim); }
+  tbody tr.z-out    { background: var(--red-dim); }
+  td { padding: 10px 14px; vertical-align: middle; }
+
+  .zone-bar { width: 3px; height: 26px; border-radius: 2px; }
+  .zone-bar.promo { background: var(--green); box-shadow: 0 0 8px rgba(0,201,122,.4); }
+  .zone-bar.third { background: var(--blue);  box-shadow: 0 0 8px rgba(61,142,245,.4); }
+  .zone-bar.out   { background: var(--red);   box-shadow: 0 0 8px rgba(245,48,80,.4); }
+
+  .rank {
+    font-family: 'Inconsolata', monospace;
+    font-size: .8rem;
+    color: var(--muted);
+    text-align: center;
+    width: 24px;
+  }
+  .team-cell { display: flex; align-items: center; gap: 10px; }
+  .flag { width: 30px; height: 22px; object-fit: contain; border-radius: 2px; flex-shrink: 0; }
+  .flag-fallback {
+    width: 30px; height: 22px; border-radius: 3px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: .55rem; font-weight: 700; color: #fff;
+  }
+  .team-name { font-size: .9rem; font-weight: 500; }
+  .pts {
+    font-family: 'Inconsolata', monospace;
+    font-size: 1.05rem;
+    font-weight: 700;
+    text-align: right;
+    color: var(--text);
+  }
+  .stat {
+    font-family: 'Inconsolata', monospace;
+    font-size: .8rem;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  /* Legend */
+  .legend {
+    background: var(--surface2);
+    border-top: 1px solid var(--border);
+    padding: 10px 14px;
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: .68rem; color: var(--muted); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* Footer */
+  .footer {
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .footer-brand {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .footer-ts {
+    font-family: 'Inconsolata', monospace;
+    font-size: .68rem;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <div class="header-left">
+      <div class="grupo-label">Grupo {{ group_name }}</div>
+      <div class="competition">Copa del Mundo 2026</div>
+    </div>
+    <div class="header-logo">
+      <div class="pm-badge">PredictMotion</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:6px;padding:0"></th>
+        <th style="width:24px" class="r">#</th>
+        <th>Selección</th>
+        <th class="r">Pts</th>
+        <th class="r" style="font-size:.6rem">PJ</th>
+        <th class="r" style="font-size:.6rem">G</th>
+        <th class="r" style="font-size:.6rem">E</th>
+        <th class="r" style="font-size:.6rem">P</th>
+        <th class="r" style="font-size:.6rem">DG</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for t in entries %}
+    {% set zone = 'promo' if t.rank <= 2 else ('third' if t.rank == 3 else 'out') %}
+    {% set zone_cls = 'z-promo' if t.rank <= 2 else ('z-third' if t.rank == 3 else 'z-out') %}
+    <tr class="{{ zone_cls }}">
+      <td style="padding:0 0 0 4px"><div class="zone-bar {{ zone }}"></div></td>
+      <td class="rank">{{ t.rank }}</td>
+      <td>
+        <div class="team-cell">
+          {% if t.logo %}
+          <img class="flag" src="{{ t.logo }}" alt="{{ t.abbr }}" onerror="this.style.display='none'">
+          {% else %}
+          <div class="flag-fallback" style="background:{{ t.color }}">{{ t.abbr[:3] }}</div>
+          {% endif %}
+          <span class="team-name">{{ t.name }}</span>
+        </div>
+      </td>
+      <td class="pts">{{ t.pts }}</td>
+      <td class="stat">{{ t.gp }}</td>
+      <td class="stat">{{ t.w }}</td>
+      <td class="stat">{{ t.d }}</td>
+      <td class="stat">{{ t.l }}</td>
+      <td class="stat">{{ '+' if (t.gf - t.gc) > 0 else '' }}{{ t.gf - t.gc }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Clasificado</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div>Posible mejor 3º</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>Eliminado</div>
+  </div>
+</div>
+
+<div class="footer">
+  <div class="footer-brand">predictmotion.com/mundial.html</div>
+  <div class="footer-ts">{{ timestamp }}</div>
+</div>
+</body>
+</html>

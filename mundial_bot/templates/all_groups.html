@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Barlow:wght@400;500&family=Inconsolata:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:      #0d1b2e;
+    --surface: #112240;
+    --surface2:#162a4a;
+    --border:  #1e3a5f;
+    --text:    #e8f4ff;
+    --muted:   #6b8cae;
+    --accent:  #f5a800;
+    --green:   #00c97a;
+    --green-dim: rgba(0,201,122,.10);
+    --blue:    #3d8ef5;
+    --blue-dim:  rgba(61,142,245,.10);
+    --red:     #f53050;
+    --red-dim:   rgba(245,48,80,.08);
+  }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow', sans-serif;
+    width: 1200px;
+    padding: 20px;
+  }
+
+  /* Page header */
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    padding: 0 4px;
+  }
+  .page-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+  .page-subtitle { font-size: .72rem; color: var(--muted); margin-top: 2px; }
+  .pm-badge {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  /* Grid */
+  .groups-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  .group-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .group-header {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 7px 12px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .group-header span:first-child { color: var(--text); }
+
+  /* Mini table */
+  table { width: 100%; border-collapse: collapse; }
+  tbody tr { border-top: 1px solid rgba(30,58,95,.6); }
+  tbody tr.z-promo { background: var(--green-dim); }
+  tbody tr.z-third { background: var(--blue-dim); }
+  tbody tr.z-out   { background: var(--red-dim); }
+  td { padding: 6px 10px; vertical-align: middle; }
+
+  .zone-bar { width: 3px; height: 20px; border-radius: 2px; }
+  .zone-bar.promo { background: var(--green); }
+  .zone-bar.third { background: var(--blue); }
+  .zone-bar.out   { background: var(--red); }
+
+  .team-cell { display: flex; align-items: center; gap: 7px; }
+  .flag { width: 22px; height: 16px; object-fit: contain; border-radius: 1px; flex-shrink: 0; }
+  .team-name { font-size: .78rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+  .pts {
+    font-family: 'Inconsolata', monospace;
+    font-size: .9rem;
+    font-weight: 700;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .stat {
+    font-family: 'Inconsolata', monospace;
+    font-size: .72rem;
+    color: var(--muted);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  /* Footer */
+  .page-footer {
+    margin-top: 16px;
+    padding: 0 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .footer-brand {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .footer-ts {
+    font-family: 'Inconsolata', monospace;
+    font-size: .68rem;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div>
+    <div class="page-title">Copa del Mundo 2026 · Grupos</div>
+    <div class="page-subtitle">USA · Canadá · México · Fase de grupos</div>
+  </div>
+  <div class="pm-badge">PredictMotion</div>
+</div>
+
+<div class="groups-grid">
+{% for g in groups %}
+<div class="group-card">
+  <div class="group-header">
+    <span>Grupo {{ g.name }}</span>
+    <span>{{ g.entries | map(attribute='pts') | join(' · ') }} pts</span>
+  </div>
+  <table>
+    <tbody>
+    {% for t in g.entries %}
+    {% set zone = 'promo' if t.rank <= 2 else ('third' if t.rank == 3 else 'out') %}
+    {% set zone_cls = 'z-promo' if t.rank <= 2 else ('z-third' if t.rank == 3 else 'z-out') %}
+    <tr class="{{ zone_cls }}">
+      <td style="padding:0 0 0 4px;width:6px"><div class="zone-bar {{ zone }}"></div></td>
+      <td class="stat" style="width:16px;text-align:center">{{ t.rank }}</td>
+      <td>
+        <div class="team-cell">
+          {% if t.logo %}
+          <img class="flag" src="{{ t.logo }}" alt="{{ t.abbr }}">
+          {% endif %}
+          <span class="team-name">{{ t.name }}</span>
+        </div>
+      </td>
+      <td class="pts">{{ t.pts }}</td>
+      <td class="stat">{{ '+' if (t.gf - t.gc) > 0 else '' }}{{ t.gf - t.gc }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endfor %}
+</div>
+
+<div class="page-footer">
+  <div class="footer-brand">predictmotion.com/mundial.html</div>
+  <div class="footer-ts">{{ timestamp }}</div>
+</div>
+
+</body>
+</html>

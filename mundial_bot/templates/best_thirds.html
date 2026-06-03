@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Barlow:wght@400;500&family=Inconsolata:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:      #0d1b2e;
+    --surface: #112240;
+    --surface2:#162a4a;
+    --border:  #1e3a5f;
+    --text:    #e8f4ff;
+    --muted:   #6b8cae;
+    --accent:  #f5a800;
+    --green:   #00c97a;
+    --blue:    #3d8ef5;
+    --blue-dim:  rgba(61,142,245,.10);
+    --red:     #f53050;
+    --red-dim:   rgba(245,48,80,.08);
+  }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow', sans-serif;
+    width: 700px;
+    padding: 0;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    margin: 20px;
+  }
+
+  .header {
+    background: linear-gradient(135deg, #0d1b2e 0%, #162a4a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.45rem;
+    font-weight: 800;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+  }
+  .subtitle { font-size: .68rem; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: .1em; }
+  .pm-badge {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: .65rem;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    opacity: .85;
+  }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    background: var(--surface2);
+    padding: 7px 12px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: .62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--muted);
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  thead th.r { text-align: right; }
+  tbody tr { border-top: 1px solid var(--border); }
+  tbody tr.qualifies { background: var(--blue-dim); }
+  tbody tr.eliminated { background: var(--red-dim); }
+  tbody tr.cut-row { border-top: 2px dashed rgba(61,142,245,.35) !important; }
+  td { padding: 9px 12px; vertical-align: middle; }
+
+  .zone-bar { width: 3px; height: 22px; border-radius: 2px; }
+  .zone-bar.q { background: var(--blue); box-shadow: 0 0 6px rgba(61,142,245,.4); }
+  .zone-bar.e { background: var(--red);  box-shadow: 0 0 6px rgba(245,48,80,.4); }
+
+  .rank { font-family: 'Inconsolata', monospace; font-size: .8rem; color: var(--muted); text-align: center; }
+  .grp-badge {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    color: var(--muted);
+    text-align: center;
+  }
+  .team-cell { display: flex; align-items: center; gap: 10px; }
+  .flag { width: 28px; height: 20px; object-fit: contain; border-radius: 2px; flex-shrink: 0; }
+  .team-name { font-size: .88rem; font-weight: 500; }
+  .pts { font-family: 'Inconsolata', monospace; font-size: 1rem; font-weight: 700; text-align: right; }
+  .stat { font-family: 'Inconsolata', monospace; font-size: .78rem; color: var(--muted); text-align: right; }
+  .status-q { font-family: 'Barlow Condensed', sans-serif; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--blue); }
+  .status-e { font-family: 'Barlow Condensed', sans-serif; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--red); }
+
+  .footer {
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .footer-brand { font-family: 'Barlow Condensed', sans-serif; font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+  .footer-ts { font-family: 'Inconsolata', monospace; font-size: .68rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <div>
+      <div class="title">Mejores Terceros</div>
+      <div class="subtitle">Copa del Mundo 2026 · Los {{ advancing }} mejores de {{ thirds | length }} grupos avanzan</div>
+    </div>
+    <div class="pm-badge">PredictMotion</div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:6px;padding:0"></th>
+        <th class="r" style="width:24px">#</th>
+        <th style="width:30px">Grp</th>
+        <th>Selección</th>
+        <th class="r">Pts</th>
+        <th class="r" style="font-size:.58rem">PJ</th>
+        <th class="r" style="font-size:.58rem">DG</th>
+        <th class="r" style="font-size:.58rem">GF</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for t in thirds %}
+    {% set qualifies = t.third_rank <= advancing %}
+    {% set is_cut = t.third_rank == advancing %}
+    <tr class="{{ 'qualifies' if qualifies else 'eliminated' }}{{ ' cut-row' if t.third_rank == (advancing + 1) else '' }}">
+      <td style="padding:0 0 0 4px"><div class="zone-bar {{ 'q' if qualifies else 'e' }}"></div></td>
+      <td class="rank">{{ t.third_rank }}</td>
+      <td class="grp-badge">{{ t.group }}</td>
+      <td>
+        <div class="team-cell">
+          {% if t.logo %}
+          <img class="flag" src="{{ t.logo }}" alt="{{ t.abbr }}">
+          {% endif %}
+          <span class="team-name">{{ t.name }}</span>
+        </div>
+      </td>
+      <td class="pts">{{ t.pts }}</td>
+      <td class="stat">{{ t.gp }}</td>
+      <td class="stat">{{ '+' if (t.gf - t.gc) > 0 else '' }}{{ t.gf - t.gc }}</td>
+      <td class="stat">{{ t.gf }}</td>
+      <td class="{{ 'status-q' if qualifies else 'status-e' }}">{{ 'Clasifica' if qualifies else 'Eliminado' }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="footer">
+  <div class="footer-brand">predictmotion.com/mundial.html</div>
+  <div class="footer-ts">{{ timestamp }}</div>
+</div>
+</body>
+</html>
