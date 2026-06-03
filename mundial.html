@@ -541,6 +541,45 @@ const SIM_N  = 5000;
 const P_HOME = 0.37;   // venue neutral — ligera ventaja al equipo listado primero
 const P_DRAW = 0.27;
 
+// ─── Ranking FIFA aproximado (Copa del Mundo 2026) ────────────────────────
+// Fuente: ranking FIFA ~junio 2026. Equipos no listados → rank 60 (media).
+const FIFA_RANK = {
+  // CONMEBOL
+  ARG:1, BRA:5, COL:9, URU:16, ECU:44, VEN:57, CHI:33, PAR:53, PER:36, BOL:85,
+  // UEFA
+  FRA:2, BEL:3, ENG:4, POR:7, ESP:6, NED:8, ITA:9, CRO:10, GER:12,
+  SUI:19, DEN:21, AUT:24, HUN:26, SRB:27, POL:28, SCO:39, TUR:38,
+  UKR:24, ROM:48, CZE:40, SVN:57, SVK:52, GRE:43, ALB:68, WAL:37,
+  // CONCACAF
+  USA:13, MEX:15, CAN:20, CRC:47, JAM:50, PAN:66, HON:80, SLV:93,
+  // CAF
+  MAR:14, SEN:20, EGY:39, TUN:35, CIV:41, NGA:42, CMR:51, MLI:55,
+  GHA:62, DRC:61, RSA:67,
+  // AFC
+  IRN:21, JPN:22, KOR:23, AUS:23, QAT:37, IRQ:58, UZB:63, SAU:56,
+  JOR:78, CHN:86, THA:107, VIE:113,
+  // OFC
+  NZL:98,
+};
+
+// Elo derivado del ranking: rank 1 → 2000, rank 200 → 1303
+function _elo(abbr) {
+  const rank = FIFA_RANK[abbr] ?? 60;
+  return 2000 - (rank - 1) * 3.5;
+}
+
+// [pWin, pDraw, pLoss] para el partido ti vs tj, ajustado por ranking FIFA.
+// Con equipos iguales reproduce P_HOME/P_DRAW exactos.
+function rankMatchProbs(abbrA, abbrB) {
+  const diff = _elo(abbrA) - _elo(abbrB);
+  const pElo = 1 / (1 + Math.pow(10, -diff / 400));
+  const adj  = pElo - 0.5;        // −0.5…+0.5; 0 para equipos iguales
+  const SCALE = 0.5;
+  const pW = Math.max(0.05, Math.min(0.85, P_HOME + adj * SCALE));
+  const pL = Math.max(0.05, Math.min(0.85, (1 - P_HOME - P_DRAW) - adj * SCALE));
+  return [pW, 1 - pW - pL, pL];
+}
+
 const COLOR_PALETTE = [
   '#e11d48','#7c3aed','#2563eb','#0891b2','#059669','#ca8a04','#ea580c',
   '#db2777','#4f46e5','#0284c7','#16a34a','#d97706','#dc2626','#9333ea',
@@ -571,10 +610,11 @@ function initials(name) {
 // ─── Simulate a single match ──────────────────────────────────────────────
 // knockout = true → draw goes to penalties (coin flip)
 function simMatch(h, a, knockout) {
+  const [pW, pD] = rankMatchProbs(h.abbr, a.abbr);
   const r = rng();
-  if (r < P_HOME) return h;
-  if (!knockout && r < P_HOME + P_DRAW) return null; // draw, no winner
-  if (knockout && r < P_HOME + P_DRAW) return rng() < 0.5 ? h : a;
+  if (r < pW) return h;
+  if (!knockout && r < pW + pD) return null; // draw, no winner
+  if (knockout && r < pW + pD) return rng() < 0.5 ? h : a;
   return a;
 }
 
@@ -612,12 +652,13 @@ function simulateGroups(groups) {
           const matchPlayed = gp[ti.id] + gp[tj.id] >= 2 * totalGp - (n - 1 - Math.max(i, j));
           if (matchPlayed) continue;
 
-          // simulate goals
+          // simulate goals (probabilidades ajustadas por ranking FIFA)
+          const [pW, pD] = rankMatchProbs(ti.abbr, tj.abbr);
           const r = rng();
           let hi, ai;
-          if (r < P_HOME) {
+          if (r < pW) {
             hi = (rng() * 2 | 0) + 1 + (rng() * 2 | 0); ai = rng() * 2 | 0;
-          } else if (r < P_HOME + P_DRAW) {
+          } else if (r < pW + pD) {
             hi = ai = rng() * 2 | 0;
           } else {
             hi = rng() * 2 | 0; ai = (rng() * 2 | 0) + 1 + (rng() * 2 | 0);
@@ -1275,6 +1316,7 @@ async function fetchGroups() {
         rank:   i + 1,
         id:     e.team.id,
         name:   e.team.displayName,
+        abbr:   e.team.abbreviation || '',
         logo,
         gp:     stat('gamesPlayed'),
         pts:    stat('points'),
