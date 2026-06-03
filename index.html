@@ -541,10 +541,29 @@ function simTwoLegs(home, away) {
 function simulate(standings) {
   const numTeams = standings.length;
   const totalMd  = 2 * (numTeams - 1);
+  const minGp    = Math.min(...standings.map(t => t.gp));
+
+  // Temporada terminada: todos han jugado todas las jornadas → devolver posiciones reales
+  if (minGp >= totalMd) {
+    const sorted = [...standings].sort((a, b) =>
+      b.pts !== a.pts ? b.pts - a.pts :
+      (b.gf - b.gc) !== (a.gf - a.gc) ? (b.gf - b.gc) - (a.gf - a.gc) :
+      b.gf - a.gf
+    );
+    return Object.fromEntries(sorted.map((t, idx) => {
+      const p = idx + 1;
+      return [t.name, {
+        top2:    p <= LEAGUE.promoSlots             ? 100 : 0,
+        playoff: p > LEAGUE.promoSlots && p <= LEAGUE.playoffTop ? 100 : 0,
+        relega:  p > numTeams - LEAGUE.relegSlots   ? 100 : 0,
+        pSemi: 0, pFinal: 0, pWin: 0,
+      }];
+    }));
+  }
+
   rng = mulberry32(standingsSeed(standings));
   const names  = standings.map(t => t.name);
   const counts = Object.fromEntries(names.map(n => [n, { t2: 0, t6: 0, b4: 0, psf: 0, pf: 0, pw: 0 }]));
-  const minGp  = Math.min(...standings.map(t => t.gp));
   const teamGp = Object.fromEntries(standings.map(t => [t.name, t.gp]));
 
   for (let i = 0; i < SIM_N; i++) {
@@ -556,7 +575,7 @@ function simulate(standings) {
     for (const md of buildFixtures(names, minGp, totalMd)) {
       mdNum++;
       for (const [h, a] of md) {
-        if (teamGp[h] >= mdNum && teamGp[a] >= mdNum) continue;
+        if (teamGp[h] >= mdNum || teamGp[a] >= mdNum) continue;
         const r = rng();
         let hp, ap, hg, ag;
         if (r < P_HOME) {
