@@ -1056,8 +1056,8 @@ function renderMatchCard(ev) {
     centerHTML = `<div class="mc-time-disp">${timeStr}</div>`;
   }
 
-  const hLogo = home.team?.logos?.[0]?.href || '';
-  const aLogo = away.team?.logos?.[0]?.href || '';
+  const hLogo = getTeamFlag(home.team);
+  const aLogo = getTeamFlag(away.team);
   const hId = `mch_${ev.id}`, aId = `mca_${ev.id}`;
   const cardCls = state === 'in' ? ' mc-live' : state === 'post' ? ' mc-post' : '';
 
@@ -1089,6 +1089,15 @@ function fallbackMcLogo(id, abbr) {
   if (!el) return;
   el.classList.add('fallback');
   el.innerHTML = abbr.slice(0, 3);
+}
+
+// El scoreboard de ESPN no incluye logos[] en los competidores.
+// Se construye la URL de bandera desde la abreviatura del equipo.
+function getTeamFlag(team) {
+  if (!team) return '';
+  if (team.logos?.[0]?.href) return team.logos[0].href;
+  const abbr = (team.abbreviation || '').toLowerCase();
+  return abbr ? `https://a.espncdn.com/i/teamlogos/countries/500/${abbr}.png` : '';
 }
 
 // ─── ESPN fetch ───────────────────────────────────────────────────────────
@@ -1182,6 +1191,50 @@ function renderLegend(numGroups) {
   `;
 }
 
+// ─── Skeleton inicial de grupos ───────────────────────────────────────────
+function renderGroupsSkeleton(n) {
+  const skRow = () => `<tr>
+    <td style="padding:0 0 0 6px;width:10px"><div class="gzone-bar none" style="background:var(--surface2)"></div></td>
+    <td colspan="6"><div class="skeleton" style="height:22px;margin:3px 6px;border-radius:3px"></div></td>
+  </tr>`;
+  document.getElementById('groups-grid').innerHTML =
+    Array.from({ length: n }, (_, i) => `
+      <div class="group-card">
+        <div class="group-header">
+          <span>Grupo ${String.fromCharCode(65 + i)}</span>
+          <span style="opacity:.25">— — — —</span>
+        </div>
+        <table class="group-table">
+          <thead><tr>
+            <th style="width:10px"></th><th class="center" style="width:22px">#</th>
+            <th>Equipo</th><th class="right">Pts</th>
+            <th class="right" style="font-size:.6rem">PJ</th>
+            <th class="right" style="font-size:.6rem">DG</th>
+            <th>Clasifica</th>
+          </tr></thead>
+          <tbody>${[1,2,3,4].map(skRow).join('')}</tbody>
+        </table>
+      </div>`).join('');
+}
+
+// ─── Inicialización síncrona (sin esperar API) ────────────────────────────
+function initPage() {
+  const defaultSection = new Date() < GROUP_STAGE_END ? 'grupos' : 'cuadro';
+
+  document.getElementById('coming-soon').style.display = 'none';
+  document.getElementById('page-tabs').style.display   = '';
+
+  // Mostrar skeleton de grupos y leyenda vacía mientras carga
+  renderGroupsSkeleton(8);
+  renderLegend(8);
+  document.getElementById('groups-section').style.display = '';
+  document.getElementById('legend').style.display         = '';
+
+  buildScheduleAccordion();
+  showSection(defaultSection);
+}
+initPage();
+
 // ─── Main ─────────────────────────────────────────────────────────────────
 let liveTimer  = null;
 let isUpdating = false;
@@ -1194,28 +1247,17 @@ async function triggerUpdate(silent = false) {
     const adjusted = applyLive(groups, liveMatches);
 
     numGroupsGlobal = adjusted.length;
-    document.getElementById('coming-soon').style.display = 'none';
     renderLegend(adjusted.length);
 
-    // Inicializar pestañas (solo la primera vez que llegan datos)
-    if (document.getElementById('page-tabs').style.display === 'none') {
-      document.getElementById('page-tabs').style.display = '';
-      buildScheduleAccordion();
-      // Pestaña inicial: Grupos durante la fase de grupos; Cuadro después
-      showSection(new Date() < GROUP_STAGE_END ? 'grupos' : 'cuadro');
-    }
-
     const maxGp = Math.max(...adjusted.flatMap(g => g.entries.map(t => t.gp)));
-    document.getElementById('badge-phase').innerHTML =
-      `Jornada <strong>${maxGp}</strong>`;
+    document.getElementById('badge-phase').innerHTML = `Jornada <strong>${maxGp}</strong>`;
 
     await new Promise(r => setTimeout(r, 20));
     const groupResults = simulateGroups(adjusted);
     renderGroups(adjusted, groupResults);
 
-    // Cuadro: solo dieciseisavos basado en clasificación actual
-    const bracket32 = buildBracketOrder(adjusted);
-    renderBracket(bracket32);
+    const bracket = buildBracketOrder(adjusted);
+    renderBracket(bracket);
 
     const now = new Date();
     document.getElementById('footer-update').textContent =
@@ -1228,7 +1270,7 @@ async function triggerUpdate(silent = false) {
     document.getElementById('badge-phase').textContent = '—';
     if (err.message !== 'no-groups') {
       document.getElementById('error-banner').textContent =
-        `No hay datos disponibles todavía. El Mundial FIFA 2026 comienza el 11 de junio de 2026.`;
+        `No hay datos disponibles todavía.`;
       document.getElementById('error-banner').style.display = 'block';
     }
   } finally {
