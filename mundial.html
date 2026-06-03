@@ -176,6 +176,24 @@
     .fill-blue  { background:linear-gradient(90deg,#1f6ec4,#3d8ef5); }
     .fill-red   { background:linear-gradient(90deg,#c01535,#f53050); }
 
+    /* ── Tabla de terceros ── */
+    .thirds-table { width:100%; border-collapse:collapse; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+    .thirds-table thead th {
+      background:var(--surface2); padding:6px 10px;
+      font-family:'Barlow Condensed',sans-serif;
+      font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--muted);
+      text-align:left; border-bottom:1px solid var(--border);
+    }
+    .thirds-table thead th.right { text-align:right; }
+    .thirds-table tbody tr { border-top:1px solid var(--border); transition:background .12s; }
+    .thirds-table tbody tr:hover { background:var(--surface2); }
+    .thirds-table tbody tr.t-qualifies { background:var(--blue-dim); }
+    .thirds-table tbody tr.t-qualifies:hover { background:rgba(61,142,245,.1); }
+    .thirds-table tbody tr.t-out { background:var(--red-dim); }
+    .thirds-table tbody tr.t-out:hover { background:rgba(245,48,80,.1); }
+    .thirds-table td { padding:7px 10px; vertical-align:middle; }
+    .thirds-cut { border-top:2px dashed rgba(61,142,245,.4) !important; }
+
     /* ── Skeleton ── */
     .skeleton { animation:shimmer 1.4s infinite; background:linear-gradient(90deg,var(--surface2) 25%,#1e3055 50%,var(--surface2) 75%); background-size:400% 100%; border-radius:4px; }
     @keyframes shimmer { to { background-position:-400% 0; } }
@@ -183,12 +201,18 @@
     /* ── Live badge ── */
     .live-badge {
       display:inline-flex; align-items:center; gap:4px;
-      background:rgba(245,48,80,.12); border:1px solid rgba(245,48,80,.28); border-radius:4px;
-      padding:1px 5px; font-size:.62rem; font-weight:700; color:var(--red);
+      border-radius:4px;
+      padding:1px 5px; font-size:.62rem; font-weight:700;
       margin-left:6px; white-space:nowrap; vertical-align:middle;
       font-family:'Inconsolata',monospace;
     }
-    .live-dot { width:5px; height:5px; border-radius:50%; background:var(--red); animation:pulse 1s ease-in-out infinite; flex-shrink:0; }
+    .live-badge.lb-winning { background:rgba(34,197,94,.14); border:1px solid rgba(34,197,94,.35); color:#22c55e; }
+    .live-badge.lb-drawing  { background:rgba(234,179,8,.14);  border:1px solid rgba(234,179,8,.35);  color:#eab308; }
+    .live-badge.lb-losing  { background:rgba(245,48,80,.12);  border:1px solid rgba(245,48,80,.28);  color:var(--red); }
+    .live-dot { width:5px; height:5px; border-radius:50%; animation:pulse 1s ease-in-out infinite; flex-shrink:0; }
+    .lb-winning .live-dot { background:#22c55e; }
+    .lb-drawing  .live-dot { background:#eab308; }
+    .lb-losing  .live-dot { background:var(--red); }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
     /* ── Bracket full (dieciseisavos → final) ── */
@@ -473,6 +497,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <div class="section-wrap" id="groups-section" style="display:none">
   <div class="section-label">Fase de Grupos</div>
   <div class="groups-grid" id="groups-grid"></div>
+  <div id="thirds-section" style="display:none;margin-top:28px">
+    <div class="section-label" style="margin-bottom:10px">Clasificación de Terceros</div>
+    <p style="font-size:.72rem;color:var(--muted);margin:0 0 10px 0;text-align:center">Los <strong style="color:var(--text)">8 mejores terceros</strong> de 12 grupos avanzan a la fase eliminatoria</p>
+    <div id="thirds-table"></div>
+  </div>
 </div>
 
 <!-- Bracket section -->
@@ -741,13 +770,13 @@ function renderGroups(groups, groupResults) {
                 onerror="fallbackGAvatar('${avId}','${t.name.replace(/'/g,"\\'")}','${color}')" />
             </div>
             <span class="g-name">${t.name}</span>
-            ${t.live ? `<span class="live-badge"><span class="live-dot"></span>${t.live.score}</span>` : ''}
+            ${t.live ? `<span class="live-badge ${t.live.winning ? 'lb-winning' : t.live.drawing ? 'lb-drawing' : 'lb-losing'}"><span class="live-dot"></span>${t.live.score}</span>` : ''}
           </div>
         </td>
         <td class="g-pts${t.live ? ' pts-live' : ''}" style="color:${t.live ? 'var(--accent)' : 'var(--text)'}">${t.pts}</td>
         <td class="g-stat">${t.gp}</td>
         <td class="g-stat">${t.gf - t.gc > 0 ? '+' : ''}${t.gf - t.gc}</td>
-        <td>${pBar(pAdv, t.rank <= 2 ? 'fill-green' : t.rank === 3 ? 'fill-blue' : 'fill-red')}</td>
+        <td id="gprob_${gi}_${t.id}">${pBar(pAdv, t.rank <= 2 ? 'fill-green' : t.rank === 3 ? 'fill-blue' : 'fill-red')}</td>
       </tr>`;
     }).join('');
 
@@ -773,11 +802,130 @@ function renderGroups(groups, groupResults) {
     </div>`;
   }).join('');
 
+  renderThirds(groups);
+
   requestAnimationFrame(() => setTimeout(() => {
     document.querySelectorAll('.g-bar-fill').forEach(el => {
       el.style.width = el.dataset.target + '%';
     });
   }, 80));
+}
+
+// ─── Render thirds ranking ────────────────────────────────────────────────
+function renderThirds(groups) {
+  const sec = document.getElementById('thirds-section');
+  if (groups.length < 4) { sec.style.display = 'none'; return; }
+
+  // Extraer el 3º clasificado de cada grupo
+  const thirds = groups.map(g => {
+    const sorted = [...g.entries].sort((a, b) =>
+      b.pts !== a.pts ? b.pts - a.pts :
+      (b.gf - b.gc) !== (a.gf - a.gc) ? (b.gf - b.gc) - (a.gf - a.gc) :
+      b.gf - a.gf
+    );
+    return sorted[2] ? { ...sorted[2], group: g.name } : null;
+  }).filter(Boolean);
+
+  // Ordenar terceros entre sí: pts → DG → GF
+  thirds.sort((a, b) =>
+    b.pts !== a.pts ? b.pts - a.pts :
+    (b.gf - b.gc) !== (a.gf - a.gc) ? (b.gf - b.gc) - (a.gf - a.gc) :
+    b.gf - a.gf
+  );
+
+  // Cuántos avanzan: 32 equipos totales − 2 por grupo
+  const advancing = 32 - groups.length * 2;
+
+  const rows = thirds.map((t, i) => {
+    const qualifies = i < advancing;
+    const isLastQ   = i === advancing - 1;
+    const color = COLOR_PALETTE[i % COLOR_PALETTE.length];
+    const avId  = `tav_${t.id}`;
+    const cls   = qualifies ? 't-qualifies' : 't-out';
+    const cutCls = isLastQ ? ' thirds-cut' : '';
+    const gd    = t.gf - t.gc;
+    return `<tr class="${cls}${cutCls}">
+      <td style="padding:0 0 0 6px;width:10px">
+        <div class="gzone-bar ${qualifies ? 'maybe' : 'out'}"></div>
+      </td>
+      <td class="g-stat" style="width:22px;text-align:center;color:var(--muted)">${i + 1}</td>
+      <td style="width:26px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:.72rem;font-weight:700;color:var(--muted);letter-spacing:.06em">${t.group}</td>
+      <td>
+        <div class="g-team-cell">
+          <div class="g-avatar" id="${avId}">
+            <img src="${t.logo || ''}" alt="${t.name}" loading="lazy"
+              onerror="fallbackGAvatar('${avId}','${t.name.replace(/'/g,"\\'")}','${color}')" />
+          </div>
+          <span class="g-name">${t.name}</span>
+          ${t.live ? `<span class="live-badge ${t.live.winning ? 'lb-winning' : t.live.drawing ? 'lb-drawing' : 'lb-losing'}"><span class="live-dot"></span>${t.live.score}</span>` : ''}
+        </div>
+      </td>
+      <td class="g-pts${t.live ? ' pts-live' : ''}" style="color:${t.live ? 'var(--accent)' : 'var(--text)'}">${t.pts}</td>
+      <td class="g-stat">${t.gp}</td>
+      <td class="g-stat">${gd > 0 ? '+' : ''}${gd}</td>
+      <td class="g-stat">${t.gf}</td>
+      <td style="font-family:'Barlow Condensed',sans-serif;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:${qualifies ? 'var(--blue)' : 'var(--red)'}">
+        ${qualifies ? 'Clasifica' : 'Eliminado'}
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('thirds-table').innerHTML = `
+    <table class="thirds-table">
+      <thead>
+        <tr>
+          <th style="width:10px"></th>
+          <th class="right" style="width:22px">#</th>
+          <th style="width:26px">Grp</th>
+          <th>Selección</th>
+          <th class="right">Pts</th>
+          <th class="right" style="font-size:.6rem">PJ</th>
+          <th class="right" style="font-size:.6rem">DG</th>
+          <th class="right" style="font-size:.6rem">GF</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+
+  sec.style.display = '';
+}
+
+// Actualiza solo las celdas de probabilidad sin re-renderizar la tabla
+function updateGroupProbabilities(groups, groupResults) {
+  groups.forEach((g, gi) => {
+    [...g.entries].sort((a, b) =>
+      b.pts !== a.pts ? b.pts - a.pts :
+      (b.gf - b.gc) !== (a.gf - a.gc) ? (b.gf - b.gc) - (a.gf - a.gc) :
+      b.gf - a.gf
+    ).forEach((t, ri) => {
+      const rank = ri + 1;
+      const res  = groupResults[t.id] || {};
+      const pAdv = res.pAdv || 0;
+      const cell = document.getElementById(`gprob_${gi}_${t.id}`);
+      if (cell) cell.innerHTML = pBar(pAdv, rank <= 2 ? 'fill-green' : rank === 3 ? 'fill-blue' : 'fill-red');
+    });
+  });
+  requestAnimationFrame(() => setTimeout(() => {
+    document.querySelectorAll('.g-bar-fill').forEach(el => { el.style.width = el.dataset.target + '%'; });
+  }, 60));
+}
+
+// Caché de simulación en localStorage — evita recalcular si los puntos no cambiaron
+function simulateGroupsCached(groups) {
+  try {
+    const seed    = groupsSeed(groups.flatMap(g => g.entries));
+    const key     = `mundial_sim_${seed}`;
+    const cached  = localStorage.getItem(key);
+    if (cached) return JSON.parse(cached);
+    const results = simulateGroups(groups);
+    localStorage.setItem(key, JSON.stringify(results));
+    // Limpiar entradas antiguas del mismo torneo
+    Object.keys(localStorage)
+      .filter(k => k.startsWith('mundial_sim_') && k !== key)
+      .forEach(k => localStorage.removeItem(k));
+    return results;
+  } catch { return simulateGroups(groups); }
 }
 
 function fallbackGAvatar(id, name, color) {
@@ -1176,7 +1324,7 @@ function applyLive(groups, liveMatches) {
       const os = isHome ? lm.awayScore : lm.homeScore;
       const pts = ts > os ? 3 : ts === os ? 1 : 0;
       return { ...t, pts: t.pts + pts, gp: t.gp + 1, gf: t.gf + ts, gc: t.gc + os,
-               live: { score: `${lm.homeScore}–${lm.awayScore}`, clock: lm.clock } };
+               live: { score: `${lm.homeScore}–${lm.awayScore}`, clock: lm.clock, winning: ts > os, drawing: ts === os } };
     })
   }));
 }
@@ -1252,19 +1400,22 @@ async function triggerUpdate(silent = false) {
     const maxGp = Math.max(...adjusted.flatMap(g => g.entries.map(t => t.gp)));
     document.getElementById('badge-phase').innerHTML = `Jornada <strong>${maxGp}</strong>`;
 
-    await new Promise(r => setTimeout(r, 20));
-    const groupResults = simulateGroups(adjusted);
-    renderGroups(adjusted, groupResults);
-
-    const bracket = buildBracketOrder(adjusted);
-    renderBracket(bracket);
+    // Fase 1: Renderizar clasificaciones inmediatamente (sin probabilidades)
+    renderGroups(adjusted, {});
+    renderBracket(buildBracketOrder(adjusted));
 
     const now = new Date();
     document.getElementById('footer-update').textContent =
-      `Última actualización: ${now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })} · Datos: ESPN API`;
+      `Última actualización: ${now.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' })} · Datos: ESPN API`;
 
-    clearTimeout(liveTimer);
-    if (liveMatches.length > 0) liveTimer = setTimeout(() => triggerUpdate(true), 60_000);
+    // Fase 2: Simulación diferida — deja pintar al navegador primero
+    // Si los puntos no cambiaron desde la última visita, usa caché (instantáneo)
+    setTimeout(() => {
+      const groupResults = simulateGroupsCached(adjusted);
+      updateGroupProbabilities(adjusted, groupResults);
+      clearTimeout(liveTimer);
+      if (liveMatches.length > 0) liveTimer = setTimeout(() => triggerUpdate(true), 60_000);
+    }, 0);
 
   } catch (err) {
     document.getElementById('badge-phase').textContent = '—';
