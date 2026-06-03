@@ -526,7 +526,7 @@ function simulate(standings, slots) {
 // ─── ESPN fetch ───────────────────────────────────────────────────────────
 async function fetchLiveScores() {
   try {
-    const res = await fetch(ESPN_SCOREBOARD);
+    const res = await fetch(ESPN_SCOREBOARD, { cache: 'no-store' });
     if (!res.ok) return { matches: [], logo: null };
     const data = await res.json();
     const logo = data.leagues?.[0]?.logos?.[0]?.href ?? null;
@@ -569,7 +569,7 @@ function applyLiveScores(standings, liveMatches) {
 }
 
 async function fetchStandings() {
-  const res  = await fetch(ESPN_STANDINGS);
+  const res  = await fetch(ESPN_STANDINGS, { cache: 'no-store' });
   if (!res.ok) throw new Error(`ESPN API ${res.status}`);
   const data = await res.json();
   const entries = data.children[0].standings.entries;
