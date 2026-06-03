@@ -541,30 +541,27 @@ const SIM_N  = 5000;
 const P_HOME = 0.37;   // venue neutral — ligera ventaja al equipo listado primero
 const P_DRAW = 0.27;
 
-// ─── Ranking FIFA aproximado (Copa del Mundo 2026) ────────────────────────
-// Fuente: ranking FIFA ~junio 2026. Equipos no listados → rank 60 (media).
+// ─── Ranking FIFA (fuente: Transfermarkt, junio 2026) ─────────────────────
+// Equipos no listados → rank 80 (por defecto).
 const FIFA_RANK = {
-  // CONMEBOL
-  ARG:1, BRA:5, COL:9, URU:16, ECU:44, VEN:57, CHI:33, PAR:53, PER:36, BOL:85,
-  // UEFA
-  FRA:2, BEL:3, ENG:4, POR:7, ESP:6, NED:8, ITA:9, CRO:10, GER:12,
-  SUI:19, DEN:21, AUT:24, HUN:26, SRB:27, POL:28, SCO:39, TUR:38,
-  UKR:24, ROM:48, CZE:40, SVN:57, SVK:52, GRE:43, ALB:68, WAL:37,
-  // CONCACAF
-  USA:13, MEX:15, CAN:20, CRC:47, JAM:50, PAN:66, HON:80, SLV:93,
-  // CAF
-  MAR:14, SEN:20, EGY:39, TUN:35, CIV:41, NGA:42, CMR:51, MLI:55,
-  GHA:62, DRC:61, RSA:67,
-  // AFC
-  IRN:21, JPN:22, KOR:23, AUS:23, QAT:37, IRQ:58, UZB:63, SAU:56,
-  JOR:78, CHN:86, THA:107, VIE:113,
-  // OFC
-  NZL:98,
+  // 1–25
+  FRA:1, ESP:2, ARG:3, ENG:4, POR:5, BRA:6, NED:7, MAR:8, BEL:9, GER:10,
+  CRO:11, ITA:12, COL:13, SEN:14, MEX:15, USA:16, URU:17, JPN:18, SUI:19, DEN:20,
+  IRN:21, TUR:22, ECU:23, AUT:24, KOR:25,
+  // 26–50
+  NGA:26, AUS:27, ALG:28, EGY:29, CAN:30, NOR:31, UKR:32, PAN:33, CIV:34, POL:35,
+  WAL:37, SWE:38, SRB:39, PAR:40, CZE:41, HUN:42, SCO:43, TUN:44, CMR:45, DRC:46,
+  GRE:47, SVK:48, VEN:49, UZB:50,
+  // 51–75
+  CRC:51, MLI:52, PER:53, CHI:54, QAT:55, ROM:56, IRQ:57, SVN:58, RSA:60,
+  SAU:61, JOR:63, ALB:64, HON:66, JAM:71, GHA:74,
+  // Resto relevantes
+  BOL:85, NZL:98, SLV:93,
 };
 
 // Elo derivado del ranking: rank 1 → 2000, rank 200 → 1303
 function _elo(abbr) {
-  const rank = FIFA_RANK[abbr] ?? 60;
+  const rank = FIFA_RANK[abbr] ?? 80;
   return 2000 - (rank - 1) * 3.5;
 }
 
