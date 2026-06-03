@@ -102,8 +102,9 @@ def on_live_tick():
                     })
 
                 deliver(imgs, text)
-                state.mark_notified("kickoff", mid)
-                state.update_score(mid, m["home_score"], m["away_score"])
+                if not DRY_RUN:
+                    state.mark_notified("kickoff", mid)
+                    state.update_score(mid, m["home_score"], m["away_score"])
 
             # ── GOL — detecta cambio de marcador ─────────────────────────────
             if m["state"] == "in":
@@ -154,9 +155,11 @@ def on_live_tick():
                             })
 
                         deliver(imgs, text)
-                        state.mark_notified("gol", mid, score_str)
+                        if not DRY_RUN:
+                            state.mark_notified("gol", mid, score_str)
 
-                state.update_score(mid, m["home_score"], m["away_score"])
+                if not DRY_RUN:
+                    state.update_score(mid, m["home_score"], m["away_score"])
 
             # ── RESULTADO FINAL (fase eliminatoria) ───────────────────────────
             if (m["state"] == "post" and not m["is_group"]
@@ -171,7 +174,8 @@ def on_live_tick():
                     "marcador":  score_str,
                 })
                 deliver([], text)
-                state.mark_notified("result", mid)
+                if not DRY_RUN:
+                    state.mark_notified("result", mid)
 
     except Exception as e:
         log(f"[ERROR on_live_tick] {e}")
@@ -181,7 +185,7 @@ def on_live_tick():
 
 def on_morning_window():
     try:
-        if state.already_sent_today("morning"):
+        if not DRY_RUN and state.already_sent_today("morning"):
             return
         log("Generando resumen matutino...")
         groups = ds.get_all_groups()
@@ -193,14 +197,15 @@ def on_morning_window():
 
         deliver([img_all], generate_text("morning_groups", {}))
         deliver([img_3rd], generate_text("morning_thirds", {}))
-        state.mark_sent_today("morning")
+        if not DRY_RUN:
+            state.mark_sent_today("morning")
     except Exception as e:
         log(f"[ERROR morning] {e}")
 
 
 def on_evening_window():
     try:
-        if state.already_sent_today("evening"):
+        if not DRY_RUN and state.already_sent_today("evening"):
             return
         log("Generando resumen vespertino...")
         groups = ds.get_all_groups()
@@ -212,7 +217,8 @@ def on_evening_window():
 
         deliver([img_all], generate_text("evening_groups", {}))
         deliver([img_3rd], generate_text("evening_thirds", {}))
-        state.mark_sent_today("evening")
+        if not DRY_RUN:
+            state.mark_sent_today("evening")
     except Exception as e:
         log(f"[ERROR evening] {e}")
 
