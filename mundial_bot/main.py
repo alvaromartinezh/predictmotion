@@ -65,10 +65,15 @@ def deliver(images: list[Path], text: str):
             log(f"[DRY-RUN] Imágenes: {[str(p) for p in images]}")
         return
 
-    if images:
-        notifier.send_images(images, caption=full_msg)
-    else:
-        notifier.send_text(full_msg)
+    try:
+        if images:
+            ok = notifier.send_images(images, caption=full_msg)
+        else:
+            ok = notifier.send_text(full_msg)
+        if ok:
+            log(f"[Telegram OK] {text[:60].strip()!r}")
+    except Exception as e:
+        log(f"[Telegram ERROR] {e}")
 
 
 # ── Live tick ─────────────────────────────────────────────────────────────────
