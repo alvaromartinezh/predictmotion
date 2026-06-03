@@ -15,6 +15,6 @@ EVENING_HOUR_END   = int(os.getenv("EVENING_HOUR_END",   "23"))
 
 TIMEZONE   = "Europe/Madrid"
 ESPN_CODE  = "fifa.world"
-WEB_URL    = "https://predictmotion.com/mundial.html"
+WEB_URL    = "https://predictmotion.com/mundial"
 OUTPUT_DIR = Path(__file__).parent / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)

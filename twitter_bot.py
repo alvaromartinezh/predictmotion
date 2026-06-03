@@ -27,7 +27,7 @@ LEAGUES = {
     },
     "esp.1": {
         "name":  "LaLiga",
-        "url":   "https://predictmotion.com/laliga.html",
+        "url":   "https://predictmotion.com/laliga",
         "short": "LaLiga",
     },
 }
