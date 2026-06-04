@@ -6,3 +6,14 @@ twitter_state.json
 mundial_bot/.env
 mundial_bot/output/
 mundial_bot/state.db
+
+# Generador SEO — salida y datos viven solo en el servidor (no en git)
+data/
+equipos/
+jornadas/
+grupos/
+historico/
+datos/
+sitemap-data.xml
+__pycache__/
+seo/__pycache__/
