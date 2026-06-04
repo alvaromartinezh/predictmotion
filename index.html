@@ -136,13 +136,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <nav class="grid" aria-label="Competiciones">
   <a class="comp" href="/hypermotion">
-    <div class="comp-logo"><img src="https://a.espncdn.com/i/leaguelogos/soccer/500/107.png" alt="Liga Hypermotion" loading="lazy" /></div>
-    <div><div class="comp-name">Liga Hypermotion</div><div class="comp-season">Segunda División · 2025-26</div></div>
+    <div class="comp-logo"><img id="logo-hypermotion" src="https://a.espncdn.com/i/leaguelogos/soccer/500/107.png" alt="Liga Hypermotion" loading="lazy" /></div>
+    <div><div class="comp-name">Liga Hypermotion</div><div class="comp-season" id="season-hypermotion" data-prefix="Segunda División">Segunda División</div></div>
     <span class="comp-cta">Ver clasificación →</span>
   </a>
   <a class="comp" href="/laliga">
-    <div class="comp-logo"><img src="https://a.espncdn.com/i/leaguelogos/soccer/500-dark/15.png" alt="LaLiga" loading="lazy" /></div>
-    <div><div class="comp-name">LaLiga</div><div class="comp-season">Primera División · 2025-26</div></div>
+    <div class="comp-logo"><img id="logo-laliga" src="https://a.espncdn.com/i/leaguelogos/soccer/500-dark/15.png" alt="LaLiga" loading="lazy" /></div>
+    <div><div class="comp-name">LaLiga</div><div class="comp-season" id="season-laliga" data-prefix="Primera División">Primera División</div></div>
     <span class="comp-cta">Ver clasificación →</span>
   </a>
   <a class="comp" href="/mundial">
@@ -151,6 +151,33 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <span class="comp-cta">Ver grupos →</span>
   </a>
 </nav>
+
+<script>
+  // Temporada y logo de cada liga regular se rellenan desde ESPN (nada hardcodeado).
+  // El Mundial es la excepción (logo y año fijos).
+  [['hypermotion','esp.2'],['laliga','esp.1']].forEach(function (p) {
+    var slug = p[0], code = p[1];
+    fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/' + code + '/scoreboard', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d) return;
+        var lg = (d.leagues || [])[0] || {};
+        var dn = (lg.season && lg.season.displayName) || '';
+        var m = dn.match(/\d{4}-\d{2}/);
+        if (m) {
+          var s = document.getElementById('season-' + slug);
+          if (s) s.textContent = s.dataset.prefix + ' · ' + m[0];
+        }
+        var logos = lg.logos || [];
+        var dark = logos.filter(function (l) { return (l.rel || []).indexOf('dark') >= 0; })[0];
+        var href = (dark || logos[0] || {}).href;
+        if (href) {
+          var img = document.getElementById('logo-' + slug);
+          if (img) img.src = href.replace('http://', 'https://');
+        }
+      }).catch(function () {});
+  });
+</script>
 
 <footer>
   © 2025 PredictMotion · Todos los derechos reservados<br>

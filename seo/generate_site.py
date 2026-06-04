@@ -44,10 +44,11 @@ def _write_files(files, dry_run):
 
 def _process_table(league, today, dry_run):
     rows = espn.fetch_table(league["espn_code"])
-    logo = espn.fetch_league_logo(league["espn_code"])
+    meta = espn.fetch_league_meta(league["espn_code"])
     sim = sim_table.simulate(rows, league["p_home"], league["p_draw"],
                              playoff_top=league.get("playoff_top"))
-    snap = build_table_snapshot(league, rows, sim, SIM_N_TABLE, today, league_logo=logo)
+    snap = build_table_snapshot(league, rows, sim, SIM_N_TABLE, today,
+                                league_logo=meta["logo"], season=meta["season"])
     if not dry_run:
         save_snapshot(snap)
     snaps = load_all(league["slug"]) or [snap]
@@ -68,9 +69,10 @@ def _process_table(league, today, dry_run):
 
 def _process_cup(league, today, dry_run):
     groups = espn.fetch_groups(league["espn_code"])
-    logo = espn.fetch_league_logo(league["espn_code"])
+    meta = espn.fetch_league_meta(league["espn_code"])
     sim = sim_cup.simulate(groups)
-    snap = build_cup_snapshot(league, groups, sim, today, league_logo=logo)
+    # Mundial: el año queda fijo en config (excepción acordada); solo el logo es vivo.
+    snap = build_cup_snapshot(league, groups, sim, today, league_logo=meta["logo"])
     if not dry_run:
         save_snapshot(snap)
     snaps = load_all(league["slug"]) or [snap]
