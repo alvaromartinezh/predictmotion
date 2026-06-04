@@ -25,6 +25,7 @@
   <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
   <link rel="dns-prefetch" href="https://site.api.espn.com" />
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;600;700;800&family=Inconsolata:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/fixtures.css" />
 
   <title>Copa del Mundo 2026 · Probabilidades de Clasificación y Cuadro</title>
   <style>
@@ -459,7 +460,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <div class="header-wrap">
 <div class="header">
-  <div class="logo"><img id="league-logo" src="/media/mundial_logo.png" alt="Copa del Mundo 2026" style="width:100%;height:100%;object-fit:contain" /></div>
+  <a class="logo" href="/" title="Inicio · Elegir competición"><img id="league-logo" src="/media/mundial_logo.png" alt="Copa del Mundo 2026" style="width:100%;height:100%;object-fit:contain" /></a>
   <div class="header-text">
     <h1>Copa del Mundo 2026</h1>
     <p>USA · Canadá · México · 48 Selecciones</p>
@@ -470,12 +471,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 </div>
 </div>
 
-<nav class="league-nav">
-  <a class="league-btn" href="/laliga">LaLiga</a>
-  <a class="league-btn" href="/">Liga Hypermotion</a>
-  <span class="league-btn active">Mundial 2026</span>
-</nav>
-
 <div class="error-banner" id="error-banner"></div>
 
 <!-- Pestañas de sección -->
@@ -483,6 +478,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <button class="page-tab" data-section="grupos"   onclick="showSection('grupos')">Grupos</button>
   <button class="page-tab" data-section="cuadro"   onclick="showSection('cuadro')">Cuadro</button>
   <button class="page-tab" data-section="partidos" onclick="showSection('partidos')">Partidos</button>
+  <button class="page-tab" data-section="datos"    onclick="showSection('datos')">Datos</button>
 </div>
 
 <!-- Leyenda (solo visible en pestaña Grupos) -->
@@ -525,6 +521,18 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="cs-pill"><strong>SEDE</strong>USA · Canadá · México</div>
     <div class="cs-pill"><strong>INICIO</strong>11 Jun 2026</div>
     <div class="cs-pill"><strong>FINAL</strong>19 Jul 2026</div>
+  </div>
+</div>
+
+<!-- Datos section -->
+<div class="section-wrap" id="datos-section" style="display:none">
+  <div class="card" style="max-width:940px;margin:0 auto;padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)">
+    <p style="font-size:1.02rem;line-height:1.55;margin-bottom:15px">Probabilidades detalladas de la Copa del Mundo 2026, generadas por simulación Monte Carlo a partir de resultados reales.</p>
+    <div class="datos-links">
+      <a href="/equipos/mundial">Probabilidad por selección<span class="ar">→</span></a>
+      <a href="/grupos/mundial">Probabilidades por grupo<span class="ar">→</span></a>
+      <a href="/historico/mundial">Histórico de probabilidades<span class="ar">→</span></a>
+    </div>
   </div>
 </div>
 
@@ -1102,6 +1110,7 @@ function showSection(name) {
   document.getElementById('legend').style.display            = name === 'grupos'   ? '' : 'none';
   document.getElementById('groups-section').style.display    = name === 'grupos'   ? '' : 'none';
   document.getElementById('bracket-section').style.display   = name === 'cuadro'   ? '' : 'none';
+  document.getElementById('datos-section').style.display     = name === 'datos'    ? '' : 'none';
 }
 
 // ─── Fase de grupos activa hasta el 28 Jun UTC ───────────────────────────
