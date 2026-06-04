@@ -15,7 +15,7 @@ from .textutil import slugify
 
 # ── Construcción ────────────────────────────────────────────────────────────
 
-def build_table_snapshot(league, rows, sim, sim_n, today, league_logo=None):
+def build_table_snapshot(league, rows, sim, sim_n, today, league_logo=None, season=None):
     n = len(rows)
     bands = league["bands"](n)
     jornada = max(r["gp"] for r in rows)
@@ -47,7 +47,7 @@ def build_table_snapshot(league, rows, sim, sim_n, today, league_logo=None):
         "league":   league["slug"],
         "kind":     "table",
         "name":     league["name"],
-        "season":   league["season"],
+        "season":   season or league["season"],
         "date":     today,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "league_logo": league_logo,

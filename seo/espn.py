@@ -5,6 +5,7 @@ partida sean idénticos a los que ve el usuario en el dashboard.
 """
 
 import json
+import re
 import urllib.request
 
 _BASE_V2   = "https://site.api.espn.com/apis/v2/sports/soccer"
@@ -82,24 +83,32 @@ def fetch_groups(espn_code):
     return groups
 
 
-def fetch_league_logo(espn_code):
-    """Logo de la competición (no el de la web). Best-effort -> None si falla.
+def fetch_league_meta(espn_code):
+    """Metadatos vivos de la competición desde ESPN (nada hardcodeado).
 
-    Viene del endpoint scoreboard en `leagues[0].logos`. Se prefiere la variante
-    'dark' (logo claro para fondo oscuro) si existe; si no, la 'default'.
+    Devuelve {'logo':..., 'season':...} (best-effort, valores None si falla).
+    - logo: de `leagues[0].logos`, preferida la variante 'dark' (logo claro para
+      fondo oscuro); si no, la 'default'.
+    - season: de `leagues[0].season.displayName`, extraído como 'YYYY-YY'.
     """
+    out = {"logo": None, "season": None}
     try:
         data = _get_json(f"{_BASE_SITE}/{espn_code}/scoreboard")
     except Exception:
-        return None
-    logos = ((data.get("leagues") or [{}])[0]).get("logos") or []
-    if not logos:
-        return None
-    dark = next((l for l in logos if "dark" in (l.get("rel") or [])), None)
-    href = (dark or logos[0]).get("href")
-    if href and href.startswith("http://"):
-        href = "https://" + href[len("http://"):]
-    return href
+        return out
+    lg = (data.get("leagues") or [{}])[0]
+    logos = lg.get("logos") or []
+    if logos:
+        dark = next((l for l in logos if "dark" in (l.get("rel") or [])), None)
+        href = (dark or logos[0]).get("href")
+        if href and href.startswith("http://"):
+            href = "https://" + href[len("http://"):]
+        out["logo"] = href
+    dn = (lg.get("season") or {}).get("displayName") or ""
+    m = re.search(r"\d{4}-\d{2}", dn)
+    if m:
+        out["season"] = m.group(0)
+    return out
 
 
 def fetch_remaining_schedule(espn_code, team_id):

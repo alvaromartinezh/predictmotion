@@ -769,9 +769,25 @@ async function triggerUpdate(silent = false) {
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────
+// ─── Temporada dinámica (desde ESPN, no hardcodeada) ──────────────────────
+async function updateSeason() {
+  try {
+    const res = await fetch(ESPN_SCOREBOARD, { cache: 'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const dn = (((data.leagues || [])[0] || {}).season || {}).displayName || '';
+    const m = dn.match(/\d{4}-\d{2}/);
+    if (!m) return;
+    const h1 = document.querySelector('.header-text h1');
+    if (h1) h1.textContent = h1.textContent.replace(/\d{4}[\-‑]\d{2}/, m[0]);
+    document.title = document.title.replace(/\d{4}[\-‑]\d{2}/, m[0]);
+  } catch (e) {}
+}
+
 renderTableHeader();
 renderSkeleton();
 triggerUpdate();
+updateSeason();
 </script>
 <script src="/assets/fixtures.js"></script>
 <script>
