@@ -8,7 +8,6 @@
   'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
   })(window,document,'script','dataLayer','GTM-NG2T7CM4');</script>
   <!-- End Google Tag Manager -->
-
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YMRF085WZS"></script>
   <script>
@@ -21,339 +20,104 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="/media/twitter_profile.png" />
   <link rel="apple-touch-icon" href="/media/twitter_profile.png" />
-  <!-- Performance: preconnect a recursos externos -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
-  <link rel="dns-prefetch" href="https://site.api.espn.com" />
-  <link rel="dns-prefetch" href="https://r2.thesportsdb.com" />
-  <!-- Google Fonts -->
+  <link rel="dns-prefetch" href="https://a.espncdn.com" />
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;600;700;800&family=Inconsolata:wght@400;600;700&display=swap" rel="stylesheet" />
 
-  <title>Liga Hypermotion 2025-26 · Probabilidades de Ascenso y Descenso</title>
-  <style>
-    :root {
-      --bg:        #060916;
-      --surface:   #0c1124;
-      --surface2:  #121a30;
-      --border:    #1d2e48;
-      --accent:    #e6a117;
-      --green:     #00c97a;
-      --green-dim: rgba(0,201,122,.06);
-      --blue:      #3d8ef5;
-      --blue-dim:  rgba(61,142,245,.06);
-      --red:       #f53050;
-      --red-dim:   rgba(245,48,80,.06);
-      --text:      #dce8fa;
-      --muted:     #4d6285;
-      --radius:    8px;
-    }
-    * { box-sizing:border-box; margin:0; padding:0; }
-    body {
-      font-family:'Barlow',sans-serif;
-      background: var(--bg);
-      background-image:
-        radial-gradient(ellipse 70% 45% at 4% 0%, rgba(230,161,23,.05) 0%, transparent 55%),
-        radial-gradient(ellipse 50% 40% at 96% 100%, rgba(61,142,245,.04) 0%, transparent 55%);
-      color:var(--text); min-height:100vh;
-      padding:0 16px 80px; overflow-x:hidden;
-    }
-
-    /* ── Header wrap ── */
-    .header-wrap {
-      margin:0 -16px 22px;
-      border-top:3px solid var(--accent);
-      background:linear-gradient(180deg,rgba(10,17,40,.92) 0%,transparent 100%);
-      border-bottom:1px solid var(--border);
-      padding:22px 16px 18px;
-    }
-    .header { max-width:940px; margin:0 auto; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
-    .logo { width:50px; height:50px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
-      filter:drop-shadow(0 2px 12px rgba(230,161,23,.22)); }
-    .logo img { width:100%; height:100%; object-fit:contain; }
-    .header-text h1 {
-      font-family:'Barlow Condensed',sans-serif;
-      font-size:1.95rem; font-weight:800; text-transform:uppercase; letter-spacing:.06em; line-height:1.05;
-    }
-    .header-text p { font-size:.67rem; color:var(--muted); margin-top:5px; letter-spacing:.12em; text-transform:uppercase; }
-    .header-actions { margin-left:auto; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-    .badge {
-      background:var(--surface2); border:1px solid var(--border); border-radius:6px;
-      padding:5px 12px; font-size:.72rem; color:var(--muted);
-      font-family:'Inconsolata',monospace; white-space:nowrap; letter-spacing:.03em;
-    }
-    .badge strong { color:var(--text); }
-
-    /* ── League nav ── */
-    .league-nav { max-width:940px; margin:0 auto 18px; display:flex; gap:6px; }
-    .league-btn {
-      padding:8px 22px; border-radius:20px;
-      font-family:'Barlow Condensed',sans-serif;
-      font-size:.76rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em;
-      border:1px solid var(--border); background:var(--surface2); color:var(--muted);
-      text-decoration:none; white-space:nowrap; transition:color .15s, border-color .15s, background .15s;
-    }
-    .league-btn.active {
-      background:rgba(230,161,23,.10); border-color:rgba(230,161,23,.45); color:var(--accent);
-      cursor:default;
-    }
-    .league-btn:not(.active):hover { color:var(--text); border-color:var(--muted); }
-
-    /* ── Status bar ── */
-    .status-bar { max-width:940px; margin:0 auto 14px; display:flex; align-items:center; gap:8px; font-size:.7rem; color:var(--muted); letter-spacing:.02em; }
-    .status-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
-    .status-dot.ok      { background:var(--green); }
-    .status-dot.loading { background:var(--accent); animation:pulse 1s ease-in-out infinite; }
-    .status-dot.error   { background:var(--red); }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-
-    /* ── Legend ── */
-    .legend { max-width:940px; margin:0 auto 16px; display:flex; gap:7px; flex-wrap:wrap; }
-    .legend-item {
-      display:flex; align-items:center; gap:6px; font-size:.67rem; color:var(--muted);
-      background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:4px 11px;
-      letter-spacing:.07em; text-transform:uppercase; font-weight:600;
-      font-family:'Barlow Condensed',sans-serif;
-    }
-    .legend-dot { width:7px; height:7px; border-radius:50%; }
-
-    /* ── Card ── */
-    .card { max-width:940px; margin:0 auto; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
-    .table-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
-
-    /* ── Skeleton ── */
-    .skeleton { animation:shimmer 1.4s infinite; background:linear-gradient(90deg,var(--surface2) 25%,#1e3055 50%,var(--surface2) 75%); background-size:400% 100%; border-radius:4px; }
-    @keyframes shimmer { to { background-position:-400% 0; } }
-
-    /* ── Table ── */
-    table { width:100%; border-collapse:collapse; }
-    thead th {
-      background:var(--surface2); padding:10px 14px;
-      font-family:'Barlow Condensed',sans-serif;
-      font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); text-align:left;
-      border-bottom:1px solid var(--border);
-    }
-    thead th.right  { text-align:right; }
-    thead th.center { text-align:center; }
-    tbody tr { border-top:1px solid var(--border); transition:background .12s; }
-    tbody tr:hover { background:var(--surface2); }
-    tbody tr.zone-promo   { background:var(--green-dim); }
-    tbody tr.zone-playoff { background:var(--blue-dim); }
-    tbody tr.zone-relega  { background:var(--red-dim); }
-    tbody tr.zone-promo:hover   { background:rgba(0,201,122,.1); }
-    tbody tr.zone-playoff:hover { background:rgba(61,142,245,.1); }
-    tbody tr.zone-relega:hover  { background:rgba(245,48,80,.1); }
-    td { padding:10px 14px; vertical-align:middle; }
-
-    .pos { font-family:'Barlow Condensed',sans-serif; font-size:1.05rem; font-weight:700; color:var(--muted); width:36px; text-align:center; }
-    .zone-bar { width:3px; height:26px; border-radius:2px; }
-    .zone-bar.promo   { background:var(--green); box-shadow:0 0 8px rgba(0,201,122,.38); }
-    .zone-bar.playoff { background:var(--blue);  box-shadow:0 0 8px rgba(61,142,245,.38); }
-    .zone-bar.relega  { background:var(--red);   box-shadow:0 0 8px rgba(245,48,80,.38); }
-    .zone-bar.none    { background:transparent; }
-
-    .team-cell { display:flex; align-items:center; gap:10px; }
-    .team-avatar { width:32px; height:32px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
-    .team-avatar img { width:100%; height:100%; object-fit:contain; }
-    .team-avatar.fallback { background:var(--surface2); font-size:.65rem; font-weight:700; border-radius:5px; }
-    .team-name { font-size:.87rem; font-weight:500; }
-    .team-link { color:var(--text); text-decoration:none; transition:color .15s; }
-    .team-link:hover { color:var(--accent); text-decoration:underline; }
-
-    .pts { font-family:'Inconsolata',monospace; font-size:.96rem; font-weight:700; text-align:right; }
-    .pts-live { color:var(--accent); }
-
-    .prob-cell { min-width:108px; }
-    .prob-header { display:flex; justify-content:flex-start; margin-bottom:4px; }
-    .prob-pct { font-family:'Barlow Condensed',sans-serif; font-size:1.12rem; font-weight:700; line-height:1; letter-spacing:.02em; }
-    .prob-bar-bg { height:3px; border-radius:2px; background:var(--border); overflow:hidden; }
-    .prob-bar-fill { height:100%; border-radius:2px; transition:width 1.1s cubic-bezier(.16,1,.3,1); }
-    .fill-green { background:linear-gradient(90deg,#009960,#00c97a); }
-    .fill-blue  { background:linear-gradient(90deg,#1f6ec4,#3d8ef5); }
-    .fill-red   { background:linear-gradient(90deg,#c01535,#f53050); }
-    .prob-label { font-size:.62rem; color:var(--muted); font-weight:400; }
-
-    .live-badge {
-      display:inline-flex; align-items:center; gap:4px;
-      background:rgba(245,48,80,.12); border:1px solid rgba(245,48,80,.28); border-radius:4px;
-      padding:1px 5px; font-size:.62rem; font-weight:700; color:var(--red);
-      margin-left:6px; white-space:nowrap; vertical-align:middle;
-      font-family:'Inconsolata',monospace;
-    }
-    .live-dot   { width:5px; height:5px; border-radius:50%; background:var(--red); animation:pulse 1s ease-in-out infinite; flex-shrink:0; }
-    .live-clock { color:var(--muted); font-weight:400; }
-
-    .zone-label-row td { padding:4px 14px 4px 20px; background:var(--surface2); border-top:1px solid var(--border); }
-    .zone-label-text {
-      font-family:'Barlow Condensed',sans-serif;
-      font-size:.68rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
-    }
-    .zone-label-text.green { color:var(--green); }
-    .zone-label-text.blue  { color:var(--blue); }
-    .zone-label-text.red   { color:var(--red); }
-    .zone-label-text.gray  { color:var(--muted); }
-
-    .footer { max-width:940px; margin:18px auto 0; font-size:.7rem; color:var(--muted); display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px; }
-    @media (max-width:600px) { .prob-cell{min-width:82px;} .team-name{font-size:.78rem;} thead th,td{padding:8px 9px;} .header-text h1{font-size:1.45rem;} }
-
-    /* ── Play-off de Ascenso ─────────────────────────────────────── */
-    .playoff-section { max-width:940px; margin:28px auto 0; }
-    .section-label {
-      font-family:'Barlow Condensed',sans-serif;
-      font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.16em;
-      color:var(--muted); margin-bottom:12px; padding-left:2px;
-    }
-    .playoff-card {
-      background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
-      overflow-x:auto;
-    }
-
-    /* Bracket grid */
-    .bracket-grid {
-      display:grid;
-      grid-template-columns: 1fr 28px minmax(160px,200px) 28px 1fr;
-      padding:24px 20px;
-      min-width:520px;
-    }
-
-    /* Left team slots */
-    .bkg-lt { grid-column:1; grid-row:1; display:flex; justify-content:flex-end; align-items:center; padding-bottom:10px; }
-    .bkg-lb { grid-column:1; grid-row:2; display:flex; justify-content:flex-end; align-items:center; padding-top:10px; }
-
-    /* Left connector – spans both rows */
-    .bkg-cl { grid-column:2; grid-row:1 / span 2; display:flex; flex-direction:column; }
-    .bkg-cl .ch { flex:1; border-right:2px solid var(--border); border-bottom:2px solid var(--border); border-bottom-right-radius:5px; }
-    .bkg-cl .cb { flex:1; border-right:2px solid var(--border); border-top:2px solid var(--border); border-top-right-radius:5px; }
-
-    /* Final center – spans both rows */
-    .bkg-cf {
-      grid-column:3; grid-row:1 / span 2;
-      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:9px;
-      background:var(--surface2); border:1px solid rgba(230,161,23,.28);
-      border-radius:8px; padding:18px 12px; text-align:center;
-      margin:0 2px;
-    }
-    .bk-final-title {
-      font-family:'Barlow Condensed',sans-serif;
-      font-size:.88rem; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
-      color:var(--accent);
-    }
-    .bk-final-badge {
-      font-family:'Barlow Condensed',sans-serif;
-      font-size:.63rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
-      color:var(--green); background:rgba(0,201,122,.08); border:1px solid rgba(0,201,122,.2);
-      border-radius:20px; padding:3px 10px;
-    }
-    .bk-finalist {
-      width:100%; background:var(--surface); border:1px solid var(--border);
-      border-radius:5px; padding:8px 10px; font-size:.77rem; font-weight:500;
-      display:flex; align-items:center; gap:6px; min-height:34px;
-    }
-    .bk-finalist img { width:18px; height:18px; object-fit:contain; flex-shrink:0; }
-    .bk-finalist .fin-name { color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .bk-finalist .fin-tbd { color:var(--muted); font-size:.73rem; font-style:italic; }
-    .bk-vs { font-family:'Barlow Condensed',sans-serif; font-size:.7rem; font-weight:700; letter-spacing:.1em; color:var(--muted); text-transform:uppercase; }
-
-    /* Right connector – spans both rows */
-    .bkg-cr { grid-column:4; grid-row:1 / span 2; display:flex; flex-direction:column; }
-    .bkg-cr .ch { flex:1; border-left:2px solid var(--border); border-bottom:2px solid var(--border); border-bottom-left-radius:5px; }
-    .bkg-cr .cb { flex:1; border-left:2px solid var(--border); border-top:2px solid var(--border); border-top-left-radius:5px; }
-
-    /* Right team slots */
-    .bkg-rt { grid-column:5; grid-row:1; display:flex; justify-content:flex-start; align-items:center; padding-bottom:10px; }
-    .bkg-rb { grid-column:5; grid-row:2; display:flex; justify-content:flex-start; align-items:center; padding-top:10px; }
-
-    /* Team card inside bracket */
-    .bk-team {
-      background:var(--surface2); border:1px solid var(--border); border-left:3px solid var(--blue);
-      border-radius:6px; padding:9px 10px; display:flex; align-items:center; gap:8px;
-      width:100%;
-    }
-    .bk-team-pos {
-      font-family:'Barlow Condensed',sans-serif; font-size:.78rem; font-weight:700;
-      color:var(--blue); width:22px; text-align:center; flex-shrink:0;
-    }
-    .bk-team-logo { width:24px; height:24px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
-    .bk-team-logo img { width:100%; height:100%; object-fit:contain; }
-    .bk-team-logo.fallback { background:var(--surface); font-size:.55rem; font-weight:700; border-radius:4px; color:#fff; }
-    .bk-team-info { flex:1; min-width:0; }
-    .bk-team-name { font-size:.8rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .bk-team-p { font-size:.63rem; color:var(--muted); margin-top:2px; line-height:1.4; }
-    .bk-team-p .pf { color:var(--blue); font-weight:600; }
-    .bk-team-p .pw { color:var(--green); font-weight:600; }
-
-    /* Semi-final sub-labels above each column */
-    .bracket-semi-labels {
-      display:grid;
-      grid-template-columns: 1fr 28px minmax(160px,200px) 28px 1fr;
-      padding:0 20px; min-width:520px;
-    }
-    .semi-lbl {
-      font-family:'Barlow Condensed',sans-serif;
-      font-size:.65rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase;
-      color:var(--muted); padding-bottom:6px;
-    }
-    .semi-lbl.left { grid-column:1; text-align:right; }
-    .semi-lbl.center { grid-column:3; text-align:center; color:var(--accent); }
-    .semi-lbl.right { grid-column:5; text-align:left; }
-  </style>
-
-  <!-- SEO principal -->
-  <meta name="description" content="Simulación Monte Carlo de la Liga Hypermotion 2025-26. Probabilidades en tiempo real de ascenso directo, play-off y descenso para los 22 equipos de Segunda División española." />
-  <meta name="keywords" content="Liga Hypermotion, Segunda División probabilidades, ascenso Segunda División, play-off ascenso, descenso Liga Hypermotion, predicción fútbol, simulación Segunda División 2025-26" />
+  <title>PredictMotion · Probabilidades de fútbol por simulación Monte Carlo</title>
+  <meta name="description" content="Elige competición y consulta probabilidades de ascenso, descenso y clasificación en tiempo real: Liga Hypermotion, LaLiga y Copa del Mundo 2026. Simulación Monte Carlo con datos reales." />
+  <meta name="keywords" content="probabilidades fútbol, Liga Hypermotion, LaLiga, Mundial 2026, ascenso, descenso, simulación Monte Carlo" />
   <meta name="author" content="PredictMotion" />
-  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
   <meta name="theme-color" content="#060916" />
-  <meta name="application-name" content="PredictMotion" />
-  <meta name="geo.region" content="ES" />
   <link rel="canonical" href="https://predictmotion.com/" />
-  <link rel="alternate" hreflang="es" href="https://predictmotion.com/" />
-
-  <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://predictmotion.com/" />
-  <meta property="og:title" content="Liga Hypermotion 2025-26 · Probabilidades de Ascenso y Descenso" />
-  <meta property="og:description" content="Simulación Monte Carlo de la Liga Hypermotion 2025-26. Probabilidades en tiempo real de ascenso directo, play-off y descenso para los 22 equipos de Segunda División." />
+  <meta property="og:title" content="PredictMotion · Probabilidades de fútbol" />
+  <meta property="og:description" content="Probabilidades de ascenso, descenso y clasificación por simulación Monte Carlo. Liga Hypermotion, LaLiga y Copa del Mundo 2026." />
   <meta property="og:image" content="https://predictmotion.com/media/twitter_profile.png" />
-  <meta property="og:image:alt" content="Logo PredictMotion" />
   <meta property="og:locale" content="es_ES" />
   <meta property="og:site_name" content="PredictMotion" />
-
-  <!-- Twitter Card -->
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Liga Hypermotion 2025-26 · Probabilidades de Ascenso y Descenso" />
-  <meta name="twitter:description" content="40 000 simulaciones Monte Carlo para predecir el final de la temporada en Segunda División española." />
-  <meta name="twitter:image" content="https://predictmotion.com/media/twitter_profile.png" />
-  <meta name="twitter:image:alt" content="Logo PredictMotion" />
 
-  <!-- Structured Data (JSON-LD) -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "WebApplication",
-    "name": "PredictMotion – Liga Hypermotion 2025-26",
-    "description": "Simulador Monte Carlo para la Liga Hypermotion 2025-26. Probabilidades de ascenso directo, play-off y descenso para los 22 equipos de Segunda División española.",
+    "@type": "WebSite",
+    "name": "PredictMotion",
     "url": "https://predictmotion.com/",
-    "applicationCategory": "SportsApplication",
-    "operatingSystem": "Web",
-    "inLanguage": "es-ES",
-    "about": {
-      "@type": "SportsOrganization",
-      "name": "Liga Hypermotion",
-      "sport": "Soccer",
-      "url": "https://www.laliga.com/laliga-hypermotion"
-    },
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "EUR"
-    }
+    "description": "Probabilidades de fútbol por simulación Monte Carlo: Liga Hypermotion, LaLiga y Copa del Mundo 2026.",
+    "inLanguage": "es-ES"
   }
   </script>
 
-  <!-- Google AdSense Auto Ads -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3055585323326983"
-       crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg:#060916; --surface:#0c1124; --surface2:#121a30; --border:#1d2e48;
+      --accent:#e6a117; --green:#00c97a; --blue:#3d8ef5; --red:#f53050;
+      --text:#dce8fa; --muted:#4d6285; --radius:10px;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body {
+      font-family:'Barlow',sans-serif; background:var(--bg);
+      background-image:
+        radial-gradient(ellipse 70% 45% at 4% 0%, rgba(230,161,23,.06) 0%, transparent 55%),
+        radial-gradient(ellipse 55% 45% at 96% 100%, rgba(61,142,245,.05) 0%, transparent 55%);
+      color:var(--text); min-height:100vh; padding:0 18px 80px; overflow-x:hidden;
+    }
+    .header-wrap {
+      margin:0 -18px 30px; border-top:3px solid var(--accent);
+      background:linear-gradient(180deg,rgba(10,17,40,.92) 0%,transparent 100%);
+      border-bottom:1px solid var(--border); padding:30px 18px 26px; text-align:center;
+    }
+    .brand {
+      font-family:'Barlow Condensed',sans-serif; font-size:2.6rem; font-weight:800;
+      text-transform:uppercase; letter-spacing:.04em; line-height:1;
+    }
+    .brand span { color:var(--accent); }
+    .tagline {
+      font-size:.72rem; color:var(--muted); margin-top:9px;
+      letter-spacing:.16em; text-transform:uppercase;
+    }
+    .intro {
+      max-width:680px; margin:0 auto 26px; text-align:center;
+      font-size:1.05rem; color:var(--text); line-height:1.55;
+    }
+    .grid {
+      max-width:900px; margin:0 auto;
+      display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:18px;
+    }
+    .comp {
+      display:flex; flex-direction:column; align-items:center; text-align:center; gap:14px;
+      background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+      padding:30px 22px; text-decoration:none; color:inherit;
+      transition:border-color .15s, transform .15s, background .15s;
+    }
+    .comp:hover { border-color:rgba(230,161,23,.45); background:var(--surface2); transform:translateY(-3px); }
+    .comp-logo { width:74px; height:74px; display:flex; align-items:center; justify-content:center;
+      filter:drop-shadow(0 3px 14px rgba(0,0,0,.4)); }
+    .comp-logo img { width:100%; height:100%; object-fit:contain; }
+    .comp-name {
+      font-family:'Barlow Condensed',sans-serif; font-size:1.45rem; font-weight:800;
+      text-transform:uppercase; letter-spacing:.03em; line-height:1.05;
+    }
+    .comp-season { font-size:.66rem; color:var(--muted); letter-spacing:.12em; text-transform:uppercase; margin-top:4px; }
+    .comp-cta {
+      margin-top:auto; font-family:'Barlow Condensed',sans-serif; font-weight:700;
+      font-size:.8rem; letter-spacing:.06em; text-transform:uppercase; color:var(--accent);
+    }
+    footer {
+      max-width:900px; margin:40px auto 0; padding-top:18px; border-top:1px solid var(--border);
+      font-size:.72rem; color:var(--muted); text-align:center; line-height:1.8;
+    }
+    footer a { color:var(--muted); text-decoration:none; }
+    footer a:hover { color:var(--text); }
+    @media (max-width:600px){ .brand{font-size:2rem;} .comp{padding:24px 18px;} }
+  </style>
+
+  <!-- Google AdSense -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3055585323326983" crossorigin="anonymous"></script>
   <!-- Umami Analytics -->
   <script async src="https://umami.predictmotion.com/script.js" data-website-id="08e9969f-6743-48f3-bdf5-b69dff0a8a84"></script>
 </head>
@@ -364,586 +128,34 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- End Google Tag Manager (noscript) -->
 
 <div class="header-wrap">
-<div class="header">
-  <div class="logo"><img src="https://r2.thesportsdb.com/images/media/league/badge/r7u6821688425700.png" alt="Liga Hypermotion" /></div>
-  <div class="header-text">
-    <h1>Liga Hypermotion 2025‑26</h1>
-  </div>
-  <div class="header-actions">
-    <div class="badge" id="badge-jornada">Cargando…</div>
-  </div>
-</div>
+  <div class="brand">Predict<span>Motion</span></div>
+  <div class="tagline">Probabilidades de fútbol · Simulación Monte Carlo</div>
 </div>
 
-<nav class="league-nav">
-  <a class="league-btn" href="/laliga">LaLiga</a>
-  <span class="league-btn active">Liga Hypermotion</span>
-  <a class="league-btn" href="/mundial">Mundial 2026</a>
+<p class="intro">Elige una competición para ver su clasificación, probabilidades en tiempo real, próximos partidos y datos.</p>
+
+<nav class="grid" aria-label="Competiciones">
+  <a class="comp" href="/hypermotion">
+    <div class="comp-logo"><img src="https://a.espncdn.com/i/leaguelogos/soccer/500/107.png" alt="Liga Hypermotion" loading="lazy" /></div>
+    <div><div class="comp-name">Liga Hypermotion</div><div class="comp-season">Segunda División · 2025-26</div></div>
+    <span class="comp-cta">Ver clasificación →</span>
+  </a>
+  <a class="comp" href="/laliga">
+    <div class="comp-logo"><img src="https://a.espncdn.com/i/leaguelogos/soccer/500-dark/15.png" alt="LaLiga" loading="lazy" /></div>
+    <div><div class="comp-name">LaLiga</div><div class="comp-season">Primera División · 2025-26</div></div>
+    <span class="comp-cta">Ver clasificación →</span>
+  </a>
+  <a class="comp" href="/mundial">
+    <div class="comp-logo"><img src="https://a.espncdn.com/i/leaguelogos/soccer/500-dark/4.png" alt="Copa del Mundo 2026" loading="lazy" /></div>
+    <div><div class="comp-name">Copa del Mundo</div><div class="comp-season">FIFA World Cup · 2026</div></div>
+    <span class="comp-cta">Ver grupos →</span>
+  </a>
 </nav>
 
-<div class="legend" id="legend"></div>
-
-<div class="card">
-  <div class="table-scroll">
-  <table>
-    <thead>
-      <tr>
-        <th style="width:12px"></th>
-        <th class="center" style="width:34px">#</th>
-        <th>Equipo</th>
-        <th class="right">Pts</th>
-        <th class="right" style="color:var(--muted);font-size:.75rem">PJ</th>
-        <th><span style="color:var(--green)">Ascenso directo</span></th>
-        <th><span style="color:var(--blue)">Play-off</span></th>
-        <th><span style="color:var(--red)">Descenso</span></th>
-      </tr>
-    </thead>
-    <tbody id="tbody"></tbody>
-  </table>
-  </div>
-</div>
-
-<div class="playoff-section" id="playoff-section" style="display:none">
-  <div class="section-label">Play-off de Ascenso — Probabilidades &amp; Cuadro</div>
-  <div class="playoff-card" id="playoff-card">
-    <div class="bracket-semi-labels" id="bracket-semi-labels"></div>
-    <div class="bracket-grid" id="bracket-grid"></div>
-  </div>
-</div>
-
-<div class="footer">
-  <span id="footer-update">—</span>
-  <span>© 2025 PredictMotion · Todos los derechos reservados · <a href="mailto:contact@predictmotion.com" style="color:var(--muted);text-decoration:underline">contact@predictmotion.com</a> · <a href="/privacy" style="color:var(--muted);text-decoration:underline">Política de privacidad</a> · <a href="/equipos/hypermotion" style="color:var(--muted);text-decoration:underline">Probabilidades por equipo</a></span>
-</div>
-
-<script>
-// ─── League config — añadir aquí nuevas ligas cuando se expanda ───────────
-const LEAGUE = {
-  espnCode:    'esp.2',
-  promoSlots:  2,   // ascenso directo (top N)
-  playoffTop:  6,   // clasifican al play-off (incluye los directos)
-  relegSlots:  4,   // últimos N descienden
-  labels: {
-    promo:   'Ascenso directo',
-    playoff: 'Play-off de ascenso',
-    perma:   'Zona de permanencia',
-    relega:  'Descenso a Primera RFEF',
-  },
-};
-
-const ESPN_STANDINGS  = `https://site.api.espn.com/apis/v2/sports/soccer/${LEAGUE.espnCode}/standings`;
-const ESPN_SCOREBOARD = `https://site.api.espn.com/apis/site/v2/sports/soccer/${LEAGUE.espnCode}/scoreboard`;
-const SIM_N  = 40000;
-const P_HOME = 0.42;
-const P_DRAW = 0.27;
-
-const COLOR_PALETTE = [
-  '#e11d48','#7c3aed','#2563eb','#0891b2','#059669','#ca8a04','#ea580c',
-  '#db2777','#4f46e5','#0284c7','#16a34a','#d97706','#dc2626','#9333ea',
-  '#0369a1','#15803d','#b45309','#be185d','#6d28d9','#0e7490','#166534','#92400e',
-];
-
-let cachedNumTeams = 22;
-
-// ─── Seeded PRNG (mulberry32) ─────────────────────────────────────────────
-function mulberry32(seed) {
-  return function() {
-    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
-    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}
-function standingsSeed(standings) {
-  const str = standings.map(t => `${t.name}:${t.pts}:${t.gp}`).join('|');
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = Math.imul(31, h) + str.charCodeAt(i) | 0;
-  return h >>> 0;
-}
-let rng = Math.random;
-
-// ─── Zone helpers — todo derivado del config, sin números hardcodeados ────
-function zoneOf(pos, numTeams) {
-  if (pos <= LEAGUE.promoSlots) return 'promo';
-  if (pos <= LEAGUE.playoffTop) return 'playoff';
-  if (pos > numTeams - LEAGUE.relegSlots) return 'relega';
-  return 'none';
-}
-
-function getZoneLabels(numTeams) {
-  const relegStart = numTeams - LEAGUE.relegSlots + 1;
-  return {
-    1:                        { text: LEAGUE.labels.promo,   cls: 'green' },
-    [LEAGUE.promoSlots + 1]:  { text: LEAGUE.labels.playoff, cls: 'blue'  },
-    [LEAGUE.playoffTop + 1]:  { text: LEAGUE.labels.perma,   cls: 'gray'  },
-    [relegStart]:             { text: LEAGUE.labels.relega,  cls: 'red'   },
-  };
-}
-
-function renderLegend(numTeams) {
-  const relegStart = numTeams - LEAGUE.relegSlots + 1;
-  document.getElementById('legend').innerHTML = `
-    <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div> ${LEAGUE.labels.promo} (1º–${LEAGUE.promoSlots}º)</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div> Play-off (${LEAGUE.promoSlots + 1}º–${LEAGUE.playoffTop}º)</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div> Descenso (${relegStart}º–${numTeams}º)</div>
-  `;
-}
-
-// ─── Simulation helpers ───────────────────────────────────────────────────
-function shuffle(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = rng() * (i + 1) | 0;
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
-function randomMatchday(names) {
-  const t = shuffle([...names]);
-  const md = [];
-  for (let i = 0; i < t.length; i += 2) md.push([t[i], t[i + 1]]);
-  return md;
-}
-
-function buildFixtures(names, gp, totalMd) {
-  const mds = [];
-  for (let md = gp + 1; md <= totalMd; md++) mds.push(randomMatchday(names));
-  return mds;
-}
-
-// ─── Play-off: simula eliminatoria a doble partido ────────────────────────
-function simTwoLegs(home, away) {
-  let h = 0, a = 0;
-  // Leg 1 – home en casa
-  const r1 = rng();
-  if (r1 < P_HOME) {
-    h += (rng() * 2 | 0) + 1 + (rng() * 2 | 0); a += rng() * 2 | 0;
-  } else if (r1 < P_HOME + P_DRAW) {
-    const g = rng() * 2 | 0; h += g; a += g;
-  } else {
-    h += rng() * 2 | 0; a += (rng() * 2 | 0) + 1 + (rng() * 2 | 0);
-  }
-  // Leg 2 – away en casa (roles invertidos)
-  const r2 = rng();
-  if (r2 < P_HOME) {
-    a += (rng() * 2 | 0) + 1 + (rng() * 2 | 0); h += rng() * 2 | 0;
-  } else if (r2 < P_HOME + P_DRAW) {
-    const g = rng() * 2 | 0; h += g; a += g;
-  } else {
-    a += rng() * 2 | 0; h += (rng() * 2 | 0) + 1 + (rng() * 2 | 0);
-  }
-  if (h > a) return home;
-  if (a > h) return away;
-  return rng() < 0.5 ? home : away;  // empate → penaltis
-}
-
-// ─── Simulation ───────────────────────────────────────────────────────────
-function simulate(standings) {
-  const numTeams = standings.length;
-  const totalMd  = 2 * (numTeams - 1);
-  const minGp    = Math.min(...standings.map(t => t.gp));
-
-  // Temporada terminada: todos han jugado todas las jornadas → devolver posiciones reales
-  if (minGp >= totalMd) {
-    const sorted = [...standings].sort((a, b) =>
-      b.pts !== a.pts ? b.pts - a.pts :
-      (b.gf - b.gc) !== (a.gf - a.gc) ? (b.gf - b.gc) - (a.gf - a.gc) :
-      b.gf - a.gf
-    );
-    return Object.fromEntries(sorted.map((t, idx) => {
-      const p = idx + 1;
-      return [t.name, {
-        top2:    p <= LEAGUE.promoSlots             ? 100 : 0,
-        playoff: p > LEAGUE.promoSlots && p <= LEAGUE.playoffTop ? 100 : 0,
-        relega:  p > numTeams - LEAGUE.relegSlots   ? 100 : 0,
-        pSemi: 0, pFinal: 0, pWin: 0,
-      }];
-    }));
-  }
-
-  rng = mulberry32(standingsSeed(standings));
-  const names  = standings.map(t => t.name);
-  const counts = Object.fromEntries(names.map(n => [n, { t2: 0, t6: 0, b4: 0, psf: 0, pf: 0, pw: 0 }]));
-  const teamGp = Object.fromEntries(standings.map(t => [t.name, t.gp]));
-
-  for (let i = 0; i < SIM_N; i++) {
-    const pts = Object.fromEntries(standings.map(t => [t.name, t.pts]));
-    const gd  = Object.fromEntries(standings.map(t => [t.name, t.gf - t.gc]));
-    const gf  = Object.fromEntries(standings.map(t => [t.name, t.gf]));
-
-    let mdNum = minGp;
-    for (const md of buildFixtures(names, minGp, totalMd)) {
-      mdNum++;
-      for (const [h, a] of md) {
-        if (teamGp[h] >= mdNum || teamGp[a] >= mdNum) continue;
-        const r = rng();
-        let hp, ap, hg, ag;
-        if (r < P_HOME) {
-          hp = 3; ap = 0;
-          hg = (rng() * 2 | 0) + 1 + (rng() * 2 | 0);
-          ag = rng() * 2 | 0;
-        } else if (r < P_HOME + P_DRAW) {
-          hp = ap = 1;
-          hg = ag = rng() * 2 | 0;
-        } else {
-          hp = 0; ap = 3;
-          hg = rng() * 2 | 0;
-          ag = (rng() * 2 | 0) + 1 + (rng() * 2 | 0);
-        }
-        pts[h] += hp; pts[a] += ap;
-        gd[h]  += hg - ag; gd[a] += ag - hg;
-        gf[h]  += hg;      gf[a] += ag;
-      }
-    }
-
-    const sorted = [...names].sort((a, b) =>
-      pts[b] !== pts[a] ? pts[b] - pts[a] :
-      gd[b]  !== gd[a]  ? gd[b] - gd[a]  :
-      gf[b] - gf[a]);
-
-    sorted.forEach((name, idx) => {
-      const p = idx + 1;
-      if      (p <= LEAGUE.promoSlots)             counts[name].t2++;
-      else if (p <= LEAGUE.playoffTop)             counts[name].t6++;
-      else if (p > numTeams - LEAGUE.relegSlots)   counts[name].b4++;
-    });
-
-    // Simulación del play-off: 3º vs 6º  y  4º vs 5º
-    if (sorted.length >= LEAGUE.playoffTop) {
-      const sf1H = sorted[LEAGUE.promoSlots];          // 3º
-      const sf1A = sorted[LEAGUE.playoffTop - 1];      // 6º
-      const sf2H = sorted[LEAGUE.promoSlots + 1];      // 4º
-      const sf2A = sorted[LEAGUE.playoffTop - 2];      // 5º
-      counts[sf1H].psf++; counts[sf1A].psf++;
-      counts[sf2H].psf++; counts[sf2A].psf++;
-      const w1 = simTwoLegs(sf1H, sf1A);
-      const w2 = simTwoLegs(sf2H, sf2A);
-      counts[w1].pf++; counts[w2].pf++;
-      const wf = simTwoLegs(w1, w2);
-      counts[wf].pw++;
-    }
-  }
-
-  return Object.fromEntries(
-    names.map(n => [n, {
-      top2:    +(counts[n].t2  / SIM_N * 100).toFixed(1),
-      playoff: +(counts[n].t6  / SIM_N * 100).toFixed(1),
-      relega:  +(counts[n].b4  / SIM_N * 100).toFixed(1),
-      pSemi:   +(counts[n].psf / SIM_N * 100).toFixed(1),
-      pFinal:  +(counts[n].pf  / SIM_N * 100).toFixed(1),
-      pWin:    +(counts[n].pw  / SIM_N * 100).toFixed(1),
-    }])
-  );
-}
-
-// ─── ESPN fetch ───────────────────────────────────────────────────────────
-async function fetchLiveScores() {
-  try {
-    const res = await fetch(ESPN_SCOREBOARD, { cache: 'no-store' });
-    if (!res.ok) return [];
-    const data = await res.json();
-    const live = [];
-    for (const event of (data.events || [])) {
-      if (event.status.type.state !== 'in') continue;
-      const comp = event.competitions[0];
-      const home = comp.competitors.find(c => c.homeAway === 'home');
-      const away = comp.competitors.find(c => c.homeAway === 'away');
-      if (!home || !away) continue;
-      live.push({
-        homeId:    home.team.id,
-        homeName:  home.team.displayName,
-        homeScore: parseInt(home.score) || 0,
-        awayId:    away.team.id,
-        awayName:  away.team.displayName,
-        awayScore: parseInt(away.score) || 0,
-        clock:     event.status.displayClock || '',
-      });
-    }
-    return live;
-  } catch { return []; }
-}
-
-function applyLiveScores(standings, liveMatches) {
-  if (!liveMatches.length) return standings;
-  const adjusted = standings.map(t => ({ ...t }));
-  for (const m of liveMatches) {
-    const home = adjusted.find(t => String(t.id) === String(m.homeId));
-    const away = adjusted.find(t => String(t.id) === String(m.awayId));
-    if (!home || !away) continue;
-    const hpts = m.homeScore > m.awayScore ? 3 : m.homeScore === m.awayScore ? 1 : 0;
-    const apts = m.awayScore > m.homeScore ? 3 : m.homeScore === m.awayScore ? 1 : 0;
-    home.pts += hpts; home.gp += 1; home.gf += m.homeScore; home.gc += m.awayScore;
-    away.pts += apts; away.gp += 1; away.gf += m.awayScore; away.gc += m.homeScore;
-    home.live = { score: `${m.homeScore}–${m.awayScore}`, clock: m.clock };
-    away.live = { score: `${m.homeScore}–${m.awayScore}`, clock: m.clock };
-  }
-  return adjusted;
-}
-
-async function fetchStandings() {
-  const res  = await fetch(ESPN_STANDINGS, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`ESPN API ${res.status}`);
-  const data = await res.json();
-  const entries = data.children[0].standings.entries;
-  return entries.map((e, i) => {
-    const stat = name => (e.stats.find(s => s.name === name) || {}).value || 0;
-    const logo = (e.team.logos && e.team.logos[0]) ? e.team.logos[0].href : null;
-    return {
-      rank:   i + 1,
-      id:     e.team.id,
-      name:   e.team.displayName,
-      logo,
-      gp:     stat('gamesPlayed'),
-      pts:    stat('points'),
-      gf:     stat('pointsFor'),
-      gc:     stat('pointsAgainst'),
-      wins:   stat('wins'),
-      draws:  stat('ties'),
-      losses: stat('losses'),
-    };
-  });
-}
-
-// ─── Render ───────────────────────────────────────────────────────────────
-function pctBar(pct, colorClass) {
-  const txt = pct === 0
-    ? `<span style="color:var(--muted)">—</span>`
-    : `${pct.toFixed(1)}%`;
-  return `<div class="prob-cell">
-    <div class="prob-header"><span class="prob-pct">${txt}</span></div>
-    <div class="prob-bar-bg">
-      <div class="prob-bar-fill ${colorClass}" style="width:0%" data-target="${pct}"></div>
-    </div>
-  </div>`;
-}
-
-function initials(name) {
-  return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
-}
-
-function render(standings, results) {
-  const numTeams   = standings.length;
-  const zoneLabels = getZoneLabels(numTeams);
-  const tbody = document.getElementById('tbody');
-  let html = '';
-
-  standings.forEach((t, i) => {
-    const z    = zoneOf(t.rank, numTeams);
-    const res  = results[t.name] || { top2: 0, playoff: 0, relega: 0 };
-    const zRow = z !== 'none' ? `zone-${z}` : '';
-    const color = COLOR_PALETTE[i % COLOR_PALETTE.length];
-
-    if (zoneLabels[t.rank]) {
-      const { text, cls } = zoneLabels[t.rank];
-      html += `<tr class="zone-label-row"><td colspan="8">
-        <span class="zone-label-text ${cls}">${text}</span></td></tr>`;
-    }
-
-    html += `<tr class="${zRow}">
-      <td style="padding:0 0 0 8px;width:12px"><div class="zone-bar ${z}"></div></td>
-      <td class="pos">${t.rank}</td>
-      <td>
-        <div class="team-cell">
-          <div class="team-avatar" id="av${i}">
-            <img src="${t.logo || ''}" alt="${t.name}" loading="lazy"
-              onerror="fallbackAvatar(${i},'${t.name}','${color}')" />
-          </div>
-          <a class="team-name team-link" href="equipo.html?id=${t.id}&name=${encodeURIComponent(t.name)}">${t.name}</a>
-          ${t.live ? `<span class="live-badge"><span class="live-dot"></span>${t.live.score}<span class="live-clock"> ${t.live.clock}</span></span>` : ''}
-        </div>
-      </td>
-      <td class="pts${t.live ? ' pts-live' : ''}">${t.pts}</td>
-      <td class="right" style="color:var(--muted);font-size:.8rem">${t.gp}</td>
-      <td>${pctBar(res.top2,    'fill-green')}</td>
-      <td>${pctBar(res.playoff, 'fill-blue')}</td>
-      <td>${pctBar(res.relega,  'fill-red')}</td>
-    </tr>`;
-  });
-
-  tbody.innerHTML = html;
-
-  requestAnimationFrame(() => setTimeout(() => {
-    document.querySelectorAll('.prob-bar-fill').forEach(el => {
-      el.style.width = el.dataset.target + '%';
-    });
-  }, 80));
-}
-
-function fallbackAvatar(i, name, color) {
-  const el = document.getElementById('av' + i);
-  if (!el) return;
-  el.classList.add('fallback');
-  el.style.background = color;
-  el.style.color = '#fff';
-  el.style.fontSize = '.68rem';
-  el.style.fontWeight = '700';
-  el.innerHTML = initials(name);
-}
-
-// ─── Bracket del play-off ─────────────────────────────────────────────────
-function fallbackBkAvatar(id, name, color) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.classList.add('fallback');
-  el.style.background = color;
-  el.style.color = '#fff';
-  el.innerHTML = initials(name);
-}
-
-function renderBracket(standings, results) {
-  if (standings.length < LEAGUE.playoffTop) return;
-
-  const p3 = standings[LEAGUE.promoSlots];          // 3º
-  const p4 = standings[LEAGUE.promoSlots + 1];      // 4º
-  const p5 = standings[LEAGUE.playoffTop - 2];      // 5º
-  const p6 = standings[LEAGUE.playoffTop - 1];      // 6º
-
-  function teamCard(t) {
-    const res   = results[t.name] || {};
-    const pf    = res.pFinal || 0;
-    const pw    = res.pWin   || 0;
-    const si    = standings.findIndex(s => s.name === t.name);
-    const color = COLOR_PALETTE[si % COLOR_PALETTE.length];
-    const avId  = `bkav_${t.id}`;
-    return `<div class="bk-team">
-      <div class="bk-team-pos">${t.rank}º</div>
-      <div class="bk-team-logo" id="${avId}">
-        <img src="${t.logo || ''}" alt="${t.name}" loading="lazy"
-          onerror="fallbackBkAvatar('${avId}','${t.name.replace(/'/g,"\\'")}','${color}')" />
-      </div>
-      <div class="bk-team-info">
-        <div class="bk-team-name">${t.name}</div>
-        <div class="bk-team-p">
-          <span class="pf">${pf > 0 ? pf.toFixed(1) + '%' : '—'}</span> final
-          &nbsp;·&nbsp;
-          <span class="pw">${pw > 0 ? pw.toFixed(1) + '%' : '—'}</span> ascenso
-        </div>
-      </div>
-    </div>`;
-  }
-
-  function finalistSlot(id, t) {
-    if (!t) {
-      return `<div class="bk-finalist" id="${id}"><span class="fin-tbd">Por determinar</span></div>`;
-    }
-    const color = COLOR_PALETTE[standings.findIndex(s => s.name === t.name) % COLOR_PALETTE.length];
-    const avId  = `bkfin_av_${t.id}`;
-    const res   = results[t.name] || {};
-    const pw    = res.pWin || 0;
-    return `<div class="bk-finalist" id="${id}">
-      <div class="bk-team-logo" id="${avId}" style="width:18px;height:18px">
-        <img src="${t.logo || ''}" alt="${t.name}" loading="lazy"
-          onerror="fallbackBkAvatar('${avId}','${t.name.replace(/'/g,"\\'")}','${color}')" style="width:18px;height:18px" />
-      </div>
-      <span class="fin-name">${t.name}</span>
-      <span style="margin-left:auto;font-family:'Inconsolata',monospace;font-size:.7rem;color:var(--green);white-space:nowrap">${pw > 0 ? pw.toFixed(1) + '%' : ''}</span>
-    </div>`;
-  }
-
-  // Favoritos a final: el equipo con mayor pFinal de cada eliminatoria
-  const likelyL = (results[p3.name] || {}).pFinal >= (results[p6.name] || {}).pFinal ? p3 : p6;
-  const likelyR = (results[p4.name] || {}).pFinal >= (results[p5.name] || {}).pFinal ? p4 : p5;
-
-  document.getElementById('bracket-semi-labels').innerHTML = `
-    <div class="semi-lbl left">Semifinal 1 · 3º vs 6º</div>
-    <div class="semi-lbl center">Final</div>
-    <div class="semi-lbl right">Semifinal 2 · 4º vs 5º</div>
-  `;
-
-  document.getElementById('bracket-grid').innerHTML = `
-    <div class="bkg-lt">${teamCard(p3)}</div>
-    <div class="bkg-cl"><div class="ch"></div><div class="cb"></div></div>
-    <div class="bkg-cf">
-      ${finalistSlot('bk-fin-l', likelyL)}
-      <div class="bk-final-title">Final</div>
-      <div class="bk-final-badge">→ Ascenso a Primera</div>
-      ${finalistSlot('bk-fin-r', likelyR)}
-    </div>
-    <div class="bkg-cr"><div class="ch"></div><div class="cb"></div></div>
-    <div class="bkg-rt">${teamCard(p4)}</div>
-    <div class="bkg-lb">${teamCard(p6)}</div>
-    <div class="bkg-rb">${teamCard(p5)}</div>
-  `;
-
-  document.getElementById('playoff-section').style.display = '';
-}
-
-// ─── Skeleton ─────────────────────────────────────────────────────────────
-function renderSkeleton(n = cachedNumTeams) {
-  let html = '';
-  for (let i = 0; i < n; i++) {
-    html += `<tr><td style="padding:0 0 0 8px;width:12px"><div class="zone-bar none"></div></td>
-      <td class="pos"><div class="skeleton" style="width:18px;height:14px"></div></td>
-      <td><div class="team-cell">
-        <div class="team-avatar" style="background:var(--surface2)"></div>
-        <div class="skeleton" style="width:${90 + Math.random() * 60 | 0}px;height:14px"></div>
-      </div></td>
-      <td><div class="skeleton" style="width:24px;height:14px;margin-left:auto"></div></td>
-      <td><div class="skeleton" style="width:24px;height:14px;margin-left:auto"></div></td>
-      <td><div class="skeleton" style="width:80px;height:14px"></div></td>
-      <td><div class="skeleton" style="width:80px;height:14px"></div></td>
-      <td><div class="skeleton" style="width:80px;height:14px"></div></td>
-    </tr>`;
-  }
-  document.getElementById('tbody').innerHTML = html;
-}
-
-// ─── Status / Badge ────────────────────────────────────────────────────────
-function setStatus() {}
-
-function setBadge(gp) {
-  document.getElementById('badge-jornada').innerHTML = `Jornada <strong>${gp}</strong>`;
-}
-
-// ─── Main update flow ──────────────────────────────────────────────────────
-let liveTimer  = null;
-let isUpdating = false;
-
-async function triggerUpdate(silent = false) {
-  if (isUpdating) return;
-  isUpdating = true;
-
-  try {
-    if (!silent) renderSkeleton();
-
-    const [standings, liveMatches] = await Promise.all([fetchStandings(), fetchLiveScores()]);
-    cachedNumTeams = standings.length;
-    const adjusted = applyLiveScores(standings, liveMatches);
-
-    if (liveMatches.length > 0) {
-      adjusted.sort((a, b) =>
-        b.pts !== a.pts ? b.pts - a.pts :
-        (b.gf - b.gc) !== (a.gf - a.gc) ? (b.gf - b.gc) - (a.gf - a.gc) :
-        b.gf - a.gf
-      );
-      adjusted.forEach((t, i) => { t.rank = i + 1; });
-    }
-
-    renderLegend(standings.length);
-    setBadge(Math.max(...standings.map(t => t.gp)));
-    await new Promise(r => setTimeout(r, 30));
-
-    const results = simulate(adjusted);
-    render(adjusted, results);
-    renderBracket(adjusted, results);
-
-    const now = new Date();
-    document.getElementById('footer-update').textContent =
-      `Última actualización: ${now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })} · Datos: ESPN API`;
-
-    clearTimeout(liveTimer);
-    if (liveMatches.length > 0) liveTimer = setTimeout(() => triggerUpdate(true), 60_000);
-
-  } catch (err) {
-    console.error(err);
-  } finally {
-    isUpdating = false;
-  }
-}
-
-// ─── Boot ─────────────────────────────────────────────────────────────────
-renderSkeleton();
-triggerUpdate();
-</script>
+<footer>
+  © 2025 PredictMotion · Todos los derechos reservados<br>
+  <a href="mailto:contact@predictmotion.com">contact@predictmotion.com</a> ·
+  <a href="/privacy">Política de privacidad</a>
+</footer>
 </body>
 </html>

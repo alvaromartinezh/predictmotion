@@ -208,7 +208,7 @@ thead th,td{padding:8px 9px}.prob{min-width:78px}.stat .v{font-size:1.85rem}.led
 
 # Ligas para la barra de navegación (mismas rutas limpias del sitio).
 NAV = [
-    ("/", "Liga Hypermotion"),
+    ("/hypermotion", "Liga Hypermotion"),
     ("/laliga", "LaLiga"),
     ("/mundial", "Mundial 2026"),
 ]

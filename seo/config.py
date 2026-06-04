@@ -61,7 +61,7 @@ LEAGUES = [
         "name": "Liga Hypermotion",
         "article": "la",          # "de la / en la Liga Hypermotion"
         "season": "2025-26",
-        "dashboard": "/",
+        "dashboard": "/hypermotion",
         "p_home": 0.42,
         "p_draw": 0.27,
         "playoff_top": 6,
