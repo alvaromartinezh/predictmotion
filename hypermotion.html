@@ -766,7 +766,7 @@ function render(standings, results) {
             <img src="${t.logo || ''}" alt="${t.name}" loading="lazy"
               onerror="fallbackAvatar(${i},'${t.name}','${color}')" />
           </div>
-          <a class="team-name team-link" href="equipo.html?id=${t.id}&name=${encodeURIComponent(t.name)}">${t.name}</a>
+          <a class="team-name team-link" href="/equipo?id=${t.id}&name=${encodeURIComponent(t.name)}&league=hypermotion">${t.name}</a>
           ${t.live ? `<span class="live-badge"><span class="live-dot"></span>${t.live.score}<span class="live-clock"> ${t.live.clock}</span></span>` : ''}
         </div>
       </td>

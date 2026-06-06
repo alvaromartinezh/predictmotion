@@ -33,11 +33,6 @@
       if (!r.ok) throw new Error('ESPN ' + r.status); return r.json();
     });
   }
-  function fmtDay(iso) {
-    var d = new Date(iso);
-    var s = d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
-    return s.charAt(0).toUpperCase() + s.slice(1);
-  }
   function logo(t) { return (t && t.logo) || ((t && t.logos && t.logos[0] && t.logos[0].href)) || ''; }
 
   function matchCard(ev) {
@@ -49,8 +44,10 @@
     var ht = home.team || {}, at = away.team || {};
     var mid, state = '';
     if (st === 'pre') {
-      var t = new Date(ev.date).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-      mid = '<div class="fx-time">' + t + '</div>';
+      var dt = new Date(ev.date);
+      var dd = dt.toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: 'short' });
+      var tt = dt.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+      mid = '<div class="fx-time">' + dd.charAt(0).toUpperCase() + dd.slice(1) + ' · ' + tt + '</div>';
       state = '<span class="fx-state pre">Por jugar</span>';
     } else {
       mid = '<div class="fx-score">' + (home.score || '0') + ' – ' + (away.score || '0') + '</div>';
@@ -69,6 +66,32 @@
       '<div class="fx-mid">' + mid + state + '</div>' + side(at, 'away') + '</div>';
   }
 
+  function evTime(ev) { return new Date(ev.date).getTime(); }
+
+  // Agrupa los partidos de toda la temporada en jornadas. ESPN no expone el
+  // número de jornada, así que ordenamos por fecha y troceamos en bloques de
+  // (nº de equipos / 2) partidos = una jornada.
+  function buildRounds(events) {
+    events = (events || []).filter(function (ev) {
+      var c = (ev.competitions && ev.competitions[0]) || {};
+      return (c.competitors || []).length === 2;
+    });
+    if (!events.length) return [];
+    events.sort(function (a, b) { return evTime(a) - evTime(b); });
+
+    var teams = {};
+    events.forEach(function (ev) {
+      (ev.competitions[0].competitors || []).forEach(function (c) {
+        if (c.team && c.team.id != null) teams[c.team.id] = 1;
+      });
+    });
+    var perRound = Math.max(1, Math.floor(Object.keys(teams).length / 2));
+
+    var rounds = [];
+    for (var i = 0; i < events.length; i += perRound) rounds.push(events.slice(i, i + perRound));
+    return rounds;
+  }
+
   window.PMFixtures = {
     init: function (code, mountSelector) {
       var el = document.querySelector(mountSelector);
@@ -79,15 +102,32 @@
       getJSON(ESPN + code + '/scoreboard').then(function (sb) {
         var cal = (((sb.leagues || [])[0] || {}).calendar || []).filter(function (x) { return typeof x === 'string'; });
         if (!cal.length) {
-          var evs = sb.events || [];
-          el.innerHTML = evs.length
-            ? '<div class="fx-list">' + evs.map(matchCard).join('') + '</div>'
-            : '<div class="fx-empty">No hay partidos disponibles.</div>';
+          render(buildRounds(sb.events || []));
           return;
         }
-        var now = Date.now();
-        var idx = cal.findIndex(function (d) { return new Date(d).getTime() >= now - 12 * 3600 * 1000; });
-        if (idx < 0) idx = cal.length - 1;
+        var start = ymd(new Date(cal[0]));
+        var end = ymd(new Date(cal[cal.length - 1]));
+        return getJSON(ESPN + code + '/scoreboard?dates=' + start + '-' + end + '&limit=700')
+          .then(function (d) { render(buildRounds(d.events || [])); });
+      }).catch(function () {
+        el.dataset.loaded = '';
+        el.innerHTML = '<div class="fx-empty">No se pudieron cargar los partidos.</div>';
+      });
+
+      function render(rounds) {
+        if (!rounds.length) {
+          el.innerHTML = '<div class="fx-empty">No hay partidos disponibles.</div>';
+          return;
+        }
+        // Jornada actual: la primera con algún partido sin terminar; si todas
+        // han terminado, la última.
+        var idx = rounds.findIndex(function (r) {
+          return r.some(function (ev) {
+            var s = (ev.status && ev.status.type && ev.status.type.state) || 'pre';
+            return s !== 'post';
+          });
+        });
+        if (idx < 0) idx = rounds.length - 1;
 
         el.innerHTML =
           '<div class="fx-nav">' +
@@ -102,25 +142,14 @@
 
         function show() {
           prev.disabled = idx <= 0;
-          next.disabled = idx >= cal.length - 1;
-          label.textContent = fmtDay(cal[idx]);
-          list.innerHTML = '<div class="fx-loading">Cargando…</div>';
-          getJSON(ESPN + code + '/scoreboard?dates=' + ymd(new Date(cal[idx]))).then(function (d) {
-            var evs = d.events || [];
-            list.innerHTML = evs.length
-              ? evs.map(matchCard).join('')
-              : '<div class="fx-empty">Sin partidos esta fecha.</div>';
-          }).catch(function () {
-            list.innerHTML = '<div class="fx-empty">No se pudieron cargar los partidos.</div>';
-          });
+          next.disabled = idx >= rounds.length - 1;
+          label.textContent = 'Jornada ' + (idx + 1);
+          list.innerHTML = rounds[idx].map(matchCard).join('');
         }
         prev.addEventListener('click', function () { if (idx > 0) { idx--; show(); } });
-        next.addEventListener('click', function () { if (idx < cal.length - 1) { idx++; show(); } });
+        next.addEventListener('click', function () { if (idx < rounds.length - 1) { idx++; show(); } });
         show();
-      }).catch(function () {
-        el.dataset.loaded = '';
-        el.innerHTML = '<div class="fx-empty">No se pudieron cargar los partidos.</div>';
-      });
+      }
     }
   };
 })();
