@@ -34,7 +34,7 @@ class DataSource:
         data = self._get(f"{_ESPN_V2}/{self.code}/standings")
         groups = []
         for child in data.get("children", []):
-            name    = child.get("name") or child.get("abbreviation", "?")
+            name    = self._group_letter(child.get("name") or child.get("abbreviation", "?"))
             raw     = child.get("standings", {}).get("entries", [])
             entries = []
             for e in raw:
@@ -59,6 +59,15 @@ class DataSource:
                 t["rank"] = i + 1
             groups.append({"name": name, "entries": entries})
         return groups
+
+    @staticmethod
+    def _group_letter(name: str) -> str:
+        """ESPN devuelve 'Group A' / 'Grupo A'; nos quedamos con la letra ('A').
+        Así casa con _extract_group() del scoreboard y evita 'Grupo Group A'."""
+        for prefix in ("Grupo ", "Group "):
+            if name.startswith(prefix):
+                return name[len(prefix):].strip()
+        return name
 
     def get_group_standings(self, group_name: str) -> Optional[dict]:
         for g in self.get_all_groups():
