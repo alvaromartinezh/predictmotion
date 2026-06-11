@@ -228,6 +228,33 @@ def on_morning_window():
         log(f"[ERROR morning] {e}")
 
 
+def on_test_goal():
+    """Manda una imagen de ejemplo de 'gol de grupo' (primer grupo disponible)
+    con tabla y probabilidades, tal como llegaría en un gol real."""
+    try:
+        log("Generando GOL de prueba...")
+        groups, _ = groups_with_probs()
+        group = next((g for g in groups if len(g["entries"]) >= 2), None)
+        if not group:
+            log("No hay grupos disponibles para la prueba.")
+            return
+        home, away = group["entries"][0], group["entries"][1]
+        img  = renderer.standings_group(group)
+        text = generate_text("gol", {
+            "grupo":     group["name"],
+            "equipo":    home["name"],
+            "local":     home["name"],
+            "visitante": away["name"],
+            "score_h":   1,
+            "score_a":   0,
+            "marcador":  "1-0",
+            "minuto":    "34",
+        })
+        deliver([img], "🧪 PRUEBA · " + text)
+    except Exception as e:
+        log(f"[ERROR test-goal] {e}")
+
+
 def on_evening_window():
     try:
         if not DRY_RUN and state.already_sent_today("evening"):
@@ -259,6 +286,7 @@ def main():
     parser.add_argument("--test-morning", action="store_true", help="Dispara resumen matutino y sale")
     parser.add_argument("--test-evening", action="store_true", help="Dispara resumen vespertino y sale")
     parser.add_argument("--test-live",    action="store_true", help="Un tick de partidos en vivo y sale")
+    parser.add_argument("--test-goal",    action="store_true", help="Manda una imagen de gol de ejemplo y sale")
     args = parser.parse_args()
 
     DRY_RUN = args.dry_run
@@ -273,6 +301,9 @@ def main():
         return
     if args.test_live:
         on_live_tick()
+        return
+    if args.test_goal:
+        on_test_goal()
         return
 
     sched = build_scheduler(on_live_tick, on_morning_window, on_evening_window)
