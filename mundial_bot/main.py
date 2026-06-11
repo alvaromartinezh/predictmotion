@@ -31,6 +31,7 @@ import pytz
 import config
 import state
 import probabilities
+import x_publisher
 from datasource import DataSource
 from image_renderer import ImageRenderer
 from notifier import TelegramNotifier
@@ -63,28 +64,109 @@ def groups_with_probs():
 # ── Entrega ───────────────────────────────────────────────────────────────────
 
 def deliver(images: list[Path], text: str):
-    """Envía imagen(es) + texto + intent link de X.
+    """Envía imagen(es) + texto a Telegram.
+
+    - Si la API de X está configurada: añade un botón "Publicar en X" que, al
+      pulsarlo, publica el texto + la foto directamente (sin descargar nada).
+    - Si no: cae al flujo antiguo (enlace intent para pre-rellenar el texto;
+      la foto se adjunta a mano).
     En --dry-run imprime en consola sin enviar."""
-    intent   = build_tweet_intent(text)
-    full_msg = f"{text}\n\n<a href='{intent}'>✍️ Publicar en X →</a>"
+    use_button = x_publisher.is_enabled()
+
+    if use_button:
+        image_path = str(images[0]) if images else None
+        caption = text
+        markup  = None  # se rellena tras crear el pending (necesita su id)
+    else:
+        intent  = build_tweet_intent(text)
+        caption = f"{text}\n\n<a href='{intent}'>✍️ Publicar en X →</a>"
+        markup  = None
 
     if DRY_RUN:
         log(f"[DRY-RUN] {'='*50}")
         log(f"[DRY-RUN] Texto:\n{text}")
-        log(f"[DRY-RUN] Intent: {intent}")
+        log(f"[DRY-RUN] Botón X: {'sí' if use_button else 'no (intent link)'}")
         if images:
             log(f"[DRY-RUN] Imágenes: {[str(p) for p in images]}")
         return
 
     try:
-        if images:
-            ok = notifier.send_images(images, caption=full_msg)
+        if use_button and len(images) <= 1:
+            pid    = state.add_pending_post(text, image_path)
+            markup = {"inline_keyboard": [[
+                {"text": "📣 Publicar en X", "callback_data": f"pub:{pid}"}
+            ]]}
+
+        if images and len(images) == 1:
+            ok = notifier.send_image(images[0], caption=caption, reply_markup=markup)
+        elif images:
+            # Álbum (varias imágenes): Telegram no admite botón; usa intent link
+            ok = notifier.send_images(images, caption=caption)
         else:
-            ok = notifier.send_text(full_msg)
+            ok = notifier.send_text(caption, reply_markup=markup)
+
         if ok:
             log(f"[Telegram OK] {text[:60].strip()!r}")
     except Exception as e:
         log(f"[Telegram ERROR] {e}")
+
+
+# ── Botón "Publicar en X" (callback queries de Telegram) ──────────────────────
+
+def poll_telegram_updates():
+    """Sondea Telegram por pulsaciones del botón 'Publicar en X' y las procesa."""
+    try:
+        raw    = state.get_meta("tg_offset")
+        offset = int(raw) + 1 if raw else None
+        for u in notifier.get_updates(offset=offset, timeout=0):
+            state.set_meta("tg_offset", str(u["update_id"]))
+            cq = u.get("callback_query")
+            if cq and (cq.get("data") or "").startswith("pub:"):
+                _handle_publish_callback(cq)
+    except Exception as e:
+        log(f"[ERROR tg-updates] {e}")
+
+
+def _handle_publish_callback(cq: dict):
+    pid_str = cq["data"].split(":", 1)[1]
+    msg      = cq.get("message") or {}
+    chat_id  = msg.get("chat", {}).get("id")
+    msg_id   = msg.get("message_id")
+    is_photo = "photo" in msg
+    cqid     = cq["id"]
+
+    try:
+        post = state.get_pending_post(int(pid_str))
+    except ValueError:
+        post = None
+
+    if not post:
+        notifier.answer_callback(cqid, "No encuentro ese mensaje.")
+        return
+    if post["status"] == "published":
+        notifier.answer_callback(cqid, "Ya estaba publicado ✅")
+        return
+
+    notifier.answer_callback(cqid, "Publicando en X…")
+    ok, res = x_publisher.publish(post["text"], post["image_path"] or None)
+
+    if ok:
+        state.set_pending_status(post["id"], "published")
+        log(f"[X OK] {res}")
+        notifier.finalize_message(
+            chat_id, msg_id,
+            f"{post['text']}\n\n✅ <b>Publicado en X</b> · <a href='{res}'>ver tweet</a>",
+            is_photo=is_photo,
+        )
+    else:
+        state.set_pending_status(post["id"], "failed")
+        log(f"[X ERROR] {res}")
+        notifier.answer_callback(cqid, "Error al publicar (ver logs)", show_alert=True)
+        notifier.finalize_message(
+            chat_id, msg_id,
+            f"{post['text']}\n\n⚠️ <b>Error al publicar:</b> {res[:150]}",
+            is_photo=is_photo, keep_markup=True,
+        )
 
 
 # ── Live tick ─────────────────────────────────────────────────────────────────
@@ -306,10 +388,12 @@ def main():
         on_test_goal()
         return
 
-    sched = build_scheduler(on_live_tick, on_morning_window, on_evening_window)
+    tg_updates = poll_telegram_updates if config.X_ENABLED else None
+    sched = build_scheduler(on_live_tick, on_morning_window, on_evening_window, tg_updates)
     log(f"Scheduler activo · poll={config.POLL_INTERVAL}s · "
         f"mañana={config.MORNING_HOUR_START}-{config.MORNING_HOUR_END}h · "
-        f"tarde={config.EVENING_HOUR_START}-{config.EVENING_HOUR_END}h")
+        f"tarde={config.EVENING_HOUR_START}-{config.EVENING_HOUR_END}h · "
+        f"X={'ON (botón Publicar)' if config.X_ENABLED else 'OFF (intent link)'}")
     log("Ctrl+C para parar.")
     try:
         sched.start()

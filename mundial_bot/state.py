@@ -35,6 +35,17 @@ def init_db():
             sent_at    TEXT DEFAULT (datetime('now')),
             PRIMARY KEY (send_date, send_type)
         );
+        CREATE TABLE IF NOT EXISTS pending_posts (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            text       TEXT NOT NULL,
+            image_path TEXT,
+            status     TEXT NOT NULL DEFAULT 'pending',  -- pending|published|failed
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS meta (
+            key   TEXT PRIMARY KEY,
+            value TEXT
+        );
         """)
 
 
@@ -88,4 +99,48 @@ def mark_sent_today(send_type: str):
         conn.execute(
             "INSERT OR IGNORE INTO daily_sent(send_date,send_type) VALUES(?,?)",
             (today, send_type),
+        )
+
+
+# ── Posts pendientes de publicar en X (botón "Publicar" de Telegram) ──────────
+
+def add_pending_post(text: str, image_path: str | None) -> int:
+    with _conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO pending_posts(text,image_path) VALUES(?,?)",
+            (text, image_path),
+        )
+        return cur.lastrowid
+
+
+def get_pending_post(post_id: int) -> dict | None:
+    with _conn() as conn:
+        row = conn.execute(
+            "SELECT id,text,image_path,status FROM pending_posts WHERE id=?",
+            (post_id,),
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def set_pending_status(post_id: int, status: str):
+    with _conn() as conn:
+        conn.execute(
+            "UPDATE pending_posts SET status=? WHERE id=?",
+            (status, post_id),
+        )
+
+
+# ── Clave-valor genérico (offset de getUpdates de Telegram, etc.) ─────────────
+
+def get_meta(key: str, default: str | None = None) -> str | None:
+    with _conn() as conn:
+        row = conn.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+        return row["value"] if row else default
+
+
+def set_meta(key: str, value: str):
+    with _conn() as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO meta(key,value) VALUES(?,?)",
+            (key, value),
         )

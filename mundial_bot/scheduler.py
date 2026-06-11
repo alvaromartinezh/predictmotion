@@ -15,6 +15,7 @@ def build_scheduler(
     on_live_tick: Callable,
     on_morning_window: Callable,
     on_evening_window: Callable,
+    on_telegram_updates: Callable | None = None,
 ) -> BlockingScheduler:
     tz = pytz.timezone(config.TIMEZONE)
     sched = BlockingScheduler(timezone=tz)
@@ -27,6 +28,16 @@ def build_scheduler(
         max_instances=1,
         coalesce=True,
     )
+
+    # Polling de pulsaciones del botón "Publicar en X" (si la API está activa)
+    if on_telegram_updates is not None:
+        sched.add_job(
+            on_telegram_updates,
+            IntervalTrigger(seconds=config.TELEGRAM_POLL_INTERVAL),
+            id="telegram_updates",
+            max_instances=1,
+            coalesce=True,
+        )
 
     # Ventana matutina: cada 20 min dentro del rango configurado
     sched.add_job(
