@@ -133,6 +133,15 @@
     color: var(--muted);
     text-align: right;
   }
+  th.prob-col { text-align: right; color: var(--accent); }
+  .prob {
+    font-family: 'Inconsolata', monospace;
+    font-size: .92rem;
+    font-weight: 700;
+    text-align: right;
+    color: var(--accent);
+    white-space: nowrap;
+  }
 
   /* Legend */
   .legend {
@@ -194,6 +203,7 @@
         <th class="r" style="font-size:.6rem">E</th>
         <th class="r" style="font-size:.6rem">P</th>
         <th class="r" style="font-size:.6rem">DG</th>
+        <th class="r prob-col">Octavos</th>
       </tr>
     </thead>
     <tbody>
@@ -219,6 +229,7 @@
       <td class="stat">{{ t.d }}</td>
       <td class="stat">{{ t.l }}</td>
       <td class="stat">{{ '+' if (t.gf - t.gc) > 0 else '' }}{{ t.gf - t.gc }}</td>
+      <td class="prob">{% if t.padv is not none %}{{ t.padv }}%{% else %}—{% endif %}</td>
     </tr>
     {% endfor %}
     </tbody>
@@ -228,6 +239,7 @@
     <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Clasificado</div>
     <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div>Posible mejor 3º</div>
     <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>Eliminado</div>
+    <div class="legend-item"><span style="color:var(--accent);font-weight:700">Octavos</span> = prob. de pasar de ronda</div>
   </div>
 </div>
 

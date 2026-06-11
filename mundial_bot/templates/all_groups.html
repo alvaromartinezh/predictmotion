@@ -98,7 +98,7 @@
 
   .team-cell { display: flex; align-items: center; gap: 7px; }
   .flag { width: 22px; height: 16px; object-fit: contain; border-radius: 1px; flex-shrink: 0; }
-  .team-name { font-size: .78rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+  .team-name { font-size: .78rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 86px; }
   .pts {
     font-family: 'Inconsolata', monospace;
     font-size: .9rem;
@@ -110,6 +110,14 @@
     font-family: 'Inconsolata', monospace;
     font-size: .72rem;
     color: var(--muted);
+    text-align: right;
+    white-space: nowrap;
+  }
+  .prob {
+    font-family: 'Inconsolata', monospace;
+    font-size: .78rem;
+    font-weight: 700;
+    color: var(--accent);
     text-align: right;
     white-space: nowrap;
   }
@@ -142,7 +150,7 @@
 <div class="page-header">
   <div>
     <div class="page-title">Copa del Mundo 2026 · Grupos</div>
-    <div class="page-subtitle">USA · Canadá · México · Fase de grupos</div>
+    <div class="page-subtitle">USA · Canadá · México · Fase de grupos · <span style="color:var(--accent)">%</span> = prob. de pasar de ronda</div>
   </div>
   <div class="pm-badge">PredictMotion</div>
 </div>
@@ -172,6 +180,7 @@
       </td>
       <td class="pts">{{ t.pts }}</td>
       <td class="stat">{{ '+' if (t.gf - t.gc) > 0 else '' }}{{ t.gf - t.gc }}</td>
+      <td class="prob">{% if t.padv is not none %}{{ t.padv }}%{% else %}—{% endif %}</td>
     </tr>
     {% endfor %}
     </tbody>

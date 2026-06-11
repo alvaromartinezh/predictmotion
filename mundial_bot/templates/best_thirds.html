@@ -99,6 +99,8 @@
   .team-name { font-size: .88rem; font-weight: 500; }
   .pts { font-family: 'Inconsolata', monospace; font-size: 1rem; font-weight: 700; text-align: right; }
   .stat { font-family: 'Inconsolata', monospace; font-size: .78rem; color: var(--muted); text-align: right; }
+  th.prob-col { text-align: right; color: var(--accent); }
+  .prob { font-family: 'Inconsolata', monospace; font-size: .9rem; font-weight: 700; text-align: right; color: var(--accent); white-space: nowrap; }
   .status-q { font-family: 'Barlow Condensed', sans-serif; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--blue); }
   .status-e { font-family: 'Barlow Condensed', sans-serif; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--red); }
 
@@ -135,6 +137,7 @@
         <th class="r" style="font-size:.58rem">PJ</th>
         <th class="r" style="font-size:.58rem">DG</th>
         <th class="r" style="font-size:.58rem">GF</th>
+        <th class="r prob-col">Octavos</th>
         <th></th>
       </tr>
     </thead>
@@ -158,6 +161,7 @@
       <td class="stat">{{ t.gp }}</td>
       <td class="stat">{{ '+' if (t.gf - t.gc) > 0 else '' }}{{ t.gf - t.gc }}</td>
       <td class="stat">{{ t.gf }}</td>
+      <td class="prob">{% if t.padv is not none %}{{ t.padv }}%{% else %}—{% endif %}</td>
       <td class="{{ 'status-q' if qualifies else 'status-e' }}">{{ 'Clasifica' if qualifies else 'Eliminado' }}</td>
     </tr>
     {% endfor %}

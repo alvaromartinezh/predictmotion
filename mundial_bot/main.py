@@ -30,6 +30,7 @@ import pytz
 
 import config
 import state
+import probabilities
 from datasource import DataSource
 from image_renderer import ImageRenderer
 from notifier import TelegramNotifier
@@ -47,6 +48,16 @@ def log(msg: str):
     tz = pytz.timezone(config.TIMEZONE)
     ts = datetime.now(tz).strftime("%H:%M:%S")
     print(f"[{ts}] {msg}", flush=True)
+
+
+def groups_with_probs():
+    """Trae todos los grupos y les inyecta las probabilidades Monte Carlo
+    (pAdv = pasar de ronda, p1st/p2nd/p3rd/pOut). Devuelve (groups, probs)."""
+    groups = ds.get_all_groups()
+    probs  = probabilities.simulate_groups(groups)
+    for g in groups:
+        probabilities.enrich(g["entries"], probs)
+    return groups, probs
 
 
 # ── Entrega ───────────────────────────────────────────────────────────────────
@@ -92,7 +103,11 @@ def on_live_tick():
                 log(f"KICKOFF: {m['home_name']} vs {m['away_name']}")
 
                 if m["is_group"] and m["group"]:
-                    group = ds.get_group_standings(m["group"])
+                    groups, _ = groups_with_probs()
+                    group = next(
+                        (g for g in groups if g["name"].upper() == m["group"].upper()),
+                        None,
+                    )
                     imgs  = [renderer.standings_group(group)] if group else []
                     text  = generate_text("kickoff", {
                         "grupo":     m["group"],
@@ -135,7 +150,11 @@ def on_live_tick():
                         log(f"GOL: {scorer_team} {score_str} min {m['clock']}")
 
                         if m["is_group"] and m["group"]:
-                            group = ds.get_group_standings(m["group"])
+                            groups, _ = groups_with_probs()
+                            group = next(
+                                (g for g in groups if g["name"].upper() == m["group"].upper()),
+                                None,
+                            )
                             imgs  = [renderer.standings_group(group)] if group else []
                             text  = generate_text("gol", {
                                 "grupo":     m["group"],
@@ -193,8 +212,9 @@ def on_morning_window():
         if not DRY_RUN and state.already_sent_today("morning"):
             return
         log("Generando resumen matutino...")
-        groups = ds.get_all_groups()
+        groups, probs = groups_with_probs()
         thirds = ds.get_best_third_placed()
+        probabilities.enrich(thirds, probs)
         advancing = max(0, 32 - len(groups) * 2)
 
         img_all = renderer.all_groups(groups)
@@ -213,8 +233,9 @@ def on_evening_window():
         if not DRY_RUN and state.already_sent_today("evening"):
             return
         log("Generando resumen vespertino...")
-        groups = ds.get_all_groups()
+        groups, probs = groups_with_probs()
         thirds = ds.get_best_third_placed()
+        probabilities.enrich(thirds, probs)
         advancing = max(0, 32 - len(groups) * 2)
 
         img_all = renderer.all_groups(groups)
