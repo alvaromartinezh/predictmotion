@@ -96,7 +96,21 @@ def _render_to_file(html: str, out: Path, width: int):
             browser = p.chromium.launch()
             page = browser.new_page(viewport={"width": width, "height": 800})
             page.goto(f"file:///{tmp}", wait_until="networkidle")
-            page.screenshot(path=str(out), full_page=True)
+            # Altura REAL del contenido (suma de los hijos del body + padding inferior).
+            # full_page captura la altura del viewport (deja espacio vacío abajo cuando
+            # el contenido es más corto); medimos y ajustamos el viewport para recortar.
+            content_h = page.evaluate(
+                """() => {
+                    let bottom = 0;
+                    for (const el of document.body.children) {
+                        bottom = Math.max(bottom, el.getBoundingClientRect().bottom);
+                    }
+                    const pad = parseFloat(getComputedStyle(document.body).paddingBottom) || 0;
+                    return Math.ceil(bottom + pad);
+                }"""
+            )
+            page.set_viewport_size({"width": width, "height": max(1, int(content_h))})
+            page.screenshot(path=str(out))
             browser.close()
     finally:
         os.unlink(tmp)
