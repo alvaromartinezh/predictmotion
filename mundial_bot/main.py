@@ -51,10 +51,46 @@ def log(msg: str):
     print(f"[{ts}] {msg}", flush=True)
 
 
-def groups_with_probs():
+def apply_live(groups, live_matches):
+    """Ajusta provisionalmente la tabla con los partidos EN JUEGO (estado 'in'),
+    igual que el dashboard web: el endpoint de standings de ESPN solo cuenta los
+    partidos ya terminados, así que sin esto la imagen de un gol en directo no
+    refleja ni el marcador ni las probabilidades del momento. Suma PJ, GF/GC, pts
+    y W/D/L según el marcador actual y reordena/re-rankea cada grupo."""
+    by_id = {str(t["id"]): t for g in groups for t in g["entries"]}
+    for m in live_matches:
+        if m["state"] != "in":
+            continue
+        h = by_id.get(str(m["home_id"]))
+        a = by_id.get(str(m["away_id"]))
+        if not h or not a:
+            continue
+        for team, gf, gc in ((h, m["home_score"], m["away_score"]),
+                             (a, m["away_score"], m["home_score"])):
+            team["gp"] += 1
+            team["gf"] += gf
+            team["gc"] += gc
+            if gf > gc:
+                team["pts"] += 3; team["w"] += 1
+            elif gf == gc:
+                team["pts"] += 1; team["d"] += 1
+            else:
+                team["l"] += 1
+    for g in groups:
+        g["entries"].sort(key=lambda t: (-t["pts"], -(t["gf"] - t["gc"]), -t["gf"]))
+        for i, t in enumerate(g["entries"]):
+            t["rank"] = i + 1
+
+
+def groups_with_probs(live_matches=None):
     """Trae todos los grupos y les inyecta las probabilidades Monte Carlo
-    (pAdv = pasar de ronda, p1st/p2nd/p3rd/pOut). Devuelve (groups, probs)."""
+    (pAdv = pasar de ronda, p1st/p2nd/p3rd/pOut). Devuelve (groups, probs).
+
+    Si se pasan `live_matches`, aplica los marcadores en vivo antes de simular
+    para que tabla y probabilidades reflejen el estado actual del partido."""
     groups = ds.get_all_groups()
+    if live_matches:
+        apply_live(groups, live_matches)
     probs  = probabilities.simulate_groups(groups)
     for g in groups:
         probabilities.enrich(g["entries"], probs)
@@ -107,7 +143,7 @@ def on_live_tick():
                 log(f"KICKOFF: {m['home_name']} vs {m['away_name']}")
 
                 if m["is_group"] and m["group"]:
-                    groups, _ = groups_with_probs()
+                    groups, _ = groups_with_probs(matches)
                     group = next(
                         (g for g in groups if g["name"].upper() == m["group"].upper()),
                         None,
@@ -173,7 +209,7 @@ def on_live_tick():
                         }
 
                         if m["is_group"] and m["group"]:
-                            groups, _ = groups_with_probs()
+                            groups, _ = groups_with_probs(matches)
                             group = next(
                                 (g for g in groups if g["name"].upper() == m["group"].upper()),
                                 None,
