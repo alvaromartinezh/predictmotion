@@ -1175,45 +1175,43 @@ function buildJornadasAccordion(container) {
   loadGroupMatchdays(container);
 }
 
-// Detecta la letra de grupo de un partido a partir de la nota de la competición
-// ("Group A" / "Grupo A"). Devuelve '?' si no se reconoce.
-function groupOf(ev) {
-  const notes = ev.competitions?.[0]?.notes || [];
-  for (const n of notes) {
-    const h = n.headline || '';
-    // "Group A" / "Grupo A" o, en su defecto, una letra A–L suelta al final.
-    const m = h.match(/\b(?:group|grupo)\s+([a-l])\b/i) || h.match(/\b([a-l])\b\s*$/i);
-    if (m) return m[1].toUpperCase();
-  }
-  return '?';
-}
-
 // El número de jornada NO se puede deducir por fecha: en el Mundial las jornadas
-// de distintos grupos se solapan en el calendario (un día puede tener partidos de
-// jornada 1 de un grupo y de jornada 2 de otro). La jornada real es el orden del
-// partido DENTRO de su grupo: cada grupo juega 2 partidos por jornada (1ª y 2ª =
-// J1, 3ª y 4ª = J2, 5ª y 6ª = J3). Así se asigna de forma fiable.
+// de distintos grupos se solapan en el calendario (p. ej. el 18 Jun hay partidos
+// de jornada 1 de un grupo y de jornada 2 de otro). La jornada real es el orden
+// del partido para cada selección: el 1.º que juega cada equipo es J1, el 2.º J2
+// y el 3.º J3. Se indexa por equipo (los dos rivales de un partido coinciden
+// siempre en el índice) y así se asigna de forma fiable. El scoreboard no expone
+// el grupo (notes vacío), por eso no se usa.
 async function loadGroupMatchdays(container) {
   try {
     const url = `${ESPN_SCOREBOARD}?dates=20260611-20260628&limit=200`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(res.status);
     const data = await res.json();
-    const events = data.events || [];
+    // Solo fase de grupos (el rango cuela algún cruce de eliminatorias del 28 Jun).
+    const events = (data.events || []).filter(ev => ev.season?.slug === 'group-stage');
 
-    const byGroup = {};
+    // Lista de partidos de cada selección, ordenada por fecha.
+    const byTeam = {};
     events.forEach(ev => {
-      const g = groupOf(ev);
-      (byGroup[g] = byGroup[g] || []).push(ev);
+      (ev.competitions?.[0]?.competitors || []).forEach(c => {
+        const id = c.team?.id;
+        if (id) (byTeam[id] = byTeam[id] || []).push(ev);
+      });
     });
+    Object.values(byTeam).forEach(list => list.sort((a, b) => new Date(a.date) - new Date(b.date)));
+
+    // Jornada (0–2) = posición del partido dentro de la lista de su equipo local.
+    const matchdayOf = ev => {
+      const id = ev.competitions?.[0]?.competitors?.[0]?.team?.id;
+      const list = byTeam[id] || [];
+      return Math.min(2, list.findIndex(e => e.id === ev.id));
+    };
 
     const buckets = [[], [], []];   // J1, J2, J3
-    Object.values(byGroup).forEach(list => {
-      list.sort((a, b) => new Date(a.date) - new Date(b.date));
-      list.forEach((ev, i) => {
-        const md = Math.min(2, Math.floor(i / 2));   // 0,0,1,1,2,2 → J1,J1,J2,J2,J3,J3
-        buckets[md].push(ev);
-      });
+    events.forEach(ev => {
+      const md = matchdayOf(ev);
+      if (md >= 0) buckets[md].push(ev);
     });
 
     JORNADAS.forEach((j, idx) => {
