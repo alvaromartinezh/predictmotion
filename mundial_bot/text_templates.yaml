@@ -1,43 +1,110 @@
 # Plantillas de texto por tipo de evento.
-# Placeholders disponibles según el evento (ver text_generator.py).
-# Se elige una variante al azar en cada aviso para variar el contenido.
+#
+# Reglas de estilo (para mantenerlas humanas):
+#   - 0 o 1 emoji por plantilla. Frases cortas de Twitter.
+#   - SIN sellos fijos: nada de "Copa del Mundo 2026" ni "Fase eliminatoria".
+#   - El nombre del torneo es la variable {torneo} (hoy NO se usa, por decisión).
+#   - Cada plantilla cierra con {cta}: una frase de llamada a la acción que YA
+#     incluye el enlace (ver pool 'cta' abajo). Se elige una al azar para no
+#     repetir siempre la misma coletilla. Sin hashtags (se gestionan fuera).
+#
+# Placeholders por evento:
+#   kickoff          : grupo, local, visitante
+#   gol              : grupo, equipo, local, visitante, score_h, score_a,
+#                      marcador, minuto, [goleador], [jugada]
+#   knockout_kickoff : local, visitante
+#   knockout_gol     : equipo, local, visitante, score_h, score_a, marcador,
+#                      minuto, [goleador], [jugada]
+#   knockout_result  : local, visitante, score_h, score_a, marcador
+#   morning_* / evening_* : (solo {cta})
+#
+# [entre corchetes] = placeholder OPCIONAL: la plantilla que lo use solo se
+# elige si ese dato existe (lo filtra text_generator.py). Así puedes mezclar
+# libremente variantes con y sin goleador/jugada sin que falle nada.
 
+# ── Llamada a la acción (incluye el enlace). Se rota al azar; no repite seguida.
+cta:
+  - "Si quieres mantenerte informado de la suerte que corre tu equipo, visita: {url}"
+  - "Sigue en directo lo que le espera a tu equipo: {url}"
+  - "Mira la clasificación y las probabilidades de tu selección: {url}"
+  - "¿Cómo le afecta a tu equipo? Compruébalo aquí: {url}"
+  - "Toda la clasificación y las opciones de cada selección: {url}"
+
+# ── Pitazo inicial (grupos) ────────────────────────────────────────────────────
 kickoff:
-  - "⚽ ¡Pitazo inicial! Grupo {grupo}: {local} vs {visitante}\n¿Quién clasifica? Clasificación en vivo 👇\n{url}"
-  - "🔴 LIVE · Grupo {grupo}\n{local} – {visitante} acaba de arrancar\nSigue la clasificación en tiempo real 👇\n{url}"
-  - "⚡ ¡Empieza el Grupo {grupo}!\n{local} vs {visitante} · Copa del Mundo 2026\nClasificación y probabilidades 👇\n{url}"
+  - "⚽ Rueda el balón en el Grupo {grupo}: {local} vs {visitante}.\n{cta}"
+  - "Empieza {local} – {visitante}. Grupo {grupo} en juego.\n{cta}"
+  - "🔴 En directo · {local} vs {visitante} (Grupo {grupo}).\n{cta}"
+  - "Arranca el {local}–{visitante}. ¿Quién se acerca a octavos?\n{cta}"
+  - "Grupo {grupo} en marcha: {local} vs {visitante}.\n{cta}"
+  - "Ya juegan {local} y {visitante}. Grupo {grupo}.\n{cta}"
+  - "{local} contra {visitante}, en juego. La tabla del Grupo {grupo} se mueve.\n{cta}"
 
+# ── Gol (grupos) ───────────────────────────────────────────────────────────────
 gol:
-  - "⚽ ¡GOL de {equipo}! · Grupo {grupo}\n{local} {score_h}–{score_a} {visitante} · min {minuto}'\nAsí queda la clasificación 👇\n{url}"
-  - "🎯 ¡GOLAZO! {equipo} pone el {score_h}-{score_a}\nGrupo {grupo} · {local} vs {visitante} · '{minuto}\nClasificación actualizada 👇\n{url}"
-  - "🔥 {equipo} anota en el min {minuto}' · Grupo {grupo}\n{local} {score_h}–{score_a} {visitante}\n¿Cómo cambia la clasificación? 👇\n{url}"
+  # Centradas en el marcador / equipo (siempre disponibles)
+  - "⚽ Gol de {equipo}. {local} {score_h}–{score_a} {visitante} · {minuto}'\n{cta}"
+  - "Se mueve el marcador en el Grupo {grupo}.\n{local} {score_h}–{score_a} {visitante} ({minuto}')\n{cta}"
+  - "{local} {score_h}–{score_a} {visitante}. Anota {equipo} en el {minuto}'.\n{cta}"
+  - "¡Gol! {equipo} en el minuto {minuto}.\n{local} {score_h}–{score_a} {visitante}\n{cta}"
+  - "Cambia el Grupo {grupo}: {local} {score_h}–{score_a} {visitante}.\n{cta}"
+  - "🔥 Gol de {equipo} ({minuto}'). {local} {score_h}–{score_a} {visitante}.\n{cta}"
+  - "Marcador en directo · Grupo {grupo}\n{local} {score_h}–{score_a} {visitante}\n{cta}"
+  # Centradas en el goleador (solo si llega el nombre)
+  - "⚽ {goleador} la manda al fondo. {local} {score_h}–{score_a} {visitante} ({minuto}').\n{cta}"
+  - "Aparece {goleador} en el {minuto}' y marca para {equipo}.\n{local} {score_h}–{score_a} {visitante}\n{cta}"
+  - "{goleador} no perdona. {equipo} hace el {marcador} en el Grupo {grupo}.\n{cta}"
+  - "Gol de {goleador} ({equipo}), min {minuto}'.\n{local} {score_h}–{score_a} {visitante}\n{cta}"
+  # Centradas en la jugada (solo si se ha podido describir)
+  - "⚽ {goleador} marca {jugada}. {local} {score_h}–{score_a} {visitante} ({minuto}').\n{cta}"
+  - "Gol de {equipo} {jugada} en el {minuto}'. {local} {score_h}–{score_a} {visitante}.\n{cta}"
 
+# ── Pitazo inicial (eliminatoria) ──────────────────────────────────────────────
+knockout_kickoff:
+  - "⚽ Empieza {local} – {visitante}. Esto es a vida o muerte.\n{cta}"
+  - "🔴 En directo: {local} vs {visitante}. El que pierde, a casa.\n{cta}"
+  - "Rueda el balón: {local} – {visitante}. Eliminación directa.\n{cta}"
+  - "Arranca {local} vs {visitante}. No hay segunda oportunidad.\n{cta}"
+  - "{local} contra {visitante}. Un partido, todo o nada.\n{cta}"
+
+# ── Gol (eliminatoria) ─────────────────────────────────────────────────────────
+knockout_gol:
+  - "⚽ Gol de {equipo}. {local} {score_h}–{score_a} {visitante} · {minuto}'\n{cta}"
+  - "{local} {score_h}–{score_a} {visitante}. Marca {equipo} en el {minuto}'.\n{cta}"
+  - "¡Gol en el minuto {minuto}! {local} {score_h}–{score_a} {visitante}.\n{cta}"
+  - "🔥 {equipo} golpea: {local} {score_h}–{score_a} {visitante} ({minuto}').\n{cta}"
+  - "⚽ {goleador} marca para {equipo}. {local} {score_h}–{score_a} {visitante} ({minuto}').\n{cta}"
+  - "Gol de {goleador} en el {minuto}'. {local} {score_h}–{score_a} {visitante}.\n{cta}"
+  - "⚽ {goleador} la clava {jugada}. {local} {score_h}–{score_a} {visitante} ({minuto}').\n{cta}"
+
+# ── Resultado final (eliminatoria) ─────────────────────────────────────────────
+knockout_result:
+  - "Final: {local} {score_h}–{score_a} {visitante}.\n{cta}"
+  - "⏱ Se acabó. {local} {score_h}–{score_a} {visitante}.\n{cta}"
+  - "Pitido final: {local} {score_h}–{score_a} {visitante}. Uno sigue, el otro se va.\n{cta}"
+  - "🏆 {local} {score_h}–{score_a} {visitante}. Hay billete para la siguiente ronda.\n{cta}"
+  - "{local} {score_h}–{score_a} {visitante}. Adiós a uno, a seguir el otro.\n{cta}"
+
+# ── Resumen matutino ───────────────────────────────────────────────────────────
 morning_groups:
-  - "☀️ Buenos días · Copa del Mundo 2026\nAsí están los grupos esta mañana 👇\n{url}"
-  - "🌅 Resumen matutino · Mundial 2026\nToda la clasificación de grupos, en tiempo real 👇\n{url}"
-  - "📊 Empieza el día · Copa del Mundo 2026\nEstado actual de los 12 grupos 👇\n{url}"
+  - "Buenos días ☀️ Así están los 12 grupos esta mañana.\n{cta}"
+  - "Repaso matutino: toda la clasificación de grupos.\n{cta}"
+  - "Empieza el día. Estado de los grupos en directo.\n{cta}"
+  - "📊 Foto de los grupos para arrancar el día.\n{cta}"
 
 morning_thirds:
-  - "🏅 Los mejores terceros a día de hoy · Copa del Mundo 2026\n¿Qué 8 selecciones avanzan? 👇\n{url}"
-  - "👀 Ojo a los terceros clasificados · Mundial 2026\nLa lucha por los últimos 8 billetes está al rojo vivo 👇\n{url}"
+  - "Los mejores terceros a esta hora. ¿Quién se cuela en octavos?\n{cta}"
+  - "Ojo a la pelea por ser mejor tercero 👀\n{cta}"
+  - "Así va la lucha por los últimos billetes (terceros).\n{cta}"
 
+# ── Resumen vespertino ─────────────────────────────────────────────────────────
 evening_groups:
-  - "🌙 Cierre del día · Copa del Mundo 2026\nAsí quedan los grupos tras la jornada de hoy 👇\n{url}"
-  - "📊 Resumen de la jornada · Mundial 2026\nClasificación de grupos actualizada 👇\n{url}"
-  - "⭐ Repaso nocturno · Copa del Mundo 2026\nEstado de los 12 grupos al cierre del día 👇\n{url}"
+  - "Cierre del día 🌙 Así quedan los 12 grupos.\n{cta}"
+  - "Resumen de la jornada: clasificación de grupos.\n{cta}"
+  - "Repaso nocturno de los grupos.\n{cta}"
+  - "Foto final del día en los grupos.\n{cta}"
 
 evening_thirds:
-  - "🏅 Ranking de terceros al cierre de la jornada · Mundial 2026\n¿Quiénes son los 8 que clasificarían ahora mismo? 👇\n{url}"
-  - "👇 Los mejores terceros de la Copa del Mundo 2026\nAsí quedan tras los partidos de hoy 👇\n{url}"
-
-knockout_kickoff:
-  - "⚡ ¡Arranca la fase eliminatoria!\n{local} vs {visitante} · Copa del Mundo 2026\n{url}"
-  - "🔴 LIVE · {local} – {visitante}\nFase eliminatoria · Copa del Mundo 2026\n{url}"
-
-knockout_gol:
-  - "⚽ ¡GOL en la eliminatoria! {equipo} anota en el min {minuto}'\n{local} {score_h}–{score_a} {visitante} · Copa del Mundo 2026\n{url}"
-  - "🔥 ¡{equipo} marca! {local} {score_h}–{score_a} {visitante} · '{minuto}\nCopa del Mundo 2026\n{url}"
-
-knockout_result:
-  - "⏱ Resultado final · Copa del Mundo 2026\n{local} {score_h}–{score_a} {visitante}\n{url}"
-  - "🏆 Se acabó: {local} {score_h}–{score_a} {visitante}\nCopa del Mundo 2026\n{url}"
+  - "Mejores terceros al cierre. ¿Quiénes pasarían ahora mismo?\n{cta}"
+  - "Así queda la pelea por ser mejor tercero tras hoy.\n{cta}"
+  - "Los 8 terceros que hoy estarían dentro.\n{cta}"

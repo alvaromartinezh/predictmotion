@@ -20,6 +20,7 @@ class DataSource:
         self.code = espn_code
         self._session = requests.Session()
         self._session.headers["User-Agent"] = "PredictMotion/1.0"
+        self._group_by_team: Optional[dict[str, str]] = None
 
     def _get(self, url: str, **params) -> dict:
         r = self._session.get(url, params=params or None, timeout=10)
@@ -69,6 +70,18 @@ class DataSource:
                 return name[len(prefix):].strip()
         return name
 
+    def _team_group_map(self) -> dict[str, str]:
+        """Mapa id_equipo -> letra de grupo, construido desde standings y cacheado.
+        La composición de los grupos no cambia durante el torneo, así que basta una vez."""
+        if self._group_by_team is None:
+            mapping: dict[str, str] = {}
+            for g in self.get_all_groups():
+                for t in g["entries"]:
+                    if t["id"]:
+                        mapping[str(t["id"])] = g["name"]
+            self._group_by_team = mapping
+        return self._group_by_team
+
     def get_group_standings(self, group_name: str) -> Optional[dict]:
         for g in self.get_all_groups():
             if g["name"].upper() == group_name.upper():
@@ -102,7 +115,15 @@ class DataSource:
             except StopIteration:
                 continue
 
-            group = self._extract_group(event, comp)
+            # La fase la decide season.slug ('group-stage' vs 'round-of-32'…), porque
+            # el scoreboard NO trae el grupo en notes (vienen vacías) ni en el nombre.
+            is_group = (event.get("season") or {}).get("slug", "") == "group-stage"
+            group = None
+            if is_group:
+                gmap  = self._team_group_map()
+                group = (gmap.get(str(home["team"]["id"]))
+                         or gmap.get(str(away["team"]["id"]))
+                         or self._extract_group(event, comp))   # último recurso
 
             matches.append({
                 "id":        event["id"],
@@ -118,7 +139,7 @@ class DataSource:
                 "away_name": away["team"]["displayName"],
                 "away_abbr": away["team"].get("abbreviation", ""),
                 "away_score": int(away.get("score") or 0),
-                "is_group":  group is not None,
+                "is_group":  is_group,
                 "group":     group,
                 "date":      event.get("date", ""),
             })

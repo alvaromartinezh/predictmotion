@@ -16,5 +16,8 @@ EVENING_HOUR_END   = int(os.getenv("EVENING_HOUR_END",   "23"))
 TIMEZONE   = "Europe/Madrid"
 ESPN_CODE  = "fifa.world"
 WEB_URL    = "https://predictmotion.com/mundial"
+# Nombre del torneo como VARIABLE (no hardcodeado en las plantillas). Hoy no se
+# muestra en los tweets por decisión, pero queda listo para futuras competiciones.
+TOURNAMENT = "Copa del Mundo 2026"
 OUTPUT_DIR = Path(__file__).parent / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)

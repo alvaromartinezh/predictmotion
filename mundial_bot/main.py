@@ -31,6 +31,7 @@ import pytz
 import config
 import state
 import probabilities
+import i18n
 from datasource import DataSource
 from image_renderer import ImageRenderer
 from notifier import TelegramNotifier
@@ -97,6 +98,9 @@ def on_live_tick():
 
         for m in matches:
             mid = m["id"]
+            # Nombres de selección traducidos a español (México, Sudáfrica, ...)
+            home_es = i18n.translate_team(m["home_name"])
+            away_es = i18n.translate_team(m["away_name"])
 
             # ── KICKOFF ──────────────────────────────────────────────────────
             if m["state"] == "in" and not state.already_notified("kickoff", mid):
@@ -111,14 +115,14 @@ def on_live_tick():
                     imgs  = [renderer.standings_group(group)] if group else []
                     text  = generate_text("kickoff", {
                         "grupo":     m["group"],
-                        "local":     m["home_name"],
-                        "visitante": m["away_name"],
+                        "local":     home_es,
+                        "visitante": away_es,
                     })
                 else:
                     imgs = []
                     text = generate_text("knockout_kickoff", {
-                        "local":     m["home_name"],
-                        "visitante": m["away_name"],
+                        "local":     home_es,
+                        "visitante": away_es,
                     })
 
                 deliver(imgs, text)
@@ -134,20 +138,39 @@ def on_live_tick():
                 if last is not None and cur != last:
                     prev_h, prev_a = last
                     score_str = f"{m['home_score']}-{m['away_score']}"
-                    scorer_team = m["home_name"] if m["home_score"] > prev_h else m["away_name"]
+                    # Equipo que marca (por el lado del marcador que sube), traducido
+                    scorer_team = home_es if m["home_score"] > prev_h else away_es
 
-                    # Intenta obtener nombre del goleador desde el endpoint de summary
+                    # Goleador y descripción de la jugada desde el endpoint summary.
+                    # Se separan en campos distintos (antes se mezclaba todo el relato
+                    # en inglés dentro de {equipo}); se traducen a español.
                     clock_raw = m["clock"].replace("'", "").strip()
+                    goleador = ""
+                    jugada   = ""
                     events = ds.get_match_events(mid)
                     for ev in reversed(events):
                         t = ev["type"].lower()
                         if "goal" in t or "gol" in t:
-                            if ev["text"]:
-                                scorer_team = ev["text"]
+                            goleador = i18n.parse_scorer(ev["text"])
+                            jugada   = i18n.translate_play(ev["text"])
+                            if ev["team"]:
+                                scorer_team = i18n.translate_team(ev["team"])
                             break
 
                     if not state.already_notified("gol", mid, score_str):
-                        log(f"GOL: {scorer_team} {score_str} min {m['clock']}")
+                        log(f"GOL: {goleador or scorer_team} {score_str} min {m['clock']}")
+
+                        gol_ph = {
+                            "equipo":    scorer_team,
+                            "local":     home_es,
+                            "visitante": away_es,
+                            "score_h":   m["home_score"],
+                            "score_a":   m["away_score"],
+                            "marcador":  score_str,
+                            "minuto":    clock_raw,
+                            "goleador":  goleador,
+                            "jugada":    jugada,
+                        }
 
                         if m["is_group"] and m["group"]:
                             groups, _ = groups_with_probs()
@@ -156,27 +179,10 @@ def on_live_tick():
                                 None,
                             )
                             imgs  = [renderer.standings_group(group)] if group else []
-                            text  = generate_text("gol", {
-                                "grupo":     m["group"],
-                                "equipo":    scorer_team,
-                                "local":     m["home_name"],
-                                "visitante": m["away_name"],
-                                "score_h":   m["home_score"],
-                                "score_a":   m["away_score"],
-                                "marcador":  score_str,
-                                "minuto":    clock_raw,
-                            })
+                            text  = generate_text("gol", {"grupo": m["group"], **gol_ph})
                         else:
                             imgs = []
-                            text = generate_text("knockout_gol", {
-                                "equipo":    scorer_team,
-                                "local":     m["home_name"],
-                                "visitante": m["away_name"],
-                                "score_h":   m["home_score"],
-                                "score_a":   m["away_score"],
-                                "marcador":  score_str,
-                                "minuto":    clock_raw,
-                            })
+                            text = generate_text("knockout_gol", gol_ph)
 
                         deliver(imgs, text)
                         if not DRY_RUN:
@@ -191,8 +197,8 @@ def on_live_tick():
                 score_str = f"{m['home_score']}-{m['away_score']}"
                 log(f"RESULT: {m['home_name']} {score_str} {m['away_name']}")
                 text = generate_text("knockout_result", {
-                    "local":     m["home_name"],
-                    "visitante": m["away_name"],
+                    "local":     home_es,
+                    "visitante": away_es,
                     "score_h":   m["home_score"],
                     "score_a":   m["away_score"],
                     "marcador":  score_str,
@@ -242,13 +248,15 @@ def on_test_goal():
         img  = renderer.standings_group(group)
         text = generate_text("gol", {
             "grupo":     group["name"],
-            "equipo":    home["name"],
-            "local":     home["name"],
-            "visitante": away["name"],
+            "equipo":    i18n.translate_team(home["name"]),
+            "local":     i18n.translate_team(home["name"]),
+            "visitante": i18n.translate_team(away["name"]),
             "score_h":   1,
             "score_a":   0,
             "marcador":  "1-0",
             "minuto":    "34",
+            "goleador":  "Lamine Yamal",
+            "jugada":    "con la derecha desde el área",
         })
         deliver([img], "🧪 PRUEBA · " + text)
     except Exception as e:
