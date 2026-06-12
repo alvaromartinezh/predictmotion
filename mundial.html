@@ -478,7 +478,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <button class="page-tab" data-section="grupos"   onclick="showSection('grupos')">Grupos</button>
   <button class="page-tab" data-section="cuadro"   onclick="showSection('cuadro')">Cuadro</button>
   <button class="page-tab" data-section="partidos" onclick="showSection('partidos')">Partidos</button>
-  <button class="page-tab" data-section="datos"    onclick="showSection('datos')">Datos</button>
 </div>
 
 <!-- Leyenda (solo visible en pestaña Grupos) -->
@@ -521,18 +520,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="cs-pill"><strong>SEDE</strong>USA · Canadá · México</div>
     <div class="cs-pill"><strong>INICIO</strong>11 Jun 2026</div>
     <div class="cs-pill"><strong>FINAL</strong>19 Jul 2026</div>
-  </div>
-</div>
-
-<!-- Datos section -->
-<div class="section-wrap" id="datos-section" style="display:none">
-  <div class="card" style="max-width:940px;margin:0 auto;padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)">
-    <p style="font-size:1.02rem;line-height:1.55;margin-bottom:15px">Probabilidades detalladas de la Copa del Mundo 2026, generadas por simulación Monte Carlo a partir de resultados reales.</p>
-    <div class="datos-links">
-      <a href="/equipos/mundial">Probabilidad por selección<span class="ar">→</span></a>
-      <a href="/grupos/mundial">Probabilidades por grupo<span class="ar">→</span></a>
-      <a href="/historico/mundial">Histórico de probabilidades<span class="ar">→</span></a>
-    </div>
   </div>
 </div>
 
@@ -1110,7 +1097,6 @@ function showSection(name) {
   document.getElementById('legend').style.display            = name === 'grupos'   ? '' : 'none';
   document.getElementById('groups-section').style.display    = name === 'grupos'   ? '' : 'none';
   document.getElementById('bracket-section').style.display   = name === 'cuadro'   ? '' : 'none';
-  document.getElementById('datos-section').style.display     = name === 'datos'    ? '' : 'none';
 }
 
 // ─── Fase de grupos activa hasta el 28 Jun UTC ───────────────────────────
@@ -1127,11 +1113,12 @@ const CALENDAR_ES = [
   { id:'final', label:'Gran Final',              detail:'19 Jul',         start:'20260719', end:'20260722' },
 ];
 
-// Jornadas dentro de la fase de grupos
+// Jornadas dentro de la fase de grupos. La jornada de cada partido se calcula
+// por su orden dentro del grupo (ver loadGroupMatchdays), no por estas fechas.
 const JORNADAS = [
-  { id:'j1', label:'Jornada 1', detail:'11–16 Jun', start:'20260611', end:'20260617' },
-  { id:'j2', label:'Jornada 2', detail:'17–21 Jun', start:'20260617', end:'20260622' },
-  { id:'j3', label:'Jornada 3', detail:'22–27 Jun', start:'20260622', end:'20260628' },
+  { id:'j1', label:'Jornada 1', detail:'11–16 Jun' },
+  { id:'j2', label:'Jornada 2', detail:'17–21 Jun' },
+  { id:'j3', label:'Jornada 3', detail:'22–27 Jun' },
 ];
 
 function buildScheduleAccordion() {
@@ -1174,7 +1161,7 @@ function buildScheduleAccordion() {
 
 function buildJornadasAccordion(container) {
   container.innerHTML = JORNADAS.map(j => `
-    <details class="jornada-acc" data-start="${j.start}" data-end="${j.end}">
+    <details class="jornada-acc" data-id="${j.id}">
       <summary class="jornada-sum">
         <span class="jornada-lbl">${j.label}</span>
         <span class="jornada-detail">${j.detail}</span>
@@ -1185,25 +1172,69 @@ function buildJornadasAccordion(container) {
       </div>
     </details>`).join('');
 
-  container.querySelectorAll('.jornada-acc').forEach(det => {
-    det.addEventListener('toggle', function () {
-      if (!this.open || this.dataset.loaded) return;
-      this.dataset.loaded = '1';
-      const matchesEl = this.querySelector('.jornada-matches');
-      loadStageMatches(this.dataset.start, this.dataset.end, matchesEl);
-    });
-  });
+  loadGroupMatchdays(container);
+}
 
-  // Abrir la jornada activa o la primera
-  const now = new Date();
-  const activeJ = JORNADAS.find(j =>
-    now >= new Date(j.start.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3') + 'T07:00Z') &&
-    now < new Date(j.end.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3') + 'T07:00Z')
-  );
-  const toOpen = activeJ
-    ? container.querySelector(`details[data-start="${activeJ.start}"]`)
-    : container.querySelector('details');
-  if (toOpen) toOpen.open = true;
+// Detecta la letra de grupo de un partido a partir de la nota de la competición
+// ("Group A" / "Grupo A"). Devuelve '?' si no se reconoce.
+function groupOf(ev) {
+  const notes = ev.competitions?.[0]?.notes || [];
+  for (const n of notes) {
+    const h = n.headline || '';
+    // "Group A" / "Grupo A" o, en su defecto, una letra A–L suelta al final.
+    const m = h.match(/\b(?:group|grupo)\s+([a-l])\b/i) || h.match(/\b([a-l])\b\s*$/i);
+    if (m) return m[1].toUpperCase();
+  }
+  return '?';
+}
+
+// El número de jornada NO se puede deducir por fecha: en el Mundial las jornadas
+// de distintos grupos se solapan en el calendario (un día puede tener partidos de
+// jornada 1 de un grupo y de jornada 2 de otro). La jornada real es el orden del
+// partido DENTRO de su grupo: cada grupo juega 2 partidos por jornada (1ª y 2ª =
+// J1, 3ª y 4ª = J2, 5ª y 6ª = J3). Así se asigna de forma fiable.
+async function loadGroupMatchdays(container) {
+  try {
+    const url = `${ESPN_SCOREBOARD}?dates=20260611-20260628&limit=200`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    const events = data.events || [];
+
+    const byGroup = {};
+    events.forEach(ev => {
+      const g = groupOf(ev);
+      (byGroup[g] = byGroup[g] || []).push(ev);
+    });
+
+    const buckets = [[], [], []];   // J1, J2, J3
+    Object.values(byGroup).forEach(list => {
+      list.sort((a, b) => new Date(a.date) - new Date(b.date));
+      list.forEach((ev, i) => {
+        const md = Math.min(2, Math.floor(i / 2));   // 0,0,1,1,2,2 → J1,J1,J2,J2,J3,J3
+        buckets[md].push(ev);
+      });
+    });
+
+    JORNADAS.forEach((j, idx) => {
+      const el = document.getElementById('jornada-' + j.id);
+      if (!el) return;
+      const list = buckets[idx].sort((a, b) => new Date(a.date) - new Date(b.date));
+      el.innerHTML = list.length
+        ? list.map(renderMatchCard).join('')
+        : '<div class="matches-msg">Sin partidos en esta jornada.</div>';
+    });
+
+    // Abrir la primera jornada con algún partido sin terminar (o la última si acabó)
+    let activeIdx = buckets.findIndex(b => b.some(ev => ev.status?.type?.state !== 'post'));
+    if (activeIdx < 0) activeIdx = buckets.length - 1;
+    const dets = container.querySelectorAll('.jornada-acc');
+    if (dets[activeIdx]) dets[activeIdx].open = true;
+  } catch {
+    container.querySelectorAll('.jornada-matches').forEach(el => {
+      el.innerHTML = '<div class="matches-msg err">Error al cargar. Inténtalo de nuevo.</div>';
+    });
+  }
 }
 
 async function loadStageMatches(start, end, container) {
