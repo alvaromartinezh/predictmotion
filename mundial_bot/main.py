@@ -191,19 +191,32 @@ def on_live_tick():
                 if not DRY_RUN:
                     state.update_score(mid, m["home_score"], m["away_score"])
 
-            # ── RESULTADO FINAL (fase eliminatoria) ───────────────────────────
-            if (m["state"] == "post" and not m["is_group"]
+            # ── RESULTADO FINAL (grupos y eliminatoria) ───────────────────────
+            if (m["state"] == "post"
                     and not state.already_notified("result", mid)):
                 score_str = f"{m['home_score']}-{m['away_score']}"
                 log(f"RESULT: {m['home_name']} {score_str} {m['away_name']}")
-                text = generate_text("knockout_result", {
+                res_ph = {
                     "local":     home_es,
                     "visitante": away_es,
                     "score_h":   m["home_score"],
                     "score_a":   m["away_score"],
                     "marcador":  score_str,
-                })
-                deliver([], text)
+                }
+
+                if m["is_group"] and m["group"]:
+                    groups, _ = groups_with_probs()
+                    group = next(
+                        (g for g in groups if g["name"].upper() == m["group"].upper()),
+                        None,
+                    )
+                    imgs = [renderer.standings_group(group)] if group else []
+                    text = generate_text("result", {"grupo": m["group"], **res_ph})
+                else:
+                    imgs = []
+                    text = generate_text("knockout_result", res_ph)
+
+                deliver(imgs, text)
                 if not DRY_RUN:
                     state.mark_notified("result", mid)
 

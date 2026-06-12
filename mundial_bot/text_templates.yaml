@@ -12,6 +12,7 @@
 #   kickoff          : grupo, local, visitante
 #   gol              : grupo, equipo, local, visitante, score_h, score_a,
 #                      marcador, minuto, [goleador], [jugada]
+#   result           : grupo, local, visitante, score_h, score_a, marcador
 #   knockout_kickoff : local, visitante
 #   knockout_gol     : equipo, local, visitante, score_h, score_a, marcador,
 #                      minuto, [goleador], [jugada]
@@ -58,6 +59,15 @@ gol:
   # Centradas en la jugada (solo si se ha podido describir)
   - "⚽ {goleador} marca {jugada}. {local} {score_h}–{score_a} {visitante} ({minuto}').\n{cta}"
   - "Gol de {equipo} {jugada} en el {minuto}'. {local} {score_h}–{score_a} {visitante}.\n{cta}"
+
+# ── Resultado final (grupos) ───────────────────────────────────────────────────
+result:
+  - "Final en el Grupo {grupo}: {local} {score_h}–{score_a} {visitante}.\n{cta}"
+  - "⏱ Pitido final. {local} {score_h}–{score_a} {visitante} (Grupo {grupo}).\n{cta}"
+  - "Se acabó: {local} {score_h}–{score_a} {visitante}. Así queda el Grupo {grupo}.\n{cta}"
+  - "{local} {score_h}–{score_a} {visitante}. La tabla del Grupo {grupo} se actualiza.\n{cta}"
+  - "Final del partido. {local} {score_h}–{score_a} {visitante}, Grupo {grupo}.\n{cta}"
+  - "🏁 {local} {score_h}–{score_a} {visitante}. Mira cómo cambia el Grupo {grupo}.\n{cta}"
 
 # ── Pitazo inicial (eliminatoria) ──────────────────────────────────────────────
 knockout_kickoff:
