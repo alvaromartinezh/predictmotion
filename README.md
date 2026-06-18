@@ -44,7 +44,7 @@ Fetches live standings from the ESPN API and runs 40,000 stochastic simulations 
 No installation required beyond Python 3.
 
 ```bash
-python start.py
+python scripts/start.py
 ```
 
 This starts a local HTTP server on port `8765` and opens the app in your default browser automatically.
@@ -56,11 +56,13 @@ This starts a local HTTP server on port `8765` and opens the app in your default
 ```
 predictmotion/
 ├── index.html          # Single-page app — UI, simulation engine, ESPN API client
-├── hypermotion_sim.py  # Standalone Python simulator (local use / validation)
-├── start.py            # Local development server
 ├── privacy.html        # Privacy policy (GDPR / AdSense compliant)
 ├── ads.txt             # AdSense inventory declaration
-└── logos/              # Team badge fallbacks (24 clubs)
+├── logos/              # Team badge fallbacks (24 clubs)
+└── scripts/            # Standalone dev/utility scripts
+    ├── start.py            # Local development server
+    ├── hypermotion_sim.py  # Standalone Python simulator (local use / validation)
+    └── twitter_setup.sh    # One-off X API setup helper
 ```
 
 ---

@@ -11,7 +11,8 @@ def find_free_port():
         s.bind(('', 0))
         return s.getsockname()[1]
 
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
+# Sirve la raíz del repo (carpeta padre de scripts/), no scripts/.
+os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 port = PORT
 try:
     server = http.server.HTTPServer(('localhost', port), Handler)
