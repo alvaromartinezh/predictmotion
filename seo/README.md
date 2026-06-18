@@ -49,7 +49,7 @@ python3 -m seo.generate_site --league laliga  # una sola liga
 ## Integración con el cron (servidor)
 
 El auto-deploy hace `git pull` cada 2 min y trae el código de `seo/`. La
-generación es un cron aparte (mismo patrón que `fetch_rfef.py`). Añadir en el
+generación es un cron aparte. Añadir en el
 crontab del servidor:
 
 ```cron
