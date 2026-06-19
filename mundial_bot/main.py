@@ -91,7 +91,8 @@ def groups_with_probs(live_matches=None):
     groups = ds.get_all_groups()
     if live_matches:
         apply_live(groups, live_matches)
-    probs  = probabilities.simulate_groups(groups)
+    played_pairs = ds.get_played_pairs()
+    probs  = probabilities.simulate_groups(groups, played_pairs=played_pairs or None)
     for g in groups:
         probabilities.enrich(g["entries"], probs)
     return groups, probs

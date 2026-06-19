@@ -44,8 +44,17 @@ def _match_probs(a, b):
     return pw, 1 - pw - pl, pl
 
 
-def simulate(groups, sim_n=SIM_N_CUP):
-    """Devuelve dict team_id -> {p1st,p2nd,p3rd,pOut,pAdv}."""
+def _pair_key(a, b):
+    return "|".join(sorted((str(a), str(b))))
+
+
+def simulate(groups, sim_n=SIM_N_CUP, played_pairs=None):
+    """Devuelve dict team_id -> {p1st,p2nd,p3rd,pOut,pAdv}.
+
+    `played_pairs`: set de claves '<idA>|<idB>' (ids ordenados) de partidos ya
+    jugados. Si se pasa, se sabe exacto qué emparejamientos faltan; si no, se cae
+    al proxy por PJ (solo fiable a inicio/fin de fase).
+    """
     rng = make_rng(groups_seed(groups))
     num_groups = len(groups)
     best3_total = 0 if num_groups <= 8 else min(8, num_groups)
@@ -69,7 +78,10 @@ def simulate(groups, sim_n=SIM_N_CUP):
             for i in range(n):
                 for j in range(i + 1, n):
                     ti, tj = teams[i], teams[j]
-                    played = gp[ti["id"]] + gp[tj["id"]] >= 2 * total_gp - (n - 1 - max(i, j))
+                    if played_pairs is not None:
+                        played = _pair_key(ti["id"], tj["id"]) in played_pairs
+                    else:
+                        played = gp[ti["id"]] + gp[tj["id"]] >= 2 * total_gp - (n - 1 - max(i, j))
                     if played:
                         continue
                     pw, pd, _ = _match_probs(ti["abbr"], tj["abbr"])

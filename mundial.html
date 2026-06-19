@@ -468,7 +468,7 @@ function simMatch(h, a, knockout) {
 }
 
 // ─── Group stage Monte Carlo ──────────────────────────────────────────────
-function simulateGroups(groups) {
+function simulateGroups(groups, playedPairs = null) {
   rng = mulberry32(groupsSeed(groups));
   const NUM_GROUPS  = groups.length;
   // Formato clásico (8 grupos): solo top 2 pasan, no hay mejores terceros
@@ -497,8 +497,11 @@ function simulateGroups(groups) {
       for (let i = 0; i < n; i++) {
         for (let j = i + 1; j < n; j++) {
           const ti = teams[i], tj = teams[j];
-          // check if this match already happened (gp as proxy)
-          const matchPlayed = gp[ti.id] + gp[tj.id] >= 2 * totalGp - (n - 1 - Math.max(i, j));
+          // ¿Ya se jugó este partido? Con fixtures reales lo sabemos exacto; si no
+          // llegan, caemos al proxy por PJ (solo fiable a inicio/fin de fase).
+          const matchPlayed = playedPairs
+            ? playedPairs.has(pairKey(ti.id, tj.id))
+            : gp[ti.id] + gp[tj.id] >= 2 * totalGp - (n - 1 - Math.max(i, j));
           if (matchPlayed) continue;
 
           // simulate goals (probabilidades ajustadas por ranking FIFA)
@@ -861,20 +864,21 @@ function updateGroupProbabilities(groups, groupResults) {
 }
 
 // Caché de simulación en localStorage — evita recalcular si los puntos no cambiaron
-function simulateGroupsCached(groups) {
+function simulateGroupsCached(groups, playedPairs = null) {
   try {
     const seed    = groupsSeed(groups.flatMap(g => g.entries));
-    const key     = `mundial_sim_${seed}`;
+    const pkey    = playedPairs ? `_p${playedPairs.size}` : '';
+    const key     = `mundial_sim2_${seed}${pkey}`;
     const cached  = localStorage.getItem(key);
     if (cached) return JSON.parse(cached);
-    const results = simulateGroups(groups);
+    const results = simulateGroups(groups, playedPairs);
     localStorage.setItem(key, JSON.stringify(results));
-    // Limpiar entradas antiguas del mismo torneo
+    // Limpiar entradas antiguas del mismo torneo (incl. la clave vieja con bug)
     Object.keys(localStorage)
-      .filter(k => k.startsWith('mundial_sim_') && k !== key)
+      .filter(k => (k.startsWith('mundial_sim_') || k.startsWith('mundial_sim2_')) && k !== key)
       .forEach(k => localStorage.removeItem(k));
     return results;
-  } catch { return simulateGroups(groups); }
+  } catch { return simulateGroups(groups, playedPairs); }
 }
 
 function fallbackGAvatar(id, name, color) {
@@ -1305,6 +1309,30 @@ async function fetchLiveScores() {
   } catch { return []; }
 }
 
+// Clave canónica de un emparejamiento (orden de ids irrelevante)
+const pairKey = (a, b) => [String(a), String(b)].sort().join('|');
+
+// Pares de selecciones cuyo partido de grupos ya empezó o terminó (state !== 'pre').
+// La clasificación de ESPN solo da pts/PJ por equipo, no QUÉ rivales ha jugado cada
+// uno, así que sin esto la simulación adivina las jornadas restantes por nº de PJ y
+// se equivoca a media fase (inventa partidos extra). Devuelve un Set o null si falla.
+async function fetchPlayedPairs() {
+  try {
+    const res = await fetch(`${ESPN_SCOREBOARD}?dates=20260611-20260628&limit=200`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const pairs = new Set();
+    for (const ev of (data.events || [])) {
+      if (ev.season?.slug !== 'group-stage') continue;
+      if (ev.status?.type?.state === 'pre') continue;   // aún por jugar → se simula
+      const comps = ev.competitions?.[0]?.competitors || [];
+      const a = comps[0]?.team?.id, b = comps[1]?.team?.id;
+      if (a && b) pairs.add(pairKey(a, b));
+    }
+    return pairs;
+  } catch { return null; }
+}
+
 function applyLive(groups, liveMatches) {
   if (!liveMatches.length) return groups;
   return groups.map(g => ({
@@ -1384,7 +1412,9 @@ async function triggerUpdate(silent = false) {
   if (isUpdating) return;
   isUpdating = true;
   try {
-    const [groups, liveMatches] = await Promise.all([fetchGroups(), fetchLiveScores()]);
+    const [groups, liveMatches, playedPairs] = await Promise.all([
+      fetchGroups(), fetchLiveScores(), fetchPlayedPairs(),
+    ]);
     const adjusted = applyLive(groups, liveMatches);
 
     numGroupsGlobal = adjusted.length;
@@ -1404,7 +1434,7 @@ async function triggerUpdate(silent = false) {
     // Fase 2: Simulación diferida — deja pintar al navegador primero
     // Si los puntos no cambiaron desde la última visita, usa caché (instantáneo)
     setTimeout(() => {
-      const groupResults = simulateGroupsCached(adjusted);
+      const groupResults = simulateGroupsCached(adjusted, playedPairs);
       updateGroupProbabilities(adjusted, groupResults);
       clearTimeout(liveTimer);
       if (liveMatches.length > 0) liveTimer = setTimeout(() => triggerUpdate(true), 60_000);

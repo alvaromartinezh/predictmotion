@@ -100,6 +100,30 @@ class DataSource:
             t["third_rank"] = i + 1
         return thirds
 
+    def get_played_pairs(self, dates: str = "20260611-20260628") -> set[str]:
+        """Set de pares '<idA>|<idB>' (ids ordenados) de partidos de grupos ya
+        empezados o terminados. La clasificación solo da PJ por equipo, no QUÉ
+        rivales jugó cada uno; sin esto la simulación adivina las jornadas
+        restantes por nº de PJ y se equivoca a media fase. Best-effort → set()."""
+        pairs: set[str] = set()
+        try:
+            data = self._get(f"{_ESPN_SITE}/{self.code}/scoreboard", dates=dates, limit=200)
+        except Exception:
+            return pairs
+        for ev in data.get("events", []):
+            if (ev.get("season") or {}).get("slug") != "group-stage":
+                continue
+            if ((ev.get("status") or {}).get("type") or {}).get("state") == "pre":
+                continue
+            comps = (ev.get("competitions") or [{}])[0].get("competitors", [])
+            if len(comps) < 2:
+                continue
+            a = str((comps[0].get("team") or {}).get("id", ""))
+            b = str((comps[1].get("team") or {}).get("id", ""))
+            if a and b:
+                pairs.add("|".join(sorted((a, b))))
+        return pairs
+
     # ── Scoreboard ────────────────────────────────────────────────────────────
 
     def get_live_matches(self) -> list[dict]:
