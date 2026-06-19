@@ -22,8 +22,9 @@
   <link rel="apple-touch-icon" href="/media/twitter_profile.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
   <link rel="dns-prefetch" href="https://a.espncdn.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;600;700;800&family=Inconsolata:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="dns-prefetch" href="https://site.api.espn.com" />
 
   <title>PredictMotion · Probabilidades de fútbol por simulación Monte Carlo</title>
   <meta name="description" content="Elige competición y consulta probabilidades de ascenso, descenso y clasificación en tiempo real: Liga Hypermotion, LaLiga y Copa del Mundo 2026. Simulación Monte Carlo con datos reales." />
@@ -40,6 +41,7 @@
   <meta property="og:locale" content="es_ES" />
   <meta property="og:site_name" content="PredictMotion" />
   <meta name="twitter:card" content="summary" />
+  <meta name="twitter:image" content="https://predictmotion.com/media/twitter_profile.png" />
 
   <script type="application/ld+json">
   {
@@ -52,69 +54,8 @@
   }
   </script>
 
-  <style>
-    :root {
-      --bg:#060916; --surface:#0c1124; --surface2:#121a30; --border:#1d2e48;
-      --accent:#e6a117; --green:#00c97a; --blue:#3d8ef5; --red:#f53050;
-      --text:#dce8fa; --muted:#4d6285; --radius:10px;
-    }
-    * { box-sizing:border-box; margin:0; padding:0; }
-    body {
-      font-family:'Barlow',sans-serif; background:var(--bg);
-      background-image:
-        radial-gradient(ellipse 70% 45% at 4% 0%, rgba(230,161,23,.06) 0%, transparent 55%),
-        radial-gradient(ellipse 55% 45% at 96% 100%, rgba(61,142,245,.05) 0%, transparent 55%);
-      color:var(--text); min-height:100vh; padding:0 18px 80px; overflow-x:hidden;
-    }
-    .header-wrap {
-      margin:0 -18px 30px; border-top:3px solid var(--accent);
-      background:linear-gradient(180deg,rgba(10,17,40,.92) 0%,transparent 100%);
-      border-bottom:1px solid var(--border); padding:30px 18px 26px; text-align:center;
-    }
-    .brand {
-      font-family:'Barlow Condensed',sans-serif; font-size:2.6rem; font-weight:800;
-      text-transform:uppercase; letter-spacing:.04em; line-height:1;
-    }
-    .brand span { color:var(--accent); }
-    .tagline {
-      font-size:.72rem; color:var(--muted); margin-top:9px;
-      letter-spacing:.16em; text-transform:uppercase;
-    }
-    .intro {
-      max-width:680px; margin:0 auto 26px; text-align:center;
-      font-size:1.05rem; color:var(--text); line-height:1.55;
-    }
-    .grid {
-      max-width:900px; margin:0 auto;
-      display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:18px;
-    }
-    .comp {
-      display:flex; flex-direction:column; align-items:center; text-align:center; gap:14px;
-      background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
-      padding:30px 22px; text-decoration:none; color:inherit;
-      transition:border-color .15s, transform .15s, background .15s;
-    }
-    .comp:hover { border-color:rgba(230,161,23,.45); background:var(--surface2); transform:translateY(-3px); }
-    .comp-logo { width:74px; height:74px; display:flex; align-items:center; justify-content:center;
-      filter:drop-shadow(0 3px 14px rgba(0,0,0,.4)); }
-    .comp-logo img { width:100%; height:100%; object-fit:contain; }
-    .comp-name {
-      font-family:'Barlow Condensed',sans-serif; font-size:1.45rem; font-weight:800;
-      text-transform:uppercase; letter-spacing:.03em; line-height:1.05;
-    }
-    .comp-season { font-size:.66rem; color:var(--muted); letter-spacing:.12em; text-transform:uppercase; margin-top:4px; }
-    .comp-cta {
-      margin-top:auto; font-family:'Barlow Condensed',sans-serif; font-weight:700;
-      font-size:.8rem; letter-spacing:.06em; text-transform:uppercase; color:var(--accent);
-    }
-    footer {
-      max-width:900px; margin:40px auto 0; padding-top:18px; border-top:1px solid var(--border);
-      font-size:.72rem; color:var(--muted); text-align:center; line-height:1.8;
-    }
-    footer a { color:var(--muted); text-decoration:none; }
-    footer a:hover { color:var(--text); }
-    @media (max-width:600px){ .brand{font-size:2rem;} .comp{padding:24px 18px;} }
-  </style>
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="/theme.js"></script>
 
   <!-- Google AdSense -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3055585323326983" crossorigin="anonymous"></script>
@@ -127,62 +68,137 @@
 height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- End Google Tag Manager (noscript) -->
 
-<div class="header-wrap">
-  <div class="brand">Predict<span>Motion</span></div>
-  <div class="tagline">Probabilidades de fútbol · Simulación Monte Carlo</div>
-</div>
+  <!-- ===== BARRA SUPERIOR ===== -->
+  <header class="topbar">
+    <div class="wrap topbar__inner">
+      <a class="logo" href="/" aria-label="PredictMotion — inicio">
+        <span class="logo__dot" aria-hidden="true"></span>Predict<b>Motion</b>
+      </a>
+      <div class="topbar__right">
+        <nav class="topbar__nav" aria-label="Competiciones">
+          <a href="/hypermotion">Hypermotion</a>
+          <a href="/laliga">LaLiga</a>
+          <a href="/mundial">Mundial&nbsp;2026</a>
+        </nav>
+        <button class="theme-toggle" data-theme-toggle type="button" aria-pressed="false" aria-label="Cambiar tema" title="Tema claro / oscuro">
+          <span class="tt-opt tt-dark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8Z"/></svg></span>
+          <span class="tt-opt tt-light" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></span>
+        </button>
+      </div>
+    </div>
+  </header>
 
-<p class="intro">Elige una competición para ver su clasificación, probabilidades en tiempo real, próximos partidos y datos.</p>
+  <main class="wrap">
 
-<nav class="grid" aria-label="Competiciones">
-  <a class="comp" href="/hypermotion">
-    <div class="comp-logo"><img id="logo-hypermotion" src="https://a.espncdn.com/i/leaguelogos/soccer/500/107.png" alt="Liga Hypermotion" loading="lazy" /></div>
-    <div><div class="comp-name">Liga Hypermotion</div><div class="comp-season" id="season-hypermotion" data-prefix="Segunda División">Segunda División</div></div>
-    <span class="comp-cta">Ver clasificación →</span>
-  </a>
-  <a class="comp" href="/laliga">
-    <div class="comp-logo"><img id="logo-laliga" src="https://a.espncdn.com/i/leaguelogos/soccer/500-dark/15.png" alt="LaLiga" loading="lazy" /></div>
-    <div><div class="comp-name">LaLiga</div><div class="comp-season" id="season-laliga" data-prefix="Primera División">Primera División</div></div>
-    <span class="comp-cta">Ver clasificación →</span>
-  </a>
-  <a class="comp" href="/mundial">
-    <div class="comp-logo"><img src="https://a.espncdn.com/i/leaguelogos/soccer/500-dark/4.png" alt="Copa del Mundo 2026" loading="lazy" /></div>
-    <div><div class="comp-name">Copa del Mundo</div><div class="comp-season">FIFA World Cup · 2026</div></div>
-    <span class="comp-cta">Ver grupos →</span>
-  </a>
-</nav>
+    <!-- ===== HERO ===== -->
+    <section class="hero">
+      <p class="eyebrow">Simulación Monte Carlo · datos reales</p>
+      <h1>Probabilidades que <span class="hl">se leen solas</span></h1>
+      <p class="lede">Ascenso, play-off, descenso y clasificación final de cada competición, recalculados a diario tras miles de simulaciones.</p>
+      <p class="hero__meta"><span class="pulse" aria-hidden="true"></span> Actualizado <span class="num" id="lastUpdate">hoy</span> · 40.000 simulaciones / liga</p>
+    </section>
 
-<script>
-  // Temporada y logo de cada liga regular se rellenan desde ESPN (nada hardcodeado).
-  // El Mundial es la excepción (logo y año fijos).
-  [['hypermotion','esp.2'],['laliga','esp.1']].forEach(function (p) {
-    var slug = p[0], code = p[1];
-    fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/' + code + '/scoreboard', { cache: 'no-store' })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (d) {
-        if (!d) return;
-        var lg = (d.leagues || [])[0] || {};
-        var dn = (lg.season && lg.season.displayName) || '';
-        var m = dn.match(/\d{4}-\d{2}/);
-        if (m) {
-          var s = document.getElementById('season-' + slug);
-          if (s) s.textContent = s.dataset.prefix + ' · ' + m[0];
-        }
-        var logos = lg.logos || [];
-        var dark = logos.filter(function (l) { return (l.rel || []).indexOf('dark') >= 0; })[0];
-        var href = (dark || logos[0] || {}).href;
-        if (href) {
-          var img = document.getElementById('logo-' + slug);
-          if (img) img.src = href.replace('http://', 'https://');
-        }
-      }).catch(function () {});
-  });
-</script>
+    <!-- ===== TARJETAS DE COMPETICIÓN ===== -->
+    <nav class="comps" aria-label="Elige competición">
 
-<footer>
-  © 2025 PredictMotion · Todos los derechos reservados<br>
-  <a href="mailto:contact@predictmotion.com">contact@predictmotion.com</a> ·
-  <a href="/privacy">Política de privacidad</a>
-</footer>
+      <!-- Liga Hypermotion -->
+      <a class="comp-card theme-hypermotion" href="/hypermotion">
+        <div class="comp-card__top">
+          <span class="comp-card__shield">
+            <img id="logo-hypermotion" src="https://a.espncdn.com/i/leaguelogos/soccer/500/107.png" alt="Liga Hypermotion" loading="lazy" />
+          </span>
+          <span class="comp-card__idx">01</span>
+        </div>
+        <div>
+          <div class="comp-card__name">Liga<br />Hypermotion</div>
+          <div class="comp-card__season" id="season-hypermotion" data-prefix="Segunda División">Segunda División</div>
+        </div>
+        <div class="comp-card__legend">
+          <span class="legend-dot up"><i></i>Ascenso</span>
+          <span class="legend-dot po"><i></i>Play-off</span>
+          <span class="legend-dot down"><i></i>Descenso</span>
+        </div>
+        <div class="comp-card__cta">Ver clasificación <span class="arrow" aria-hidden="true">→</span></div>
+      </a>
+
+      <!-- LaLiga -->
+      <a class="comp-card theme-laliga" href="/laliga">
+        <div class="comp-card__top">
+          <span class="comp-card__shield">
+            <img id="logo-laliga" src="https://a.espncdn.com/i/leaguelogos/soccer/500-dark/15.png" alt="LaLiga" loading="lazy" />
+          </span>
+          <span class="comp-card__idx">02</span>
+        </div>
+        <div>
+          <div class="comp-card__name">LaLiga</div>
+          <div class="comp-card__season" id="season-laliga" data-prefix="Primera División">Primera División</div>
+        </div>
+        <div class="comp-card__legend">
+          <span class="legend-dot up"><i></i>Título</span>
+          <span class="legend-dot po"><i></i>Champions</span>
+          <span class="legend-dot down"><i></i>Descenso</span>
+        </div>
+        <div class="comp-card__cta">Ver clasificación <span class="arrow" aria-hidden="true">→</span></div>
+      </a>
+
+      <!-- Mundial 2026 -->
+      <a class="comp-card theme-mundial" href="/mundial">
+        <div class="comp-card__top">
+          <span class="comp-card__shield">
+            <img src="https://a.espncdn.com/i/leaguelogos/soccer/500-dark/4.png" alt="Copa del Mundo 2026" loading="lazy" />
+          </span>
+          <span class="comp-card__idx">03</span>
+        </div>
+        <div>
+          <div class="comp-card__name">Copa del<br />Mundo</div>
+          <div class="comp-card__season">FIFA World Cup · 2026</div>
+        </div>
+        <div class="comp-card__legend">
+          <span class="legend-dot up"><i></i>Campeón</span>
+          <span class="legend-dot po"><i></i>Octavos</span>
+          <span class="legend-dot down"><i></i>Fase grupos</span>
+        </div>
+        <div class="comp-card__cta">Ver grupos <span class="arrow" aria-hidden="true">→</span></div>
+      </a>
+
+    </nav>
+  </main>
+
+  <!-- ===== PIE ===== -->
+  <footer class="footer">
+    <div class="wrap footer__inner">
+      <p>© 2025 PredictMotion · Todos los derechos reservados</p>
+      <nav class="footer__links" aria-label="Enlaces legales">
+        <a href="mailto:contact@predictmotion.com">contact@predictmotion.com</a>
+        <a href="/privacy">Política de privacidad</a>
+      </nav>
+    </div>
+  </footer>
+
+  <!-- Temporada y logo de cada liga regular se rellenan desde ESPN (sin hardcodear). -->
+  <script>
+    [['hypermotion','esp.2'],['laliga','esp.1']].forEach(function (p) {
+      var slug = p[0], code = p[1];
+      fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/' + code + '/scoreboard', { cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d) return;
+          var lg = (d.leagues || [])[0] || {};
+          var dn = (lg.season && lg.season.displayName) || '';
+          var m = dn.match(/\d{4}-\d{2}/);
+          if (m) {
+            var s = document.getElementById('season-' + slug);
+            if (s) s.textContent = s.dataset.prefix + ' · ' + m[0];
+          }
+          var logos = lg.logos || [];
+          var dark = logos.filter(function (l) { return (l.rel || []).indexOf('dark') >= 0; })[0];
+          var href = (dark || logos[0] || {}).href;
+          if (href) {
+            var img = document.getElementById('logo-' + slug);
+            if (img) img.src = href.replace('http://', 'https://');
+          }
+        }).catch(function () {});
+    });
+  </script>
 </body>
 </html>
