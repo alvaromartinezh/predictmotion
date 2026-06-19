@@ -70,7 +70,8 @@ def _process_table(league, today, dry_run):
 def _process_cup(league, today, dry_run):
     groups = espn.fetch_groups(league["espn_code"])
     meta = espn.fetch_league_meta(league["espn_code"])
-    sim = sim_cup.simulate(groups)
+    played_pairs = espn.fetch_played_pairs(league["espn_code"])
+    sim = sim_cup.simulate(groups, played_pairs=played_pairs or None)
     # Mundial: el año queda fijo en config (excepción acordada); solo el logo es vivo.
     snap = build_cup_snapshot(league, groups, sim, today, league_logo=meta["logo"])
     if not dry_run:
