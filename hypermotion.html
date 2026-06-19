@@ -417,15 +417,11 @@ function simulate(standings) {
   const totalMd  = 2 * (numTeams - 1);
   const minGp    = Math.min(...standings.map(t => t.gp));
 
-  // Temporada terminada: todos han jugado todas las jornadas → devolver posiciones reales
+  // Temporada terminada: usar el orden oficial de ESPN (ya aplica los desempates
+  // por enfrentamiento directo); reordenar por DG colocaba mal a equipos empatados.
   if (minGp >= totalMd) {
-    const sorted = [...standings].sort((a, b) =>
-      b.pts !== a.pts ? b.pts - a.pts :
-      (b.gf - b.gc) !== (a.gf - a.gc) ? (b.gf - b.gc) - (a.gf - a.gc) :
-      b.gf - a.gf
-    );
-    return Object.fromEntries(sorted.map((t, idx) => {
-      const p = idx + 1;
+    return Object.fromEntries(standings.map((t, idx) => {
+      const p = t.rank || idx + 1;
       return [t.name, {
         top2:    p <= LEAGUE.promoSlots             ? 100 : 0,
         playoff: p > LEAGUE.promoSlots && p <= LEAGUE.playoffTop ? 100 : 0,
