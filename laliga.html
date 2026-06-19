@@ -303,16 +303,21 @@ function noteToZone(desc) {
   return 'none';
 }
 
-// Deriva los slots de corte a partir de las notas de zona que devuelve la API.
-// Si la API no tiene notas (inicio de temporada), usa los valores de LEAGUE como fallback.
+// Deriva los slots de corte (nº de plazas) por POSICIÓN a partir de las notas
+// de la API, usando bandas CONTIGUAS desde la cabeza de la tabla. Así una plaza
+// europea no consecutiva —p. ej. la que da ganar la Copa del Rey, que la API
+// marca en mitad de tabla— no ensancha el rango de posiciones (esa plaza ya se
+// refleja por equipo vía su nota). Todo sale de la API; si no hay notas (inicio
+// de temporada) se usan los fallback de LEAGUE. Nada de posiciones hardcodeadas.
 function deriveSlots(standings) {
-  let promo = 0, europa = 0, conf = 0, relega = 0;
-  standings.forEach(t => {
-    if (t.zone === 'promo')  promo  = Math.max(promo,  t.rank);
-    if (t.zone === 'europa') europa = Math.max(europa, t.rank);
-    if (t.zone === 'conf')   conf   = Math.max(conf,   t.rank);
-    if (t.zone === 'relega') relega++;
-  });
+  const byRank = [...standings].sort((a, b) => a.rank - b.rank);
+  let i = 0, promo = 0, europa = 0, conf = 0, relega = 0;
+  while (byRank[i] && byRank[i].zone === 'promo')  { promo  = byRank[i].rank; i++; }
+  europa = promo;
+  while (byRank[i] && byRank[i].zone === 'europa') { europa = byRank[i].rank; i++; }
+  conf = europa;
+  while (byRank[i] && byRank[i].zone === 'conf')   { conf   = byRank[i].rank; i++; }
+  for (let j = byRank.length - 1; j >= 0 && byRank[j].zone === 'relega'; j--) relega++;
   return {
     promoSlots:  promo  || LEAGUE.promoSlots,
     europaSlots: europa || LEAGUE.europaSlots,
