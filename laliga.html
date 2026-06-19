@@ -399,22 +399,16 @@ function simulate(standings, slots) {
   const totalMd  = 2 * (numTeams - 1);
   const minGp    = Math.min(...standings.map(t => t.gp));
 
-  // Temporada terminada: todos han jugado todas las jornadas → devolver posiciones reales
+  // Temporada terminada: usar la clasificación oficial de ESPN (zonas por nota),
+  // que ya aplica el desempate por enfrentamiento directo. Reordenar por DG aquí
+  // colocaba mal a equipos empatados a puntos (p. ej. Levante marcado como descenso).
   if (minGp >= totalMd) {
-    const sorted = [...standings].sort((a, b) =>
-      b.pts !== a.pts ? b.pts - a.pts :
-      (b.gf - b.gc) !== (a.gf - a.gc) ? (b.gf - b.gc) - (a.gf - a.gc) :
-      b.gf - a.gf
-    );
-    return Object.fromEntries(sorted.map((t, idx) => {
-      const p = idx + 1;
-      return [t.name, {
-        champ:  p <= slots.promoSlots                                     ? 100 : 0,
-        europa: p > slots.promoSlots  && p <= slots.europaSlots           ? 100 : 0,
-        conf:   p > slots.europaSlots && p <= slots.confSlots             ? 100 : 0,
-        relega: p > numTeams - slots.relegSlots                           ? 100 : 0,
-      }];
-    }));
+    return Object.fromEntries(standings.map(t => [t.name, {
+      champ:  t.zone === 'promo'  ? 100 : 0,
+      europa: t.zone === 'europa' ? 100 : 0,
+      conf:   t.zone === 'conf'   ? 100 : 0,
+      relega: t.zone === 'relega' ? 100 : 0,
+    }]));
   }
 
   rng = mulberry32(standingsSeed(standings));

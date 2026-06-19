@@ -396,10 +396,10 @@ function simulate(standings, teamName) {
 
   // Temporada terminada: posiciones reales → 100/0 por zona.
   if (minGp >= totalMd) {
-    const sorted = [...standings].sort((a,b) =>
-      b.pts !== a.pts ? b.pts - a.pts :
-      (b.gf-b.gc) !== (a.gf-a.gc) ? (b.gf-b.gc) - (a.gf-a.gc) : b.gf - a.gf);
-    const p = sorted.findIndex(t => t.name === teamName) + 1;
+    // Temporada terminada: usar la posición oficial de ESPN (no reordenar por DG,
+    // que ignora el desempate por enfrentamiento directo).
+    const me = standings.find(t => t.name === teamName);
+    const p  = me ? (me.rank || standings.indexOf(me) + 1) : standings.length;
     const out = blank();
     for (const z of zones) out[z.key] = z.test(p, numTeams) ? 100 : 0;
     return out;
