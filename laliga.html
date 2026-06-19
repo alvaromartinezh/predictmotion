@@ -34,12 +34,13 @@
   <style>
   /* ===== laliga.html · estilos de página (sistema base en styles.css) ===== */
   body {
-    --gold: #f0a92a; /* Título / quedar 1º (dorado) */
-    --eu: #4a90ff;   /* Europa League (azul) */
-    --cf: #a855f7;   /* Conference League (violeta) */
+    --gold: #f0a92a;  /* Título / quedar 1º (dorado) */
+    --champ: #4a90ff; /* Champions League (azul) */
+    --eu: #2ec98a;    /* Europa League (verde) */
+    --cf: #a855f7;    /* Conference League (violeta) */
     --surface2: var(--surface-2); --border: var(--line); --radius: var(--r-md);
   }
-  html[data-theme="light"] body { --eu: #2f6fe0; --cf: #8b3fd6; --gold: #c5860f; }
+  html[data-theme="light"] body { --champ: #2f6fe0; --eu: #0f9e68; --cf: #8b3fd6; --gold: #c5860f; }
 
   main.wrap { padding-bottom: var(--sp-9); }
   .table-toolbar { margin-top: var(--sp-2); }
@@ -67,21 +68,36 @@
   .skeleton { animation: shimmer 1.4s infinite; background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%); background-size: 400% 100%; border-radius: var(--r-xs); }
   @keyframes shimmer { to { background-position: -400% 0; } }
 
-  /* Variantes de zona extra (Título dorado, Europa azul, Conference violeta) */
+  /* Variantes de zona (Título dorado · Champions azul · Europa verde · Conference violeta) */
   .prob.gold { background: rgba(240,169,42,.12); border-color: rgba(240,169,42,.30); color: var(--gold); }
   .prob.gold .prob__fill { background: linear-gradient(90deg, rgba(240,169,42,.34), rgba(240,169,42,.10)); }
   .prob.gold.is-lock { color: #1a1204; background: var(--gold); }
   .prob.gold.is-lock .prob__fill { display: none; }
-  html[data-theme="light"] .prob.gold.is-lock { color: #fff; }
   .prob-legend .gold i { background: var(--gold); }
-  .prob.eu { background: rgba(74,144,255,.12); border-color: rgba(74,144,255,.25); color: var(--eu); }
-  .prob.eu .prob__fill { background: linear-gradient(90deg, rgba(74,144,255,.30), rgba(74,144,255,.10)); }
-  .prob.eu.is-lock { color: #03101f; background: var(--eu); }
+
+  /* Champions League (clase up) → azul */
+  .prob.up { background: rgba(74,144,255,.12); border-color: rgba(74,144,255,.25); color: var(--champ); }
+  .prob.up .prob__fill { background: linear-gradient(90deg, rgba(74,144,255,.30), rgba(74,144,255,.10)); }
+  .prob.up.is-lock { color: #03101f; background: var(--champ); }
+  .prob.up.is-lock .prob__fill { display: none; }
+  tr[data-zone="up"] .col-pos::before { background: var(--champ); }
+  tr[data-zone="up"] .pos-badge { color: var(--champ); }
+  .prob-legend .up i { background: var(--champ); }
+
+  /* Europa League (clase eu) → verde */
+  .prob.eu { background: rgba(46,201,138,.12); border-color: rgba(46,201,138,.25); color: var(--eu); }
+  .prob.eu .prob__fill { background: linear-gradient(90deg, rgba(46,201,138,.30), rgba(46,201,138,.10)); }
+  .prob.eu.is-lock { color: #061a12; background: var(--eu); }
+
+  /* Conference League (clase cf) → violeta */
   .prob.cf { background: rgba(168,85,247,.12); border-color: rgba(168,85,247,.25); color: var(--cf); }
   .prob.cf .prob__fill { background: linear-gradient(90deg, rgba(168,85,247,.30), rgba(168,85,247,.08)); }
   .prob.cf.is-lock { color: #160726; background: var(--cf); }
-  .prob.eu.is-lock .prob__fill, .prob.cf.is-lock .prob__fill { display: none; }
-  html[data-theme="light"] .prob.eu.is-lock, html[data-theme="light"] .prob.cf.is-lock { color: #fff; }
+  .prob.up.is-lock .prob__fill, .prob.eu.is-lock .prob__fill, .prob.cf.is-lock .prob__fill { display: none; }
+  html[data-theme="light"] .prob.gold.is-lock,
+  html[data-theme="light"] .prob.up.is-lock,
+  html[data-theme="light"] .prob.eu.is-lock,
+  html[data-theme="light"] .prob.cf.is-lock { color: #fff; }
 
   tr[data-zone="eu"] .col-pos::before,
   tr[data-zone="cf"] .col-pos::before {
@@ -372,7 +388,7 @@ function renderTableHeader() {
       <th class="col-pj" scope="col">PJ</th>
       <th scope="col">Pts</th>
       <th class="col-prob" scope="col" style="color:var(--gold)">Título</th>
-      <th class="col-prob" scope="col" style="color:var(--up)">${LEAGUE.labels.promo}</th>
+      <th class="col-prob" scope="col" style="color:var(--champ)">${LEAGUE.labels.promo}</th>
       <th class="col-prob" scope="col" style="color:var(--eu)">${LEAGUE.labels.europa}</th>
       <th class="col-prob" scope="col" style="color:var(--cf)">${LEAGUE.labels.conf}</th>
       <th class="col-prob" scope="col" style="color:var(--down)">${LEAGUE.labels.relega}</th>
@@ -575,10 +591,16 @@ function initials(name) {
 function render(standings, results, slots) {
   const numTeams = standings.length;
   const tbody = document.getElementById('tbody');
+  // El color de zona de cada fila se toma de la zona REAL del equipo (nota de
+  // ESPN), no de un rango contiguo por puesto: los puestos europeos no siempre
+  // son consecutivos (p. ej. Europa por Copa del Rey), así que equipos como Rayo
+  // o Valencia no se pintan como europeos. Si no hay notas (inicio de temporada)
+  // se cae al cálculo por slots.
+  const useNotes = standings.some(s => s.zone && s.zone !== 'none');
   let html = '';
 
   standings.forEach((t, i) => {
-    const z     = zoneOf(t.rank, slots, numTeams);
+    const z     = useNotes ? (t.zone || 'none') : zoneOf(t.rank, slots, numTeams);
     const res   = results[t.name] || { first: 0, champ: 0, europa: 0, conf: 0, relega: 0 };
     const dz    = ZONE_DATA[z] ? ` data-zone="${ZONE_DATA[z]}"` : '';
     const color = COLOR_PALETTE[i % COLOR_PALETTE.length];
