@@ -559,6 +559,27 @@ function simulateGroups(groups) {
 
 // ─── Build bracket teams array from group results ────────────────────────
 // Devuelve 16 equipos (formato 8 grupos) o 32 equipos (formato 12 grupos)
+// Plantilla oficial de dieciseisavos FIFA 2026 (partidos 73–88, en orden de
+// cuadro). '1X'/'2X' = 1º/2º del grupo X; '3:XYZ…' = mejor tercero de uno de
+// esos grupos.
+const R32_TEMPLATE = [
+  { a: '2A', b: '2B' },        // 73
+  { a: '1E', b: '3:ABCDF' },   // 74
+  { a: '1F', b: '2C' },        // 75
+  { a: '1C', b: '2F' },        // 76
+  { a: '1I', b: '3:CDFGH' },   // 77
+  { a: '2E', b: '2I' },        // 78
+  { a: '1A', b: '3:CEFHI' },   // 79
+  { a: '1L', b: '3:EHIJK' },   // 80
+  { a: '1D', b: '3:BEFIJ' },   // 81
+  { a: '1G', b: '3:AEHIJ' },   // 82
+  { a: '2K', b: '2L' },        // 83
+  { a: '1H', b: '2J' },        // 84
+  { a: '1B', b: '3:EFGIJ' },   // 85
+  { a: '1J', b: '2H' },        // 86
+  { a: '1K', b: '3:DEIJL' },   // 87
+  { a: '2D', b: '2G' },        // 88
+];
 function buildBracketOrder(groups) {
   const n = groups.length;
   const winners   = [];
@@ -592,23 +613,61 @@ function buildBracketOrder(groups) {
     return bracket;  // 16 equipos
   }
 
-  // Formato ampliado: 12 grupos, 32 clasificados (dieciseisavos)
-  thirds.sort((a, b) =>
+  // ── Formato ampliado: 12 grupos, 32 clasificados (dieciseisavos) ──────────
+  // Sigue el cuadro oficial (R32_TEMPLATE): cada partido en su posición y los
+  // terceros asignados a un slot respetando los grupos permitidos por FIFA.
+  const cmp = (a, b) =>
     b.pts !== a.pts ? b.pts - a.pts :
     (b.gf - b.gc) !== (a.gf - a.gc) ? (b.gf - b.gc) - (a.gf - a.gc) :
-    b.gf - a.gf
-  );
-  const best8 = thirds.slice(0, 8);
+    b.gf - a.gf;
+
+  const byLetter = {};
+  groups.forEach(g => {
+    const s = [...g.entries].sort(cmp);
+    byLetter[g.name] = { first: s[0], second: s[1], third: s[2] };
+  });
+
+  // 8 mejores terceros, con su letra de grupo
+  const best = groups
+    .map(g => { const t = byLetter[g.name].third; return t ? { team: t, group: g.name, pts: t.pts, gd: t.gf - t.gc, gf: t.gf } : null; })
+    .filter(Boolean)
+    .sort((a, b) => b.pts !== a.pts ? b.pts - a.pts : b.gd !== a.gd ? b.gd - a.gd : b.gf - a.gf)
+    .slice(0, 8);
+
+  // Asignar cada tercero clasificado a su slot (matching que respeta el grupo
+  // permitido de cada partido); FIFA garantiza que siempre existe una asignación.
+  const thirdSlots = R32_TEMPLATE
+    .map((m, i) => ({ i, allow: m.b[0] === '3' ? m.b.slice(2) : null }))
+    .filter(s => s.allow)
+    .sort((a, b) => a.allow.length - b.allow.length);
+  const thirdBy = {};
+  best.forEach(t => { thirdBy[t.group] = t.team; });
+  const qualGroups = best.map(t => t.group);
+  const slotThird = {};
+  const usedG = {};
+  (function matchSlots(si) {
+    if (si === thirdSlots.length) return true;
+    const slot = thirdSlots[si];
+    for (const gL of qualGroups) {
+      if (usedG[gL] || slot.allow.indexOf(gL) < 0) continue;
+      usedG[gL] = true; slotThird[slot.i] = thirdBy[gL];
+      if (matchSlots(si + 1)) return true;
+      usedG[gL] = false; delete slotThird[slot.i];
+    }
+    return false;
+  })(0);
+
+  const pick = spec =>
+    spec[0] === '1' ? ((byLetter[spec[1]] || {}).first  || EMPTY_TEAM) :
+    spec[0] === '2' ? ((byLetter[spec[1]] || {}).second || EMPTY_TEAM) :
+    EMPTY_TEAM;
+
   const bracket = [];
-  for (let i = 0; i < n; i += 2) {
-    bracket.push(winners[i]       || EMPTY_TEAM);
-    bracket.push(runnersUp[i + 1] || EMPTY_TEAM);
-    bracket.push(winners[i + 1]   || EMPTY_TEAM);
-    bracket.push(runnersUp[i]     || EMPTY_TEAM);
-  }
-  for (let i = 0; i < 8; i++) bracket.push(best8[i] || EMPTY_TEAM);
-  while (bracket.length < 32) bracket.push(EMPTY_TEAM);
-  return bracket.slice(0, 32);
+  R32_TEMPLATE.forEach((m, i) => {
+    bracket.push(m.a[0] === '3' ? (slotThird[i] || EMPTY_TEAM) : pick(m.a));
+    bracket.push(m.b[0] === '3' ? (slotThird[i] || EMPTY_TEAM) : pick(m.b));
+  });
+  return bracket;  // 32 equipos en orden de cuadro (partidos 73–88)
 }
 
 const EMPTY_TEAM = { id: '_empty', name: 'Por determinar', logo: null };
