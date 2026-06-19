@@ -16,36 +16,17 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="dns-prefetch" href="https://site.api.espn.com" />
   <link rel="dns-prefetch" href="https://sports.core.api.espn.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;600;700;800&family=Inconsolata:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="/theme.js"></script>
   <title>Equipo · Liga Hypermotion 2025-26</title>
 
   <style>
-    :root {
-      --bg:        #060916;
-      --surface:   #0c1124;
-      --surface2:  #121a30;
-      --border:    #1d2e48;
-      --accent:    #e6a117;
-      --green:     #00c97a;
-      --green-dim: rgba(0,201,122,.06);
-      --blue:      #3d8ef5;
-      --blue-dim:  rgba(61,142,245,.06);
-      --violet:    #a855f7;
-      --red:       #f53050;
-      --red-dim:   rgba(245,48,80,.06);
-      --text:      #dce8fa;
-      --muted:     #4d6285;
-      --radius:    8px;
-    }
-    * { box-sizing:border-box; margin:0; padding:0; }
+    /* Alias de variables heredadas → tokens del sistema de diseño (styles.css) */
     body {
-      font-family:'Barlow',sans-serif;
-      background: var(--bg);
-      background-image:
-        radial-gradient(ellipse 70% 45% at 4% 0%, rgba(230,161,23,.05) 0%, transparent 55%),
-        radial-gradient(ellipse 50% 40% at 96% 100%, rgba(61,142,245,.04) 0%, transparent 55%);
-      color:var(--text); min-height:100vh;
-      padding:0 16px 80px; overflow-x:hidden;
+      --surface2: var(--surface-2); --border: var(--line); --radius: var(--r-md);
+      --green: var(--up); --blue: #4a90ff; --violet: #a855f7; --red: var(--down);
+      padding: 0 16px 80px; overflow-x: hidden;
     }
 
     /* ── Back ── */
@@ -70,7 +51,7 @@
     .team-logo-big img { width:100%; height:100%; object-fit:contain; }
     .team-logo-big.fallback { border-radius:10px; font-size:1.05rem; font-weight:700; color:#fff; }
     .header-text h1 {
-      font-family:'Barlow Condensed',sans-serif;
+      font-family:var(--font-display);
       font-size:1.95rem; font-weight:800; text-transform:uppercase; letter-spacing:.06em; line-height:1.05;
     }
     .header-text p { font-size:.67rem; color:var(--muted); margin-top:5px; letter-spacing:.12em; text-transform:uppercase; }
@@ -78,7 +59,7 @@
     .badge {
       background:var(--surface2); border:1px solid var(--border); border-radius:6px;
       padding:5px 12px; font-size:.72rem; color:var(--muted); white-space:nowrap;
-      font-family:'Inconsolata',monospace;
+      font-family:var(--font-mono);
     }
     .badge strong { color:var(--text); }
 
@@ -94,11 +75,11 @@
     .stats-grid { max-width:940px; margin:0 auto 16px; display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:8px; }
     .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; }
     .stat-card .label {
-      font-family:'Barlow Condensed',sans-serif;
+      font-family:var(--font-display);
       font-size:.65rem; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; margin-bottom:6px; font-weight:700;
     }
     .stat-card .value {
-      font-family:'Barlow Condensed',sans-serif;
+      font-family:var(--font-display);
       font-size:2rem; font-weight:800; line-height:1;
     }
     .stat-card .sub { font-size:.7rem; color:var(--muted); margin-top:3px; }
@@ -107,11 +88,11 @@
     .probs-row { max-width:940px; margin:0 auto 16px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
     .prob-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 16px; }
     .prob-card .p-label {
-      font-family:'Barlow Condensed',sans-serif;
+      font-family:var(--font-display);
       font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; margin-bottom:10px;
     }
     .prob-card .p-pct {
-      font-family:'Barlow Condensed',sans-serif;
+      font-family:var(--font-display);
       font-size:2.5rem; font-weight:800; line-height:1; margin-bottom:12px; letter-spacing:.02em;
     }
     .prob-card .p-bar-bg { height:4px; border-radius:2px; background:var(--border); overflow:hidden; }
@@ -129,7 +110,7 @@
     .card { max-width:940px; margin:0 auto 16px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
     .card-header {
       background:var(--surface2); padding:10px 16px; border-bottom:1px solid var(--border);
-      font-family:'Barlow Condensed',sans-serif;
+      font-family:var(--font-display);
       font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--muted);
     }
 
@@ -138,7 +119,7 @@
     table { width:100%; border-collapse:collapse; }
     thead th {
       background:var(--surface2); padding:10px 14px;
-      font-family:'Barlow Condensed',sans-serif;
+      font-family:var(--font-display);
       font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--muted);
       text-align:left; white-space:nowrap; border-bottom:1px solid var(--border);
     }
@@ -150,13 +131,13 @@
     td.right  { text-align:right; }
     td.center { text-align:center; }
     .player-pos {
-      font-family:'Barlow Condensed',sans-serif;
+      font-family:var(--font-display);
       font-size:.68rem; font-weight:700; padding:2px 7px; border-radius:4px;
       background:var(--surface2); color:var(--muted); letter-spacing:.06em;
     }
     .result-badge {
       display:inline-block; width:22px; height:22px; border-radius:4px;
-      font-family:'Barlow Condensed',sans-serif;
+      font-family:var(--font-display);
       font-size:.75rem; font-weight:700; text-align:center; line-height:22px; letter-spacing:.04em;
     }
     .result-badge.W { background:rgba(0,201,122,.15); color:var(--green); }
@@ -194,6 +175,26 @@
 <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NG2T7CM4"
 height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- End Google Tag Manager (noscript) -->
+
+<!-- ===== BARRA SUPERIOR ===== -->
+<header class="topbar">
+  <div class="wrap topbar__inner">
+    <a class="logo" href="/" aria-label="PredictMotion — inicio">
+      <span class="logo__dot" aria-hidden="true"></span>Predict<b>Motion</b>
+    </a>
+    <div class="topbar__right">
+      <nav class="topbar__nav" aria-label="Competiciones">
+        <a href="/hypermotion">Hypermotion</a>
+        <a href="/laliga">LaLiga</a>
+        <a href="/mundial">Mundial&nbsp;2026</a>
+      </nav>
+      <button class="theme-toggle" data-theme-toggle type="button" aria-pressed="false" aria-label="Cambiar tema" title="Tema claro / oscuro">
+        <span class="tt-opt tt-dark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8Z"/></svg></span>
+        <span class="tt-opt tt-light" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></span>
+      </button>
+    </div>
+  </div>
+</header>
 
 <a class="back-link" id="back-link" href="/">&#8592; Volver a la clasificación</a>
 
@@ -277,7 +278,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <div class="footer">
   <span id="footer-update">—</span>
-  <span>Datos: ESPN API · <a href="privacy.html" style="color:var(--muted);text-decoration:underline">Política de privacidad</a></span>
+  <span>Datos: ESPN API · <a href="/privacy" style="color:var(--muted);text-decoration:underline">Política de privacidad</a></span>
 </div>
 
 <script>
@@ -311,6 +312,9 @@ const params  = new URLSearchParams(location.search);
 const TEAM_ID = params.get('id');
 const TEAM_NAME_HINT = params.get('name') || '';
 const LG = LEAGUES[params.get('league')] || LEAGUES.hypermotion;
+
+// Tema de color según la competición (gold / rojo)
+document.body.classList.add('theme-' + (params.get('league') === 'laliga' ? 'laliga' : 'hypermotion'));
 
 // ─── Config derivada de la liga ─────────────────────────────────────────────
 const ESPN_BASE   = `https://site.api.espn.com/apis/site/v2/sports/soccer/${LG.code}`;
