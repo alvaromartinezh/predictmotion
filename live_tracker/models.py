@@ -36,10 +36,12 @@ class Team:
     logo: str | None
     side: str          # 'home' | 'away'
     score: int = 0
+    color: str | None = None        # color característico del equipo (#rrggbb)
 
     def to_dict(self):
         return {"id": self.id, "abbr": self.abbr, "name": self.name,
-                "logo": self.logo, "side": self.side, "score": self.score}
+                "logo": self.logo, "side": self.side, "score": self.score,
+                "color": self.color}
 
 
 @dataclass
