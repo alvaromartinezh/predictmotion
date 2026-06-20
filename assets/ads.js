@@ -52,13 +52,21 @@
     }
 
     // Degradación elegante: si el banner no carga (adblocker / sin relleno),
-    // colapsar el contenedor para no dejar una caja vacía.
-    w.setTimeout(function () {
+    // colapsar el contenedor para no dejar una caja vacía. Sondeamos durante un
+    // margen amplio en vez de un único chequeo: en páginas que bloquean el hilo
+    // al cargar (p. ej. el Mundial corre la simulación Monte Carlo) el anuncio
+    // tarda más en pintar y un chequeo único lo ocultaría por error.
+    var checks = 0, MAX_CHECKS = 12; // ~12 s
+    var poll = w.setInterval(function () {
+      checks++;
+      var loaded = false;
       try {
         var body = iframe.contentDocument && iframe.contentDocument.body;
-        if (!body || body.scrollHeight < 10) collapse(container);
-      } catch (e) { /* cross-origin inesperado: dejar el hueco reservado */ }
-    }, 3500);
+        loaded = !!body && body.scrollHeight >= 10;
+      } catch (e) { loaded = true; /* cross-origin = creativo cargado: no tocar */ }
+      if (loaded) { w.clearInterval(poll); return; }
+      if (checks >= MAX_CHECKS) { w.clearInterval(poll); collapse(container); }
+    }, 1000);
   }
 
   // Oculta limpiamente el slot (y su etiqueta) sin dejar hueco roto.
