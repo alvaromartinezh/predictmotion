@@ -29,6 +29,7 @@
   <link rel="dns-prefetch" href="https://a.espncdn.com" />
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/assets/fixtures.css" />
+  <link rel="stylesheet" href="/assets/ads.css" />
   <script src="/theme.js"></script>
 
   <title>Liga Hypermotion 2025-26 · Probabilidades de Ascenso y Descenso</title>
@@ -221,6 +222,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <main class="wrap">
 
+  <!-- ===== ANUNCIO: debajo de la cabecera (visible en todas las pestañas) ===== -->
+  <div class="ad-wrap"><span class="ad-label">Publicidad</span>
+    <div class="ad-slot" data-ad-slot="top"></div></div>
+
   <!-- ===== CLASIFICACIÓN ===== -->
   <div class="tab-section" data-section="clasificacion">
     <div class="table-toolbar">
@@ -254,10 +259,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <div class="bracket-grid" id="bracket-grid"></div>
       </div>
     </div>
+
+    <!-- ===== ANUNCIO: tras la tabla de clasificación / cuadro de play-off ===== -->
+    <div class="ad-wrap"><span class="ad-label">Publicidad</span>
+      <div class="ad-slot" data-ad-slot="mid"></div></div>
   </div><!-- /clasificacion -->
 
   <!-- ===== PRÓXIMOS PARTIDOS ===== -->
   <div class="tab-section" data-section="partidos" hidden>
+    <!-- ===== ANUNCIO: encima de los próximos partidos ===== -->
+    <div class="ad-wrap"><span class="ad-label">Publicidad</span>
+      <div class="ad-slot" data-ad-slot="mid"></div></div>
     <div id="fx-mount" class="fx"></div>
   </div>
 
@@ -834,5 +846,8 @@ updateSeason();
     if (e.detail === 'partidos') PMFixtures.init('esp.2', '#fx-mount');
   });
 </script>
+<script src="/assets/ads-config.js"></script>
+<script src="/assets/ads.js"></script>
+<script>PMAds.init();</script>
 </body>
 </html>

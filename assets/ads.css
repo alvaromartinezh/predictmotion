@@ -1,0 +1,43 @@
+/* ──────────────────────────────────────────────────────────────────────────
+   Estilos de los slots de anuncios (Adsterra). Usan los tokens de styles.css.
+   Reservan la altura exacta del banner por adelantado para evitar saltos de
+   layout (CLS) y colapsan limpio si el anuncio no carga (.is-empty).
+   ────────────────────────────────────────────────────────────────────────── */
+.ad-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: var(--sp-6) auto;
+  width: 100%;
+}
+
+.ad-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  line-height: 1;
+}
+
+.ad-slot {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  text-align: center;
+  overflow: hidden;
+}
+
+/* Altura reservada por adelantado = altura del banner que cargará (anti-CLS). */
+.ad-slot[data-ad-slot="top"] { min-height: 90px; }   /* leaderboard 728×90 */
+.ad-slot[data-ad-slot="mid"] { min-height: 250px; }  /* rectángulo 300×250 */
+
+@media (max-width: 768px) {
+  .ad-slot[data-ad-slot="top"] { min-height: 50px; } /* móvil 320×50 */
+}
+
+.ad-slot iframe { display: block; margin: 0 auto; border: 0; max-width: 100%; }
+
+/* Degradación elegante: sin anuncio, sin caja vacía. */
+.ad-wrap.is-empty { display: none !important; }
