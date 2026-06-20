@@ -731,7 +731,7 @@ function renderGroups(groups, groupResults) {
                 onerror="fallbackGAvatar('${avId}','${t.name.replace(/'/g,"\\'")}','${color}')" />
             </div>
             <span class="g-name">${t.name}</span>
-            ${t.live ? `<span class="live-badge ${t.live.winning ? 'lb-winning' : t.live.drawing ? 'lb-drawing' : 'lb-losing'}"><span class="live-dot"></span>${t.live.score}</span>` : ''}
+            ${t.live ? `<a class="live-badge-link" href="/partido?league=mundial&id=${t.live.eventId}" title="Seguir en vivo"><span class="live-badge ${t.live.winning ? 'lb-winning' : t.live.drawing ? 'lb-drawing' : 'lb-losing'}"><span class="live-dot"></span>${t.live.score}</span></a>` : ''}
           </div>
         </td>
         <td class="g-pts${t.live ? ' pts-live' : ''}" style="color:${t.live ? 'var(--accent)' : 'var(--text)'}">${t.pts}</td>
@@ -818,7 +818,7 @@ function renderThirds(groups) {
               onerror="fallbackGAvatar('${avId}','${t.name.replace(/'/g,"\\'")}','${color}')" />
           </div>
           <span class="g-name">${t.name}</span>
-          ${t.live ? `<span class="live-badge ${t.live.winning ? 'lb-winning' : t.live.drawing ? 'lb-drawing' : 'lb-losing'}"><span class="live-dot"></span>${t.live.score}</span>` : ''}
+          ${t.live ? `<a class="live-badge-link" href="/partido?league=mundial&id=${t.live.eventId}" title="Seguir en vivo"><span class="live-badge ${t.live.winning ? 'lb-winning' : t.live.drawing ? 'lb-drawing' : 'lb-losing'}"><span class="live-dot"></span>${t.live.score}</span></a>` : ''}
         </div>
       </td>
       <td class="g-pts${t.live ? ' pts-live' : ''}" style="color:${t.live ? 'var(--accent)' : 'var(--text)'}">${t.pts}</td>
@@ -1309,6 +1309,7 @@ async function fetchLiveScores() {
       const away = comp.competitors?.find(c => c.homeAway === 'away');
       if (!home || !away) continue;
       live.push({
+        eventId: event.id,
         homeId: home.team.id, homeScore: parseInt(home.score) || 0,
         awayId: away.team.id, awayScore: parseInt(away.score) || 0,
         clock: event.status.displayClock || '',
@@ -1354,7 +1355,7 @@ function applyLive(groups, liveMatches) {
       const os = isHome ? lm.awayScore : lm.homeScore;
       const pts = ts > os ? 3 : ts === os ? 1 : 0;
       return { ...t, pts: t.pts + pts, gp: t.gp + 1, gf: t.gf + ts, gc: t.gc + os,
-               live: { score: `${lm.homeScore}–${lm.awayScore}`, clock: lm.clock, winning: ts > os, drawing: ts === os } };
+               live: { score: `${lm.homeScore}–${lm.awayScore}`, clock: lm.clock, winning: ts > os, drawing: ts === os, eventId: lm.eventId } };
     })
   }));
 }

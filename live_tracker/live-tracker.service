@@ -1,0 +1,19 @@
+[Unit]
+Description=PredictMotion live tracker (proxy + caché de partido en vivo)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/predictmotion
+ExecStart=/usr/bin/python3 -m live_tracker
+Restart=on-failure
+RestartSec=5
+# Feature flag y ajustes opcionales (descomenta para sobreescribir config.py):
+# Environment=LIVE_TRACKING_ENABLED=true
+# Environment=LIVE_TRACKING_PORT=8770
+# Environment=LIVE_POLL_SECONDS=25
+
+[Install]
+WantedBy=multi-user.target

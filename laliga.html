@@ -530,6 +530,7 @@ async function fetchLiveScores() {
       const away = comp.competitors.find(c => c.homeAway === 'away');
       if (!home || !away) continue;
       live.push({
+        eventId:   event.id,
         homeId:    home.team.id,
         homeName:  home.team.displayName,
         homeScore: parseInt(home.score) || 0,
@@ -554,8 +555,8 @@ function applyLiveScores(standings, liveMatches) {
     const apts = m.awayScore > m.homeScore ? 3 : m.homeScore === m.awayScore ? 1 : 0;
     home.pts += hpts; home.gp += 1; home.gf += m.homeScore; home.gc += m.awayScore;
     away.pts += apts; away.gp += 1; away.gf += m.awayScore; away.gc += m.homeScore;
-    home.live = { score: `${m.homeScore}–${m.awayScore}`, clock: m.clock };
-    away.live = { score: `${m.homeScore}–${m.awayScore}`, clock: m.clock };
+    home.live = { score: `${m.homeScore}–${m.awayScore}`, clock: m.clock, eventId: m.eventId };
+    away.live = { score: `${m.homeScore}–${m.awayScore}`, clock: m.clock, eventId: m.eventId };
   }
   return adjusted;
 }
@@ -632,7 +633,7 @@ function render(standings, results, slots) {
               onerror="fallbackAvatar(${i},'${nameEsc}','${color}')" />
           </span>
           <a class="team__name team-link" href="/equipo?id=${t.id}&name=${encodeURIComponent(t.name)}&league=laliga">${t.name}</a>
-          ${t.live ? `<span class="live-badge"><span class="live-dot"></span>${t.live.score}<span class="live-clock"> ${t.live.clock}</span></span>` : ''}
+          ${t.live ? `<a class="live-badge-link" href="/partido?league=laliga&id=${t.live.eventId}" title="Seguir en vivo"><span class="live-badge"><span class="live-dot"></span>${t.live.score}<span class="live-clock"> ${t.live.clock}</span></span></a>` : ''}
         </span>
       </td>
       <td class="col-pj col-dim"><span class="num">${t.gp}</span></td>
