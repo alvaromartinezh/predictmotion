@@ -48,12 +48,50 @@ def _pair_key(a, b):
     return "|".join(sorted((str(a), str(b))))
 
 
-def simulate(groups, sim_n=SIM_N_CUP, played_pairs=None):
+# ── Desempate FIFA Mundial 2026: cara a cara antes que DG total ───────────────
+# Con empate a puntos: puntos en enfrentamientos directos → DG en ellos → GF en
+# ellos → DG total → GF total. (Para terceros entre grupos no hay cara a cara.)
+
+def _h2h_order(cluster, stat, results):
+    ids = set(cluster)
+    h = {tid: [0, 0, 0] for tid in cluster}   # [pts, gd, gf] entre empatados
+    for m in results:
+        if m["a"] not in ids or m["b"] not in ids:
+            continue
+        h[m["a"]][2] += m["ag"]; h[m["a"]][1] += m["ag"] - m["bg"]
+        h[m["b"]][2] += m["bg"]; h[m["b"]][1] += m["bg"] - m["ag"]
+        if m["ag"] > m["bg"]:
+            h[m["a"]][0] += 3
+        elif m["ag"] < m["bg"]:
+            h[m["b"]][0] += 3
+        else:
+            h[m["a"]][0] += 1; h[m["b"]][0] += 1
+    return sorted(cluster, reverse=True, key=lambda tid: (
+        h[tid][0], h[tid][1], h[tid][2], stat[tid][1], stat[tid][2]))
+
+
+def _rank_group_ids(ids, stat, results):
+    """Ordena ids de un grupo con el desempate 2026. stat: {id: (pts, gd, gf)}."""
+    by_pts = sorted(ids, key=lambda tid: stat[tid][0], reverse=True)
+    out, i = [], 0
+    while i < len(by_pts):
+        j = i
+        while j < len(by_pts) and stat[by_pts[j]][0] == stat[by_pts[i]][0]:
+            j += 1
+        cluster = by_pts[i:j]
+        out.extend(cluster if len(cluster) == 1 else _h2h_order(cluster, stat, results))
+        i = j
+    return out
+
+
+def simulate(groups, sim_n=SIM_N_CUP, played_pairs=None, played_results=None):
     """Devuelve dict team_id -> {p1st,p2nd,p3rd,pOut,pAdv}.
 
     `played_pairs`: set de claves '<idA>|<idB>' (ids ordenados) de partidos ya
     jugados. Si se pasa, se sabe exacto qué emparejamientos faltan; si no, se cae
     al proxy por PJ (solo fiable a inicio/fin de fase).
+    `played_results`: dict pair_key -> {'a','ag','b','bg'} con el resultado real,
+    para aplicar el desempate cara a cara (2026). Si falta, cae a DG total.
     """
     rng = make_rng(groups_seed(groups))
     num_groups = len(groups)
@@ -74,6 +112,7 @@ def simulate(groups, sim_n=SIM_N_CUP, played_pairs=None):
             gf  = {t["id"]: t["gf"] for t in teams}
             gp  = {t["id"]: t["gp"] for t in teams}
             total_gp = 3
+            results = []   # partidos del grupo (reales + simulados) para el cara a cara
 
             for i in range(n):
                 for j in range(i + 1, n):
@@ -83,6 +122,10 @@ def simulate(groups, sim_n=SIM_N_CUP, played_pairs=None):
                     else:
                         played = gp[ti["id"]] + gp[tj["id"]] >= 2 * total_gp - (n - 1 - max(i, j))
                     if played:
+                        if played_results:
+                            real = played_results.get(_pair_key(ti["id"], tj["id"]))
+                            if real:
+                                results.append(real)
                         continue
                     pw, pd, _ = _match_probs(ti["abbr"], tj["abbr"])
                     r = rng()
@@ -100,9 +143,11 @@ def simulate(groups, sim_n=SIM_N_CUP, played_pairs=None):
                         pts[tj["id"]] += 3
                     gd[ti["id"]] += hi - ai; gd[tj["id"]] += ai - hi
                     gf[ti["id"]] += hi; gf[tj["id"]] += ai
+                    results.append({"a": str(ti["id"]), "ag": hi, "b": str(tj["id"]), "bg": ai})
 
-            srt = sorted(teams, key=lambda t: (pts[t["id"]], gd[t["id"]], gf[t["id"]]),
-                         reverse=True)
+            stat = {t["id"]: (pts[t["id"]], gd[t["id"]], gf[t["id"]]) for t in teams}
+            by_id = {t["id"]: t for t in teams}
+            srt = [by_id[tid] for tid in _rank_group_ids([t["id"] for t in teams], stat, results)]
             counts[srt[0]["id"]]["r1"] += 1
             counts[srt[1]["id"]]["r2"] += 1
             if len(srt) > 2:
