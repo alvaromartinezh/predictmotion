@@ -653,6 +653,16 @@ const R32_TEMPLATE = [
   { a: '1K', b: '3:DEIJL' },   // 87
   { a: '2D', b: '2G' },        // 88
 ];
+
+// Orden de los partidos 73-88 en el CUADRO (no es el orden por número). El render
+// empareja partidos consecutivos hacia octavos, así que hay que colocarlos según
+// el árbol oficial FIFA 2026. Octavos: M89=W74·W77, M90=W73·W75, M91=W76·W78,
+// M92=W79·W80, M93=W83·W84, M94=W81·W82, M95=W86·W88, M96=W85·W87. (índices 0-based
+// de R32_TEMPLATE, partido 73 = índice 0.)
+const R32_BRACKET_ORDER = [
+  1, 4, 0, 2,   3, 5, 6, 7,    // mitad izquierda: (74,77)(73,75) (76,78)(79,80)
+  10, 11, 8, 9, 13, 15, 12, 14 // mitad derecha:   (83,84)(81,82) (86,88)(85,87)
+];
 function buildBracketOrder(groups) {
   const n = groups.length;
   const winners   = [];
@@ -727,11 +737,12 @@ function buildBracketOrder(groups) {
     EMPTY_TEAM;
 
   const bracket = [];
-  R32_TEMPLATE.forEach((m, i) => {
+  R32_BRACKET_ORDER.forEach(i => {
+    const m = R32_TEMPLATE[i];
     bracket.push(m.a[0] === '3' ? (slotThird[i] || EMPTY_TEAM) : pick(m.a));
     bracket.push(m.b[0] === '3' ? (slotThird[i] || EMPTY_TEAM) : pick(m.b));
   });
-  return bracket;  // 32 equipos en orden de cuadro (partidos 73–88)
+  return bracket;  // 32 equipos en orden de CUADRO (árbol oficial → octavos correctos)
 }
 
 const EMPTY_TEAM = { id: '_empty', name: 'Por determinar', logo: null };
