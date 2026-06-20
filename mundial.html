@@ -181,6 +181,7 @@
   .bk-slot-flag img { width: 100%; height: 100%; object-fit: cover; border-radius: 2px; }
   .bk-slot-flag.fallback { font-size: .48rem; font-weight: 700; color: #fff; border-radius: 2px; }
   .bk-slot-name { font-size: var(--fs-12); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; color: var(--text); }
+  .bk-seed { font-family: var(--font-mono); font-size: 9px; color: var(--muted); letter-spacing: .03em; margin-left: auto; padding-left: 5px; white-space: nowrap; flex-shrink: 0; }
   .bk-final-col { height: 560px; width: 132px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; padding: 16px 10px; text-align: center; background: var(--accent-soft); border: 1px solid var(--accent-line); border-radius: var(--r-md); margin: 0 3px; }
   .bk-final-title { font-family: var(--font-display); font-size: var(--fs-15); font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
   .bk-final-badge { font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--up); background: var(--up-soft); border: 1px solid rgba(46,201,138,.25); border-radius: var(--r-pill); padding: 3px 10px; }
@@ -739,13 +740,24 @@ function buildBracketOrder(groups) {
   const bracket = [];
   R32_BRACKET_ORDER.forEach(i => {
     const m = R32_TEMPLATE[i];
-    bracket.push(m.a[0] === '3' ? (slotThird[i] || EMPTY_TEAM) : pick(m.a));
-    bracket.push(m.b[0] === '3' ? (slotThird[i] || EMPTY_TEAM) : pick(m.b));
+    const ta = m.a[0] === '3' ? (slotThird[i] || EMPTY_TEAM) : pick(m.a);
+    const tb = m.b[0] === '3' ? (slotThird[i] || EMPTY_TEAM) : pick(m.b);
+    // Adjunta la semilla (1ºE, 2ºA, 3º…) para mostrarla y poder verificar el cuadro.
+    bracket.push({ ...ta, seed: seedLabel(m.a) });
+    bracket.push({ ...tb, seed: seedLabel(m.b) });
   });
   return bracket;  // 32 equipos en orden de CUADRO (árbol oficial → octavos correctos)
 }
 
 const EMPTY_TEAM = { id: '_empty', name: 'Por determinar', logo: null };
+
+// Etiqueta de semilla de un hueco del cuadro: '1E'→'1º E', '2A'→'2º A', '3:…'→'3º'.
+function seedLabel(spec) {
+  if (spec[0] === '1') return '1º ' + spec[1];
+  if (spec[0] === '2') return '2º ' + spec[1];
+  if (spec[0] === '3') return '3º';
+  return '';
+}
 
 // ─── Render groups ────────────────────────────────────────────────────────
 function pBar(pct, cls) {
@@ -961,8 +973,10 @@ function fallbackBkFlag(id, name, color) {
 }
 
 function slotHTML(t, colorIdx, slotId) {
+  const seed = t && t.seed ? `<span class="bk-seed">${t.seed}</span>` : '';
   if (!t || t.id === '_empty') {
-    return `<div class="bk-slot empty"><span class="bk-slot-name" style="color:var(--muted);font-size:.62rem">—</span></div>`;
+    const nm = (t && t.seed) ? '' : '—';
+    return `<div class="bk-slot empty"><span class="bk-slot-name" style="color:var(--muted);font-size:.62rem">${nm}</span>${seed}</div>`;
   }
   const color = COLOR_PALETTE[colorIdx % COLOR_PALETTE.length];
   const avId  = `bkf_${slotId}`;
@@ -971,7 +985,7 @@ function slotHTML(t, colorIdx, slotId) {
       <img src="${t.logo || ''}" alt="${t.name}" loading="lazy"
         onerror="fallbackBkFlag('${avId}','${t.name.replace(/'/g,"\\'")}','${color}')" />
     </div>
-    <span class="bk-slot-name">${t.name}</span>
+    <span class="bk-slot-name">${t.name}</span>${seed}
   </div>`;
 }
 
