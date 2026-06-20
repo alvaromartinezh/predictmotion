@@ -37,6 +37,22 @@ _STAT_DISPLAY = [
 ]
 
 
+# Stats que ESPN da como fracción 0-1 y deben mostrarse como porcentaje 0-100.
+_RATIO_STATS = {"passPct", "shotPct", "crossPct", "longballPct", "tacklePct"}
+
+
+def _fmt_stat(key, val):
+    """Texto a mostrar de una estadística. Convierte las fracciones (passPct…) a %."""
+    if val is None:
+        return "—"
+    if key in _RATIO_STATS:
+        try:
+            return str(round(float(val) * 100)) + "%"
+        except (TypeError, ValueError):
+            return str(val)
+    return str(val)
+
+
 def _get_json(url):
     req = urllib.request.Request(url, headers=_HEADERS)
     with urllib.request.urlopen(req, timeout=config.HTTP_TIMEOUT_SECONDS) as resp:
@@ -70,6 +86,19 @@ def _status_from(status):
                        completed=completed)
 
 
+def _color(t):
+    """Color característico del equipo (#rrggbb) desde ESPN; None si no hay o es
+    casi blanco/negro (poco distintivo)."""
+    raw = (t.get("color") or "").strip().lstrip("#")
+    if len(raw) != 6:
+        return None
+    if raw.lower() in ("ffffff", "000000"):
+        alt = (t.get("alternateColor") or "").strip().lstrip("#")
+        if len(alt) == 6 and alt.lower() not in ("ffffff", "000000"):
+            return "#" + alt
+    return "#" + raw
+
+
 def _team_from_competitor(c):
     t = c.get("team", {}) or {}
     logos = t.get("logos") or []
@@ -80,7 +109,7 @@ def _team_from_competitor(c):
         score = 0
     return Team(id=str(t.get("id", "")), abbr=t.get("abbreviation", ""),
                 name=t.get("displayName", ""), logo=logo,
-                side=c.get("homeAway", ""), score=score)
+                side=c.get("homeAway", ""), score=score, color=_color(t))
 
 
 def _event_type(slug, scoring):
@@ -232,8 +261,8 @@ class EspnProvider(MatchDataProvider):
         for key, label in _STAT_DISPLAY:
             if key in home or key in away:
                 pairs.append(StatPair(key=key, label=label,
-                                      home=str(home.get(key, "—")),
-                                      away=str(away.get(key, "—"))))
+                                      home=_fmt_stat(key, home.get(key)),
+                                      away=_fmt_stat(key, away.get(key))))
         # Versión numérica para el modelo de probabilidad.
         numeric = {}
         for key in set(list(home.keys()) + list(away.keys())):

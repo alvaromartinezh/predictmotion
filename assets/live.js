@@ -28,7 +28,26 @@
   function esc(s) { var x = d.createElement('div'); x.textContent = (s == null ? '' : String(s)); return x.innerHTML; }
   function el(id) { return d.getElementById(id); }
   function pname(p) { return (p && p.athlete) ? (p.athlete.shortName || p.athlete.name) : ''; }
+  function aname(a) { return a ? (a.shortName || a.name || '') : ''; }   // jugador de un evento
   function num(v) { return parseFloat(String(v).replace('%', '')) || 0; }
+
+  // ── Colores de equipo (de la API; si faltan, paleta sin repetir) ──────────
+  var COLOR_FALLBACK = ['#2ec98a', '#4a90ff', '#e0a13a', '#a855f7', '#ff556b', '#13c4c4'];
+  var COL = { home: '#2ec98a', away: '#4a90ff', homeText: '#fff', awayText: '#fff' };
+  function textOn(hex) {            // texto blanco o negro según el brillo del color
+    var c = String(hex || '').replace('#', '');
+    if (c.length !== 6) return '#fff';
+    var r = parseInt(c.slice(0, 2), 16), g = parseInt(c.slice(2, 4), 16), b = parseInt(c.slice(4, 6), 16);
+    return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? '#08111f' : '#fff';
+  }
+  function resolveColors(m) {
+    var h = m.home.color, a = m.away.color;
+    if (!h) h = COLOR_FALLBACK[0];
+    if (!a || a.toLowerCase() === h.toLowerCase()) {       // sin repetir
+      a = COLOR_FALLBACK.find(function (c) { return c.toLowerCase() !== h.toLowerCase(); }) || COLOR_FALLBACK[1];
+    }
+    COL = { home: h, away: a, homeText: textOn(h), awayText: textOn(a) };
+  }
 
   // ── Arranque ────────────────────────────────────────────────────────────────
   function init() {
@@ -69,6 +88,7 @@
   function render(m) {
     el('live-unavailable').style.display = 'none';
     el('live-content').style.display = '';
+    resolveColors(m);
     renderHeader(m);
     renderLineups(m);
     renderTimeline(m);
@@ -107,9 +127,9 @@
       winbar =
         '<div class="winbar" aria-label="Probabilidad de resultado">' +
           '<div class="winbar__track">' +
-            '<span class="winbar__seg h" style="width:' + wp.pHome + '%"></span>' +
+            '<span class="winbar__seg h" style="width:' + wp.pHome + '%;background:' + COL.home + '"></span>' +
             '<span class="winbar__seg d" style="width:' + wp.pDraw + '%"></span>' +
-            '<span class="winbar__seg a" style="width:' + wp.pAway + '%"></span>' +
+            '<span class="winbar__seg a" style="width:' + wp.pAway + '%;background:' + COL.away + '"></span>' +
           '</div>' +
           '<div class="winbar__legend"><b>' + esc(m.home.abbr || m.home.name) + ' ' + wp.pHome + '%</b>' +
           '<span class="mid">Empate ' + wp.pDraw + '%</span>' +
@@ -137,8 +157,9 @@
     if (p.goals) badge = '<span class="pp__badge" title="Gol">⚽</span>';
     else if (p.red) badge = '<span class="pp__badge" style="background:var(--down)" title="Roja"></span>';
     else if (p.yellow) badge = '<span class="pp__badge yc" title="Amarilla"></span>';
+    var dotStyle = 'background:' + COL[side] + ';color:' + (side === 'home' ? COL.homeText : COL.awayText);
     return '<div class="pp ' + side + '" style="left:' + x + '%;top:' + t + '%">' +
-      '<div class="pp__dot">' + esc(p.jersey || '') + '</div>' +
+      '<div class="pp__dot" style="' + dotStyle + '">' + esc(p.jersey || '') + '</div>' +
       '<div class="pp__name">' + esc(pname(p)) + '</div>' + badge + '</div>';
   }
   function pitchPlayers(lineup, side) {
@@ -169,8 +190,8 @@
     var homeP = pitchPlayers(lu.home, 'home');
     if (awayP === null || homeP === null) return '';   // formación no resoluble → sin campo
     var forms = '<div class="pitch-forms">' +
-      '<span class="pitch-form home"><i></i>' + esc(m.home.abbr || m.home.name) + ' <b>' + esc(lu.home.formation) + '</b></span>' +
-      '<span class="pitch-form away"><b>' + esc(lu.away.formation) + '</b> ' + esc(m.away.abbr || m.away.name) + ' <i></i></span>' +
+      '<span class="pitch-form home"><i style="background:' + COL.home + '"></i>' + esc(m.home.abbr || m.home.name) + ' <b>' + esc(lu.home.formation) + '</b></span>' +
+      '<span class="pitch-form away"><b>' + esc(lu.away.formation) + '</b> ' + esc(m.away.abbr || m.away.name) + ' <i style="background:' + COL.away + '"></i></span>' +
       '</div>';
     return '<div class="pitch-wrap">' + forms +
       '<div class="pitch" role="img" aria-label="Posiciones de ambos equipos sobre el campo">' +
@@ -221,11 +242,12 @@
   var EV_ICCLS = { GOAL: 'ic-goal', YELLOW: 'ic-yc', RED: 'ic-rc', SUB: 'ic-sub' };
   function periodLabel(p) { return p >= 5 ? 'Penaltis' : p >= 3 ? 'Prórroga' : p === 2 ? '2ª parte' : '1ª parte'; }
   function evContent(e) {
+    var pl = e.players || [];
     var t, desc = '';
-    if (e.type === 'GOAL') { t = 'Gol · ' + pname(e.players[0]); if (e.players[1]) desc = 'Asistencia: ' + pname(e.players[1]); }
-    else if (e.type === 'YELLOW') t = 'Amarilla · ' + pname(e.players[0]);
-    else if (e.type === 'RED') t = 'Roja · ' + pname(e.players[0]);
-    else if (e.type === 'SUB') { t = 'Cambio'; if (e.players[0]) desc = pname(e.players[0]) + (e.players[1] ? ' por ' + pname(e.players[1]) : ''); }
+    if (e.type === 'GOAL') { t = 'Gol' + (aname(pl[0]) ? ' · ' + aname(pl[0]) : ''); if (pl[1]) desc = 'Asistencia: ' + aname(pl[1]); }
+    else if (e.type === 'YELLOW') t = 'Amarilla' + (aname(pl[0]) ? ' · ' + aname(pl[0]) : '');
+    else if (e.type === 'RED') t = 'Roja' + (aname(pl[0]) ? ' · ' + aname(pl[0]) : '');
+    else if (e.type === 'SUB') { t = 'Cambio'; if (pl[0]) desc = '↑ ' + aname(pl[0]) + (pl[1] ? '  ↓ ' + aname(pl[1]) : ''); }
     else t = e.text || '';
     return '<div class="tl-body"><div class="tl-title">' + esc(t) + '</div>' +
       (desc ? '<div class="tl-desc">' + esc(desc) + '</div>' : '') + '</div>';
@@ -249,29 +271,39 @@
   }
 
   // ── Datos: posesión + barras divergentes ──────────────────────────────────
+  // Tope de referencia por estadística: la barra llena = este valor. Así las barras
+  // crecen poco a poco según se acumulan y quedan VACÍAS cuando no hay nada (0).
+  var STAT_CAP = {
+    totalShots: 22, shotsOnTarget: 11, wonCorners: 12, foulsCommitted: 22,
+    yellowCards: 6, redCards: 2, offsides: 8, saves: 9, totalPasses: 650, passPct: 100
+  };
   function statRow(s) {
-    var h = num(s.home), a = num(s.away), tot = h + a, hp = tot > 0 ? Math.round(h / tot * 100) : 50;
-    var lh = h > a ? ' lead-h' : '', la = a > h ? ' lead-a' : '';
+    var h = num(s.home), a = num(s.away);
+    var cap = STAT_CAP[s.key] || Math.max(h, a) || 1;
+    var hw = Math.min(100, h / cap * 100), aw = Math.min(100, a / cap * 100);
+    var hcol = h > a ? 'color:' + COL.home : '', acol = a > h ? 'color:' + COL.away : '';
     return '<div class="stat"><div class="stat__top">' +
-      '<span class="stat__val' + lh + '">' + esc(s.home) + '</span>' +
+      '<span class="stat__val" style="' + hcol + '">' + esc(s.home) + '</span>' +
       '<span class="stat__label">' + esc(s.label) + '</span>' +
-      '<span class="stat__val away' + la + '">' + esc(s.away) + '</span></div>' +
-      '<div class="stat__bars"><span class="stat__bar home"><span class="stat__fill" style="width:' + hp + '%"></span></span>' +
-      '<span class="stat__bar away"><span class="stat__fill" style="width:' + (100 - hp) + '%"></span></span></div></div>';
+      '<span class="stat__val away" style="' + acol + '">' + esc(s.away) + '</span></div>' +
+      '<div class="stat__bars">' +
+      '<span class="stat__bar home"><span class="stat__fill" style="width:' + hw + '%;background:' + COL.home + '"></span></span>' +
+      '<span class="stat__bar away"><span class="stat__fill" style="width:' + aw + '%;background:' + COL.away + '"></span></span>' +
+      '</div></div>';
   }
   function renderStats(m) {
     var stats = m.stats || [];
     if (!stats.length) { el('lv-stats').innerHTML = '<div class="lv-msg">Estadísticas no disponibles todavía.</div>'; return; }
     var poss = null, others = [];
     stats.forEach(function (s) { if (s.key === 'possessionPct') poss = s; else others.push(s); });
-    var legend = '<div class="stats-legend"><span class="sl-key home"><i></i>' + esc(m.home.abbr || m.home.name) +
-      '</span><span class="sl-key away"><i></i>' + esc(m.away.abbr || m.away.name) + '</span></div>';
+    var legend = '<div class="stats-legend"><span class="sl-key home"><i style="background:' + COL.home + '"></i>' + esc(m.home.abbr || m.home.name) +
+      '</span><span class="sl-key away"><i style="background:' + COL.away + '"></i>' + esc(m.away.abbr || m.away.name) + '</span></div>';
     var possHtml = '';
     if (poss) {
       var h = num(poss.home), a = num(poss.away), tot = h + a || 1, hp = Math.round(h / tot * 100);
       possHtml = '<div class="possession"><div class="poss__track">' +
-        '<span class="poss__seg home" style="width:' + hp + '%">' + esc(poss.home) + '%</span>' +
-        '<span class="poss__seg away" style="width:' + (100 - hp) + '%">' + esc(poss.away) + '%</span>' +
+        '<span class="poss__seg home" style="width:' + hp + '%;background:' + COL.home + ';color:' + COL.homeText + '">' + esc(poss.home) + '%</span>' +
+        '<span class="poss__seg away" style="width:' + (100 - hp) + '%;background:' + COL.away + ';color:' + COL.awayText + '">' + esc(poss.away) + '%</span>' +
         '</div><p class="poss__label">Posesión</p></div>';
     }
     el('lv-stats').innerHTML = '<div class="stats-card">' + legend + possHtml + others.map(statRow).join('') + '</div>';
