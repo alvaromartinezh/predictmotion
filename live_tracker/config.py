@@ -34,6 +34,12 @@ LIVE_TRACKING_ENABLED = _flag("LIVE_TRACKING_ENABLED", True)
 PORT = _int("LIVE_TRACKING_PORT", 8770)
 HOST = os.environ.get("LIVE_TRACKING_HOST", "127.0.0.1")
 
+# Directorio donde se guardan los partidos finalizados (gitignored, solo en el VM).
+DATA_DIR = os.environ.get(
+    "LIVE_DATA_DIR",
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "live_data"),
+)
+
 # ── Polling / caché ───────────────────────────────────────────────────────────
 SCOREBOARD_POLL_SECONDS = _int("SCOREBOARD_POLL_SECONDS", 30)  # descubrir qué hay en vivo
 LIVE_POLL_SECONDS       = _int("LIVE_POLL_SECONDS", 25)        # refrescar summary de partidos en vivo

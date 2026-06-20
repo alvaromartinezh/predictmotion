@@ -73,10 +73,10 @@ class Handler(BaseHTTPRequestHandler):
             league, eid = rest[0], rest[2]
             if league not in config.LEAGUES:
                 return self._send(404, {"ok": False, "reason": "unknown-league"})
-            detail = STORE.get_detail(league, eid)
+            detail = STORE.get_detail(league, eid)  # ya es un dict listo para servir
             if detail is None:
                 return self._send(200, {"ok": False, "reason": "unavailable"})
-            return self._send(200, {"ok": True, "match": detail.to_dict()})
+            return self._send(200, {"ok": True, "match": detail})
 
         return self._send(404, {"ok": False, "reason": "not-found"})
 

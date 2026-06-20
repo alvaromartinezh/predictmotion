@@ -15,5 +15,9 @@ grupos/
 historico/
 datos/
 sitemap-data.xml
+
+# Live tracker — partidos finalizados guardados (solo en el servidor)
+live_data/
+
 __pycache__/
 seo/__pycache__/_grupo_preview.png
