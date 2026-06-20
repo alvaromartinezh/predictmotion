@@ -44,6 +44,7 @@ DATA_DIR = os.environ.get(
 SCOREBOARD_POLL_SECONDS = _int("SCOREBOARD_POLL_SECONDS", 30)  # descubrir qué hay en vivo
 LIVE_POLL_SECONDS       = _int("LIVE_POLL_SECONDS", 25)        # refrescar summary de partidos en vivo
 DETAIL_TTL_SECONDS      = _int("DETAIL_TTL_SECONDS", 300)      # TTL de detalle de partidos NO en vivo
+FINAL_REFRESH_SECONDS   = _int("FINAL_REFRESH_SECONDS", 300)   # re-guardar el snapshot N s tras el final (stats consolidadas)
 HTTP_TIMEOUT_SECONDS    = _int("LIVE_HTTP_TIMEOUT", 12)
 
 # Ligas seguidas (códigos ESPN). El provider es agnóstico de liga.

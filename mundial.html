@@ -1214,7 +1214,7 @@ function renderMatchCard(ev) {
   const hId = `mch_${ev.id}`, aId = `mca_${ev.id}`;
   const cardCls = state === 'in' ? ' mc-live' : state === 'post' ? ' mc-post' : '';
 
-  return `<div class="match-card${cardCls}">
+  return `<a class="mc-link" href="/partido?league=mundial&id=${ev.id}"><div class="match-card${cardCls}">
     <div class="mc-team home">
       <span class="mc-name">${home.team.displayName}</span>
       <div class="mc-logo" id="${hId}">
@@ -1234,7 +1234,7 @@ function renderMatchCard(ev) {
       </div>
       <span class="mc-name">${away.team.displayName}</span>
     </div>
-  </div>`;
+  </div></a>`;
 }
 
 function fallbackMcLogo(id, abbr) {
