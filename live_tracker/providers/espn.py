@@ -153,12 +153,16 @@ class EspnProvider(MatchDataProvider):
             id=str(event_id), league=league, status=status,
             home=home, away=away, events=events, lineups=lineups, stats=stats,
         )
-        # Probabilidad estimada (desacoplada tras WinProbabilityModel).
-        try:
-            state = build_match_state(league, status, home, away, events, numeric)
-            detail.win_probability = DEFAULT_MODEL.estimate(state)
-        except Exception:
-            detail.win_probability = None  # degrada: sin bloque de probabilidad
+        # Probabilidad estimada SOLO mientras no ha terminado: un partido
+        # finalizado se muestra completo pero sin bloque de probabilidad.
+        if status.state == "post":
+            detail.win_probability = None
+        else:
+            try:
+                state = build_match_state(league, status, home, away, events, numeric)
+                detail.win_probability = DEFAULT_MODEL.estimate(state)
+            except Exception:
+                detail.win_probability = None  # degrada: sin bloque de probabilidad
         return detail
 
     # ── parseo interno ────────────────────────────────────────────────────────

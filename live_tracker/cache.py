@@ -12,7 +12,7 @@ import logging
 import threading
 import time
 
-from . import config
+from . import config, persist
 from .providers.base import MatchDataProvider
 
 log = logging.getLogger("live_tracker.cache")
@@ -37,12 +37,20 @@ class LiveStore:
         return self._refresh_matches(league)
 
     def get_detail(self, league: str, event_id: str):
+        """Devuelve el dict normalizado del partido (listo para servir) o None.
+        Orden: caché en memoria (fresca) → disco (partido finalizado guardado) →
+        fetch a la fuente."""
         key = (league, event_id)
         with self._lock:
             entry = self._details.get(key)
         if entry and time.time() - entry[0] < config.DETAIL_TTL_SECONDS:
-            return entry[1]
-        return self._refresh_detail(league, event_id)
+            return entry[1].to_dict()
+        # Partidos finalizados ya persistidos: se sirven de disco (no cambian).
+        disk = persist.load(league, event_id)
+        if disk is not None:
+            return disk
+        md = self._refresh_detail(league, event_id)
+        return md.to_dict() if md else None
 
     # ── refresco (defensivo) ──────────────────────────────────────────────────
 
@@ -64,6 +72,9 @@ class LiveStore:
             detail = self.provider.get_match(league, event_id)
             with self._lock:
                 self._details[key] = (time.time(), detail)
+            # Partido finalizado → se guarda para poder mostrarlo después.
+            if detail.status.state == "post" and not persist.exists(league, event_id):
+                persist.save(detail)
             return detail
         except Exception as e:
             log.warning("summary %s/%s falló: %s", league, event_id, e)
@@ -91,13 +102,16 @@ class LiveStore:
         while not self._stop.is_set():
             now = time.time()
             live_ids = []
-            # Scoreboard de cada liga (descubrir partidos en vivo).
+            # Scoreboard de cada liga (descubrir partidos en vivo y recién finalizados).
             if now - last_scoreboard >= config.SCOREBOARD_POLL_SECONDS:
                 for league in config.LEAGUES:
                     matches = self._refresh_matches(league)
                     for m in matches:
                         if m.status.state == "in":
                             live_ids.append((league, m.id))
+                        elif m.status.state == "post" and not persist.exists(league, m.id):
+                            # Partido recién terminado aún no guardado: persistirlo.
+                            self._refresh_detail(league, m.id)
                 last_scoreboard = now
             else:
                 # Reusar la lista en vivo conocida de la caché.
