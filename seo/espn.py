@@ -111,6 +111,43 @@ def fetch_played_pairs(espn_code, dates="20260611-20260628"):
     return pairs
 
 
+def _to_int(v):
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return 0
+
+
+def fetch_played_results(espn_code, dates="20260611-20260628"):
+    """(pairs, results) de los partidos de grupo ya jugados/en vivo.
+
+    `results`: dict pair_key -> {'a','ag','b','bg'} con ids y goles reales, para el
+    desempate cara a cara (FIFA 2026). Best-effort: (set(), {}) si falla.
+    """
+    pairs, results = set(), {}
+    try:
+        data = _get_json(f"{_BASE_SITE}/{espn_code}/scoreboard?dates={dates}&limit=200")
+    except Exception:
+        return pairs, results
+    for ev in data.get("events", []):
+        if (ev.get("season") or {}).get("slug") != "group-stage":
+            continue
+        if ((ev.get("status") or {}).get("type") or {}).get("state") == "pre":
+            continue
+        comps = ((ev.get("competitions") or [{}])[0]).get("competitors", [])
+        if len(comps) < 2:
+            continue
+        a = str((comps[0].get("team") or {}).get("id", ""))
+        b = str((comps[1].get("team") or {}).get("id", ""))
+        if not a or not b:
+            continue
+        key = "|".join(sorted((a, b)))
+        pairs.add(key)
+        results[key] = {"a": a, "ag": _to_int(comps[0].get("score")),
+                        "b": b, "bg": _to_int(comps[1].get("score"))}
+    return pairs, results
+
+
 def fetch_league_meta(espn_code):
     """Metadatos vivos de la competición desde ESPN (nada hardcodeado).
 

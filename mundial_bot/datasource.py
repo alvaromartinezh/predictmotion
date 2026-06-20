@@ -124,6 +124,34 @@ class DataSource:
                 pairs.add("|".join(sorted((a, b))))
         return pairs
 
+    def get_played_results(self, dates: str = "20260611-20260628"):
+        """(pairs, results) de partidos de grupo jugados/en vivo. `results`: dict
+        pair_key -> {'a','ag','b','bg'} para el desempate cara a cara (FIFA 2026).
+        Best-effort → (set(), {})."""
+        pairs: set[str] = set()
+        results: dict = {}
+        try:
+            data = self._get(f"{_ESPN_SITE}/{self.code}/scoreboard", dates=dates, limit=200)
+        except Exception:
+            return pairs, results
+        for ev in data.get("events", []):
+            if (ev.get("season") or {}).get("slug") != "group-stage":
+                continue
+            if ((ev.get("status") or {}).get("type") or {}).get("state") == "pre":
+                continue
+            comps = (ev.get("competitions") or [{}])[0].get("competitors", [])
+            if len(comps) < 2:
+                continue
+            a = str((comps[0].get("team") or {}).get("id", ""))
+            b = str((comps[1].get("team") or {}).get("id", ""))
+            if not a or not b:
+                continue
+            key = "|".join(sorted((a, b)))
+            pairs.add(key)
+            results[key] = {"a": a, "ag": int(comps[0].get("score") or 0),
+                            "b": b, "bg": int(comps[1].get("score") or 0)}
+        return pairs, results
+
     # ── Scoreboard ────────────────────────────────────────────────────────────
 
     def get_live_matches(self) -> list[dict]:

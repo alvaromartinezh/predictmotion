@@ -465,6 +465,59 @@ function initials(name) {
   return name.split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 }
 
+// ─── Desempate FIFA Mundial 2026 (cara a cara antes que DG total) ──────────
+// Desde 2026, con empate a puntos el criterio es: 1) puntos · 2) puntos en los
+// enfrentamientos directos entre los empatados · 3) DG en esos enfrentamientos ·
+// 4) GF en esos enfrentamientos · 5) DG total · 6) GF total. La DG total pasa a
+// criterio secundario. (Para terceros entre grupos NO hay cara a cara: van por
+// criterios totales.)
+let MATCH_RESULTS = [];   // partidos de grupo jugados/en vivo: {a, ag, b, bg}
+
+// Ordena un subconjunto empatado a puntos por sus enfrentamientos directos y,
+// si siguen igualados, por DG/GF totales.
+function h2hOrder(cluster, stat, results) {
+  const ids = new Set(cluster);
+  const h = {}; cluster.forEach(id => h[id] = { pts: 0, gd: 0, gf: 0 });
+  for (const m of results) {
+    if (!ids.has(m.a) || !ids.has(m.b)) continue;
+    h[m.a].gf += m.ag; h[m.a].gd += m.ag - m.bg;
+    h[m.b].gf += m.bg; h[m.b].gd += m.bg - m.ag;
+    if (m.ag > m.bg) h[m.a].pts += 3;
+    else if (m.ag < m.bg) h[m.b].pts += 3;
+    else { h[m.a].pts++; h[m.b].pts++; }
+  }
+  return cluster.slice().sort((x, y) =>
+    h[y].pts - h[x].pts || h[y].gd - h[x].gd || h[y].gf - h[x].gf ||
+    stat[y].gd - stat[x].gd || stat[y].gf - stat[x].gf);
+}
+
+// Ordena los ids de un grupo aplicando el desempate 2026.
+//   stat: { id: { pts, gd, gf } } (totales) · results: partidos del grupo
+function rankGroupIds(ids, stat, results) {
+  const byPts = ids.slice().sort((a, b) => stat[b].pts - stat[a].pts);
+  const out = [];
+  for (let i = 0; i < byPts.length;) {
+    let j = i;
+    while (j < byPts.length && stat[byPts[j]].pts === stat[byPts[i]].pts) j++;
+    const cluster = byPts.slice(i, j);
+    (cluster.length === 1 ? cluster : h2hOrder(cluster, stat, results))
+      .forEach(id => out.push(id));
+    i = j;
+  }
+  return out;
+}
+
+// Ordena las entries de un grupo (objetos {id,pts,gf,gc}) con el desempate 2026,
+// usando los resultados reales conocidos (MATCH_RESULTS).
+function rankEntries(entries) {
+  const stat = {}, byId = {};
+  entries.forEach(t => {
+    stat[String(t.id)] = { pts: t.pts, gd: t.gf - t.gc, gf: t.gf };
+    byId[String(t.id)] = t;
+  });
+  return rankGroupIds(entries.map(t => String(t.id)), stat, MATCH_RESULTS).map(id => byId[id]);
+}
+
 // ─── Simulate a single match ──────────────────────────────────────────────
 // knockout = true → draw goes to penalties (coin flip)
 function simMatch(h, a, knockout) {
@@ -477,7 +530,7 @@ function simMatch(h, a, knockout) {
 }
 
 // ─── Group stage Monte Carlo ──────────────────────────────────────────────
-function simulateGroups(groups, playedPairs = null) {
+function simulateGroups(groups, playedPairs = null, playedResults = null) {
   rng = mulberry32(groupsSeed(groups));
   const NUM_GROUPS  = groups.length;
   // Formato clásico (8 grupos): solo top 2 pasan, no hay mejores terceros
@@ -501,6 +554,7 @@ function simulateGroups(groups, playedPairs = null) {
       const gf    = Object.fromEntries(teams.map(t => [t.id, t.gf]));
       const gp    = Object.fromEntries(teams.map(t => [t.id, t.gp]));
       const totalGp = 3; // each team plays 3 matches in group
+      const results = []; // partidos del grupo (reales + simulados) para el cara a cara
 
       // simulate remaining matches
       for (let i = 0; i < n; i++) {
@@ -511,7 +565,11 @@ function simulateGroups(groups, playedPairs = null) {
           const matchPlayed = playedPairs
             ? playedPairs.has(pairKey(ti.id, tj.id))
             : gp[ti.id] + gp[tj.id] >= 2 * totalGp - (n - 1 - Math.max(i, j));
-          if (matchPlayed) continue;
+          if (matchPlayed) {
+            const real = playedResults && playedResults[pairKey(ti.id, tj.id)];
+            if (real) results.push(real);   // resultado real para el cara a cara
+            continue;
+          }
 
           // simulate goals (probabilidades ajustadas por ranking FIFA)
           const [pW, pD] = rankMatchProbs(ti.abbr, tj.abbr);
@@ -529,14 +587,17 @@ function simulateGroups(groups, playedPairs = null) {
           else               { pts[tj.id] += 3; }
           gd[ti.id] += hi - ai; gd[tj.id] += ai - hi;
           gf[ti.id] += hi;      gf[tj.id] += ai;
+          results.push({ a: String(ti.id), ag: hi, b: String(tj.id), bg: ai });
         }
       }
 
-      // Sort group
-      const sorted = [...teams].sort((a, b) =>
-        pts[b.id] !== pts[a.id] ? pts[b.id] - pts[a.id] :
-        gd[b.id]  !== gd[a.id]  ? gd[b.id] - gd[a.id]  :
-        gf[b.id] - gf[a.id]);
+      // Sort group — desempate FIFA 2026 (cara a cara antes que DG total)
+      const stat = {}, byId = {};
+      teams.forEach(t => {
+        stat[String(t.id)] = { pts: pts[t.id], gd: gd[t.id], gf: gf[t.id] };
+        byId[String(t.id)] = t;
+      });
+      const sorted = rankGroupIds(teams.map(t => String(t.id)), stat, results).map(id => byId[id]);
 
       counts[sorted[0].id].r1++;
       counts[sorted[1].id].r2++;
@@ -599,11 +660,7 @@ function buildBracketOrder(groups) {
   const thirds    = [];
 
   groups.forEach(g => {
-    const sorted = [...g.entries].sort((a, b) =>
-      b.pts !== a.pts ? b.pts - a.pts :
-      (b.gf - b.gc) !== (a.gf - a.gc) ? (b.gf - b.gc) - (a.gf - a.gc) :
-      b.gf - a.gf
-    );
+    const sorted = rankEntries(g.entries);
     if (sorted[0]) winners.push(sorted[0]);
     if (sorted[1]) runnersUp.push(sorted[1]);
     if (sorted[2]) thirds.push(sorted[2]);
@@ -628,14 +685,9 @@ function buildBracketOrder(groups) {
   // ── Formato ampliado: 12 grupos, 32 clasificados (dieciseisavos) ──────────
   // Sigue el cuadro oficial (R32_TEMPLATE): cada partido en su posición y los
   // terceros asignados a un slot respetando los grupos permitidos por FIFA.
-  const cmp = (a, b) =>
-    b.pts !== a.pts ? b.pts - a.pts :
-    (b.gf - b.gc) !== (a.gf - a.gc) ? (b.gf - b.gc) - (a.gf - a.gc) :
-    b.gf - a.gf;
-
   const byLetter = {};
   groups.forEach(g => {
-    const s = [...g.entries].sort(cmp);
+    const s = rankEntries(g.entries);
     byLetter[g.name] = { first: s[0], second: s[1], third: s[2] };
   });
 
@@ -706,11 +758,7 @@ function teamZoneClass(rank) {
 function renderGroups(groups, groupResults) {
   const grid = document.getElementById('groups-grid');
   grid.innerHTML = groups.map((g, gi) => {
-    const entries = [...g.entries].sort((a, b) =>
-      b.pts !== a.pts ? b.pts - a.pts :
-      (b.gf - b.gc) !== (a.gf - a.gc) ? (b.gf - b.gc) - (a.gf - a.gc) :
-      b.gf - a.gf
-    );
+    const entries = rankEntries(g.entries);
     entries.forEach((t, i) => { t.rank = i + 1; });
 
     const rows = entries.map((t, i) => {
@@ -779,11 +827,7 @@ function renderThirds(groups) {
 
   // Extraer el 3º clasificado de cada grupo
   const thirds = groups.map(g => {
-    const sorted = [...g.entries].sort((a, b) =>
-      b.pts !== a.pts ? b.pts - a.pts :
-      (b.gf - b.gc) !== (a.gf - a.gc) ? (b.gf - b.gc) - (a.gf - a.gc) :
-      b.gf - a.gf
-    );
+    const sorted = rankEntries(g.entries);
     return sorted[2] ? { ...sorted[2], group: g.name } : null;
   }).filter(Boolean);
 
@@ -855,11 +899,7 @@ function renderThirds(groups) {
 // Actualiza solo las celdas de probabilidad sin re-renderizar la tabla
 function updateGroupProbabilities(groups, groupResults) {
   groups.forEach((g, gi) => {
-    [...g.entries].sort((a, b) =>
-      b.pts !== a.pts ? b.pts - a.pts :
-      (b.gf - b.gc) !== (a.gf - a.gc) ? (b.gf - b.gc) - (a.gf - a.gc) :
-      b.gf - a.gf
-    ).forEach((t, ri) => {
+    rankEntries(g.entries).forEach((t, ri) => {
       const rank = ri + 1;
       const res  = groupResults[t.id] || {};
       const pAdv = res.pAdv || 0;
@@ -873,21 +913,21 @@ function updateGroupProbabilities(groups, groupResults) {
 }
 
 // Caché de simulación en localStorage — evita recalcular si los puntos no cambiaron
-function simulateGroupsCached(groups, playedPairs = null) {
+function simulateGroupsCached(groups, playedPairs = null, playedResults = null) {
   try {
     const seed    = groupsSeed(groups.flatMap(g => g.entries));
     const pkey    = playedPairs ? `_p${playedPairs.size}` : '';
-    const key     = `mundial_sim2_${seed}${pkey}`;
+    const key     = `mundial_sim3_${seed}${pkey}`;   // sim3: desempate FIFA 2026 (cara a cara)
     const cached  = localStorage.getItem(key);
     if (cached) return JSON.parse(cached);
-    const results = simulateGroups(groups, playedPairs);
+    const results = simulateGroups(groups, playedPairs, playedResults);
     localStorage.setItem(key, JSON.stringify(results));
-    // Limpiar entradas antiguas del mismo torneo (incl. la clave vieja con bug)
+    // Limpiar entradas antiguas del mismo torneo (incl. claves de versiones previas)
     Object.keys(localStorage)
-      .filter(k => (k.startsWith('mundial_sim_') || k.startsWith('mundial_sim2_')) && k !== key)
+      .filter(k => /^mundial_sim2?_|^mundial_sim3_/.test(k) && k !== key)
       .forEach(k => localStorage.removeItem(k));
     return results;
-  } catch { return simulateGroups(groups, playedPairs); }
+  } catch { return simulateGroups(groups, playedPairs, playedResults); }
 }
 
 function fallbackGAvatar(id, name, color) {
@@ -1329,18 +1369,24 @@ const pairKey = (a, b) => [String(a), String(b)].sort().join('|');
 async function fetchPlayedPairs() {
   try {
     const res = await fetch(`${ESPN_SCOREBOARD}?dates=20260611-20260628&limit=200`);
-    if (!res.ok) return null;
+    if (!res.ok) return { pairs: null, results: {} };
     const data = await res.json();
     const pairs = new Set();
+    const results = {};   // pairKey -> {a, ag, b, bg} para el desempate cara a cara
     for (const ev of (data.events || [])) {
       if (ev.season?.slug !== 'group-stage') continue;
       if (ev.status?.type?.state === 'pre') continue;   // aún por jugar → se simula
       const comps = ev.competitions?.[0]?.competitors || [];
       const a = comps[0]?.team?.id, b = comps[1]?.team?.id;
-      if (a && b) pairs.add(pairKey(a, b));
+      if (!a || !b) continue;
+      pairs.add(pairKey(a, b));
+      results[pairKey(a, b)] = {
+        a: String(a), ag: parseInt(comps[0].score) || 0,
+        b: String(b), bg: parseInt(comps[1].score) || 0,
+      };
     }
-    return pairs;
-  } catch { return null; }
+    return { pairs, results };
+  } catch { return { pairs: null, results: {} }; }
 }
 
 function applyLive(groups, liveMatches) {
@@ -1422,9 +1468,12 @@ async function triggerUpdate(silent = false) {
   if (isUpdating) return;
   isUpdating = true;
   try {
-    const [groups, liveMatches, playedPairs] = await Promise.all([
+    const [groups, liveMatches, played] = await Promise.all([
       fetchGroups(), fetchLiveScores(), fetchPlayedPairs(),
     ]);
+    const playedPairs = played.pairs;
+    // Resultados reales (cara a cara) disponibles para el desempate del display.
+    MATCH_RESULTS = Object.values(played.results || {});
     const adjusted = applyLive(groups, liveMatches);
 
     numGroupsGlobal = adjusted.length;
@@ -1444,7 +1493,7 @@ async function triggerUpdate(silent = false) {
     // Fase 2: Simulación diferida — deja pintar al navegador primero
     // Si los puntos no cambiaron desde la última visita, usa caché (instantáneo)
     setTimeout(() => {
-      const groupResults = simulateGroupsCached(adjusted, playedPairs);
+      const groupResults = simulateGroupsCached(adjusted, playedPairs, played.results);
       updateGroupProbabilities(adjusted, groupResults);
       clearTimeout(liveTimer);
       if (liveMatches.length > 0) liveTimer = setTimeout(() => triggerUpdate(true), 60_000);
