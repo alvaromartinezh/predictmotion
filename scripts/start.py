@@ -1,7 +1,18 @@
-"""Lanzador: servidor HTTP local + abre el navegador."""
-import http.server, threading, webbrowser, socket, os
+"""Lanzador: servidor HTTP local + abre el navegador.
+
+Con `--live` arranca también el backend de seguimiento en vivo (live_tracker) en
+:8770, para que las páginas /partido tengan su API en desarrollo. En producción
+ese servicio corre por systemd y Caddy proxya /api/*.
+"""
+import http.server, threading, webbrowser, socket, os, sys, subprocess
 
 PORT = 8765
+
+# Backend de live tracking en dev (opt-in para no machacar la API de ESPN al desarrollar).
+if '--live' in sys.argv:
+    repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    print('Arrancando live_tracker en :8770 …')
+    subprocess.Popen([sys.executable, '-m', 'live_tracker'], cwd=repo)
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *args): pass  # silencia el log

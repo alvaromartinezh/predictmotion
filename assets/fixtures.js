@@ -3,6 +3,9 @@
 (function () {
   'use strict';
   var ESPN = 'https://site.api.espn.com/apis/site/v2/sports/soccer/';
+  // Código ESPN -> slug de liga, para enlazar a la vista de partido (/partido).
+  var SLUG_BY_CODE = { 'esp.2': 'hypermotion', 'esp.1': 'laliga', 'fifa.world': 'mundial' };
+  var currentSlug = '';
 
   // ── Pestañas (mostrar/ocultar secciones) ──────────────────────────────────
   // Botones: <button class="page-tab" data-section="x">. Secciones:
@@ -62,8 +65,14 @@
           : img + '<span class="nm">' + (t.displayName || t.shortDisplayName || '') + '</span>') +
         '</div>';
     }
-    return '<div class="fx-match">' + side(ht, 'home') +
+    var inner = '<div class="fx-match">' + side(ht, 'home') +
       '<div class="fx-mid">' + mid + state + '</div>' + side(at, 'away') + '</div>';
+    // Enlace a la vista de partido en vivo (si conocemos la liga y el id).
+    if (currentSlug && ev.id) {
+      return '<a class="fx-match-link" href="/partido?league=' + currentSlug +
+        '&id=' + encodeURIComponent(ev.id) + '">' + inner + '</a>';
+    }
+    return inner;
   }
 
   function evTime(ev) { return new Date(ev.date).getTime(); }
@@ -94,6 +103,7 @@
 
   window.PMFixtures = {
     init: function (code, mountSelector) {
+      currentSlug = SLUG_BY_CODE[code] || '';
       var el = document.querySelector(mountSelector);
       if (!el || el.dataset.loaded) return;
       el.dataset.loaded = '1';

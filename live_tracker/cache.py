@@ -1,0 +1,114 @@
+"""Caché en memoria + poller en hilo de fondo.
+
+El servidor sirve SIEMPRE desde caché (nunca bloquea esperando a ESPN). El poller
+descubre qué partidos están en vivo (scoreboard) y refresca su detalle (summary)
+cada LIVE_POLL_SECONDS. Si una llamada a la fuente falla, se conserva la última
+copia buena marcada `stale` y se loguea, sin tirar nada.
+"""
+
+from __future__ import annotations
+
+import logging
+import threading
+import time
+
+from . import config
+from .providers.base import MatchDataProvider
+
+log = logging.getLogger("live_tracker.cache")
+
+
+class LiveStore:
+    def __init__(self, provider: MatchDataProvider):
+        self.provider = provider
+        self._matches: dict[str, tuple[float, list]] = {}      # league -> (ts, [Match])
+        self._details: dict[tuple, tuple[float, object]] = {}  # (league,id) -> (ts, MatchDetail)
+        self._lock = threading.RLock()
+        self._stop = threading.Event()
+
+    # ── lectura (la usa el servidor) ──────────────────────────────────────────
+
+    def get_matches(self, league: str):
+        with self._lock:
+            entry = self._matches.get(league)
+        now = time.time()
+        if entry and now - entry[0] < config.SCOREBOARD_POLL_SECONDS * 2:
+            return entry[1]
+        return self._refresh_matches(league)
+
+    def get_detail(self, league: str, event_id: str):
+        key = (league, event_id)
+        with self._lock:
+            entry = self._details.get(key)
+        if entry and time.time() - entry[0] < config.DETAIL_TTL_SECONDS:
+            return entry[1]
+        return self._refresh_detail(league, event_id)
+
+    # ── refresco (defensivo) ──────────────────────────────────────────────────
+
+    def _refresh_matches(self, league: str):
+        try:
+            matches = self.provider.list_matches(league)
+            with self._lock:
+                self._matches[league] = (time.time(), matches)
+            return matches
+        except Exception as e:
+            log.warning("scoreboard %s falló: %s", league, e)
+            with self._lock:
+                entry = self._matches.get(league)
+            return entry[1] if entry else []
+
+    def _refresh_detail(self, league: str, event_id: str):
+        key = (league, event_id)
+        try:
+            detail = self.provider.get_match(league, event_id)
+            with self._lock:
+                self._details[key] = (time.time(), detail)
+            return detail
+        except Exception as e:
+            log.warning("summary %s/%s falló: %s", league, event_id, e)
+            with self._lock:
+                entry = self._details.get(key)
+            if entry:
+                entry[1].stale = True
+                return entry[1]
+            return None
+
+    # ── poller en hilo de fondo ───────────────────────────────────────────────
+
+    def start_poller(self):
+        t = threading.Thread(target=self._poll_loop, name="live-poller", daemon=True)
+        t.start()
+        return t
+
+    def stop(self):
+        self._stop.set()
+
+    def _poll_loop(self):
+        log.info("poller arrancado (scoreboard cada %ss, detalle en vivo cada %ss)",
+                 config.SCOREBOARD_POLL_SECONDS, config.LIVE_POLL_SECONDS)
+        last_scoreboard = 0.0
+        while not self._stop.is_set():
+            now = time.time()
+            live_ids = []
+            # Scoreboard de cada liga (descubrir partidos en vivo).
+            if now - last_scoreboard >= config.SCOREBOARD_POLL_SECONDS:
+                for league in config.LEAGUES:
+                    matches = self._refresh_matches(league)
+                    for m in matches:
+                        if m.status.state == "in":
+                            live_ids.append((league, m.id))
+                last_scoreboard = now
+            else:
+                # Reusar la lista en vivo conocida de la caché.
+                with self._lock:
+                    for league, (_, matches) in self._matches.items():
+                        for m in matches:
+                            if m.status.state == "in":
+                                live_ids.append((league, m.id))
+            # Refrescar el detalle de los partidos en vivo.
+            for league, eid in live_ids:
+                if self._stop.is_set():
+                    break
+                self._refresh_detail(league, eid)
+            self._stop.wait(config.LIVE_POLL_SECONDS)

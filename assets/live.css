@@ -1,0 +1,132 @@
+/* Vista de partido en vivo (PMLive). Usa los tokens de styles.css. */
+
+/* Colores semánticos con fallback (por si la página no define la paleta extra). */
+.live-head, #live-content { --lv-win: var(--green, #2ec98a); --lv-draw: var(--accent, #e0a13a); --lv-loss: var(--red, #ff556b); }
+
+.lv-skel {
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 37%, var(--surface-2) 63%);
+  background-size: 400% 100%; animation: lv-sh 1.3s ease infinite; border-radius: var(--r-md);
+}
+@keyframes lv-sh { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+
+.lv-msg {
+  margin: var(--sp-5) 0; padding: var(--sp-5); text-align: center;
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-md);
+  color: var(--text-2); font-size: var(--fs-14);
+}
+
+/* ── Cabecera / marcador ──────────────────────────────────────────────────── */
+.lv-scoreboard {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+  gap: var(--sp-4); margin-top: var(--sp-4);
+}
+.lv-team { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
+.lv-team.home { justify-content: flex-end; text-align: right; }
+.lv-team.away { justify-content: flex-start; }
+.lv-team.home .lv-team-name { order: -1; }
+.lv-logo { width: 48px; height: 48px; object-fit: contain; flex: none; }
+.lv-team-name {
+  font-family: var(--font-display, inherit); font-weight: 700; font-size: var(--fs-18);
+  color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lv-center { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.lv-score {
+  font-family: var(--font-mono); font-weight: 600; font-size: var(--fs-28);
+  color: var(--text); display: flex; gap: 10px; align-items: baseline;
+}
+.lv-score span { color: var(--muted); font-size: var(--fs-22); }
+.lv-state {
+  font-family: var(--font-mono); font-size: var(--fs-12); letter-spacing: .06em;
+  text-transform: uppercase; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line);
+  color: var(--text-2); display: inline-flex; align-items: center; gap: 6px;
+}
+.lv-state.live { color: var(--lv-win); border-color: color-mix(in srgb, var(--lv-win) 40%, transparent); }
+.lv-state.post { color: var(--muted); }
+.lv-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--lv-win); animation: lv-pulse 1.4s infinite; }
+@keyframes lv-pulse { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+.lv-stale { font-size: var(--fs-12); color: var(--muted); }
+
+/* ── Probabilidad estimada ────────────────────────────────────────────────── */
+.lv-wp { margin: var(--sp-5) auto 0; max-width: 560px; }
+.lv-wp-title {
+  font-family: var(--font-mono); font-size: var(--fs-12); color: var(--muted);
+  text-transform: uppercase; letter-spacing: .1em; text-align: center; margin-bottom: 6px;
+}
+.lv-wp-bar { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: var(--surface-3); }
+.lv-wp-bar .seg { display: block; height: 100%; }
+.lv-wp-bar .seg.home { background: var(--lv-win); }
+.lv-wp-bar .seg.draw { background: var(--lv-draw); }
+.lv-wp-bar .seg.away { background: var(--lv-loss); }
+.lv-wp-legend {
+  display: flex; justify-content: space-between; margin-top: 6px;
+  font-size: var(--fs-12); color: var(--text-2);
+}
+.lv-wp-legend b { color: var(--text); }
+
+/* ── Alineaciones ─────────────────────────────────────────────────────────── */
+.lv-lineups { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); margin-top: var(--sp-4); }
+.lv-lineup { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--sp-4); }
+.lv-lineup-head { font-family: var(--font-mono); font-size: var(--fs-13); color: var(--text); margin-bottom: var(--sp-3); }
+.lv-lineup-head span { color: var(--muted); }
+.lv-pitch {
+  display: flex; flex-direction: column; gap: 10px; padding: var(--sp-4) var(--sp-2);
+  background:
+    radial-gradient(ellipse at center, color-mix(in srgb, var(--lv-win) 8%, transparent), transparent 70%),
+    var(--surface);
+  border: 1px solid var(--line-soft); border-radius: var(--r-md);
+}
+.lv-line { display: flex; justify-content: space-around; gap: 6px; }
+.lv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; }
+.lv-chip {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; max-width: 86px;
+}
+.lv-jersey {
+  font-family: var(--font-mono); font-size: var(--fs-12); color: var(--text);
+  width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+  background: var(--surface-3); border: 1px solid var(--line); border-radius: 50%;
+}
+.lv-pname { font-size: 11px; color: var(--text-2); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 84px; }
+.lv-icons { display: flex; gap: 2px; align-items: center; min-height: 12px; }
+.ic-yc, .ic-rc { width: 9px; height: 12px; border-radius: 1px; display: inline-block; }
+.ic-yc { background: #f4c430; }
+.ic-rc { background: var(--lv-loss); }
+.ic-goal { font-size: 11px; }
+.ic-out { color: var(--lv-loss); font-size: 9px; }
+.ic-in { color: var(--lv-win); font-size: 10px; font-family: var(--font-mono); }
+.lv-subs { margin-top: var(--sp-3); }
+.lv-subs-title { font-family: var(--font-mono); font-size: var(--fs-12); color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
+.lv-subs ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.lv-subs li { font-size: var(--fs-13); color: var(--text-2); display: flex; gap: 6px; align-items: center; }
+
+/* ── Timeline ─────────────────────────────────────────────────────────────── */
+.lv-timeline { margin-top: var(--sp-4); display: flex; flex-direction: column; gap: 4px; }
+.lv-ev {
+  display: grid; grid-template-columns: 48px 26px 1fr; align-items: center; gap: var(--sp-3);
+  padding: var(--sp-3); background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-md);
+}
+.lv-ev.away { border-left: 3px solid var(--line); }
+.lv-ev.home { border-left: 3px solid color-mix(in srgb, var(--accent) 50%, transparent); }
+.lv-ev.t-GOAL { background: color-mix(in srgb, var(--lv-win) 8%, var(--surface-2)); }
+.lv-ev.t-RED { background: color-mix(in srgb, var(--lv-loss) 8%, var(--surface-2)); }
+.lv-ev-min { font-family: var(--font-mono); font-size: var(--fs-13); color: var(--text); text-align: center; }
+.lv-ev-ic { font-size: var(--fs-16); text-align: center; }
+.lv-ev-txt { font-size: var(--fs-14); color: var(--text-2); line-height: 1.4; }
+
+/* ── Datos / stats ────────────────────────────────────────────────────────── */
+.lv-stats { margin-top: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-4); }
+.lv-stat-row { display: grid; grid-template-columns: 48px 1fr 48px; align-items: center; font-size: var(--fs-14); }
+.lv-stat-row .hv { text-align: left; color: var(--text); font-family: var(--font-mono); }
+.lv-stat-row .av { text-align: right; color: var(--text); font-family: var(--font-mono); }
+.lv-stat-row .lb { text-align: center; color: var(--muted); font-size: var(--fs-12); text-transform: uppercase; letter-spacing: .06em; }
+.lv-stat-bar { display: flex; height: 6px; border-radius: 999px; overflow: hidden; margin-top: 4px; background: var(--surface-3); }
+.lv-stat-bar .h { background: var(--accent); }
+.lv-stat-bar .a { background: var(--text-2); opacity: .5; }
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 680px) {
+  .lv-lineups { grid-template-columns: 1fr; }
+  .lv-team-name { font-size: var(--fs-15); }
+  .lv-logo { width: 36px; height: 36px; }
+  .lv-score { font-size: var(--fs-22); }
+  .lv-ev { grid-template-columns: 40px 22px 1fr; }
+}

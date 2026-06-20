@@ -568,3 +568,7 @@ html[data-theme="light"] .prob.is-lock.down { color: #fff; }
 html[data-theme="dark"]  .theme-toggle .tt-dark  { background: var(--surface-3); color: var(--accent); }
 html[data-theme="light"] .theme-toggle .tt-light { background: var(--surface-3); color: var(--accent); }
 .theme-toggle:hover { border-color: var(--accent-line); }
+
+/* Chapa "en vivo" enlazable a la vista de partido (/partido). */
+.live-badge-link { text-decoration: none; color: inherit; cursor: pointer; }
+.live-badge-link:hover .live-badge { filter: brightness(1.15); }
