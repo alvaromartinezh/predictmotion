@@ -450,51 +450,43 @@ tr[data-zone="down"] .pos-badge { color: var(--down); }
   .tabs { gap: 0; }
   .tab { padding-inline: var(--sp-3); font-size: var(--fs-14); }
 
-  /* Tabla → tarjetas apiladas (todas las columnas de probabilidad visibles) */
-  .table-card { background: transparent; border: none; }
-  .table-scroll { overflow: visible; }
-  .table-clasif { min-width: 0; }
-  .table-clasif thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .table-clasif tbody tr {
-    display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--sp-3); row-gap: var(--sp-3);
-    background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
-    padding: var(--sp-4); margin-bottom: var(--sp-3);
-  }
-  .table-clasif tbody tr:hover { background: var(--surface); }
-  .table-clasif tbody td { border: none; padding: 0; text-align: left; white-space: normal; }
-  .table-clasif tbody td + td { border-left: none; }   /* anula los separadores en la vista tarjeta */
-  .col-pos { width: auto; flex: 0 0 auto; }
-  tr[data-zone] .col-pos::before { display: none; }
-  /* La identidad (#, escudo, nombre, Pts) ocupa toda la 1ª fila; las
-     probabilidades caen debajo con el ancho completo. */
-  .col-team { flex: 1 1 58%; min-width: 0; }
-  .team__name {
-    font-size: var(--fs-13); line-height: 1.12; white-space: normal;
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-  }
-  .team__crest, .team__crest-ph { width: 22px; height: 22px; }
-  .col-pj { display: none; }   /* PJ/secundarias se pliegan en la tarjeta de equipo */
-  .col-pts { flex: 0 0 auto; margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; }
-  .col-pts::before { content: "Pts"; font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  /* ── Tabla COMPACTA en móvil (densa: ~15 equipos por pantalla) ──────────────
+     Se mantiene como tabla (no tarjetas). Todo más pequeño. Scroll horizontal
+     para las columnas de probabilidad; "#" y "Equipo" quedan FIJOS a la izquierda
+     al desplazar, para no perder de vista a qué equipo es cada dato. */
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-clasif { min-width: max-content; }
 
-  /* Cada probabilidad en su propia celda etiquetada; se reparten en filas de ~3
-     (en vez de 5 apretadas) para que se lean bien. */
-  .col-prob {
-    flex: 1 1 30%; min-width: 92px; width: auto;
-    display: flex !important; flex-direction: column; align-items: center; gap: 6px;
-    background: var(--bg-2); border-radius: var(--r-sm); padding: var(--sp-3) var(--sp-2);
-  }
-  .prob-label {
-    display: block; font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em;
-    text-transform: uppercase; color: var(--muted); line-height: 1.2; text-align: center;
-    white-space: nowrap;
-  }
-  .prob { min-width: 0; width: 100%; }
+  /* Cabecera visible y compacta (sticky arriba) */
+  .table-clasif thead { position: static; width: auto; height: auto; clip: auto; overflow: visible; }
+  .table-clasif thead th { padding: var(--sp-2); font-size: 9.5px; letter-spacing: .02em; }
+  .table-clasif thead th.col-prob { white-space: normal; line-height: 1.1; }
+  .table-clasif tbody td { padding: 4px var(--sp-2); font-size: var(--fs-12); }
+  .table-clasif thead th + th, .table-clasif tbody td + td { border-left: none; }
 
-  /* Fila divisoria (· · ·) en móvil */
-  .table-clasif tbody tr.row-divider { background: transparent; border: none; justify-content: center; padding: 0; margin-bottom: var(--sp-3); }
-  .row-divider td { display: none; }
-  .row-divider .col-team { display: block; flex: 0 0 auto; }
+  .col-pos { width: 26px; }
+  .pos-badge { width: 18px; height: 18px; font-size: 10px; border-radius: 4px; }
+  tr[data-zone] .col-pos::before { top: 4px; bottom: 4px; width: 2px; }
+
+  .col-team { min-width: 124px; text-align: left !important; }
+  .team { gap: 6px; }
+  .team__crest, .team__crest-ph { width: 16px; height: 16px; }
+  .team__name { font-size: var(--fs-12); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 94px; letter-spacing: 0; }
+  .col-pj { display: none; }
+  .col-pts .num { font-size: var(--fs-13); }
+
+  .col-prob { width: 58px; }
+  .prob { min-width: 0; width: 52px; height: 20px; padding: 0 3px; }
+  .prob__val { font-size: 10.5px; }
+  .prob__val .pct { font-size: .72em; }
+  .prob-label { display: none; }
+
+  /* Columnas fijas (#, equipo) al desplazar horizontalmente */
+  .table-clasif th.col-pos, .table-clasif td.col-pos { position: sticky; left: 0; z-index: 3; }
+  .table-clasif th.col-team, .table-clasif td.col-team { position: sticky; left: 26px; z-index: 3; box-shadow: 1px 0 0 var(--line); }
+  .table-clasif thead th.col-pos, .table-clasif thead th.col-team { background: var(--surface-2); z-index: 4; }
+  .table-clasif tbody td.col-pos, .table-clasif tbody td.col-team { background: var(--surface); }
+  .table-clasif tbody tr:hover td.col-pos, .table-clasif tbody tr:hover td.col-team { background: var(--surface-2); }
 
   /* Fixtures */
   .fixture { grid-template-columns: 52px 1fr; grid-template-areas: "time match" "odds odds"; gap: var(--sp-3); }
