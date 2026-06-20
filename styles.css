@@ -277,17 +277,22 @@ button { font: inherit; color: inherit; cursor: pointer; background: none; borde
 .table-clasif thead th {
   position: sticky; top: 0; background: var(--surface-2);
   font-family: var(--font-mono); font-size: var(--fs-12); font-weight: 500;
-  letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
-  text-align: center; padding: var(--sp-4) var(--sp-3); white-space: nowrap;
-  border-bottom: 1px solid var(--line);
+  letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+  text-align: center; padding: var(--sp-4); white-space: nowrap;
+  border-bottom: 1px solid var(--line); vertical-align: middle;
 }
 .table-clasif thead th.col-team { text-align: left; }
-.table-clasif thead th.col-prob { color: var(--text-2); }
+/* Cabeceras de probabilidad: ancho uniforme; las etiquetas largas se parten en
+   dos líneas en vez de ensanchar la columna (así cada celda ocupa lo mismo). */
+.table-clasif thead th.col-prob { color: var(--text-2); white-space: normal; line-height: 1.2; }
 .table-clasif tbody td {
-  padding: var(--sp-3) var(--sp-3); text-align: center; font-size: var(--fs-14);
+  padding: var(--sp-3) var(--sp-4); text-align: center; font-size: var(--fs-14);
   border-bottom: 1px solid var(--line-soft); white-space: nowrap;
 }
 .table-clasif tbody tr:last-child td { border-bottom: none; }
+/* Separadores verticales sutiles: que cada celda tenga su espacio (look de tabla) */
+.table-clasif thead th + th,
+.table-clasif tbody td + td { border-left: 1px solid var(--line-soft); }
 .table-clasif tbody tr { transition: background .14s var(--ease); }
 .table-clasif tbody tr:hover { background: var(--surface-2); }
 
@@ -457,6 +462,7 @@ tr[data-zone="down"] .pos-badge { color: var(--down); }
   }
   .table-clasif tbody tr:hover { background: var(--surface); }
   .table-clasif tbody td { border: none; padding: 0; text-align: left; white-space: normal; }
+  .table-clasif tbody td + td { border-left: none; }   /* anula los separadores en la vista tarjeta */
   .col-pos { width: auto; flex: 0 0 auto; }
   tr[data-zone] .col-pos::before { display: none; }
   .col-team { flex: 1 1 auto; min-width: 0; }
@@ -464,14 +470,17 @@ tr[data-zone="down"] .pos-badge { color: var(--down); }
   .col-pts { flex: 0 0 auto; margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; }
   .col-pts::before { content: "Pts"; font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 
+  /* Cada probabilidad en su propia celda etiquetada; se reparten en filas de ~3
+     (en vez de 5 apretadas) para que se lean bien. */
   .col-prob {
-    flex: 1 1 0; min-width: 0; width: auto;
-    display: flex !important; flex-direction: column; gap: var(--sp-2);
-    background: var(--bg-2); border-radius: var(--r-sm); padding: var(--sp-3);
+    flex: 1 1 30%; min-width: 92px; width: auto;
+    display: flex !important; flex-direction: column; align-items: center; gap: 6px;
+    background: var(--bg-2); border-radius: var(--r-sm); padding: var(--sp-3) var(--sp-2);
   }
   .prob-label {
-    display: block; font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em;
-    text-transform: uppercase; color: var(--muted); line-height: 1.2;
+    display: block; font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--muted); line-height: 1.2; text-align: center;
+    white-space: nowrap;
   }
   .prob { min-width: 0; width: 100%; }
 

@@ -66,4 +66,6 @@ def build_match_state(league: str, status: MatchStatus, home: Team, away: Team,
         men_home=max(7, 11 - red_home),   # nunca por debajo de 7 (regla real)
         men_away=max(7, 11 - red_away),
         stats=numeric_stats,
+        home_abbr=home.abbr,
+        away_abbr=away.abbr,
     )

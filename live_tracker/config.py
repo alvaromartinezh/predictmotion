@@ -61,9 +61,16 @@ LEAGUES = {
 LEAGUE_BASE_PROBS = {
     "hypermotion": (0.42, 0.27),
     "laliga":      (0.46, 0.26),
-    "mundial":     (0.40, 0.27),  # heurístico: sedes ~neutrales
+    "mundial":     (0.40, 0.27),  # p_home se ignora en sedes neutrales (ver abajo)
 }
 DEFAULT_BASE_PROBS = (0.42, 0.27)
+
+# Ligas SIN localía real (sedes neutrales): el "local" del fixture no juega en casa,
+# así que el modelo no aplica ventaja de campo (victorias simétricas) y en su lugar
+# sesga la probabilidad por el RANKING FIFA de cada selección.
+NEUTRAL_VENUE_LEAGUES = {"mundial"}
+# Peso del ranking FIFA sobre la tasa de gol (solo sedes neutrales). HEURÍSTICO.
+WINPROB_RANK_WEIGHT = 1.2
 
 
 # ══════════════════════════════════════════════════════════════════════════════
