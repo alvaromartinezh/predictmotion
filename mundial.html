@@ -25,6 +25,7 @@
   <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
   <link rel="dns-prefetch" href="https://site.api.espn.com" />
   <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/assets/ads.css" />
   <script src="/theme.js"></script>
 
   <title>Copa del Mundo 2026 · Probabilidades de Clasificación y Cuadro</title>
@@ -328,6 +329,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </div>
 </section>
 
+<!-- ===== ANUNCIO: debajo de la cabecera ===== -->
+<div class="ad-wrap"><span class="ad-label">Publicidad</span>
+  <div class="ad-slot" data-ad-slot="top"></div></div>
+
 <div class="error-banner" id="error-banner"></div>
 
 <!-- Pestañas de sección -->
@@ -354,6 +359,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <p style="font-size:.72rem;color:var(--muted);margin:0 0 10px 0;text-align:center">Los <strong style="color:var(--text)">8 mejores terceros</strong> de 12 grupos avanzan a la fase eliminatoria</p>
     <div id="thirds-table"></div>
   </div>
+
+  <!-- ===== ANUNCIO: al final de la vista Grupos ===== -->
+  <div class="ad-wrap"><span class="ad-label">Publicidad</span>
+    <div class="ad-slot" data-ad-slot="mid"></div></div>
 </div>
 
 <!-- Bracket section -->
@@ -1454,5 +1463,8 @@ async function triggerUpdate(silent = false) {
 
 triggerUpdate();
 </script>
+<script src="/assets/ads-config.js"></script>
+<script src="/assets/ads.js"></script>
+<script>PMAds.init();</script>
 </body>
 </html>
