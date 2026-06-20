@@ -111,7 +111,9 @@
             '<span class="winbar__seg d" style="width:' + wp.pDraw + '%"></span>' +
             '<span class="winbar__seg a" style="width:' + wp.pAway + '%"></span>' +
           '</div>' +
-          '<div class="winbar__legend"><b>Local ' + wp.pHome + '%</b><span class="mid">Empate ' + wp.pDraw + '%</span><b>Visitante ' + wp.pAway + '%</b></div>' +
+          '<div class="winbar__legend"><b>' + esc(m.home.abbr || m.home.name) + ' ' + wp.pHome + '%</b>' +
+          '<span class="mid">Empate ' + wp.pDraw + '%</span>' +
+          '<b>' + esc(m.away.abbr || m.away.name) + ' ' + wp.pAway + '%</b></div>' +
           (wp.note ? '<div class="winbar__note">' + esc(wp.note) + '</div>' : '') +
         '</div>';
     }
