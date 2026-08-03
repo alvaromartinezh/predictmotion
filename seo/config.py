@@ -3,7 +3,7 @@ Configuración central del generador de páginas SEO de PredictMotion.
 
 Todo lo que varía entre ligas vive en LEAGUES. Para añadir una liga nueva del
 mundo basta con añadir una entrada aquí: ningún otro fichero necesita cambios
-para las ligas de tipo "table". Las ligas tipo "cup" (Mundial) usan sim_cup.
+para las ligas de tipo "table".
 
 No hay texto redactado a mano en ningún sitio: todas las frases de las páginas
 se construyen con f-strings a partir de datos reales de la simulación.
@@ -46,7 +46,7 @@ def _table_bands(slots):
 # ── Registro de ligas ──────────────────────────────────────────────────────
 # slug        → identificador en URLs (/equipos/<slug>/...)
 # espn_code   → código de liga en la API de ESPN
-# kind        → "table" (liga regular) | "cup" (Mundial)
+# kind        → "table" (liga regular)
 # name        → nombre mostrado
 # dashboard   → URL limpia del dashboard existente (no se toca)
 # p_home/p_draw → medias históricas usadas por el Monte Carlo (idénticas al JS)
@@ -88,17 +88,6 @@ LEAGUES = [
             ("conference", "Conference League", "violet", lambda n: 6,     lambda n: 6),
             ("descenso",   "Descenso a Segunda","red",    lambda n: n - 2, lambda n: n),
         ]),
-    },
-    {
-        "slug": "mundial",
-        "espn_code": "fifa.world",
-        "kind": "cup",
-        "name": "Copa del Mundo 2026",
-        "article": "la",          # "de la / en la Copa del Mundo"
-        "season": "2026",
-        "dashboard": "/mundial",
-        "p_home": 0.37,
-        "p_draw": 0.27,
     },
 ]
 

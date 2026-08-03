@@ -44,17 +44,3 @@ def standings_seed(rows):
         if h & 0x80000000:
             h -= 0x100000000
     return h & _U32
-
-
-def groups_seed(groups):
-    """Port de groupsSeed() del JS para el Mundial."""
-    s = "||".join(
-        "|".join(f"{t['name']}:{t['pts']}:{t['gp']}" for t in g["entries"])
-        for g in groups
-    )
-    h = 0
-    for ch in s:
-        h = (_imul(31, h) + ord(ch)) & _U32
-        if h & 0x80000000:
-            h -= 0x100000000
-    return h & _U32

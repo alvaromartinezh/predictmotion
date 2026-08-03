@@ -4,7 +4,7 @@
   'use strict';
   var ESPN = 'https://site.api.espn.com/apis/site/v2/sports/soccer/';
   // Código ESPN -> slug de liga, para enlazar a la vista de partido (/partido).
-  var SLUG_BY_CODE = { 'esp.2': 'hypermotion', 'esp.1': 'laliga', 'fifa.world': 'mundial' };
+  var SLUG_BY_CODE = { 'esp.2': 'hypermotion', 'esp.1': 'laliga' };
   var currentSlug = '';
 
   // ── Pestañas (mostrar/ocultar secciones) ──────────────────────────────────

@@ -210,7 +210,6 @@ thead th,td{padding:8px 9px}.prob{min-width:78px}.stat .v{font-size:1.85rem}.led
 NAV = [
     ("/hypermotion", "Liga Hypermotion"),
     ("/laliga", "LaLiga"),
-    ("/mundial", "Mundial 2026"),
 ]
 
 

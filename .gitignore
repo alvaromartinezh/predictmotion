@@ -3,9 +3,6 @@ CLAUDE.md
 TWITTER/
 BLUESKY/
 twitter_state.json
-mundial_bot/.env
-mundial_bot/output/
-mundial_bot/state.db
 
 # Generador SEO — salida y datos viven solo en el servidor (no en git)
 data/
