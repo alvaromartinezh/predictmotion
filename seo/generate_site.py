@@ -24,12 +24,11 @@ for _stream in (sys.stdout, sys.stderr):
     except Exception:
         pass
 
-from . import espn, render_table, render_cup, sitemap, links as L
+from . import espn, render_table, sitemap, links as L
 from .config import LEAGUES, ROOT, SIM_N_TABLE, league_by_slug
 from .render_hub import render_selector, render_competition
-from .snapshots import (build_table_snapshot, build_cup_snapshot,
-                        save_snapshot, load_all)
-from . import sim_table, sim_cup
+from .snapshots import build_table_snapshot, save_snapshot, load_all
+from . import sim_table
 
 
 def _write_files(files, dry_run):
@@ -67,25 +66,6 @@ def _process_table(league, today, dry_run):
     return snap, urls
 
 
-def _process_cup(league, today, dry_run):
-    groups = espn.fetch_groups(league["espn_code"])
-    meta = espn.fetch_league_meta(league["espn_code"])
-    played_pairs, played_results = espn.fetch_played_results(league["espn_code"])
-    sim = sim_cup.simulate(groups, played_pairs=played_pairs or None,
-                           played_results=played_results or None)
-    # Mundial: el año queda fijo en config (excepción acordada); solo el logo es vivo.
-    snap = build_cup_snapshot(league, groups, sim, today, league_logo=meta["logo"])
-    if not dry_run:
-        save_snapshot(snap)
-    snaps = load_all(league["slug"]) or [snap]
-    if dry_run and snaps[-1]["date"] != today:
-        snaps = snaps + [snap]
-
-    files, urls = render_cup.render(league, snaps)
-    _write_files(files, dry_run)
-    return snap, urls
-
-
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true", help="No escribe ficheros")
@@ -105,10 +85,7 @@ def main(argv=None):
     for league in leagues:
         print(f"\n→ {league['name']} ({league['espn_code']})")
         try:
-            if league["kind"] == "table":
-                snap, urls = _process_table(league, today, args.dry_run)
-            else:
-                snap, urls = _process_cup(league, today, args.dry_run)
+            snap, urls = _process_table(league, today, args.dry_run)
         except Exception as e:
             print(f"  [SKIP] {league['slug']}: {e}", file=sys.stderr)
             continue

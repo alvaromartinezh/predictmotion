@@ -7,7 +7,7 @@ Si un dato no existe, la frase no se incluye.
 
 ## Qué produce
 
-Por cada liga (Hypermotion, LaLiga, Mundial) y a partir de la API pública de
+Por cada liga (Hypermotion, LaLiga) y a partir de la API pública de
 ESPN:
 
 | URL limpia | Contenido |
@@ -16,8 +16,6 @@ ESPN:
 | `/equipos/<liga>` | Hub de equipos de la liga |
 | `/jornadas/<liga>/<n>` | Probabilidades antes/después y qué equipo movió más la carrera |
 | `/jornadas/<liga>` | Índice de jornadas |
-| `/grupos/mundial/<X>` | Probabilidades de un grupo (solo Mundial) |
-| `/grupos/mundial` | Hub de grupos (solo Mundial) |
 | `/historico/<liga>` | Snapshots por fecha |
 | `/datos` | Hub global que enlaza todo |
 
@@ -29,9 +27,9 @@ enlazado interno cruzado y **JSON-LD** (`SportsTeam`, `ItemList`, `Dataset`,
 
 El Monte Carlo del dashboard corre en el navegador del visitante. Aquí se porta
 a Python (mismo modelo de partido, mismo PRNG `mulberry32`, mismo desempate
-pts→DG→GF, mismas zonas y mismo play-off / mismo ajuste por ranking FIFA en el
-Mundial). El servidor lo ejecuta y **persiste snapshots**, que es lo que permite
-construir histórico y evolución (el navegador no guardaba nada).
+pts→DG→GF, mismas zonas y mismo play-off). El servidor lo ejecuta y **persiste
+snapshots**, que es lo que permite construir histórico y evolución (el navegador
+no guardaba nada).
 
 ## Uso
 

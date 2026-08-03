@@ -24,16 +24,12 @@ def _av(team, size=30):
 
 def _primary(snap):
     """(clave, etiqueta) de la probabilidad principal de la competición."""
-    if snap["kind"] == "table":
-        b = snap["bands"][0]
-        return b["key"], b["label"]
-    return "pAdv", "pasar de ronda"
+    b = snap["bands"][0]
+    return b["key"], b["label"]
 
 
 def _all_teams(snap):
-    if snap["kind"] == "table":
-        return snap["teams"]
-    return [t for g in snap["groups"] for t in g["entries"]]
+    return snap["teams"]
 
 
 def _favorite(snap):
@@ -69,10 +65,7 @@ def render_selector(entries):
         logo = snap.get("league_logo")
         logo_html = (f'<div class="comp-logo"><img src="{esc(logo)}" alt="{esc(lg["name"])}"></div>'
                      if logo else "")
-        if snap["kind"] == "table":
-            state = "Temporada finalizada" if snap.get("finished") else f'En juego · jornada {snap["jornada"]}'
-        else:
-            state = f'En juego · {snap["matchday"]} jornada(s)'
+        state = "Temporada finalizada" if snap.get("finished") else f'En juego · jornada {snap["jornada"]}'
         cards += (
             f'<a class="comp-link" href="{L.datos_league_url(lg["slug"])}">'
             f'<div class="card"><div class="card-pad">'
@@ -111,38 +104,24 @@ def render_competition(entry, entries):
     contested = _contested(snap)
 
     # Lede honesto
-    if snap["kind"] == "table":
-        badge = f'Jornada <strong>{snap["jornada"]}</strong>'
-        if snap.get("finished"):
-            lede = (f'La <strong>{esc(lg["name"])} {esc(snap["season"])}</strong> ya está decidida: '
-                    f'todos los partidos se han jugado. Estas fueron las probabilidades finales.')
-        elif contested:
-            lede = (f'<strong>{len(contested)}</strong> equipos siguen en disputa por '
-                    f'<strong>{esc(label.lower())}</strong> {esc(de_league(lg))} tras la jornada '
-                    f'{snap["jornada"]}.')
-        else:
-            lede = (f'Probabilidades {esc(de_league(lg))} tras la jornada {snap["jornada"]}, '
-                    f'por simulación Monte Carlo.')
-        accesos = (f'<a href="{L.teams_hub_url(slug)}">Tabla por equipo</a>'
-                   f'<a href="{L.jornadas_hub_url(slug)}">Jornadas</a>'
-                   f'<a href="{L.historico_url(slug)}">Histórico</a>'
-                   f'<a href="{lg["dashboard"]}">Dashboard en vivo</a>')
+    badge = f'Jornada <strong>{snap["jornada"]}</strong>'
+    if snap.get("finished"):
+        lede = (f'La <strong>{esc(lg["name"])} {esc(snap["season"])}</strong> ya está decidida: '
+                f'todos los partidos se han jugado. Estas fueron las probabilidades finales.')
+    elif contested:
+        lede = (f'<strong>{len(contested)}</strong> equipos siguen en disputa por '
+                f'<strong>{esc(label.lower())}</strong> {esc(de_league(lg))} tras la jornada '
+                f'{snap["jornada"]}.')
     else:
-        badge = f'{snap["num_groups"]} grupos'
-        if contested:
-            lede = (f'<strong>{len(contested)}</strong> selecciones siguen en disputa por '
-                    f'<strong>pasar de ronda</strong> {esc(de_league(lg))} tras {snap["matchday"]} '
-                    f'jornada(s). Pasan {snap["advancing"]} de {snap["num_groups"]*4}.')
-        else:
-            lede = (f'Probabilidades {esc(de_league(lg))} tras {snap["matchday"]} jornada(s), '
-                    f'por simulación Monte Carlo.')
-        accesos = (f'<a href="{L.teams_hub_url(slug)}">Tabla por selección</a>'
-                   f'<a href="{L.grupos_hub_url(slug)}">Grupos</a>'
-                   f'<a href="{L.historico_url(slug)}">Histórico</a>'
-                   f'<a href="{lg["dashboard"]}">Dashboard en vivo</a>')
+        lede = (f'Probabilidades {esc(de_league(lg))} tras la jornada {snap["jornada"]}, '
+                f'por simulación Monte Carlo.')
+    accesos = (f'<a href="{L.teams_hub_url(slug)}">Tabla por equipo</a>'
+               f'<a href="{L.jornadas_hub_url(slug)}">Jornadas</a>'
+               f'<a href="{L.historico_url(slug)}">Histórico</a>'
+               f'<a href="{lg["dashboard"]}">Dashboard en vivo</a>')
 
     # Favorito
-    fav_label = "Favorito" if snap["kind"] == "table" else "Favorita"
+    fav_label = "Favorito"
     hl = (f'<div class="hl">{_av(fav)}<div><div class="hl-l">{fav_label} · {esc(label)}</div>'
           f'<div class="hl-n">{esc(fav["name"])}</div></div>'
           f'<div class="hl-v">{pct(fav["prob"][key])}</div></div>')

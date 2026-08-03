@@ -20,7 +20,7 @@
   var POLL_MS = 20000;
   var league = '', eventId = '', timer = null;
 
-  var LEAGUE_NAMES = { hypermotion: 'Liga Hypermotion', laliga: 'LaLiga', mundial: 'Mundial 2026' };
+  var LEAGUE_NAMES = { hypermotion: 'Liga Hypermotion', laliga: 'LaLiga' };
   function leagueName(slug) { return LEAGUE_NAMES[slug] || ''; }
 
   function qs(n) { return new URLSearchParams(location.search).get(n); }

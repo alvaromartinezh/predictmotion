@@ -61,42 +61,6 @@ def build_table_snapshot(league, rows, sim, sim_n, today, league_logo=None, seas
     }
 
 
-def build_cup_snapshot(league, groups, sim, today, league_logo=None):
-    num_groups = len(groups)
-    best3 = 0 if num_groups <= 8 else min(8, num_groups)
-    advancing = num_groups * 2 + best3
-    matchday = max((t["gp"] for g in groups for t in g["entries"]), default=0)
-
-    out_groups = []
-    for g in groups:
-        entries = []
-        for t in g["entries"]:
-            prob = sim.get(t["id"], {"p1st": 0, "p2nd": 0, "p3rd": 0, "pOut": 0, "pAdv": 0})
-            entries.append({
-                "slug": slugify(t["name"]),
-                "rank": t["rank"], "id": t["id"], "name": t["name"],
-                "abbr": t["abbr"], "logo": t["logo"],
-                "gp": t["gp"], "pts": t["pts"], "gf": t["gf"], "gc": t["gc"],
-                "wins": t["wins"], "draws": t["draws"], "losses": t["losses"],
-                "prob": prob,
-            })
-        out_groups.append({"name": g["name"], "entries": entries})
-
-    return {
-        "league":   league["slug"],
-        "kind":     "cup",
-        "name":     league["name"],
-        "season":   league["season"],
-        "date":     today,
-        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "league_logo": league_logo,
-        "matchday": matchday,
-        "num_groups": num_groups,
-        "advancing": advancing,
-        "groups":   out_groups,
-    }
-
-
 # ── Persistencia ────────────────────────────────────────────────────────────
 
 def _league_dir(slug):
