@@ -428,7 +428,7 @@ function simTwoLegs(home, away) {
 }
 
 // ─── Simulation ───────────────────────────────────────────────────────────
-function simulate(standings) {
+function simulate(standings, sc) {
   const numTeams = standings.length;
   const totalMd  = 2 * (numTeams - 1);
   const minGp    = Math.min(...standings.map(t => t.gp));
@@ -462,13 +462,20 @@ function simulate(standings) {
       mdNum++;
       for (const [h, a] of md) {
         if (teamGp[h] >= mdNum || teamGp[a] >= mdNum) continue;
+        // Prior de fuerza (fallback): sesga la cuota local por el rating con
+        // desvanecimiento. Sin contexto → P_HOME/P_DRAW de siempre.
+        let ph = P_HOME;
+        if (sc) {
+          const s = 1 / (1 + Math.exp(-(sc.logitS0 + sc.w * sc.scale * (sc.str[h] - sc.str[a]))));
+          ph = sc.M * s;
+        }
         const r = rng();
         let hp, ap, hg, ag;
-        if (r < P_HOME) {
+        if (r < ph) {
           hp = 3; ap = 0;
           hg = (rng() * 2 | 0) + 1 + (rng() * 2 | 0);
           ag = rng() * 2 | 0;
-        } else if (r < P_HOME + P_DRAW) {
+        } else if (r < ph + P_DRAW) {
           hp = ap = 1;
           hg = ag = rng() * 2 | 0;
         } else {
@@ -798,6 +805,29 @@ function snapshotMatches(snap, standings) {
   }
   return true;
 }
+// Contexto de prior de fuerza para el fallback en cliente. Lee la `strength` ya
+// calculada en el snapshot (fuente única de verdad; el Python la deriva de la
+// temporada anterior) y los parámetros del prior. Devuelve null si no hay fuerzas
+// o si el prior ya se desvaneció (a media temporada) → sim uniforme de siempre.
+// Ruta secundaria: solo corre en el fallback (partido en vivo / snapshot desfasado).
+function buildStrengthCtx(snapshot, standings) {
+  if (!snapshot || typeof snapshot.strength_scale !== 'number' || !Array.isArray(snapshot.teams)) return null;
+  const byId = {}, vals = [];
+  snapshot.teams.forEach(t => { if (typeof t.strength === 'number') { byId[String(t.id)] = t.strength; vals.push(t.strength); } });
+  if (!vals.length) return null;
+  const def = Math.min(...vals);                       // sin histórico → fondo de tabla
+  const str = {};
+  standings.forEach(t => { str[t.name] = (String(t.id) in byId) ? byId[String(t.id)] : def; });
+  const n = standings.length, totalMd = 2 * (n - 1);
+  const jornada = Math.max(...standings.map(t => t.gp));
+  const span = snapshot.strength_fade_fraction * totalMd;
+  const w = span > 0 ? Math.max(0, Math.min(1, 1 - jornada / span)) : 0;
+  if (w <= 0) return null;
+  const pAway = 1 - P_HOME - P_DRAW, M = P_HOME + pAway;
+  const s0 = Math.min(1 - 1e-9, Math.max(1e-9, M > 0 ? P_HOME / M : 0.5));
+  return { scale: snapshot.strength_scale, w, str, M, logitS0: Math.log(s0 / (1 - s0)) };
+}
+
 // Adapta el bloque `prob` del snapshot a las claves que espera render().
 function resultsFromSnapshot(snap) {
   const out = {};
@@ -849,7 +879,7 @@ async function triggerUpdate(silent = false) {
     // en vivo o si el snapshot no cuadra con la tabla actual (o no está disponible).
     const results = (liveMatches.length === 0 && snapshotMatches(snapshot, standings))
       ? resultsFromSnapshot(snapshot)
-      : simulate(adjusted);
+      : simulate(adjusted, buildStrengthCtx(snapshot, adjusted));
     render(adjusted, results);
     renderBracket(adjusted, results);
 
