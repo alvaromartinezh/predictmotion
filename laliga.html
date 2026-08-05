@@ -140,7 +140,7 @@
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary" />
   <meta name="twitter:title" content="LaLiga 2025-26 · Probabilidades Champions, Europa y Descenso" />
-  <meta name="twitter:description" content="40 000 simulaciones Monte Carlo para predecir el final de la temporada en LaLiga 2025-26." />
+  <meta name="twitter:description" content="20 000 simulaciones Monte Carlo para predecir el final de la temporada en LaLiga 2025-26." />
   <meta name="twitter:image" content="https://predictmotion.com/media/twitter_profile.png" />
   <meta name="twitter:image:alt" content="Logo PredictMotion" />
 
@@ -211,7 +211,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="league-head__meta">
         <p class="eyebrow">Primera División · España</p>
         <h1 class="league-head__title">LaLiga 2025‑26</h1>
-        <p class="league-head__sub">Temporada <b id="league-season">2025-26</b> · Jornada <b id="badge-jornada">—</b> · <span class="num">40.000</span> simulaciones</p>
+        <p class="league-head__sub">Temporada <b id="league-season">2025-26</b> · Jornada <b id="badge-jornada">—</b> · <span class="num">20.000</span> simulaciones</p>
       </div>
     </div>
 
@@ -339,7 +339,12 @@ function deriveSlots(standings) {
 
 const ESPN_STANDINGS  = `https://site.api.espn.com/apis/v2/sports/soccer/${LEAGUE.espnCode}/standings`;
 const ESPN_SCOREBOARD = `https://site.api.espn.com/apis/site/v2/sports/soccer/${LEAGUE.espnCode}/scoreboard`;
-const SIM_N  = 40000;
+// Resultado precalculado por el cron SEO (mismo Monte Carlo, cada 3h). El dashboard
+// lo LEE en lugar de simular en cada carga; solo re-simula en cliente cuando el
+// snapshot no cuadra con la tabla actual (partido en vivo o resultado aún no
+// recogido por el cron). SIM_N alineado a la escala del generador (20000).
+const SNAPSHOT_URL = '/data/laliga/latest.json';
+const SIM_N  = 20000;
 const P_HOME = 0.46;
 const P_DRAW = 0.25;
 
@@ -691,6 +696,44 @@ function setBadge(gp) {
   if (b) b.textContent = gp;
 }
 
+// ─── Precálculo (snapshot del cron SEO) ─────────────────────────────────────
+// Lee el resultado ya calculado. Devuelve null si no se puede (→ fallback a sim).
+async function fetchSnapshot() {
+  try {
+    const res = await fetch(SNAPSHOT_URL, { cache: 'no-store' });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
+// El snapshot solo es válido si su tabla coincide EXACTAMENTE con la actual
+// (mismos pts y PJ por equipo). Si hay partido en vivo o un resultado que el cron
+// aún no ha recogido, no coincidirá → se re-simula en cliente.
+function snapshotMatches(snap, standings) {
+  if (!snap || !Array.isArray(snap.teams)) return false;
+  if (snap.teams.length !== standings.length) return false;
+  const byId = new Map(snap.teams.map(t => [String(t.id), t]));
+  for (const s of standings) {
+    const t = byId.get(String(s.id));
+    if (!t || t.pts !== s.pts || t.gp !== s.gp) return false;
+  }
+  return true;
+}
+// Adapta el bloque `prob` del snapshot a las claves que espera render().
+function resultsFromSnapshot(snap) {
+  const out = {};
+  for (const t of snap.teams) {
+    const p = t.prob || {};
+    out[t.name] = {
+      first:  p.first      || 0,
+      champ:  p.champions  || 0,
+      europa: p.europa     || 0,
+      conf:   p.conference || 0,
+      relega: p.descenso   || 0,
+    };
+  }
+  return out;
+}
+
 // ─── Main update flow ──────────────────────────────────────────────────────
 let liveTimer  = null;
 let isUpdating = false;
@@ -702,7 +745,9 @@ async function triggerUpdate(silent = false) {
   try {
     if (!silent) renderSkeleton();
 
-    const [standings, { matches: liveMatches, logo }] = await Promise.all([fetchStandings(), fetchLiveScores()]);
+    const [standings, { matches: liveMatches, logo }, snapshot] = await Promise.all([
+      fetchStandings(), fetchLiveScores(), fetchSnapshot(),
+    ]);
     cachedNumTeams = standings.length;
 
     // Derivar slots de zona desde los datos de la API (se auto-actualiza cada temporada)
@@ -729,7 +774,11 @@ async function triggerUpdate(silent = false) {
     setBadge(Math.max(...standings.map(t => t.gp)));
     await new Promise(r => setTimeout(r, 30));
 
-    const results = simulate(adjusted, slots);
+    // Camino común: leer el precálculo. Solo se simula en cliente si hay partido
+    // en vivo o si el snapshot no cuadra con la tabla actual (o no está disponible).
+    const results = (liveMatches.length === 0 && snapshotMatches(snapshot, standings))
+      ? resultsFromSnapshot(snapshot)
+      : simulate(adjusted, slots);
     render(adjusted, results, slots);
 
     const now = new Date();

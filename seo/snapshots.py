@@ -27,6 +27,10 @@ def build_table_snapshot(league, rows, sim, sim_n, today, league_logo=None, seas
         prob = {}
         for b in bands:
             prob[b["key"]] = zone_prob(res["pos_hist"], b["lo"], b["hi"], sim_n)
+        # Prob. de título (acabar 1º): la pinta el dashboard de LaLiga (píldora
+        # "Título") y no coincide con ninguna banda (Champions es 1-4). Inofensiva
+        # para las ligas que no la muestran.
+        prob["first"] = zone_prob(res["pos_hist"], 1, 1, sim_n)
         if league.get("playoff_top"):
             prob["pSemi"] = res["pSemi"]
             prob["pFinal"] = res["pFinal"]
