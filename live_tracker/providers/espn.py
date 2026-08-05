@@ -19,7 +19,10 @@ from ..winprob import DEFAULT_MODEL
 from .base import MatchDataProvider
 
 _BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer"
-_HEADERS = {"User-Agent": "Mozilla/5.0 (PredictMotion live tracker)"}
+# NO poner un User-Agent tipo navegador ("Mozilla/..."): ESPN/Cloudflare lo
+# devuelve 403 desde IPs de datacenter. El UA por defecto de urllib sí pasa; por
+# eso _HEADERS va vacío (mismo motivo que en seo/espn.py).
+_HEADERS = {}
 
 # Stats que mostramos en la pestaña Datos (clave ESPN -> etiqueta ES), en orden.
 _STAT_DISPLAY = [
