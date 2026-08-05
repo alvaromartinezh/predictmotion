@@ -319,9 +319,9 @@ document.body.classList.add('theme-' + (params.get('league') === 'laliga' ? 'lal
 const ESPN_BASE   = `https://site.api.espn.com/apis/site/v2/sports/soccer/${LG.code}`;
 const ESPN_CORE   = `https://sports.core.api.espn.com/v2/sports/soccer/leagues/${LG.code}`;
 const ESPN_STAND  = `https://site.api.espn.com/apis/v2/sports/soccer/${LG.code}/standings`;
-// ESPN uses start year for European seasons: 2025-26 → season=2025
-const SEASON_PRIMARY   = 2025;
-const SEASON_FALLBACK  = 2026;
+// ESPN uses start year for European seasons: 2026-27 → season=2026
+const SEASON_PRIMARY   = 2026;
+const SEASON_FALLBACK  = 2025;
 const SIM_N       = 40000;
 const P_HOME      = LG.pHome;
 const P_DRAW      = LG.pDraw;

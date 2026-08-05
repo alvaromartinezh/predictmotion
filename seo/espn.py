@@ -102,6 +102,44 @@ def fetch_league_meta(espn_code):
     return out
 
 
+def fetch_scoreboard_range(espn_code, start_yyyymmdd, end_yyyymmdd):
+    """Eventos del scoreboard en un rango de fechas (YYYYMMDD-YYYYMMDD),
+    normalizados. Best-effort → [] si falla. Usado por el registro de predicciones.
+    Cada evento: {event_id, date, state, home{id,name}, away{id,name},
+    home_score, away_score} (scores None si aún no jugado)."""
+    try:
+        data = _get_json(f"{_BASE_SITE}/{espn_code}/scoreboard"
+                         f"?dates={start_yyyymmdd}-{end_yyyymmdd}&limit=500")
+    except Exception:
+        return []
+
+    def _score(c):
+        try:
+            return int(c.get("score"))
+        except (TypeError, ValueError):
+            return None
+
+    out = []
+    for ev in data.get("events", []):
+        comp = (ev.get("competitions") or [{}])[0]
+        cs = comp.get("competitors", [])
+        home = next((c for c in cs if c.get("homeAway") == "home"), None)
+        away = next((c for c in cs if c.get("homeAway") == "away"), None)
+        if not home or not away:
+            continue
+        state = (((ev.get("status") or {}).get("type")) or {}).get("state")
+        out.append({
+            "event_id":   str(ev.get("id")),
+            "date":       (ev.get("date") or "")[:10],
+            "state":      state,
+            "home":       {"id": str(home["team"]["id"]), "name": home["team"].get("displayName", "")},
+            "away":       {"id": str(away["team"]["id"]), "name": away["team"].get("displayName", "")},
+            "home_score": _score(home),
+            "away_score": _score(away),
+        })
+    return out
+
+
 def fetch_current_season_year(espn_code):
     """Año de inicio de la temporada actual (p. ej. 2026 para 2026-27), de ESPN.
 

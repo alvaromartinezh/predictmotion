@@ -112,25 +112,31 @@ def build_table_snapshot(league, rows, sim, sim_n, today, league_logo=None,
 
 
 # ── Persistencia ────────────────────────────────────────────────────────────
+# Los snapshots se PARTICIONAN por temporada: data/<slug>/<season>/snapshots/.
+# Así el histórico/evolución de una temporada no se mezcla con el de otra (2025-26
+# jornada 38 vs 2026-27 jornada 0). El `latest.json` de la temporada viva se
+# mantiene ADEMÁS en la raíz data/<slug>/latest.json — ese es el contrato que leen
+# los dashboards (/data/<slug>/latest.json), no se toca.
 
-def _league_dir(slug):
-    d = DATA_DIR / slug
+def _season_dir(slug, season):
+    d = DATA_DIR / slug / season
     (d / "snapshots").mkdir(parents=True, exist_ok=True)
     return d
 
 
 def save_snapshot(snap):
-    d = _league_dir(snap["league"])
+    d = _season_dir(snap["league"], snap["season"])
     path = d / "snapshots" / f"{snap['date']}.json"
     payload = json.dumps(snap, ensure_ascii=False, indent=1)
     path.write_text(payload, encoding="utf-8")
-    (d / "latest.json").write_text(payload, encoding="utf-8")
+    (d / "latest.json").write_text(payload, encoding="utf-8")          # latest de la temporada
+    (DATA_DIR / snap["league"] / "latest.json").write_text(payload, encoding="utf-8")  # latest vivo (dashboards)
     return path
 
 
-def load_all(slug):
-    """Todos los snapshots de una liga, ordenados por fecha ascendente."""
-    d = DATA_DIR / slug / "snapshots"
+def load_all(slug, season):
+    """Snapshots de UNA temporada de una liga, ordenados por fecha ascendente."""
+    d = DATA_DIR / slug / season / "snapshots"
     if not d.exists():
         return []
     snaps = []

@@ -24,7 +24,7 @@ for _stream in (sys.stdout, sys.stderr):
     except Exception:
         pass
 
-from . import espn, render_table, sitemap, links as L
+from . import espn, render_table, sitemap, links as L, predictions
 from .config import LEAGUES, ROOT, SIM_N_TABLE, league_by_slug
 from .render_hub import render_selector, render_competition
 from .snapshots import build_table_snapshot, save_snapshot, load_all
@@ -51,7 +51,9 @@ def _process_table(league, today, dry_run, ratings=None):
                                 ratings=ratings)
     if not dry_run:
         save_snapshot(snap)
-    snaps = load_all(league["slug"]) or [snap]
+    # Solo la temporada VIVA (partición por temporada): no mezclar histórico de
+    # 2025-26 con 2026-27.
+    snaps = load_all(league["slug"], snap["season"]) or [snap]
     if dry_run and snaps[-1]["date"] != today:
         snaps = snaps + [snap]
 
@@ -61,6 +63,10 @@ def _process_table(league, today, dry_run, ratings=None):
         sched = espn.fetch_remaining_schedule(league["espn_code"], t["id"])
         if sched:
             extras[t["id"]] = sched
+
+    # Registro append-only de predicciones 1X2 (para Brier / calibración).
+    if not dry_run:
+        predictions.record_matchday(league, snap)
 
     files, urls = render_table.render(league, snaps, extras=extras)
     _write_files(files, dry_run)
