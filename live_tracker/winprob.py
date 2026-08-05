@@ -200,10 +200,27 @@ class InPlayStatsModel(WinProbabilityModel):
                 else:
                     pa += p
         tot = ph + pd + pa or 1.0
-        return WinProbability(
-            round(ph / tot * 100, 1), round(pd / tot * 100, 1), round(pa / tot * 100, 1),
-            src, note,
-        )
+        h_pct, d_pct, a_pct = _round_to_100(ph / tot * 100, pd / tot * 100, pa / tot * 100)
+        return WinProbability(h_pct, d_pct, a_pct, src, note)
+
+
+def _round_to_100(h, d, a):
+    """Redondea a 1 decimal garantizando que los tres sumen exactamente 100.
+
+    Redondea los dos valores más pequeños y deriva el mayor como 100 − (los otros
+    dos): así el redondeo nunca deja al derivado en negativo (el mayor absorbe el
+    resto sobrante). Entrada en % (0..100)."""
+    vals = [("h", h), ("d", d), ("a", a)]
+    largest = max(vals, key=lambda kv: kv[1])[0]
+    out = {}
+    acc = 0.0
+    for k, v in vals:
+        if k == largest:
+            continue
+        out[k] = round(v, 1)
+        acc += out[k]
+    out[largest] = round(100.0 - acc, 1)
+    return out["h"], out["d"], out["a"]
 
 
 # Instancia por defecto que usa el backend. Cambiar aquí para sustituir el modelo.
