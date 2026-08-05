@@ -340,6 +340,9 @@ def _historico(league, snaps, series, logo):
 
 def render(league, snaps, extras=None):
     current = snaps[-1]
+    # Temporada VIVA del snapshot (no el valor fijo de config.py): todas las
+    # referencias league["season"] de abajo la heredan por esta copia.
+    league = {**league, "season": current["season"]}
     logo = current.get("league_logo")
     series = per_period_series(snaps, "jornada")
     files, urls = {}, []

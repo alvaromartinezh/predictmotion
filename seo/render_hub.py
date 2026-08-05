@@ -62,6 +62,7 @@ def render_selector(entries):
     cards = ""
     for e in entries:
         lg, snap = e["league"], e["snap"]
+        lg = {**lg, "season": snap["season"]}   # temporada viva del snapshot
         logo = snap.get("league_logo")
         logo_html = (f'<div class="comp-logo"><img src="{esc(logo)}" alt="{esc(lg["name"])}"></div>'
                      if logo else "")
@@ -97,6 +98,7 @@ def render_selector(entries):
 
 def render_competition(entry, entries):
     lg, snap = entry["league"], entry["snap"]
+    lg = {**lg, "season": snap["season"]}   # temporada viva del snapshot
     slug = lg["slug"]
     logo = snap.get("league_logo")
     key, label = _primary(snap)
