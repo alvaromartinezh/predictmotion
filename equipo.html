@@ -386,6 +386,11 @@ const LOCAL_LOGOS = {
   'real zaragoza':'logos/zaragoza.png','cultural leonesa':'logos/leonesa.png',
 };
 
+// Filiales sin escudo propio en ESPN → usar el del club matriz (por id ESPN).
+const LOGO_OVERRIDES = {
+  '131858': 'https://a.espncdn.com/i/teamlogos/soccer/500/85.png', // Celta Fortuna → Celta de Vigo
+};
+
 const INITIALS_COLORS = [
   '#e11d48','#7c3aed','#2563eb','#0891b2','#059669','#ca8a04','#ea580c',
   '#db2777','#4f46e5','#0284c7','#16a34a','#d97706','#dc2626','#9333ea',
@@ -524,7 +529,8 @@ async function fetchStandings() {
   const entries = data.children[0].standings.entries;
   return entries.map((e,i) => {
     const stat = name => (e.stats.find(s=>s.name===name)||{}).value||0;
-    const logo = (e.team.logos && e.team.logos[0]) ? e.team.logos[0].href : null;
+    const logo = ((e.team.logos && e.team.logos[0]) ? e.team.logos[0].href : null)
+                 || LOGO_OVERRIDES[e.team.id] || null;
     return { rank:i+1, id:e.team.id, name:e.team.displayName, logo,
       gp:stat('gamesPlayed'), pts:stat('points'),
       gf:stat('pointsFor'), gc:stat('pointsAgainst'),
