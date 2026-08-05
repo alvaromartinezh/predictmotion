@@ -10,7 +10,11 @@ import urllib.request
 
 _BASE_V2   = "https://site.api.espn.com/apis/v2/sports/soccer"
 _BASE_SITE = "https://site.api.espn.com/apis/site/v2/sports/soccer"
-_HEADERS   = {"User-Agent": "Mozilla/5.0 (PredictMotion SEO generator)"}
+# NO poner un User-Agent tipo navegador ("Mozilla/..."): el bot-management de
+# ESPN/Cloudflare lo devuelve 403 desde IPs de datacenter (rompió el cron SEO en
+# silencio). El UA por defecto de urllib (Python-urllib/x.y) SÍ pasa; por eso
+# _HEADERS va vacío (urllib añade su UA por defecto).
+_HEADERS   = {}
 _TIMEOUT   = 25
 
 
