@@ -105,8 +105,9 @@ def fetch_league_meta(espn_code):
 def fetch_scoreboard_range(espn_code, start_yyyymmdd, end_yyyymmdd):
     """Eventos del scoreboard en un rango de fechas (YYYYMMDD-YYYYMMDD),
     normalizados. Best-effort → [] si falla. Usado por el registro de predicciones.
-    Cada evento: {event_id, date, state, home{id,name}, away{id,name},
-    home_score, away_score} (scores None si aún no jugado)."""
+    Cada evento: {event_id, date, kickoff, state, home{id,name}, away{id,name},
+    home_score, away_score} (scores None si aún no jugado). `date` es solo la fecha
+    (YYYY-MM-DD); `kickoff` es el timestamp ISO completo (para umbrales de hora)."""
     try:
         data = _get_json(f"{_BASE_SITE}/{espn_code}/scoreboard"
                          f"?dates={start_yyyymmdd}-{end_yyyymmdd}&limit=500")
@@ -131,6 +132,7 @@ def fetch_scoreboard_range(espn_code, start_yyyymmdd, end_yyyymmdd):
         out.append({
             "event_id":   str(ev.get("id")),
             "date":       (ev.get("date") or "")[:10],
+            "kickoff":    ev.get("date") or "",
             "state":      state,
             "home":       {"id": str(home["team"]["id"]), "name": home["team"].get("displayName", "")},
             "away":       {"id": str(away["team"]["id"]), "name": away["team"].get("displayName", "")},
