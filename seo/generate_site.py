@@ -24,9 +24,8 @@ for _stream in (sys.stdout, sys.stderr):
     except Exception:
         pass
 
-from . import espn, render_table, sitemap, links as L, predictions, zone_predictions
+from . import espn, render_table, sitemap, predictions, zone_predictions
 from .config import LEAGUES, ROOT, SIM_N_TABLE, league_by_slug
-from .render_hub import render_selector, render_competition
 from .snapshots import build_table_snapshot, save_snapshot, load_all
 from . import sim_table
 
@@ -97,7 +96,6 @@ def main(argv=None):
           f" (temporada previa {current_year - 1 if current_year else '??'})")
 
     all_urls = []
-    hub_entries = []
     ok = 0
 
     for league in leagues:
@@ -108,18 +106,11 @@ def main(argv=None):
             print(f"  [SKIP] {league['slug']}: {e}", file=sys.stderr)
             continue
         all_urls.extend(urls)
-        hub_entries.append({"league": league, "kind": league["kind"], "snap": snap})
         ok += 1
         print(f"  ✓ {len(urls)} páginas")
 
-    if hub_entries:
-        sel_file, sel_html = render_selector(hub_entries)
-        _write_files({sel_file: sel_html}, args.dry_run)
-        all_urls.append(("/datos", today))
-        for e in hub_entries:
-            f, h = render_competition(e, hub_entries)
-            _write_files({f: h}, args.dry_run)
-            all_urls.append((L.datos_league_url(e["league"]["slug"]), today))
+    # El hub /datos y /datos/<slug> se retiró (ver CLAUDE.md): 301 → home en Caddy.
+    # Las páginas de contenido (/equipos, /jornadas, /historico) se siguen generando.
 
     # El sitemap-data.xml es global: solo se reescribe en ejecución completa
     # (con --league sería parcial y borraría las URLs de las demás ligas).

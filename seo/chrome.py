@@ -348,7 +348,7 @@ def page(title, description, canonical_path, body, *, heading, logo=None, badge=
 </div>
 <footer>
 <span>© 2025 PredictMotion · Todos los derechos reservados</span>
-<span><a href="/datos">Datos y probabilidades</a> · <a href="/privacy">Privacidad</a></span>
+<span><a href="/privacy">Privacidad</a></span>
 </footer>
 </body>
 </html>"""

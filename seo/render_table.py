@@ -86,7 +86,7 @@ def _team_page(league, snap, series, team, extras, logo):
         stats += stat_card(prob["pWin"], "Gana el play-off", "accent")
 
     body = (
-        crumbs([("Inicio", league["dashboard"]), ("Datos", L.datos_url()),
+        crumbs([("Inicio", league["dashboard"]),
                 (f'Equipos · {league["name"]}', L.teams_hub_url(slug)),
                 (team["name"], None)])
         + f'<div class="card">{hero}<div class="card-pad"><p class="lede">{lede}</p></div>'
@@ -182,7 +182,7 @@ def _teams_hub(league, snap, logo):
     lede = (f'Probabilidades por equipo {esc(en_league(league))} tras la jornada '
             f'{snap["jornada"]}, por simulación Monte Carlo sobre los partidos restantes.')
     body = (
-        crumbs([("Inicio", league["dashboard"]), ("Datos", L.datos_url()),
+        crumbs([("Inicio", league["dashboard"]),
                 (f'Equipos · {league["name"]}', None)])
         + f'<div class="card"><div class="card-pad"><p class="lede">{lede}</p></div>{table}</div>'
         + f'<div class="card"><div class="card-pad"><div class="section-label">Más</div><div class="chips">'
@@ -263,7 +263,7 @@ def _jornada_page(league, after, before, logo):
             f'<a href="{L.teams_hub_url(slug)}">Equipos</a>')
 
     body = (
-        crumbs([("Inicio", league["dashboard"]), ("Datos", L.datos_url()),
+        crumbs([("Inicio", league["dashboard"]),
                 (f'Jornadas · {league["name"]}', L.jornadas_hub_url(slug)),
                 (f'Jornada {j}', None)])
         + f'<div class="card"><div class="card-pad"><p class="lede">{intro}</p>{mv}</div>{table}</div>'
@@ -287,7 +287,7 @@ def _jornadas_hub(league, series, logo):
     if not chips:
         chips = '<span class="muted">Aún no hay jornadas registradas.</span>'
     body = (
-        crumbs([("Inicio", league["dashboard"]), ("Datos", L.datos_url()),
+        crumbs([("Inicio", league["dashboard"]),
                 (f'Jornadas · {league["name"]}', None)])
         + f'<div class="card"><div class="card-pad"><p class="lede">Histórico de jornadas '
           f'{esc(de_league(league))} {league["season"]}.</p>'
@@ -318,7 +318,7 @@ def _historico(league, snaps, series, logo):
              f'<th class="r">{esc(snaps[-1]["bands"][0]["label"])}</th><th></th></tr></thead>'
              f'<tbody>{rows}</tbody></table></div>')
     body = (
-        crumbs([("Inicio", league["dashboard"]), ("Datos", L.datos_url()),
+        crumbs([("Inicio", league["dashboard"]),
                 (f'Histórico · {league["name"]}', None)])
         + f'<div class="card"><div class="card-pad"><p class="lede">Snapshots de probabilidades '
           f'{esc(de_league(league))} registrados por fecha.</p></div>{table}</div>'

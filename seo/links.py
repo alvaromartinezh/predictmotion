@@ -13,8 +13,6 @@ def teams_hub_url(league):         return f"/equipos/{league}"
 def jornada_url(league, n):        return f"/jornadas/{league}/{n}"
 def jornadas_hub_url(league):      return f"/jornadas/{league}"
 def historico_url(league):         return f"/historico/{league}"
-def datos_url():                   return "/datos"
-def datos_league_url(league):      return f"/datos/{league}"
 
 
 # ── Rutas de fichero (relativas a la raíz del repo) ─────────────────────────
@@ -24,5 +22,3 @@ def teams_hub_file(league):        return f"equipos/{league}/index.html"
 def jornada_file(league, n):       return f"jornadas/{league}/{n}.html"
 def jornadas_hub_file(league):     return f"jornadas/{league}/index.html"
 def historico_file(league):        return f"historico/{league}/index.html"
-def datos_file():                  return "datos/index.html"
-def datos_league_file(league):     return f"datos/{league}.html"
