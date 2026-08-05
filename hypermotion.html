@@ -574,6 +574,11 @@ function applyLiveScores(standings, liveMatches) {
   return adjusted;
 }
 
+// Filiales sin escudo propio en ESPN → usar el del club matriz (por id ESPN).
+const LOGO_OVERRIDES = {
+  '131858': 'https://a.espncdn.com/i/teamlogos/soccer/500/85.png', // Celta Fortuna → Celta de Vigo
+};
+
 async function fetchStandings() {
   const res  = await fetch(ESPN_STANDINGS, { cache: 'no-store' });
   if (!res.ok) throw new Error(`ESPN API ${res.status}`);
@@ -581,7 +586,8 @@ async function fetchStandings() {
   const entries = data.children[0].standings.entries;
   return entries.map((e, i) => {
     const stat = name => (e.stats.find(s => s.name === name) || {}).value || 0;
-    const logo = (e.team.logos && e.team.logos[0]) ? e.team.logos[0].href : null;
+    const logo = ((e.team.logos && e.team.logos[0]) ? e.team.logos[0].href : null)
+                 || LOGO_OVERRIDES[e.team.id] || null;
     return {
       rank:   i + 1,
       id:     e.team.id,
