@@ -31,9 +31,26 @@ def _stat(entry, name):
     return 0
 
 
-def fetch_table(espn_code):
-    """Clasificación de una liga regular. Port de fetchStandings()."""
-    data = _get_json(f"{_BASE_V2}/{espn_code}/standings")
+def _note_to_zone(desc):
+    """Nota de ESPN (note.description) → zona interna. Port de noteToZone() del JS."""
+    d = (desc or "").lower()
+    if "champion" in d:   return "promo"
+    if "europa" in d:     return "europa"
+    if "conference" in d: return "conf"
+    if "relegat" in d:    return "relega"
+    return "none"
+
+
+def fetch_table(espn_code, season=None):
+    """Clasificación de una liga regular. Port de fetchStandings().
+
+    Con `season` (año de inicio, p. ej. 2025 → 2025-26) devuelve la tabla FINAL de
+    esa temporada pasada (mismo endpoint + ?season=), usado por el prior de fuerza.
+    """
+    url = f"{_BASE_V2}/{espn_code}/standings"
+    if season is not None:
+        url += f"?season={season}"
+    data = _get_json(url)
     entries = data["children"][0]["standings"]["entries"]
     rows = []
     for i, e in enumerate(entries):
@@ -45,6 +62,7 @@ def fetch_table(espn_code):
             "name":   team["displayName"],
             "abbr":   team.get("abbreviation", ""),
             "logo":   logos[0]["href"] if logos else None,
+            "zone":   _note_to_zone((e.get("note") or {}).get("description")),
             "gp":     int(_stat(e, "gamesPlayed")),
             "pts":    int(_stat(e, "points")),
             "gf":     int(_stat(e, "pointsFor")),
@@ -82,6 +100,59 @@ def fetch_league_meta(espn_code):
     if m:
         out["season"] = m.group(0)
     return out
+
+
+def fetch_current_season_year(espn_code):
+    """Año de inicio de la temporada actual (p. ej. 2026 para 2026-27), de ESPN.
+
+    Best-effort: None si falla. Se usa para pedir la temporada previa (year-1).
+    """
+    try:
+        data = _get_json(f"{_BASE_SITE}/{espn_code}/scoreboard")
+    except Exception:
+        return None
+    year = ((data.get("leagues") or [{}])[0].get("season") or {}).get("year")
+    try:
+        return int(year)
+    except (TypeError, ValueError):
+        return None
+
+
+def build_strength_ratings(current_year):
+    """Rating de fuerza por equipo desde la tabla FINAL de la temporada anterior.
+
+    Cruza AMBAS divisiones (STRENGTH_DIVISIONS): z-score de puntos dentro de cada
+    división + un offset de nivel por división (STRENGTH_LEVEL_GAP), de modo que la
+    cabeza de Segunda cae en el tercio bajo de Primera. Devuelve {team_id: R}.
+    Los ids de ESPN son estables entre temporadas y divisiones, así que un
+    ascendido/descendido conserva su rating aunque cambie de división.
+
+    Best-effort y robusto: si el fetch de la temporada previa falla (p. ej. 403),
+    devuelve {} → el Monte Carlo corre en modo uniforme (comportamiento actual).
+    """
+    from .config import STRENGTH_DIVISIONS, STRENGTH_LEVEL_GAP
+
+    if not current_year:
+        return {}
+    prev = current_year - 1
+    ratings = {}
+    for level, code in enumerate(STRENGTH_DIVISIONS):
+        try:
+            rows = fetch_table(code, season=prev)
+        except Exception:
+            continue  # una división falla → se salta; las demás siguen
+        pts = [r["pts"] for r in rows]
+        n = len(pts)
+        if n < 2:
+            continue
+        mean = sum(pts) / n
+        var = sum((p - mean) ** 2 for p in pts) / n
+        std = var ** 0.5
+        offset = -level * STRENGTH_LEVEL_GAP
+        for r in rows:
+            z = (r["pts"] - mean) / std if std > 0 else 0.0
+            ratings[r["id"]] = z + offset
+    return ratings
 
 
 def fetch_remaining_schedule(espn_code, team_id):

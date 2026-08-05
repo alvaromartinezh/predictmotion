@@ -41,13 +41,14 @@ def _write_files(files, dry_run):
         path.write_text(html, encoding="utf-8")
 
 
-def _process_table(league, today, dry_run):
+def _process_table(league, today, dry_run, ratings=None):
     rows = espn.fetch_table(league["espn_code"])
     meta = espn.fetch_league_meta(league["espn_code"])
     sim = sim_table.simulate(rows, league["p_home"], league["p_draw"],
-                             playoff_top=league.get("playoff_top"))
+                             playoff_top=league.get("playoff_top"), ratings=ratings)
     snap = build_table_snapshot(league, rows, sim, SIM_N_TABLE, today,
-                                league_logo=meta["logo"], season=meta["season"])
+                                league_logo=meta["logo"], season=meta["season"],
+                                ratings=ratings)
     if not dry_run:
         save_snapshot(snap)
     snaps = load_all(league["slug"]) or [snap]
@@ -78,6 +79,14 @@ def main(argv=None):
         print(f"Liga desconocida: {args.league}", file=sys.stderr)
         return 1
 
+    # Prior de fuerza: se construye UNA vez (la temporada previa de ambas
+    # divisiones) y se comparte entre ligas. Best-effort: si falla, ratings={} y
+    # el Monte Carlo corre en modo uniforme de siempre.
+    current_year = espn.fetch_current_season_year(LEAGUES[0]["espn_code"])
+    ratings = espn.build_strength_ratings(current_year)
+    print(f"Prior de fuerza: {len(ratings)} equipos con rating"
+          f" (temporada previa {current_year - 1 if current_year else '??'})")
+
     all_urls = []
     hub_entries = []
     ok = 0
@@ -85,7 +94,7 @@ def main(argv=None):
     for league in leagues:
         print(f"\n→ {league['name']} ({league['espn_code']})")
         try:
-            snap, urls = _process_table(league, today, args.dry_run)
+            snap, urls = _process_table(league, today, args.dry_run, ratings=ratings)
         except Exception as e:
             print(f"  [SKIP] {league['slug']}: {e}", file=sys.stderr)
             continue

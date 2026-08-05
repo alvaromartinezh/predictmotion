@@ -8,18 +8,55 @@ orgánica jornada a jornada; no se inventa nada del pasado.
 import json
 from datetime import datetime, timezone
 
-from .config import DATA_DIR
-from .sim_table import zone_prob
+from .config import DATA_DIR, STRENGTH_SCALE, STRENGTH_FADE_FRACTION
+from .sim_table import zone_prob, resolve_strengths
 from .textutil import slugify
 
 
 # ── Construcción ────────────────────────────────────────────────────────────
 
-def build_table_snapshot(league, rows, sim, sim_n, today, league_logo=None, season=None):
+def derive_bands_from_notes(bands, rows):
+    """Deriva lo/hi de cada banda desde las notas de zona de ESPN, replicando
+    deriveSlots() del dashboard: caminata CONTIGUA desde la cabeza para las zonas
+    de arriba (una plaza no contigua —p. ej. la de Copa del Rey que ESPN marca a
+    media tabla— no ensancha el rango) y desde el fondo para el descenso. Cada
+    banda se empareja por su `zone`. Si una zona no tiene notas (inicio de
+    temporada), la banda conserva su lo/hi de fallback. Muta `bands` y lo devuelve.
+    """
+    by_rank = sorted(rows, key=lambda r: r["rank"])
+    n = len(by_rank)
+    zone_of = [r.get("zone", "none") for r in by_rank]   # índice 0 = rank 1
+    cursor = 0
+    for b in bands:                                        # zonas de arriba, en orden
+        if not b.get("zone") or b["zone"] == "relega":
+            continue
+        start = cursor
+        while cursor < n and zone_of[cursor] == b["zone"]:
+            cursor += 1
+        if cursor > start:                                # hubo notas para esta zona
+            b["lo"], b["hi"] = start + 1, cursor
+    releg = next((b for b in bands if b.get("zone") == "relega"), None)
+    if releg is not None:
+        cnt, j = 0, n - 1
+        while j >= 0 and zone_of[j] == "relega":
+            cnt += 1; j -= 1
+        if cnt > 0:
+            releg["lo"], releg["hi"] = n - cnt + 1, n
+    return bands
+
+
+def build_table_snapshot(league, rows, sim, sim_n, today, league_logo=None,
+                         season=None, ratings=None):
     n = len(rows)
     bands = league["bands"](n)
+    if league.get("bands_from_notes"):
+        bands = derive_bands_from_notes(bands, rows)
     jornada = max(r["gp"] for r in rows)
     total_md = 2 * (n - 1)
+
+    # Fuerza por equipo (misma resolución que la sim) para que el fallback JS de
+    # los dashboards aplique el mismo prior sin re-derivarlo. None → no se guarda.
+    strengths = resolve_strengths(rows, ratings)
 
     teams = []
     for r in rows:
@@ -35,7 +72,7 @@ def build_table_snapshot(league, rows, sim, sim_n, today, league_logo=None, seas
             prob["pSemi"] = res["pSemi"]
             prob["pFinal"] = res["pFinal"]
             prob["pWin"] = res["pWin"]
-        teams.append({
+        team = {
             "slug":   slugify(r["name"]),
             "rank":   r["rank"],
             "id":     r["id"],
@@ -45,9 +82,12 @@ def build_table_snapshot(league, rows, sim, sim_n, today, league_logo=None, seas
             "gf":     r["gf"], "gc": r["gc"],
             "wins":   r["wins"], "draws": r["draws"], "losses": r["losses"],
             "prob":   prob,
-        })
+        }
+        if strengths is not None:
+            team["strength"] = round(strengths[r["id"]], 4)
+        teams.append(team)
 
-    return {
+    snap = {
         "league":   league["slug"],
         "kind":     "table",
         "name":     league["name"],
@@ -63,6 +103,12 @@ def build_table_snapshot(league, rows, sim, sim_n, today, league_logo=None, seas
         "has_playoff": bool(league.get("playoff_top")),
         "teams":    teams,
     }
+    # Parámetros del prior de fuerza para que el fallback JS aplique la MISMA
+    # fórmula (solo si hay fuerzas; si no, el fallback usa el modelo uniforme).
+    if strengths is not None:
+        snap["strength_scale"] = STRENGTH_SCALE
+        snap["strength_fade_fraction"] = STRENGTH_FADE_FRACTION
+    return snap
 
 
 # ── Persistencia ────────────────────────────────────────────────────────────

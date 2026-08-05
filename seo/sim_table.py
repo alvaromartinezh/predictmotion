@@ -10,7 +10,9 @@ El modelo de partido, el desempate (pts → DG → GF) y la simulación del play
 a doble partido son idénticos al navegador.
 """
 
-from .config import SIM_N_TABLE
+import math
+
+from .config import SIM_N_TABLE, STRENGTH_SCALE, STRENGTH_FADE_FRACTION
 from .prng import make_rng, standings_seed
 
 
@@ -45,8 +47,57 @@ def _shuffle(rng, arr):
     return arr
 
 
-def simulate(rows, p_home, p_draw, playoff_top=None, sim_n=SIM_N_TABLE):
+def resolve_strengths(rows, ratings):
+    """{team_id: R} para los equipos de esta tabla, con default de FONDO DE TABLA
+    (mínimo rating conocido) para los que no tienen histórico (decisión 1).
+    Devuelve None si no hay ratings o ninguno de estos equipos aparece en ellos.
+    Usado por la sim y por el snapshot para que ambos vean la misma fuerza."""
+    if not ratings:
+        return None
+    known = [ratings[r["id"]] for r in rows if r["id"] in ratings]
+    if not known:
+        return None
+    default = min(known)
+    return {r["id"]: ratings.get(r["id"], default) for r in rows}
+
+
+def fade_weight(jornada, total_md):
+    """Peso del prior: 1 en jornada 0 → 0 a media temporada (STRENGTH_FADE_FRACTION)."""
+    span = STRENGTH_FADE_FRACTION * total_md
+    if span <= 0:
+        return 0.0
+    return max(0.0, min(1.0, 1.0 - jornada / span))
+
+
+def _strength_context(rows, ratings, p_home, p_draw, total_md):
+    """Prepara el prior de fuerza para la sim. Devuelve None si no aplica (sin
+    ratings o a media temporada ya desvanecido) → la sim usa el modelo uniforme
+    de siempre, bit-idéntico al histórico. En otro caso devuelve un dict con:
+      w        : peso del prior (1 en jornada 0 → 0 a media temporada)
+      logit_s0 : logit de la cuota de victoria local en el reparto medio
+      m        : masa no-empate (p_home + p_away), constante
+      strength : {name: rating} para los equipos de esta tabla (default fondo)
+    """
+    by_id = resolve_strengths(rows, ratings)
+    if by_id is None:
+        return None
+    w = fade_weight(max(r["gp"] for r in rows), total_md)
+    if w <= 0.0:
+        return None
+    strength = {r["name"]: by_id[r["id"]] for r in rows}
+    p_away = 1.0 - p_home - p_draw
+    m = p_home + p_away
+    s0 = p_home / m if m > 0 else 0.5
+    s0 = min(1 - 1e-9, max(1e-9, s0))
+    return {"w": w, "logit_s0": math.log(s0 / (1 - s0)), "m": m, "strength": strength}
+
+
+def simulate(rows, p_home, p_draw, playoff_top=None, sim_n=SIM_N_TABLE, ratings=None):
     """Devuelve dict slug->resultados. rows: tabla de fetch_table().
+
+    ratings: {team_id: R} opcional (prior de fuerza de la temporada anterior). Se
+    aplica en pretemporada y se desvanece a media temporada; None/{} o temporada
+    avanzada → modelo uniforme de siempre.
 
     Resultado por equipo:
       pos_hist: lista (len = numTeams) con conteo de veces en cada posición.
@@ -72,6 +123,8 @@ def simulate(rows, p_home, p_draw, playoff_top=None, sim_n=SIM_N_TABLE):
             pos_hist[t["name"]][idx] = sim_n
         return _finalize(names, pos_hist, psf, pf, pw, sim_n, finished=True)
 
+    sc = _strength_context(rows, ratings, p_home, p_draw, total_md)
+
     rng = make_rng(standings_seed(rows))
 
     for _ in range(sim_n):
@@ -87,11 +140,19 @@ def simulate(rows, p_home, p_draw, playoff_top=None, sim_n=SIM_N_TABLE):
                 h, a = order[k], order[k + 1]
                 if team_gp[h] >= md_num or team_gp[a] >= md_num:
                     continue
+                # Prior de fuerza: sesga la cuota local por el rating (con
+                # desvanecimiento). Sin prior aplicable → p_home/p_draw de siempre.
+                if sc is None:
+                    ph, pd_ = p_home, p_draw
+                else:
+                    delta = STRENGTH_SCALE * (sc["strength"][h] - sc["strength"][a])
+                    s = 1.0 / (1.0 + math.exp(-(sc["logit_s0"] + sc["w"] * delta)))
+                    ph, pd_ = sc["m"] * s, p_draw
                 r = rng()
-                if r < p_home:
+                if r < ph:
                     hp, ap = 3, 0
                     hg = int(rng() * 2) + 1 + int(rng() * 2); ag = int(rng() * 2)
-                elif r < p_home + p_draw:
+                elif r < ph + pd_:
                     hp = ap = 1
                     hg = ag = int(rng() * 2)
                 else:
