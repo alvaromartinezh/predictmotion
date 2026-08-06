@@ -96,20 +96,20 @@ def _mark_sent(key):
 
 
 def _send_smtp(subject, body):
-    host = os.environ.get("ZOHO_SMTP_HOST", "smtp.zoho.eu")
-    port = int(os.environ.get("ZOHO_SMTP_PORT", "465"))
-    # AUTENTICACIÓN: la cuenta REAL de Zoho (el único usuario de la organización)
-    # + su app password. Un ALIAS (p. ej. contact@) NO es una cuenta y da 535 si
-    # se usa para el login.
-    user = os.environ.get("ZOHO_SMTP_USER")
-    pw = os.environ.get("ZOHO_SMTP_PASS")
-    # REMITENTE VISIBLE (header From): puede ser un alias de esa cuenta. El login
-    # NO lo usa. El alias debe estar verificado en Zoho como dirección de envío
-    # ("Send Mail As"). Si no se define, se envía desde la propia cuenta.
+    host = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+    port = int(os.environ.get("SMTP_PORT", "465"))
+    # AUTENTICACIÓN: la cuenta SMTP + su app password. Con Gmail, el usuario es la
+    # dirección @gmail.com y la password es una "Contraseña de aplicación" (requiere
+    # verificación en dos pasos), no la del login normal.
+    user = os.environ.get("SMTP_USER")
+    pw = os.environ.get("SMTP_PASS")
+    # REMITENTE VISIBLE (header From). Con Gmail debe COINCIDIR con el usuario
+    # autenticado (o un alias verificado como "Enviar como"); si no, Gmail lo
+    # reescribe. Si no se define, se envía desde la propia cuenta.
     sender = os.environ.get("ALERT_FROM") or user
     to = os.environ.get("ALERT_TO")
     if not (user and pw and to):
-        print("[notify] faltan credenciales SMTP (ZOHO_SMTP_USER/PASS/ALERT_TO);"
+        print("[notify] faltan credenciales SMTP (SMTP_USER/SMTP_PASS/ALERT_TO);"
               " no se envía el email", file=sys.stderr)
         return False
 
@@ -125,7 +125,7 @@ def _send_smtp(subject, body):
 
     ctx = ssl.create_default_context()
     # Puerto 465 → SSL implícito (SMTP_SSL). Puerto 587 → STARTTLS. Cambiar de uno
-    # a otro es solo ZOHO_SMTP_PORT en el .env; si 465 diera 535/handshake, probar
+    # a otro es solo SMTP_PORT en el .env; si 465 diera 535/handshake, probar
     # 587. El sobre (MAIL FROM) va con `sender`, no con `user`.
     if port == 587:
         with smtplib.SMTP(host, port, timeout=30) as srv:
