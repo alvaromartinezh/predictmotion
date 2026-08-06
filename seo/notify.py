@@ -22,6 +22,7 @@ import ssl
 import sys
 from datetime import datetime, timezone
 from email.message import EmailMessage
+from email.utils import formatdate, make_msgid
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -116,6 +117,10 @@ def _send_smtp(subject, body):
     msg["Subject"] = subject
     msg["From"] = sender
     msg["To"] = to
+    # Date y Message-ID: sin ellas Gmail marca el mensaje como sospechoso (o lo
+    # descarta). El Message-ID se ancla al dominio del remitente para no desalinear.
+    msg["Date"] = formatdate(localtime=True)
+    msg["Message-ID"] = make_msgid(domain=sender.split("@")[-1] if "@" in sender else None)
     msg.set_content(body)
 
     ctx = ssl.create_default_context()
