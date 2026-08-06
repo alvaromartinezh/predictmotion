@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Presentación interna: NO indexar, NO seguir. Fuera de sitemap y robots. -->
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/png" href="/media/twitter_profile.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="/styles.css?v=20260620a" />
+  <link rel="stylesheet" href="/assets/deck.css?v=20260620a" />
+  <script src="/theme.js?v=20260620a"></script>
+  <title>PredictMotion · Arquitectura del sistema</title>
+</head>
+<body class="theme-hypermotion deck-body">
+
+<div class="deck" id="deck">
+
+  <!-- ══════════════ INTRO ══════════════ -->
+
+  <section class="slide slide--cover" data-title="Portada">
+    <!-- src: CLAUDE.md » Principios de producto, Stack, Arquitectura del proyecto -->
+    <div class="slide-inner center">
+      <p class="kicker">Arquitectura del sistema</p>
+      <h1 class="cover-title">Predict<span class="acc">Motion</span></h1>
+      <p class="cover-sub">Probabilidades de clasificación en vivo, multi-liga.</p>
+      <ul class="thesis">
+        <li>Vanilla HTML/CSS/JS — sin frameworks, sin build, sin dependencias.</li>
+        <li>Datos 100% de la API pública de ESPN, en tiempo real.</li>
+        <li>Se autoactualiza y sobrevive meses sin mantenimiento manual.</li>
+      </ul>
+      <p class="cover-hint">Usa ← → · espacio · <kbd>o</kbd> para índice</p>
+    </div>
+  </section>
+
+  <section class="slide" data-title="Principios de diseño">
+    <!-- src: CLAUDE.md » Principios de producto, Sin hardcode de temporada -->
+    <div class="slide-inner">
+      <p class="kicker">Fundamentos · el porqué de todo lo demás</p>
+      <h2>Dos principios de diseño</h2>
+      <div class="cols-2">
+        <div class="card">
+          <h3>1 · Terminado se elimina</h3>
+          <p>Cuando una competición acaba, se <strong>retira por completo</strong> —
+          rutas, código, datos, SEO, bots— en vez de congelarse. El sistema cubre
+          solo lo que está vivo hoy: <strong>Hypermotion</strong> y <strong>LaLiga</strong>.</p>
+        </div>
+        <div class="card">
+          <h3>2 · Cero mantenimiento manual</h3>
+          <p>Toda funcionalidad corre dentro del <strong>cron/pipeline</strong>
+          (auto-deploy, generador, servicios). Nada depende de que alguien lo lance
+          a mano; si lo necesitara, no está terminado.</p>
+        </div>
+      </div>
+      <p class="note">Corolario: <strong>nada hardcodeado</strong> salvo la identidad de
+      marca. Equipos, tabla, temporada, logos y zonas salen en vivo de ESPN.</p>
+    </div>
+  </section>
+
+  <!-- ══════════════ CAPA 1 · INFRAESTRUCTURA ══════════════ -->
+
+  <section class="slide" data-title="Topología">
+    <!-- src: CLAUDE.md » Infraestructura, Caddyfile, live_tracker (reverse_proxy /api) -->
+    <div class="slide-inner">
+      <p class="kicker">Capa 1 · Infraestructura</p>
+      <h2>Topología de servicio</h2>
+      <div class="flow">
+        <div class="node node--user">Navegador</div>
+        <div class="arrow">→</div>
+        <div class="node node--edge">Cloudflare<small>DNS · CDN · caché</small></div>
+        <div class="arrow">→</div>
+        <div class="node node--srv">Caddy<small>Oracle Cloud · ARM</small></div>
+        <div class="arrow">→</div>
+        <div class="node-group">
+          <div class="node node--file">Ficheros estáticos</div>
+          <div class="node node--api">reverse_proxy <code>/api</code><small>live tracker</small></div>
+        </div>
+      </div>
+      <ul class="bullets">
+        <li>Un solo host ARM en <strong>Oracle Cloud</strong> sirviendo con <strong>Caddy</strong>.</li>
+        <li><strong>Cloudflare</strong> delante: DNS, CDN y caché de borde.</li>
+        <li>El backend de partido en vivo se expone bajo <code>/api/*</code>; el resto son estáticos.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="slide" data-title="Deploy y entrega">
+    <!-- src: CLAUDE.md » Deploy, Caché de assets, URLs limpias -->
+    <div class="slide-inner">
+      <p class="kicker">Capa 1 · Infraestructura</p>
+      <h2>Deploy y entrega</h2>
+      <div class="cols-2">
+        <div>
+          <h3>Deploy sin build</h3>
+          <ul class="bullets">
+            <li><code>git push</code> a <code>main</code> → el servidor hace
+            <code>git pull</code> por cron cada 2 min.</li>
+            <li>Sin bundler ni paso de compilación: los ficheros se sirven tal cual.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>URLs y caché</h3>
+          <ul class="bullets">
+            <li>URLs limpias (<code>/laliga</code>); <code>.html</code> hace 301.</li>
+            <li>HTML servido <code>no-cache</code> (revalida siempre).</li>
+            <li>Assets con <code>?v=</code> para cache-busting sobre el CDN.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════ CAPA 2 · PIPELINE DE DATOS ══════════════ -->
+
+  <section class="slide" data-title="Fuente ESPN">
+    <!-- src: CLAUDE.md » API de ESPN, Principio NADA hardcodeado, Sin hardcode de temporada -->
+    <div class="slide-inner">
+      <p class="kicker">Capa 2 · Pipeline de datos</p>
+      <h2>Fuente única: ESPN en vivo</h2>
+      <ul class="bullets">
+        <li>Toda la materia prima viene de la API pública de ESPN:
+        <span class="mono">standings · scoreboard · summary · roster · schedule</span>.</li>
+        <li><strong>Nada hardcodeado</strong>: equipos, clasificación, temporada, logos y
+        cortes de zona se leen en vivo y se actualizan solos.</li>
+        <li>Ligas cubiertas: <strong>Hypermotion</strong> (<code>esp.2</code>) y
+        <strong>LaLiga</strong> (<code>esp.1</code>).</li>
+        <li>Los valores fijos en el HTML son solo <em>fallback</em> por si la API falla.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="slide" data-title="Snapshots">
+    <!-- src: CLAUDE.md » Generador SEO, Snapshots particionados, Precálculo servido -->
+    <div class="slide-inner">
+      <p class="kicker">Capa 2 · Pipeline de datos</p>
+      <h2>Snapshots y persistencia</h2>
+      <div class="flow flow--tight">
+        <div class="node">ESPN</div><div class="arrow">→</div>
+        <div class="node node--srv">Cron SEO · cada 3h<small>Monte Carlo en Python</small></div>
+        <div class="arrow">→</div>
+        <div class="node node--file">Snapshots<small>por temporada</small></div>
+        <div class="arrow">→</div>
+        <div class="node node--api"><code>latest.json</code><small>contrato de lectura</small></div>
+      </div>
+      <ul class="bullets">
+        <li>El generador porta el Monte Carlo del navegador a Python y lo corre en el servidor.</li>
+        <li>Persiste en <code>data/&lt;liga&gt;/&lt;temporada&gt;/</code> —
+        <strong>particionado por temporada</strong>, sin mezclar históricos.</li>
+        <li><code>latest.json</code> es el contrato que leen los dashboards.</li>
+        <li>De paso genera <strong>páginas SEO estáticas indexables</strong> (equipos, jornadas, histórico).</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ══════════════ CAPA 3 · MOTOR DE PREDICCIÓN ══════════════ -->
+
+  <section class="slide" data-title="Monte Carlo">
+    <!-- src: CLAUDE.md » Simulación Monte Carlo, Seed determinista -->
+    <div class="slide-inner">
+      <p class="kicker">Capa 3 · Motor de predicción</p>
+      <h2>Simulación Monte Carlo</h2>
+      <ul class="bullets">
+        <li>Cada partido restante se resuelve con un modelo 1X2:
+        <span class="mono">P_local / P_empate / P_visitante</span> por liga.</li>
+        <li>Se juega la temporada entera <strong>miles de veces</strong> (<code>SIM_N</code> iteraciones)
+        y se cuenta con qué frecuencia cada equipo cae en cada zona.</li>
+        <li>PRNG propio <code>mulberry32</code> con <strong>seed determinista</strong>: el seed se
+        deriva del hash de la tabla, así <strong>todos los usuarios ven los mismos %</strong>.</li>
+        <li>Ranking por <span class="mono">puntos → dif. de goles → goles a favor</span>, con las zonas de cada liga.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="slide" data-title="Prior de fuerza">
+    <!-- src: CLAUDE.md » Prior de fuerza pretemporada (Elo sin estado) -->
+    <div class="slide-inner">
+      <p class="kicker">Capa 3 · Motor de predicción</p>
+      <h2>Prior de fuerza por equipo</h2>
+      <p class="lead">Un modelo con cuotas constantes daría a todos los equipos la misma
+      probabilidad a inicio de temporada (0 partidos jugados). El prior de fuerza los diferencia.</p>
+      <ul class="bullets">
+        <li>Rating tipo <strong>Elo sin estado</strong>, derivado de la <strong>tabla final de la
+        temporada anterior</strong> (traída en vivo de ESPN; nada que persistir).</li>
+        <li>Cruce de divisiones por z-score de puntos + un <em>gap</em> de nivel entre Primera y Segunda;
+        el rating va por equipo, así un ascendido entra débil y un descendido, fuerte.</li>
+        <li>Se aplica como <strong>logit-shift</strong> a la cuota de victoria local
+        (<span class="mono">∝ R_local − R_visitante</span>).</li>
+        <li>Se <strong>desvanece</strong> sobre la primera media temporada: a mitad de curso el modelo
+        vuelve a estar 100% dirigido por resultados reales.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="slide slide--demo" data-title="Demo Monte Carlo">
+    <!-- src: CLAUDE.md » Simulación Monte Carlo, Prior de fuerza (demostración en vivo) -->
+    <div class="slide-inner">
+      <p class="kicker">Capa 3 · Demo en vivo</p>
+      <h2>Monte Carlo, en directo</h2>
+      <p class="lead">Liga de juguete (6 equipos). Simula los partidos que faltan y mira cómo la
+      probabilidad de <strong>ascenso directo (Top-2)</strong> se estabiliza al acumular iteraciones.</p>
+      <div id="mc-demo" class="mc"></div>
+    </div>
+  </section>
+
+  <!-- ══════════════ CAPA 4 · FRONTEND ══════════════ -->
+
+  <section class="slide" data-title="Dashboards">
+    <!-- src: CLAUDE.md » Precálculo servido, Partidos en vivo -->
+    <div class="slide-inner">
+      <p class="kicker">Capa 4 · Frontend</p>
+      <h2>Los dashboards LEEN, no simulan</h2>
+      <ul class="bullets">
+        <li>En cada carga hacen <code>fetch</code> del <code>latest.json</code> precalculado y lo pintan.
+        No re-ejecutan el Monte Carlo por defecto.</li>
+        <li>El <strong>fallback en cliente</strong> re-simula solo cuando el snapshot <strong>no cuadra
+        con la tabla viva</strong> (compara pts+PJ por equipo).</li>
+        <li>Eso pasa con un <strong>partido en vivo</strong> (pts provisionales) o un resultado que el
+        cron aún no ha recogido (ventana ≤3h).</li>
+        <li>Los marcadores en directo ajustan pts/PJ provisionales y refrescan cada 60s.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="slide" data-title="Diseño y piezas">
+    <!-- src: CLAUDE.md » Stack (diseño), Navegación, Anuncios, Seguimiento de partido en vivo -->
+    <div class="slide-inner">
+      <p class="kicker">Capa 4 · Frontend</p>
+      <h2>Sistema de diseño y piezas</h2>
+      <div class="cols-2">
+        <div>
+          <h3>Diseño</h3>
+          <ul class="bullets">
+            <li>Tokens en <code>styles.css</code> + tema claro/oscuro.</li>
+            <li>Acento por competición vía clase en <code>&lt;body&gt;</code>.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Componentes compartidos</h3>
+          <ul class="bullets">
+            <li><code>PMTabs</code>, <code>PMFixtures</code> (próximos partidos por jornada).</li>
+            <li><code>PMAds</code>: cada banner en su iframe aislado.</li>
+            <li><code>/partido</code>: vista en vivo con backend proxy propio y probabilidad estimada.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════ CAPA 5 · CALIBRACIÓN Y MONITORIZACIÓN ══════════════ -->
+
+  <section class="slide" data-title="Registro de predicciones">
+    <!-- src: CLAUDE.md » Registro de predicciones (Brier/calibración), Prior de fuerza (params heurísticos) -->
+    <div class="slide-inner">
+      <p class="kicker">Capa 5 · Calibración</p>
+      <h2>Registro de predicciones</h2>
+      <ul class="bullets">
+        <li>Por temporada, el cron escribe un registro <strong>append-only</strong>:
+        <code>predictions.jsonl</code> (1X2 del modelo antes del saque) y
+        <code>results.jsonl</code> (resultado real), unidos por <code>event_id</code>.</li>
+        <li>También un registro de <strong>probabilidades de zona</strong> por jornada.</li>
+        <li>Objetivo: medir la <strong>calibración</strong> (Brier / reliability) y ajustar con datos los
+        parámetros hoy <strong>heurísticos</strong> del prior de fuerza (escala, gap, desvanecimiento).</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="slide" data-title="Monitorización">
+    <!-- src: CLAUDE.md » Alertas por email (Gmail SMTP), Incidentes y monitorización -->
+    <div class="slide-inner">
+      <p class="kicker">Capa 5 · Monitorización</p>
+      <h2>Alertas de fallo silencioso</h2>
+      <div class="cols-2">
+        <div class="card">
+          <h3>Cron de datos</h3>
+          <p>Si <code>generate_site</code> falla (0 ligas o excepción), manda email en el acto.
+          Sin él, el histórico se congelaría sin que nadie se entere.</p>
+        </div>
+        <div class="card">
+          <h3>Sitio caído</h3>
+          <p>Un healthcheck cada 15 min pide la home; si no responde, avisa por email —
+          con reintento previo para no dar falsas alarmas.</p>
+        </div>
+      </div>
+      <p class="note">Ambas por <strong>email (Gmail SMTP)</strong> y dentro del cron: coherente con el
+      principio de cero mantenimiento manual.</p>
+    </div>
+  </section>
+
+  <!-- ══════════════ CIERRE ══════════════ -->
+
+  <section class="slide slide--cover" data-title="Visión global">
+    <!-- src: CLAUDE.md » (síntesis de todas las capas) -->
+    <div class="slide-inner center">
+      <p class="kicker">Visión global</p>
+      <div class="flow flow--wrap big">
+        <div class="node">ESPN</div><div class="arrow">→</div>
+        <div class="node node--srv">Cron · Monte Carlo</div><div class="arrow">→</div>
+        <div class="node node--file">Snapshots</div><div class="arrow">→</div>
+        <div class="node node--edge">Caddy · CDN</div><div class="arrow">→</div>
+        <div class="node node--user">Navegador</div>
+      </div>
+      <p class="cover-sub">Monitorización por email vigila todo el flujo de extremo a extremo.</p>
+      <ul class="thesis">
+        <li>Sin build · sin dependencias · datos en vivo · cero mantenimiento manual.</li>
+      </ul>
+    </div>
+  </section>
+
+</div><!-- /deck -->
+
+<!-- Barra inferior: progreso + navegación -->
+<div class="deck-bar">
+  <div class="deck-progress"><span id="deck-progress-fill"></span></div>
+  <div class="deck-controls">
+    <button class="theme-toggle" data-theme-toggle aria-label="Cambiar tema">◐</button>
+    <button id="deck-prev" class="deck-btn" aria-label="Anterior">←</button>
+    <span id="deck-counter" class="deck-counter mono">1 / 1</span>
+    <button id="deck-next" class="deck-btn" aria-label="Siguiente">→</button>
+    <button id="deck-overview" class="deck-btn" aria-label="Índice" title="Índice (o)">▦</button>
+  </div>
+</div>
+
+<script src="/assets/deck.js?v=20260620a"></script>
+<script src="/assets/deck-demo.js?v=20260620a"></script>
+</body>
+</html>
