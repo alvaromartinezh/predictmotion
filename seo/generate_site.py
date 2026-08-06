@@ -24,7 +24,7 @@ for _stream in (sys.stdout, sys.stderr):
     except Exception:
         pass
 
-from . import espn, render_table, sitemap, predictions, zone_predictions
+from . import espn, render_table, sitemap, predictions, zone_predictions, notify
 from .config import LEAGUES, ROOT, SIM_N_TABLE, league_by_slug
 from .snapshots import build_table_snapshot, save_snapshot, load_all
 from . import sim_table
@@ -75,17 +75,9 @@ def _process_table(league, today, dry_run, ratings=None):
     return snap, urls
 
 
-def main(argv=None):
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--dry-run", action="store_true", help="No escribe ficheros")
-    ap.add_argument("--league", help="Procesar solo esta liga (slug)")
-    args = ap.parse_args(argv)
-
+def _run(args):
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     leagues = [league_by_slug(args.league)] if args.league else LEAGUES
-    if args.league and not leagues[0]:
-        print(f"Liga desconocida: {args.league}", file=sys.stderr)
-        return 1
 
     # Prior de fuerza: se construye UNA vez (la temporada previa de ambas
     # divisiones) y se comparte entre ligas. Best-effort: si falla, ratings={} y
@@ -97,6 +89,7 @@ def main(argv=None):
 
     all_urls = []
     ok = 0
+    failures = []  # (slug, motivo) para el email de alerta si acaba en 0 ligas
 
     for league in leagues:
         print(f"\n→ {league['name']} ({league['espn_code']})")
@@ -104,6 +97,7 @@ def main(argv=None):
             snap, urls = _process_table(league, today, args.dry_run, ratings=ratings)
         except Exception as e:
             print(f"  [SKIP] {league['slug']}: {e}", file=sys.stderr)
+            failures.append((league["slug"], str(e)))
             continue
         all_urls.extend(urls)
         ok += 1
@@ -121,7 +115,53 @@ def main(argv=None):
         print("\n(sitemap-data.xml no reescrito: ejecución parcial con --league)")
 
     print(f"\nFin — {ok}/{len(leagues)} ligas generadas.")
+
+    # Alerta por email si NINGUNA liga se generó. Solo en la ejecución real del
+    # cron (run completo, sin --dry-run): un dry-run o un --league puntual no
+    # deben disparar avisos. Dedupe 6h para no repetir mientras dure el fallo.
+    if ok == 0 and not args.dry_run and not args.league:
+        motivos = "\n".join(f"  - {slug}: {err}" for slug, err in failures) \
+            or "  (sin ligas configuradas)"
+        notify.send_alert(
+            "[PredictMotion] generate_site: 0 ligas generadas",
+            "El cron SEO terminó sin generar ninguna liga. Los dashboards siguen "
+            "vivos (fallback en cliente) pero el histórico/SEO se congela.\n\n"
+            f"Ligas fallidas:\n{motivos}\n\n"
+            "Revisar /home/ubuntu/seo_generate.log en el servidor.",
+            dedup_key="generate_site_zero",
+        )
+
     return 0 if ok > 0 else 1
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--dry-run", action="store_true", help="No escribe ficheros")
+    ap.add_argument("--league", help="Procesar solo esta liga (slug)")
+    args = ap.parse_args(argv)
+
+    if args.league and not league_by_slug(args.league):
+        print(f"Liga desconocida: {args.league}", file=sys.stderr)
+        return 1
+
+    # Envoltura de nivel superior: una excepción no capturada (fuera del bucle
+    # por-liga, p. ej. en el prior de fuerza o el sitemap) tumbaría el cron en
+    # silencio. La convertimos en email antes de propagar el fallo.
+    try:
+        return _run(args)
+    except Exception:
+        import traceback
+        tb = traceback.format_exc()
+        print(tb, file=sys.stderr)
+        if not args.dry_run and not args.league:
+            notify.send_alert(
+                "[PredictMotion] generate_site cayó con una excepción",
+                "El cron SEO abortó con una excepción no capturada:\n\n"
+                f"{tb}\n"
+                "Revisar /home/ubuntu/seo_generate.log en el servidor.",
+                dedup_key="generate_site_crash",
+            )
+        return 1
 
 
 if __name__ == "__main__":
