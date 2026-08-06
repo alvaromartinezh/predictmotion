@@ -19,3 +19,6 @@ live_data/
 
 __pycache__/
 seo/__pycache__/_grupo_preview.png
+
+# Ancla local de sync del deck con CLAUDE.md (gitignored como CLAUDE.md)
+_claudemd_synced.md
