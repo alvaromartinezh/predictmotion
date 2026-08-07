@@ -48,6 +48,29 @@ FEEDS = [
         "url": "https://www.mundodeportivo.com/feed/rss/futbol",
         "league_hint": None,
     },
+    # Feeds europeos de MD (en español) para las grandes ligas de Fase 1. El
+    # league_hint apunta a la liga correspondiente; el tagging por equipo (alias
+    # de ESPN) afina dentro. Best-effort: si un feed falla, se salta.
+    {
+        "source": "Mundo Deportivo", "home": "https://www.mundodeportivo.com/",
+        "url": "https://www.mundodeportivo.com/feed/rss/futbol/premier-league",
+        "league_hint": "premier",
+    },
+    {
+        "source": "Mundo Deportivo", "home": "https://www.mundodeportivo.com/",
+        "url": "https://www.mundodeportivo.com/feed/rss/futbol/serie-a",
+        "league_hint": "seriea",
+    },
+    {
+        "source": "Mundo Deportivo", "home": "https://www.mundodeportivo.com/",
+        "url": "https://www.mundodeportivo.com/feed/rss/futbol/bundesliga",
+        "league_hint": "bundesliga",
+    },
+    {
+        "source": "Mundo Deportivo", "home": "https://www.mundodeportivo.com/",
+        "url": "https://www.mundodeportivo.com/feed/rss/futbol/ligue-1",
+        "league_hint": "ligue1",
+    },
 ]
 
 # Ligas que interesan (slug → espn_code) para construir la tabla de alias de
@@ -55,12 +78,20 @@ FEEDS = [
 LEAGUES = {
     "laliga":      "esp.1",
     "hypermotion": "esp.2",
+    "premier":     "eng.1",
+    "seriea":      "ita.1",
+    "bundesliga":  "ger.1",
+    "ligue1":      "fra.1",
+    "primeira":    "por.1",
+    "eredivisie":  "ned.1",
 }
 
 # ── Límites ──────────────────────────────────────────────────────────────────
 SUMMARY_MAXLEN = 220     # resumen CORTO: se trunca aquí pase lo que pase (legal)
 PER_FEED_LIMIT = 40      # tope de ítems por feed (MD sirve ~100; no lo dejamos dominar)
-MAX_ITEMS      = 90      # tope global tras ordenar por fecha desc
+MAX_ITEMS      = 90      # tope de latest.json (página global /noticias) por fecha desc
+PER_SLUG_MAX   = 40      # tope de cada data/news/<slug>.json (del set COMPLETO, no del
+                         # top-90 global, para que las ligas europeas tengan noticias)
 MAX_AGE_DAYS   = 12      # se descartan noticias más viejas (esto son "noticias")
 
 HTTP_TIMEOUT   = 20      # s por feed

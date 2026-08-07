@@ -132,6 +132,7 @@ LEAGUES = [
         "subtitle": "Segunda División",
         "shortname": "Hypermotion",
         "releg_to": "Primera RFEF",
+        "country": "España",
         "p_home": 0.42,
         "p_draw": 0.27,
         "playoff_top": 6,
@@ -151,6 +152,7 @@ LEAGUES = [
         "dashboard": "/laliga",
         "dashboard_template": "top1",
         "subtitle": "Primera División",
+        "country": "España",
         "p_home": 0.46,
         "p_draw": 0.26,
         "playoff_top": None,
@@ -165,6 +167,59 @@ LEAGUES = [
             ("conference", "Conference League", "violet", lambda n: 7,     lambda n: 7, "conf"),
             ("descenso",   "Descenso a Segunda","red",    lambda n: n - 2, lambda n: n, "relega"),
         ]),
+    },
+
+    # ── Fase 1: 1ª división europea (plantilla top1, zonas por notas de ESPN) ──
+    # p_home/p_draw HEURÍSTICOS (medias aproximadas por liga), PENDIENTES DE
+    # CALIBRAR con el registro de predicciones. Las 2as (eng.2, ita.2, …) irán con
+    # una variante top2 (slots por notas, sin bracket), aún por añadir.
+    {
+        "slug": "premier", "espn_code": "eng.1", "kind": "table",
+        "name": "Premier League", "article": "la", "season": "2025-26",
+        "country": "Inglaterra", "dashboard": "/premier",
+        "dashboard_template": "top1", "subtitle": "Inglaterra",
+        "p_home": 0.45, "p_draw": 0.24, "playoff_top": None,
+        "bands_from_notes": True, "bands": euro_top1_bands(),
+    },
+    {
+        "slug": "seriea", "espn_code": "ita.1", "kind": "table",
+        "name": "Serie A", "article": "la", "season": "2025-26",
+        "country": "Italia", "dashboard": "/seriea",
+        "dashboard_template": "top1", "subtitle": "Italia",
+        "p_home": 0.45, "p_draw": 0.27, "playoff_top": None,
+        "bands_from_notes": True, "bands": euro_top1_bands(),
+    },
+    {
+        "slug": "bundesliga", "espn_code": "ger.1", "kind": "table",
+        "name": "Bundesliga", "article": "la", "season": "2025-26",
+        "country": "Alemania", "dashboard": "/bundesliga",
+        "dashboard_template": "top1", "subtitle": "Alemania",
+        "p_home": 0.44, "p_draw": 0.24, "playoff_top": None,
+        "bands_from_notes": True, "bands": euro_top1_bands(),
+    },
+    {
+        "slug": "ligue1", "espn_code": "fra.1", "kind": "table",
+        "name": "Ligue 1", "article": "la", "season": "2025-26",
+        "country": "Francia", "dashboard": "/ligue1",
+        "dashboard_template": "top1", "subtitle": "Francia",
+        "p_home": 0.45, "p_draw": 0.27, "playoff_top": None,
+        "bands_from_notes": True, "bands": euro_top1_bands(),
+    },
+    {
+        "slug": "primeira", "espn_code": "por.1", "kind": "table",
+        "name": "Primeira Liga", "article": "la", "season": "2025-26",
+        "country": "Portugal", "dashboard": "/primeira",
+        "dashboard_template": "top1", "subtitle": "Portugal",
+        "p_home": 0.46, "p_draw": 0.27, "playoff_top": None,
+        "bands_from_notes": True, "bands": euro_top1_bands(),
+    },
+    {
+        "slug": "eredivisie", "espn_code": "ned.1", "kind": "table",
+        "name": "Eredivisie", "article": "la", "season": "2025-26",
+        "country": "Países Bajos", "dashboard": "/eredivisie",
+        "dashboard_template": "top1", "subtitle": "Países Bajos",
+        "p_home": 0.46, "p_draw": 0.24, "playoff_top": None,
+        "bands_from_notes": True, "bands": euro_top1_bands(),
     },
 ]
 
