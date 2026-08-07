@@ -54,8 +54,8 @@
     // Degradación elegante: si el banner no carga (adblocker / sin relleno),
     // colapsar el contenedor para no dejar una caja vacía. Sondeamos durante un
     // margen amplio en vez de un único chequeo: en páginas que bloquean el hilo
-    // al cargar (p. ej. el Mundial corre la simulación Monte Carlo) el anuncio
-    // tarda más en pintar y un chequeo único lo ocultaría por error.
+    // al cargar (p. ej. una simulación Monte Carlo pesada) el anuncio tarda más
+    // en pintar y un chequeo único lo ocultaría por error.
     var checks = 0, MAX_CHECKS = 12; // ~12 s
     var poll = w.setInterval(function () {
       checks++;

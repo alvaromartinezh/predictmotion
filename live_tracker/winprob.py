@@ -38,7 +38,7 @@ class WinProbabilityModel(ABC):
     def estimate(self, state: MatchState) -> WinProbability: ...
 
 
-# Ranking FIFA (mismo que el Monte Carlo de grupos). No listados → 80.
+# Ranking FIFA por selección (sesgo de fuerza en sedes neutrales). No listados → 80.
 FIFA_RANK = {
     "FRA": 1, "ESP": 2, "ARG": 3, "ENG": 4, "POR": 5, "BRA": 6, "NED": 7,
     "MAR": 8, "BEL": 9, "GER": 10, "CRO": 11, "ITA": 12, "COL": 13, "SEN": 14,

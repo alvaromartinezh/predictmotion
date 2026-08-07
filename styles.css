@@ -72,10 +72,6 @@
   --accent:#ff4a5a; --accent-soft:rgba(255,74,90,.14);
   --accent-line:rgba(255,74,90,.42); --accent-glow:rgba(255,74,90,.22); --accent-ink:#1c0408;
 }
-.theme-mundial {
-  --accent:#4a90ff; --accent-soft:rgba(74,144,255,.14);
-  --accent-line:rgba(74,144,255,.42); --accent-glow:rgba(74,144,255,.22); --accent-ink:#03101f;
-}
 
 /* ---------- RESET ---------- */
 *, *::before, *::after { box-sizing: border-box; }
@@ -552,9 +548,6 @@ html[data-theme="light"] .theme-hypermotion {
 html[data-theme="light"] .theme-laliga {
   --accent:#dd2f43; --accent-soft:rgba(221,47,67,.12); --accent-line:rgba(221,47,67,.42); --accent-glow:rgba(221,47,67,.14); --accent-ink:#ffffff;
 }
-html[data-theme="light"] .theme-mundial {
-  --accent:#2f6fe0; --accent-soft:rgba(47,111,224,.12); --accent-line:rgba(47,111,224,.42); --accent-glow:rgba(47,111,224,.14); --accent-ink:#ffffff;
-}
 /* En claro, los estados "lock" usan texto blanco sobre el color sólido */
 html[data-theme="light"] .prob.is-lock.up,
 html[data-theme="light"] .prob.is-lock.po,
@@ -580,6 +573,3 @@ html[data-theme="light"] .theme-toggle .tt-light { background: var(--surface-3);
 /* Chapa "en vivo" enlazable a la vista de partido (/partido). */
 .live-badge-link { text-decoration: none; color: inherit; cursor: pointer; }
 .live-badge-link:hover .live-badge { filter: brightness(1.15); }
-
-/* Tarjeta de partido (Mundial) enlazable a la vista de partido (/partido). */
-.mc-link { display: block; text-decoration: none; color: inherit; }
