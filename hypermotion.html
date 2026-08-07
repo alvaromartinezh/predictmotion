@@ -31,6 +31,7 @@
   <link rel="stylesheet" href="/assets/fixtures.css?v=20260807a" />
   <link rel="stylesheet" href="/assets/ads.css?v=20260807a" />
   <script src="/theme.js?v=20260807a"></script>
+  <script src="/assets/league-engine.js?v=20260807a"></script>
 
   <title>Liga Hypermotion 2025-26 · Probabilidades de Ascenso y Descenso</title>
   <style>
@@ -321,22 +322,8 @@ const COLOR_PALETTE = [
 
 let cachedNumTeams = 22;
 
-// ─── Seeded PRNG (mulberry32) ─────────────────────────────────────────────
-function mulberry32(seed) {
-  return function() {
-    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
-    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}
-function standingsSeed(standings) {
-  const str = standings.map(t => `${t.name}:${t.pts}:${t.gp}`).join('|');
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = Math.imul(31, h) + str.charCodeAt(i) | 0;
-  return h >>> 0;
-}
-let rng = Math.random;
+// PRNG, seed y helpers de simulación viven ahora en assets/league-engine.js
+// (PMEngine). Aquí solo quedan los helpers de zona/render específicos de la liga.
 
 // ─── Zone helpers — todo derivado del config, sin números hardcodeados ────
 function zoneOf(pos, numTeams) {
@@ -368,55 +355,11 @@ function renderLegend(numTeams) {
   `;
 }
 
-// ─── Simulation helpers ───────────────────────────────────────────────────
-function shuffle(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = rng() * (i + 1) | 0;
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
-function randomMatchday(names) {
-  const t = shuffle([...names]);
-  const md = [];
-  for (let i = 0; i < t.length; i += 2) md.push([t[i], t[i + 1]]);
-  return md;
-}
-
-function buildFixtures(names, gp, totalMd) {
-  const mds = [];
-  for (let md = gp + 1; md <= totalMd; md++) mds.push(randomMatchday(names));
-  return mds;
-}
-
-// ─── Play-off: simula eliminatoria a doble partido ────────────────────────
-function simTwoLegs(home, away) {
-  let h = 0, a = 0;
-  // Leg 1 – home en casa
-  const r1 = rng();
-  if (r1 < P_HOME) {
-    h += (rng() * 2 | 0) + 1 + (rng() * 2 | 0); a += rng() * 2 | 0;
-  } else if (r1 < P_HOME + P_DRAW) {
-    const g = rng() * 2 | 0; h += g; a += g;
-  } else {
-    h += rng() * 2 | 0; a += (rng() * 2 | 0) + 1 + (rng() * 2 | 0);
-  }
-  // Leg 2 – away en casa (roles invertidos)
-  const r2 = rng();
-  if (r2 < P_HOME) {
-    a += (rng() * 2 | 0) + 1 + (rng() * 2 | 0); h += rng() * 2 | 0;
-  } else if (r2 < P_HOME + P_DRAW) {
-    const g = rng() * 2 | 0; h += g; a += g;
-  } else {
-    a += rng() * 2 | 0; h += (rng() * 2 | 0) + 1 + (rng() * 2 | 0);
-  }
-  if (h > a) return home;
-  if (a > h) return away;
-  return rng() < 0.5 ? home : away;  // empate → penaltis
-}
-
 // ─── Simulation ───────────────────────────────────────────────────────────
+// Motor compartido: assets/league-engine.js (PMEngine). La rama de temporada
+// TERMINADA queda aquí (zonas por rank, específica de liga); el Monte Carlo se
+// delega a PMEngine.simulate → histograma de posición → zonas por zoneProb.
+// Paridad bit-idéntica con el motor embebido anterior verificada.
 function simulate(standings, sc) {
   const numTeams = standings.length;
   const totalMd  = 2 * (numTeams - 1);
@@ -436,86 +379,21 @@ function simulate(standings, sc) {
     }));
   }
 
-  rng = mulberry32(standingsSeed(standings));
-  const names  = standings.map(t => t.name);
-  const counts = Object.fromEntries(names.map(n => [n, { t2: 0, t6: 0, b4: 0, psf: 0, pf: 0, pw: 0 }]));
-  const teamGp = Object.fromEntries(standings.map(t => [t.name, t.gp]));
-
-  for (let i = 0; i < SIM_N; i++) {
-    const pts = Object.fromEntries(standings.map(t => [t.name, t.pts]));
-    const gd  = Object.fromEntries(standings.map(t => [t.name, t.gf - t.gc]));
-    const gf  = Object.fromEntries(standings.map(t => [t.name, t.gf]));
-
-    let mdNum = minGp;
-    for (const md of buildFixtures(names, minGp, totalMd)) {
-      mdNum++;
-      for (const [h, a] of md) {
-        if (teamGp[h] >= mdNum || teamGp[a] >= mdNum) continue;
-        // Prior de fuerza (fallback): sesga la cuota local por el rating con
-        // desvanecimiento. Sin contexto → P_HOME/P_DRAW de siempre.
-        let ph = P_HOME;
-        if (sc) {
-          const s = 1 / (1 + Math.exp(-(sc.logitS0 + sc.w * sc.scale * (sc.str[h] - sc.str[a]))));
-          ph = sc.M * s;
-        }
-        const r = rng();
-        let hp, ap, hg, ag;
-        if (r < ph) {
-          hp = 3; ap = 0;
-          hg = (rng() * 2 | 0) + 1 + (rng() * 2 | 0);
-          ag = rng() * 2 | 0;
-        } else if (r < ph + P_DRAW) {
-          hp = ap = 1;
-          hg = ag = rng() * 2 | 0;
-        } else {
-          hp = 0; ap = 3;
-          hg = rng() * 2 | 0;
-          ag = (rng() * 2 | 0) + 1 + (rng() * 2 | 0);
-        }
-        pts[h] += hp; pts[a] += ap;
-        gd[h]  += hg - ag; gd[a] += ag - hg;
-        gf[h]  += hg;      gf[a] += ag;
-      }
-    }
-
-    const sorted = [...names].sort((a, b) =>
-      pts[b] !== pts[a] ? pts[b] - pts[a] :
-      gd[b]  !== gd[a]  ? gd[b] - gd[a]  :
-      gf[b] - gf[a]);
-
-    sorted.forEach((name, idx) => {
-      const p = idx + 1;
-      if      (p <= LEAGUE.promoSlots)             counts[name].t2++;
-      else if (p <= LEAGUE.playoffTop)             counts[name].t6++;
-      else if (p > numTeams - LEAGUE.relegSlots)   counts[name].b4++;
-    });
-
-    // Simulación del play-off: 3º vs 6º  y  4º vs 5º
-    if (sorted.length >= LEAGUE.playoffTop) {
-      const sf1H = sorted[LEAGUE.promoSlots];          // 3º
-      const sf1A = sorted[LEAGUE.playoffTop - 1];      // 6º
-      const sf2H = sorted[LEAGUE.promoSlots + 1];      // 4º
-      const sf2A = sorted[LEAGUE.playoffTop - 2];      // 5º
-      counts[sf1H].psf++; counts[sf1A].psf++;
-      counts[sf2H].psf++; counts[sf2A].psf++;
-      const w1 = simTwoLegs(sf1H, sf1A);
-      const w2 = simTwoLegs(sf2H, sf2A);
-      counts[w1].pf++; counts[w2].pf++;
-      const wf = simTwoLegs(w1, w2);
-      counts[wf].pw++;
-    }
-  }
-
-  return Object.fromEntries(
-    names.map(n => [n, {
-      top2:    +(counts[n].t2  / SIM_N * 100).toFixed(1),
-      playoff: +(counts[n].t6  / SIM_N * 100).toFixed(1),
-      relega:  +(counts[n].b4  / SIM_N * 100).toFixed(1),
-      pSemi:   +(counts[n].psf / SIM_N * 100).toFixed(1),
-      pFinal:  +(counts[n].pf  / SIM_N * 100).toFixed(1),
-      pWin:    +(counts[n].pw  / SIM_N * 100).toFixed(1),
-    }])
-  );
+  const res = PMEngine.simulate(standings, {
+    pHome: P_HOME, pDraw: P_DRAW, simN: SIM_N,
+    playoffTop: LEAGUE.playoffTop, promoSlots: LEAGUE.promoSlots, sc: sc,
+  });
+  const out = {};
+  standings.forEach(t => {
+    const h = res.posHist[t.name];
+    out[t.name] = {
+      top2:    PMEngine.zoneProb(h, 1, LEAGUE.promoSlots, res.simN),
+      playoff: PMEngine.zoneProb(h, LEAGUE.promoSlots + 1, LEAGUE.playoffTop, res.simN),
+      relega:  PMEngine.zoneProb(h, numTeams - LEAGUE.relegSlots + 1, numTeams, res.simN),
+      pSemi:   res.pSemi[t.name], pFinal: res.pFinal[t.name], pWin: res.pWin[t.name],
+    };
+  });
+  return out;
 }
 
 // ─── ESPN fetch ───────────────────────────────────────────────────────────
@@ -791,14 +669,7 @@ async function fetchSnapshot() {
 // (mismos pts y PJ por equipo). Si hay partido en vivo o un resultado que el cron
 // aún no ha recogido, no coincidirá → se re-simula en cliente.
 function snapshotMatches(snap, standings) {
-  if (!snap || !Array.isArray(snap.teams)) return false;
-  if (snap.teams.length !== standings.length) return false;
-  const byId = new Map(snap.teams.map(t => [String(t.id), t]));
-  for (const s of standings) {
-    const t = byId.get(String(s.id));
-    if (!t || t.pts !== s.pts || t.gp !== s.gp) return false;
-  }
-  return true;
+  return PMEngine.snapshotMatches(snap, standings);
 }
 // Contexto de prior de fuerza para el fallback en cliente. Lee la `strength` ya
 // calculada en el snapshot (fuente única de verdad; el Python la deriva de la
@@ -806,21 +677,7 @@ function snapshotMatches(snap, standings) {
 // o si el prior ya se desvaneció (a media temporada) → sim uniforme de siempre.
 // Ruta secundaria: solo corre en el fallback (partido en vivo / snapshot desfasado).
 function buildStrengthCtx(snapshot, standings) {
-  if (!snapshot || typeof snapshot.strength_scale !== 'number' || !Array.isArray(snapshot.teams)) return null;
-  const byId = {}, vals = [];
-  snapshot.teams.forEach(t => { if (typeof t.strength === 'number') { byId[String(t.id)] = t.strength; vals.push(t.strength); } });
-  if (!vals.length) return null;
-  const def = Math.min(...vals);                       // sin histórico → fondo de tabla
-  const str = {};
-  standings.forEach(t => { str[t.name] = (String(t.id) in byId) ? byId[String(t.id)] : def; });
-  const n = standings.length, totalMd = 2 * (n - 1);
-  const jornada = Math.max(...standings.map(t => t.gp));
-  const span = snapshot.strength_fade_fraction * totalMd;
-  const w = span > 0 ? Math.max(0, Math.min(1, 1 - jornada / span)) : 0;
-  if (w <= 0) return null;
-  const pAway = 1 - P_HOME - P_DRAW, M = P_HOME + pAway;
-  const s0 = Math.min(1 - 1e-9, Math.max(1e-9, M > 0 ? P_HOME / M : 0.5));
-  return { scale: snapshot.strength_scale, w, str, M, logitS0: Math.log(s0 / (1 - s0)) };
+  return PMEngine.buildStrengthCtx(snapshot, standings, P_HOME, P_DRAW);
 }
 
 // Adapta el bloque `prob` del snapshot a las claves que espera render().
