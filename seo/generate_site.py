@@ -83,7 +83,8 @@ def _run(args):
     # divisiones) y se comparte entre ligas. Best-effort: si falla, ratings={} y
     # el Monte Carlo corre en modo uniforme de siempre.
     current_year = espn.fetch_current_season_year(LEAGUES[0]["espn_code"])
-    ratings = espn.build_strength_ratings(current_year)
+    active_codes = {lg["espn_code"] for lg in leagues}
+    ratings = espn.build_strength_ratings(current_year, active_codes)
     print(f"Prior de fuerza: {len(ratings)} equipos con rating"
           f" (temporada previa {current_year - 1 if current_year else '??'})")
 
