@@ -38,10 +38,22 @@ SIM_N_TABLE = 20000
 # histórico de predicciones (snapshots por jornada) se podrá medir la calibración
 # real (Brier/reliability) y ajustarlos. NO tratarlos como definitivos.
 #
-# STRENGTH_DIVISIONS: divisiones ordenadas de más fuerte a más débil. El offset de
-#   nivel entre divisiones consecutivas es STRENGTH_LEVEL_GAP (en unidades z), lo
-#   que hunde a Segunda para que su cabeza caiga en el tercio bajo de Primera.
-STRENGTH_DIVISIONS   = ["esp.1", "esp.2"]
+# STRENGTH_LADDERS: escaleras de ascenso/descenso POR PAÍS, cada una de la
+#   división más fuerte a la más débil. El offset de nivel entre divisiones
+#   consecutivas de una misma escalera es STRENGTH_LEVEL_GAP (en unidades z), lo
+#   que hunde a la 2ª para que su cabeza caiga en el tercio bajo de la 1ª. Los ids
+#   de ESPN son globales, así que build_strength_ratings fusiona todas las
+#   escaleras en un único {team_id: R}. Solo se descargan las escaleras que
+#   contienen alguna liga activa (ver active_codes), sin peticiones de más.
+STRENGTH_LADDERS = [
+    ["esp.1", "esp.2"],   # España
+    ["eng.1", "eng.2"],   # Inglaterra
+    ["ita.1", "ita.2"],   # Italia
+    ["ger.1", "ger.2"],   # Alemania
+    ["fra.1", "fra.2"],   # Francia
+    ["por.1"],            # Portugal (solo 1ª cubierta)
+    ["ned.1"],            # Países Bajos (solo 1ª cubierta)
+]
 STRENGTH_LEVEL_GAP   = 2.5    # separación entre divisiones, en unidades z de puntos
 STRENGTH_SCALE       = 0.28   # cuánto sesga el partido una diferencia de 1 unidad
                               # (0.28: Barça ~38% título/~79% top-4; equilibra
@@ -70,6 +82,30 @@ def _table_bands(slots):
             })
         return out
     return bands
+
+
+# ── Plantillas de banda reutilizables (por tipo de liga) ─────────────────────
+# Los lo/hi son solo FALLBACK; con bands_from_notes=True los cortes reales se
+# derivan en vivo de las notas de ESPN (derive_bands_from_notes), que son
+# pan-europeas. Así una liga nueva reusa la plantilla de su nivel sin números
+# hardcodeados por país.
+def euro_top1_bands():
+    """1ª división europea: Champions / Europa / Conference / descenso."""
+    return _table_bands([
+        ("champions",  "Champions League",  "green",  lambda n: 1,     lambda n: 4, "promo"),
+        ("europa",     "Europa League",     "blue",   lambda n: 5,     lambda n: 6, "europa"),
+        ("conference", "Conference League", "violet", lambda n: 7,     lambda n: 7, "conf"),
+        ("descenso",   "Descenso",          "red",    lambda n: n - 2, lambda n: n, "relega"),
+    ])
+
+
+def euro_top2_bands():
+    """2ª división europea: ascenso directo / play-off de ascenso / descenso."""
+    return _table_bands([
+        ("ascenso",  "Ascenso directo",     "green", lambda n: 1,     lambda n: 2, "promo"),
+        ("playoff",  "Play-off de ascenso", "blue",  lambda n: 3,     lambda n: 6, "playoff"),
+        ("descenso", "Descenso",            "red",   lambda n: n - 2, lambda n: n, "relega"),
+    ])
 
 
 # ── Registro de ligas ──────────────────────────────────────────────────────

@@ -32,12 +32,23 @@ def _stat(entry, name):
 
 
 def _note_to_zone(desc):
-    """Nota de ESPN (note.description) → zona interna. Port de noteToZone() del JS."""
+    """Nota de ESPN (note.description) → zona interna. Port de noteToZone() del JS.
+
+    Cubre 1ª división (Champions/Europa/Conference/Relegation) y 2ª división
+    europea (Promotion / Promotion playoffs / Relegation). El 'promo' vale para la
+    plaza top de cada nivel (Champions en 1ª, ascenso directo en 2ª): cada liga
+    define su etiqueta; derive_bands_from_notes solo empareja el string de zona.
+    """
     d = (desc or "").lower()
+    # 2ª división: ascenso directo vs play-off de ascenso (comprobar antes que el
+    # resto; ninguna nota de 1ª contiene "promotion").
+    if "promotion" in d:  return "playoff" if "playoff" in d else "promo"
+    # Descenso directo. El "relegation playoff" (playoff de permanencia) NO es zona
+    # de descenso → no se marca (queda 'none'); comprobar el playoff primero.
+    if "relegat" in d:    return "none" if "playoff" in d else "relega"
     if "champion" in d:   return "promo"
     if "europa" in d:     return "europa"
     if "conference" in d: return "conf"
-    if "relegat" in d:    return "relega"
     return "none"
 
 
@@ -158,40 +169,48 @@ def fetch_current_season_year(espn_code):
         return None
 
 
-def build_strength_ratings(current_year):
+def build_strength_ratings(current_year, active_codes=None):
     """Rating de fuerza por equipo desde la tabla FINAL de la temporada anterior.
 
-    Cruza AMBAS divisiones (STRENGTH_DIVISIONS): z-score de puntos dentro de cada
-    división + un offset de nivel por división (STRENGTH_LEVEL_GAP), de modo que la
-    cabeza de Segunda cae en el tercio bajo de Primera. Devuelve {team_id: R}.
-    Los ids de ESPN son estables entre temporadas y divisiones, así que un
-    ascendido/descendido conserva su rating aunque cambie de división.
+    Recorre las escaleras de país (STRENGTH_LADDERS): dentro de cada escalera,
+    z-score de puntos por división + un offset de nivel por división
+    (STRENGTH_LEVEL_GAP), de modo que la cabeza de la 2ª cae en el tercio bajo de
+    la 1ª. Fusiona todas las escaleras en un único {team_id: R} (los ids de ESPN
+    son globales y estables entre temporadas/divisiones, así que un
+    ascendido/descendido conserva su rating aunque cambie de división).
 
-    Best-effort y robusto: si el fetch de la temporada previa falla (p. ej. 403),
-    devuelve {} → el Monte Carlo corre en modo uniforme (comportamiento actual).
+    `active_codes`: si se pasa, solo se procesan las escaleras que contienen alguna
+    liga activa → no se descargan temporadas previas de países que no se generan.
+    Con None se procesan todas (compatibilidad).
+
+    Best-effort y robusto: si el fetch de una temporada previa falla (p. ej. 403),
+    esa división se salta; el resto sigue.
     """
-    from .config import STRENGTH_DIVISIONS, STRENGTH_LEVEL_GAP
+    from .config import STRENGTH_LADDERS, STRENGTH_LEVEL_GAP
 
     if not current_year:
         return {}
     prev = current_year - 1
     ratings = {}
-    for level, code in enumerate(STRENGTH_DIVISIONS):
-        try:
-            rows = fetch_table(code, season=prev)
-        except Exception:
-            continue  # una división falla → se salta; las demás siguen
-        pts = [r["pts"] for r in rows]
-        n = len(pts)
-        if n < 2:
-            continue
-        mean = sum(pts) / n
-        var = sum((p - mean) ** 2 for p in pts) / n
-        std = var ** 0.5
-        offset = -level * STRENGTH_LEVEL_GAP
-        for r in rows:
-            z = (r["pts"] - mean) / std if std > 0 else 0.0
-            ratings[r["id"]] = z + offset
+    for ladder in STRENGTH_LADDERS:
+        if active_codes is not None and not any(c in active_codes for c in ladder):
+            continue  # ninguna liga activa usa esta escalera → sin peticiones
+        for level, code in enumerate(ladder):
+            try:
+                rows = fetch_table(code, season=prev)
+            except Exception:
+                continue  # una división falla → se salta; las demás siguen
+            pts = [r["pts"] for r in rows]
+            n = len(pts)
+            if n < 2:
+                continue
+            mean = sum(pts) / n
+            var = sum((p - mean) ** 2 for p in pts) / n
+            std = var ** 0.5
+            offset = -level * STRENGTH_LEVEL_GAP
+            for r in rows:
+                z = (r["pts"] - mean) / std if std > 0 else 0.0
+                ratings[r["id"]] = z + offset
     return ratings
 
 
