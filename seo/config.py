@@ -221,6 +221,46 @@ LEAGUES = [
         "p_home": 0.46, "p_draw": 0.24, "playoff_top": None,
         "bands_from_notes": True, "bands": euro_top1_bands(),
     },
+
+    # ── Fase 1b: 2ª división europea (plantilla tier2, slots por notas, SIN
+    #    bracket). playoff_top=None → sin simulación de eliminatoria; la zona
+    #    "play-off de ascenso" se muestra por posición (cortes de las notas).
+    {
+        "slug": "championship", "espn_code": "eng.2", "kind": "table",
+        "name": "Championship", "article": "la", "season": "2025-26",
+        "country": "Inglaterra", "dashboard": "/championship",
+        "dashboard_template": "tier2", "subtitle": "Inglaterra",
+        "shortname": "Championship", "releg_to": "League One",
+        "p_home": 0.45, "p_draw": 0.26, "playoff_top": None,
+        "bands_from_notes": True, "bands": euro_top2_bands(),
+    },
+    {
+        "slug": "serieb", "espn_code": "ita.2", "kind": "table",
+        "name": "Serie B", "article": "la", "season": "2025-26",
+        "country": "Italia", "dashboard": "/serieb",
+        "dashboard_template": "tier2", "subtitle": "Italia",
+        "shortname": "Serie B", "releg_to": "Serie C",
+        "p_home": 0.45, "p_draw": 0.28, "playoff_top": None,
+        "bands_from_notes": True, "bands": euro_top2_bands(),
+    },
+    {
+        "slug": "bundesliga2", "espn_code": "ger.2", "kind": "table",
+        "name": "2. Bundesliga", "article": "la", "season": "2025-26",
+        "country": "Alemania", "dashboard": "/bundesliga2",
+        "dashboard_template": "tier2", "subtitle": "Alemania",
+        "shortname": "2. Bundesliga", "releg_to": "3. Liga",
+        "p_home": 0.44, "p_draw": 0.26, "playoff_top": None,
+        "bands_from_notes": True, "bands": euro_top2_bands(),
+    },
+    {
+        "slug": "ligue2", "espn_code": "fra.2", "kind": "table",
+        "name": "Ligue 2", "article": "la", "season": "2025-26",
+        "country": "Francia", "dashboard": "/ligue2",
+        "dashboard_template": "tier2", "subtitle": "Francia",
+        "shortname": "Ligue 2", "releg_to": "National",
+        "p_home": 0.45, "p_draw": 0.28, "playoff_top": None,
+        "bands_from_notes": True, "bands": euro_top2_bands(),
+    },
 ]
 
 
