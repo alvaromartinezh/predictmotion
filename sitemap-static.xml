@@ -46,6 +46,26 @@
     <priority>0.9</priority>
   </url>
   <url>
+    <loc>https://predictmotion.com/championship</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://predictmotion.com/serieb</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://predictmotion.com/bundesliga2</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://predictmotion.com/ligue2</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://predictmotion.com/noticias</loc>
     <changefreq>hourly</changefreq>
     <priority>0.8</priority>

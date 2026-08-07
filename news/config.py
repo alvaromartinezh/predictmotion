@@ -84,6 +84,10 @@ LEAGUES = {
     "ligue1":      "fra.1",
     "primeira":    "por.1",
     "eredivisie":  "ned.1",
+    "championship": "eng.2",
+    "serieb":       "ita.2",
+    "bundesliga2":  "ger.2",
+    "ligue2":       "fra.2",
 }
 
 # ── Límites ──────────────────────────────────────────────────────────────────
