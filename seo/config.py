@@ -127,6 +127,11 @@ LEAGUES = [
         "article": "la",          # "de la / en la Liga Hypermotion"
         "season": "2025-26",
         "dashboard": "/hypermotion",
+        # Generación del dashboard estático (render_dashboard): plantilla + tokens.
+        "dashboard_template": "top2",
+        "subtitle": "Segunda División",
+        "shortname": "Hypermotion",
+        "releg_to": "Primera RFEF",
         "p_home": 0.42,
         "p_draw": 0.27,
         "playoff_top": 6,
@@ -144,6 +149,8 @@ LEAGUES = [
         "article": "",            # el nombre ya lleva artículo: "de / en LaLiga"
         "season": "2025-26",
         "dashboard": "/laliga",
+        "dashboard_template": "top1",
+        "subtitle": "Primera División",
         "p_home": 0.46,
         "p_draw": 0.26,
         "playoff_top": None,
