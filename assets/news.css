@@ -1,0 +1,127 @@
+/* PMNews — estilos de la sección de noticias (/noticias).
+   Usa los tokens de styles.css (:root), así hereda tema claro/oscuro solo. */
+
+/* ── Barra de filtros ─────────────────────────────────────────────────────── */
+.news-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin: var(--sp-5) 0 var(--sp-6);
+}
+.news-filter {
+  font-family: var(--font-data);
+  font-size: var(--fs-14);
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  padding: var(--sp-2) var(--sp-4);
+  cursor: pointer;
+  transition: color .18s var(--ease), border-color .18s var(--ease),
+              background .18s var(--ease);
+}
+.news-filter:hover { border-color: var(--accent-line); color: var(--text); }
+.news-filter.is-active {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ── Rejilla de tarjetas ──────────────────────────────────────────────────── */
+.news-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-9);
+}
+
+.news-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  transition: border-color .18s var(--ease), box-shadow .18s var(--ease);
+}
+.news-card:hover {
+  border-color: var(--accent-line);
+  box-shadow: var(--shadow-md);
+}
+
+.news-card__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.news-card__src {
+  font-family: var(--font-data);
+  font-size: var(--fs-12);
+  font-weight: 600;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: var(--r-pill);
+  padding: 2px var(--sp-2);
+}
+.news-card__time {
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
+  color: var(--muted);
+}
+
+.news-card__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-18);
+  line-height: 1.25;
+  margin: 0;
+}
+.news-card__title a { color: var(--text); text-decoration: none; }
+.news-card__title a:hover { color: var(--accent); }
+
+.news-card__summary {
+  font-size: var(--fs-14);
+  line-height: 1.5;
+  color: var(--text-2);
+  margin: 0;
+}
+
+.news-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.news-chip {
+  font-family: var(--font-data);
+  font-size: var(--fs-12);
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-pill);
+  padding: 2px var(--sp-3);
+  cursor: pointer;
+  transition: border-color .18s var(--ease), color .18s var(--ease);
+}
+.news-chip:hover { border-color: var(--accent-line); color: var(--text); }
+.news-chip.is-more { cursor: default; color: var(--muted); }
+.news-chip.is-more:hover { border-color: var(--line-soft); color: var(--muted); }
+
+/* Empuja el "Leer en …" al fondo de la tarjeta (alineación entre tarjetas). */
+.news-card__link {
+  margin-top: auto;
+  font-family: var(--font-data);
+  font-size: var(--fs-13);
+  color: var(--accent);
+  text-decoration: none;
+}
+.news-card__link:hover { text-decoration: underline; }
+
+.news-empty {
+  color: var(--muted);
+  font-size: var(--fs-15);
+  padding: var(--sp-8) 0;
+  text-align: center;
+}
