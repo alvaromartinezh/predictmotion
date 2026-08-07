@@ -55,6 +55,14 @@
   </script>
 
   <link rel="stylesheet" href="/styles.css?v=20260807a" />
+  <style>
+    .comps-group { margin-bottom: var(--sp-6); }
+    .comps-group__title {
+      font-family: var(--font-display); font-size: var(--fs-18);
+      color: var(--muted); margin: var(--sp-5) 0 var(--sp-3);
+      text-transform: uppercase; letter-spacing: .04em;
+    }
+  </style>
   <script src="/theme.js?v=20260807a"></script>
 
   <!-- Google AdSense -->
@@ -94,54 +102,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <section class="hero">
       <p class="eyebrow">Simulación Monte Carlo · datos reales</p>
       <h1>Probabilidades que <span class="hl">se leen solas</span></h1>
-      <p class="lede">Ascenso, play-off, descenso y clasificación final de cada competición, recalculados a diario tras miles de simulaciones.</p>
-      <p class="hero__meta"><span class="pulse" aria-hidden="true"></span> Actualizado <span class="num" id="lastUpdate">hoy</span> · 40.000 simulaciones / liga</p>
+      <p class="lede">Ascenso, descenso, Europa y clasificación final de cada competición, recalculadas a diario tras miles de simulaciones.</p>
     </section>
 
-    <!-- ===== TARJETAS DE COMPETICIÓN ===== -->
-    <nav class="comps" aria-label="Elige competición">
-
-      <!-- Liga Hypermotion -->
-      <a class="comp-card theme-hypermotion" href="/hypermotion">
-        <div class="comp-card__top">
-          <span class="comp-card__shield">
-            <img id="logo-hypermotion" src="https://a.espncdn.com/i/leaguelogos/soccer/500/107.png" alt="Liga Hypermotion" loading="lazy" />
-          </span>
-          <span class="comp-card__idx">01</span>
-        </div>
-        <div>
-          <div class="comp-card__name">Liga<br />Hypermotion</div>
-          <div class="comp-card__season" id="season-hypermotion" data-prefix="Segunda División">Segunda División</div>
-        </div>
-        <div class="comp-card__legend">
-          <span class="legend-dot up"><i></i>Ascenso</span>
-          <span class="legend-dot po"><i></i>Play-off</span>
-          <span class="legend-dot down"><i></i>Descenso</span>
-        </div>
-        <div class="comp-card__cta">Ver clasificación <span class="arrow" aria-hidden="true">→</span></div>
-      </a>
-
-      <!-- LaLiga -->
-      <a class="comp-card theme-laliga" href="/laliga">
-        <div class="comp-card__top">
-          <span class="comp-card__shield">
-            <img id="logo-laliga" src="https://a.espncdn.com/i/leaguelogos/soccer/500-dark/15.png" alt="LaLiga" loading="lazy" />
-          </span>
-          <span class="comp-card__idx">02</span>
-        </div>
-        <div>
-          <div class="comp-card__name">LaLiga</div>
-          <div class="comp-card__season" id="season-laliga" data-prefix="Primera División">Primera División</div>
-        </div>
-        <div class="comp-card__legend">
-          <span class="legend-dot up"><i></i>Título</span>
-          <span class="legend-dot po"><i></i>Champions</span>
-          <span class="legend-dot down"><i></i>Descenso</span>
-        </div>
-        <div class="comp-card__cta">Ver clasificación <span class="arrow" aria-hidden="true">→</span></div>
-      </a>
-
-    </nav>
+    <!-- ===== TARJETAS DE COMPETICIÓN (agrupadas por país, data-driven) ===== -->
+    <div id="comps-root"></div>
   </main>
 
   <!-- ===== PIE ===== -->
@@ -155,28 +120,56 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </div>
   </footer>
 
-  <!-- Temporada y logo de cada liga regular se rellenan desde ESPN (sin hardcodear). -->
+  <!-- Selector data-driven: tarjetas agrupadas por país. Logo y temporada se
+       rellenan en vivo desde ESPN (sin hardcodear). Añadir una liga = una entrada
+       en COMPS (debe casar con seo/config.py → LEAGUES). -->
   <script>
-    [['hypermotion','esp.2'],['laliga','esp.1']].forEach(function (p) {
-      var slug = p[0], code = p[1];
-      fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/' + code + '/scoreboard', { cache: 'no-store' })
+    var COMPS = [
+      { slug: 'laliga',      name: 'LaLiga',           country: 'España',        code: 'esp.1', theme: 'theme-laliga' },
+      { slug: 'hypermotion', name: 'Liga Hypermotion', country: 'España',        code: 'esp.2', theme: 'theme-hypermotion' },
+      { slug: 'premier',     name: 'Premier League',   country: 'Inglaterra',    code: 'eng.1', theme: '' },
+      { slug: 'seriea',      name: 'Serie A',          country: 'Italia',        code: 'ita.1', theme: '' },
+      { slug: 'bundesliga',  name: 'Bundesliga',       country: 'Alemania',      code: 'ger.1', theme: '' },
+      { slug: 'ligue1',      name: 'Ligue 1',          country: 'Francia',       code: 'fra.1', theme: '' },
+      { slug: 'primeira',    name: 'Primeira Liga',    country: 'Portugal',      code: 'por.1', theme: '' },
+      { slug: 'eredivisie',  name: 'Eredivisie',       country: 'Países Bajos',  code: 'ned.1', theme: '' },
+    ];
+    var ORDER = ['España', 'Inglaterra', 'Italia', 'Alemania', 'Francia', 'Portugal', 'Países Bajos'];
+    var root = document.getElementById('comps-root');
+    var byCountry = {};
+    COMPS.forEach(function (c) { (byCountry[c.country] = byCountry[c.country] || []).push(c); });
+    ORDER.forEach(function (country) {
+      var list = byCountry[country]; if (!list) return;
+      var sec = document.createElement('section'); sec.className = 'comps-group';
+      var h = document.createElement('h2'); h.className = 'comps-group__title'; h.textContent = country;
+      sec.appendChild(h);
+      var nav = document.createElement('nav'); nav.className = 'comps';
+      nav.setAttribute('aria-label', 'Competiciones de ' + country);
+      list.forEach(function (c) {
+        var a = document.createElement('a'); a.className = 'comp-card ' + c.theme; a.href = '/' + c.slug;
+        a.innerHTML =
+          '<div class="comp-card__top"><span class="comp-card__shield">'
+          + '<img alt="' + c.name + '" loading="lazy" id="logo-' + c.slug + '" /></span></div>'
+          + '<div><div class="comp-card__name">' + c.name + '</div>'
+          + '<div class="comp-card__season" id="season-' + c.slug + '">' + c.country + '</div></div>'
+          + '<div class="comp-card__cta">Ver probabilidades <span class="arrow" aria-hidden="true">→</span></div>';
+        nav.appendChild(a);
+      });
+      sec.appendChild(nav); root.appendChild(sec);
+    });
+    COMPS.forEach(function (c) {
+      fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/' + c.code + '/scoreboard', { cache: 'no-store' })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (d) {
           if (!d) return;
           var lg = (d.leagues || [])[0] || {};
           var dn = (lg.season && lg.season.displayName) || '';
           var m = dn.match(/\d{4}-\d{2}/);
-          if (m) {
-            var s = document.getElementById('season-' + slug);
-            if (s) s.textContent = s.dataset.prefix + ' · ' + m[0];
-          }
+          if (m) { var s = document.getElementById('season-' + c.slug); if (s) s.textContent = c.country + ' · ' + m[0]; }
           var logos = lg.logos || [];
           var dark = logos.filter(function (l) { return (l.rel || []).indexOf('dark') >= 0; })[0];
           var href = (dark || logos[0] || {}).href;
-          if (href) {
-            var img = document.getElementById('logo-' + slug);
-            if (img) img.src = href.replace('http://', 'https://');
-          }
+          if (href) { var img = document.getElementById('logo-' + c.slug); if (img) img.src = href.replace('http://', 'https://'); }
         }).catch(function () {});
     });
   </script>

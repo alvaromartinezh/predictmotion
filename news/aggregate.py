@@ -28,7 +28,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 from seo import notify
 from . import feeds, tagging
-from .config import (FEEDS, LEAGUES, MAX_AGE_DAYS, MAX_ITEMS, NEWS_DIR)
+from .config import (FEEDS, LEAGUES, MAX_AGE_DAYS, MAX_ITEMS, NEWS_DIR, PER_SLUG_MAX)
 
 # Campos internos que no se exponen en el JSON público.
 _INTERNAL = ("categories", "home", "league_hint")
@@ -58,8 +58,9 @@ def _collect():
     return items, failures
 
 
-def _dedup_sort_cap(items):
-    """Dedup por enlace (se queda el más reciente), descarta viejos, ordena y capa."""
+def _dedup_sort(items):
+    """Dedup por enlace (se queda el más reciente), descarta viejos y ordena por
+    fecha desc. SIN cap global: los caps (latest / por-liga) se aplican al escribir."""
     now = datetime.now(timezone.utc).timestamp()
     max_age = MAX_AGE_DAYS * 86400
 
@@ -71,14 +72,15 @@ def _dedup_sort_cap(items):
         if prev is None or it["ts"] > prev["ts"]:
             by_link[it["link"]] = it
 
-    out = sorted(by_link.values(), key=lambda x: x["ts"], reverse=True)
-    return out[:MAX_ITEMS]
+    return sorted(by_link.values(), key=lambda x: x["ts"], reverse=True)
 
 
-def _write(items, dry_run):
+def _write(all_items, dry_run):
     generated = datetime.now(timezone.utc).isoformat()
-    payload = {"generated": generated, "count": len(items),
-               "items": [_clean(it) for it in items]}
+    # latest.json (página global /noticias): top-N por fecha.
+    latest = all_items[:MAX_ITEMS]
+    payload = {"generated": generated, "count": len(latest),
+               "items": [_clean(it) for it in latest]}
 
     def dump(path, data):
         if dry_run:
@@ -91,9 +93,10 @@ def _write(items, dry_run):
         NEWS_DIR.mkdir(parents=True, exist_ok=True)
     dump(NEWS_DIR / "latest.json", payload)
 
-    # Por liga: los ítems etiquetados con ese slug (para un futuro filtro/tab).
+    # Por liga: del set COMPLETO (no del top-N global), para que cada liga tenga
+    # sus noticias aunque los feeds españoles dominen la portada global.
     for slug in LEAGUES:
-        sub = [it for it in items if slug in it.get("leagues", [])]
+        sub = [it for it in all_items if slug in it.get("leagues", [])][:PER_SLUG_MAX]
         dump(NEWS_DIR / f"{slug}.json",
              {"generated": generated, "count": len(sub),
               "items": [_clean(it) for it in sub]})
@@ -101,12 +104,12 @@ def _write(items, dry_run):
 
 def _run(args):
     items, failures = _collect()
-    final = _dedup_sort_cap(items)
+    final = _dedup_sort(items)
     _write(final, args.dry_run)
 
     tagged = sum(1 for it in final if it.get("teams"))
-    print(f"\nFin — {len(final)} noticias ({tagged} con equipo etiquetado), "
-          f"{len(failures)} feeds fallidos.")
+    print(f"\nFin — {len(final)} noticias únicas ({tagged} con equipo etiquetado; "
+          f"latest.json capado a {MAX_ITEMS}), {len(failures)} feeds fallidos.")
 
     # Alerta si NINGUNA noticia se agregó (todos los feeds caídos/vacíos).
     if not final and not args.dry_run:
