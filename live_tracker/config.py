@@ -65,8 +65,9 @@ DEFAULT_BASE_PROBS = (0.42, 0.27)
 
 # Ligas SIN localía real (sedes neutrales): el "local" del fixture no juega en casa,
 # así que el modelo no aplica ventaja de campo (victorias simétricas) y en su lugar
-# sesga la probabilidad por el RANKING FIFA de cada selección. Vacío ahora mismo
-# (el Mundial se retiró); el modelo de sedes neutrales queda listo para reutilizar.
+# sesga la probabilidad por el RANKING FIFA de cada selección. Vacío ahora mismo:
+# el modelo de sedes neutrales queda latente, listo para reutilizar en cualquier
+# competición de sedes neutrales.
 NEUTRAL_VENUE_LEAGUES = set()
 # Peso del ranking FIFA sobre la tasa de gol (solo sedes neutrales). HEURÍSTICO.
 WINPROB_RANK_WEIGHT = 1.2

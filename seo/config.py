@@ -22,7 +22,6 @@ SITE      = "https://predictmotion.com"
 # equivalentes (dentro del ruido) a los 40 000 del navegador. Más bajo aquí
 # para que el cron termine rápido en la VM ARM.
 SIM_N_TABLE = 20000
-SIM_N_CUP   = 5000
 
 
 # ── Prior de fuerza por equipo (Elo sin estado desde la temporada anterior) ──
