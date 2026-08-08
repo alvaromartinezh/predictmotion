@@ -40,6 +40,15 @@ def _note_to_zone(desc):
     define su etiqueta; derive_bands_from_notes solo empareja el string de zona.
     """
     d = (desc or "").lower()
+    # Fase de liga UEFA (36 equipos): octavos directos / play-off de eliminatorias /
+    # eliminado. Notas: "Qualifies for round of 16", "Knockout phase playoffs -
+    # seeded|unseeded", "Eliminated". Estos strings NO aparecen en las ligas
+    # domésticas, así que su mapeo aquí no cambia el de ninguna otra liga.
+    # 'promo' = zona verde de cabeza (octavos, como Champions en 1ª); reusa
+    # derive_bands_from_notes sin lógica nueva.
+    if "round of 16" in d:            return "promo"
+    if "knockout" in d:               return "playoff"   # play-off de eliminatorias
+    if "eliminat" in d:               return "relega"    # eliminado (zona roja de cola)
     # 2ª división: ascenso directo vs play-off de ascenso (comprobar antes que el
     # resto; ninguna nota de 1ª contiene "promotion").
     if "promotion" in d:  return "playoff" if "playoff" in d else "promo"

@@ -440,7 +440,18 @@ tr[data-zone="down"] .pos-badge { color: var(--down); }
 }
 
 @media (max-width: 680px) {
-  .topbar__nav { display: none; }
+  /* La nav de la topbar NO se oculta en móvil: es el único acceso a Noticias
+     y a las demás ligas. A ancho móvil (320px incl.) no caben en una fila el
+     wordmark + los 3 enlaces + el theme-toggle sin cortarse, así que la topbar
+     pasa a DOS filas: [logo ····· toggle] arriba, la nav a ancho completo debajo.
+     `display:contents` disuelve el wrapper .topbar__right para que .topbar__nav y
+     .theme-toggle participen directamente en el flex de .topbar__inner (permite
+     ordenarlos/envolverlos sin tocar el HTML, idéntico en las 20+ páginas). */
+  .topbar__inner { flex-wrap: wrap; height: auto; row-gap: var(--sp-2); padding-block: var(--sp-3); }
+  .topbar__right { display: contents; }
+  .logo { order: 0; }
+  .theme-toggle { order: 1; margin-left: auto; }
+  .topbar__nav { order: 2; flex-basis: 100%; gap: var(--sp-6); font-size: var(--fs-14); white-space: nowrap; }
   .league-head__row { gap: var(--sp-4); }
   .league-shield { width: 56px; height: 56px; }
   .tabs { gap: 0; }

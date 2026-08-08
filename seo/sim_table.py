@@ -92,12 +92,17 @@ def _strength_context(rows, ratings, p_home, p_draw, total_md):
     return {"w": w, "logit_s0": math.log(s0 / (1 - s0)), "m": m, "strength": strength}
 
 
-def simulate(rows, p_home, p_draw, playoff_top=None, sim_n=SIM_N_TABLE, ratings=None):
+def simulate(rows, p_home, p_draw, playoff_top=None, sim_n=SIM_N_TABLE, ratings=None,
+             matches_per_team=None):
     """Devuelve dict slug->resultados. rows: tabla de fetch_table().
 
     ratings: {team_id: R} opcional (prior de fuerza de la temporada anterior). Se
     aplica en pretemporada y se desvanece a media temporada; None/{} o temporada
     avanzada → modelo uniforme de siempre.
+
+    matches_per_team: nº de partidos que juega cada equipo en la temporada. None →
+    doble round-robin `2·(n−1)` (ligas regulares). Se pasa explícito para formatos
+    que NO son round-robin, como la fase de liga UEFA (36 equipos, 8 partidos).
 
     Resultado por equipo:
       pos_hist: lista (len = numTeams) con conteo de veces en cada posición.
@@ -105,7 +110,7 @@ def simulate(rows, p_home, p_draw, playoff_top=None, sim_n=SIM_N_TABLE, ratings=
       finished: True si la temporada ya terminó (posiciones reales).
     """
     n = len(rows)
-    total_md = 2 * (n - 1)
+    total_md = matches_per_team or 2 * (n - 1)
     names = [r["name"] for r in rows]
     team_gp = {r["name"]: r["gp"] for r in rows}
     min_gp = min(r["gp"] for r in rows)

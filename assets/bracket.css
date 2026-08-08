@@ -1,0 +1,105 @@
+/* PredictMotion — Cuadro de eliminatoria CIRCULAR (concéntrico).
+   Usa los tokens del sistema (styles.css). El contenido de los <foreignObject>
+   vive en el espacio de coordenadas del SVG (viewBox 1000×1000): sus tamaños de
+   fuente/px se escalan junto con el SVG al ancho del contenedor. */
+
+.bk-loading, .bk-empty {
+  padding: var(--sp-8) var(--sp-4);
+  text-align: center;
+  color: var(--muted);
+  font-size: var(--fs-14);
+}
+.bk-empty { border: 1px dashed var(--line); border-radius: var(--r-md); background: var(--surface); }
+
+/* Cabecera: leyenda de rondas + campeón */
+.bk-head {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: var(--sp-3) var(--sp-5); margin-bottom: var(--sp-4);
+}
+.bk-legend { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); }
+.bk-lg {
+  position: relative; padding-left: 16px;
+  font-family: var(--font-mono); font-size: var(--fs-12); letter-spacing: .06em;
+  text-transform: uppercase; color: var(--text-2);
+}
+.bk-lg::before {
+  content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--muted);
+}
+.bk-lg--round-of-16::before  { border-color: var(--muted); }
+.bk-lg--quarterfinals::before { border-color: var(--accent); }
+.bk-lg--semifinals::before   { border-color: var(--po, #4a90ff); }
+.bk-lg--final::before        { border-color: var(--up); background: var(--up); }
+
+.bk-champ {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  padding: 4px 12px; border-radius: var(--r-pill);
+  background: var(--up-soft); border: 1px solid rgba(46,201,138,.28);
+}
+.bk-champ__crown { font-size: var(--fs-14); }
+.bk-champ__lbl {
+  font-family: var(--font-mono); font-size: var(--fs-12); text-transform: uppercase;
+  letter-spacing: .08em; color: var(--up);
+}
+.bk-champ__logo { width: 18px; height: 18px; object-fit: contain; }
+.bk-champ__name { font-weight: 700; font-size: var(--fs-14); color: var(--text); }
+
+/* Escenario cuadrado, escala al ancho */
+.bk-stage { max-width: 660px; margin: 0 auto; }
+.bk-svg { width: 100%; height: auto; display: block; overflow: visible; }
+
+/* Bandas de anillo (fondo) y conectores (en espacio SVG). Bandas en escala de
+   grises del sistema para que el conjunto lea concéntrico sin competir con el
+   color de los ganadores. */
+.bk-band { fill: none; }
+.bk-band--r0 { stroke: color-mix(in oklab, var(--text) 4%, transparent); }
+.bk-band--r1 { stroke: color-mix(in oklab, var(--text) 6%, transparent); }
+.bk-band--r2 { stroke: color-mix(in oklab, var(--text) 9%, transparent); }
+.bk-band--center { fill: var(--surface-2); stroke: var(--accent-line); stroke-width: 1.5; }
+.bk-link { stroke: var(--muted); stroke-width: 2.5; opacity: .5; stroke-linecap: round; }
+
+/* Envoltura del foreignObject */
+.bk-fo { width: 100%; height: 100%; display: flex; }
+
+/* Tarjeta de cruce */
+.bk-tie {
+  width: 100%; display: flex; flex-direction: column; justify-content: center;
+  gap: 3px; padding: 6px 7px; box-sizing: border-box;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 9px;
+  position: relative;
+}
+.bk-tie.is-decided { border-color: var(--line); }
+.bk-tie--final {
+  background: var(--surface-2); border-color: var(--accent-line);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 12%, transparent);
+}
+.bk-tie--tbd { border-style: dashed; opacity: .8; }
+
+.bk-row {
+  display: flex; align-items: center; gap: 5px; min-width: 0;
+  font-size: 20px; line-height: 1.1;
+}
+.bk-row--tbd { justify-content: center; color: var(--muted); font-style: italic; }
+.bk-logo { width: 20px; height: 20px; object-fit: contain; flex: none; }
+.bk-logo--ph { border-radius: 4px; background: var(--surface-3); }
+.bk-ab {
+  flex: none;
+  font-family: var(--font-display); font-weight: 700; letter-spacing: .02em;
+  color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.bk-row.is-win .bk-ab { color: var(--up); }
+.bk-row.is-out { opacity: .5; }
+.bk-agg {
+  margin-left: auto; flex: none; padding-left: 4px;
+  font-family: var(--font-mono); font-size: 14px; color: var(--up);
+}
+.bk-agg em { font-style: normal; font-size: 11px; opacity: .75; margin-left: 1px; }
+
+.bk-tie--final .bk-row { font-size: 24px; }
+.bk-tie--final .bk-logo { width: 26px; height: 26px; }
+
+@media (max-width: 560px) {
+  /* En móvil el SVG llena el ancho; el texto escala con él. Los logos siguen siendo
+     el identificador principal (reconocibles aun pequeños). */
+  .bk-stage { max-width: 100%; }
+}
