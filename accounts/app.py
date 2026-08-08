@@ -1,16 +1,27 @@
 """Servidor HTTP interno (stdlib). API de cuentas de usuario.
 
-Endpoints (CP1):
-  GET  /api/health              — vivo + estado DB (siempre, incluso flag off)
-  GET  /api/auth/config         — {enabled, client_id} para inicializar el botón
-  POST /api/auth/google         — {credential} → verifica → sesión → set-cookie
-  POST /api/auth/logout         — revoca sesión + borra cookie
-  GET  /api/me                  — usuario actual (por cookie) o {ok:false}
-  (CP2) /api/follows/*, /api/account → 501 por ahora
+Endpoints:
+  GET    /api/health                          — vivo + estado DB (siempre)
+  GET    /api/auth/config                     — {enabled, client_id} para el botón
+  POST   /api/auth/google                     — {credential} → verifica → sesión → cookie
+  POST   /api/auth/logout                     — revoca sesión + borra cookie
+  GET    /api/me                              — usuario actual (por cookie) o {ok:false}
 
-Mismo patrón que live_tracker/app.py. Con ACCOUNTS_ENABLED=false todo (salvo
-/api/health) responde "disabled". CORS con allowlist solo para dev cross-port; en
-producción el frontend comparte origen (Caddy proxya /api/*).
+  (requieren sesión; 401 si no hay)
+  GET    /api/follows                         — favorito + equipos + competiciones
+  PUT    /api/follows/favorite-team           — {espn_team_id, league_slug}
+  DELETE /api/follows/favorite-team           — quita el favorito
+  POST   /api/follows/teams                   — {espn_team_id, league_slug}
+  DELETE /api/follows/teams/{espnId}
+  POST   /api/follows/competitions/{slug}
+  DELETE /api/follows/competitions/{slug}
+
+  DELETE /api/account                         — (CP4) borrado de cuenta
+
+Con ACCOUNTS_ENABLED=false todo (salvo /api/health y /api/auth/config) responde
+"disabled". CORS con allowlist solo para dev cross-port; en producción el frontend
+comparte origen (Caddy proxya /api/*). Las mutaciones devuelven el estado de
+follows completo, para que el frontend se actualice sin otra llamada.
 """
 
 from __future__ import annotations
@@ -20,7 +31,7 @@ import logging
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import auth, config, db, sessions
+from . import auth, catalog, config, db, sessions
 
 log = logging.getLogger("accounts.app")
 
@@ -35,7 +46,6 @@ class Handler(BaseHTTPRequestHandler):
 
     # ── helpers de respuesta ──────────────────────────────────────────────────
     def _cors_headers(self):
-        """Headers CORS si el Origin está en la allowlist (dev cross-port)."""
         origin = self.headers.get("Origin")
         if origin and origin in config.ALLOWED_ORIGINS:
             return [
@@ -89,11 +99,13 @@ class Handler(BaseHTTPRequestHandler):
             parts.append("Secure")
         return ("Set-Cookie", "; ".join(parts))
 
+    def _current_user(self):
+        return sessions.user_for_token(self._cookie(config.SESSION_COOKIE))
+
     # ── verbos ────────────────────────────────────────────────────────────────
     def do_OPTIONS(self):
-        # Preflight CORS (POST con application/json lo dispara en dev cross-port).
         extra = [
-            ("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS"),
+            ("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS"),
             ("Access-Control-Allow-Headers", "Content-Type"),
             ("Access-Control-Max-Age", "600"),
         ]
@@ -111,8 +123,11 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         self._guard(self._route_post)
 
+    def do_PUT(self):
+        self._guard(self._route_put)
+
     def do_DELETE(self):
-        self._guard(lambda parts: self._send(501, {"ok": False, "reason": "not-implemented"}))
+        self._guard(self._route_delete)
 
     def _guard(self, fn):
         try:
@@ -125,6 +140,17 @@ class Handler(BaseHTTPRequestHandler):
             log.exception("error sirviendo %s", self.path)
             self._send(200, {"ok": False, "reason": "internal-error"})
 
+    # ── validación de follows ─────────────────────────────────────────────────
+    def _valid_slug(self, slug):
+        return bool(slug) and slug in catalog.valid_league_slugs()
+
+    def _valid_team(self, tid, slug):
+        # Los ids de equipo de ESPN son numéricos; validamos formato + catálogo de liga.
+        return bool(tid) and tid.isdigit() and self._valid_slug(slug)
+
+    def _follows_ok(self, user_id, code=200):
+        return self._send(code, {"ok": True, **db.get_follows(user_id)})
+
     # ── rutas GET ─────────────────────────────────────────────────────────────
     def _route_get(self, rest):
         if rest == ["health"]:
@@ -133,8 +159,6 @@ class Handler(BaseHTTPRequestHandler):
                 "enabled": config.ACCOUNTS_ENABLED, "db": db.health(),
             })
 
-        # config del botón: se sirve aunque la feature esté "encendida"; con flag
-        # off devolvemos enabled:false y sin client_id (el frontend no pinta botón).
         if rest == ["auth", "config"]:
             return self._send(200, {
                 "ok": True, "enabled": config.ACCOUNTS_ENABLED,
@@ -145,10 +169,16 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(503, {"ok": False, "reason": "disabled"})
 
         if rest == ["me"]:
-            user = sessions.user_for_token(self._cookie(config.SESSION_COOKIE))
+            user = self._current_user()
             if not user:
                 return self._send(200, {"ok": False, "reason": "no-session"})
             return self._send(200, {"ok": True, "user": user})
+
+        if rest == ["follows"]:
+            user = self._current_user()
+            if not user:
+                return self._send(401, {"ok": False, "reason": "unauthorized"})
+            return self._follows_ok(user["id"])
 
         return self._send(404, {"ok": False, "reason": "not-found"})
 
@@ -159,9 +189,8 @@ class Handler(BaseHTTPRequestHandler):
 
         if rest == ["auth", "google"]:
             data = self._read_json() or {}
-            credential = data.get("credential")
             try:
-                claims = auth.verify_google_id_token(credential)
+                claims = auth.verify_google_id_token(data.get("credential"))
             except auth.TokenError as e:
                 log.info("login rechazado: %s", e)
                 return self._send(401, {"ok": False, "reason": "invalid-token"})
@@ -177,8 +206,77 @@ class Handler(BaseHTTPRequestHandler):
 
         if rest == ["auth", "logout"]:
             sessions.destroy_session(self._cookie(config.SESSION_COOKIE))
-            cleared = self._set_session_cookie("", 0)
-            return self._send(200, {"ok": True}, extra_headers=[cleared])
+            return self._send(200, {"ok": True}, extra_headers=[self._set_session_cookie("", 0)])
+
+        # ── follows (requieren sesión) ──
+        user = self._current_user()
+
+        if rest == ["follows", "teams"]:
+            if not user:
+                return self._send(401, {"ok": False, "reason": "unauthorized"})
+            data = self._read_json() or {}
+            tid = str(data.get("espn_team_id", "")).strip()
+            slug = str(data.get("league_slug", "")).strip()
+            if not self._valid_team(tid, slug):
+                return self._send(400, {"ok": False, "reason": "invalid-team"})
+            if not db.add_followed_team(user["id"], tid, slug, config.MAX_FOLLOWED_TEAMS):
+                return self._send(409, {"ok": False, "reason": "limit-reached"})
+            return self._follows_ok(user["id"])
+
+        if len(rest) == 3 and rest[:2] == ["follows", "competitions"]:
+            if not user:
+                return self._send(401, {"ok": False, "reason": "unauthorized"})
+            slug = rest[2]
+            if not self._valid_slug(slug):
+                return self._send(400, {"ok": False, "reason": "invalid-competition"})
+            if not db.add_followed_competition(user["id"], slug, config.MAX_FOLLOWED_COMPETITIONS):
+                return self._send(409, {"ok": False, "reason": "limit-reached"})
+            return self._follows_ok(user["id"])
+
+        return self._send(404, {"ok": False, "reason": "not-found"})
+
+    # ── rutas PUT ─────────────────────────────────────────────────────────────
+    def _route_put(self, rest):
+        if not config.ACCOUNTS_ENABLED:
+            return self._send(503, {"ok": False, "reason": "disabled"})
+
+        if rest == ["follows", "favorite-team"]:
+            user = self._current_user()
+            if not user:
+                return self._send(401, {"ok": False, "reason": "unauthorized"})
+            data = self._read_json() or {}
+            tid = str(data.get("espn_team_id", "")).strip()
+            slug = str(data.get("league_slug", "")).strip()
+            if not self._valid_team(tid, slug):
+                return self._send(400, {"ok": False, "reason": "invalid-team"})
+            db.set_favorite_team(user["id"], tid, slug)
+            return self._follows_ok(user["id"])
+
+        return self._send(404, {"ok": False, "reason": "not-found"})
+
+    # ── rutas DELETE ──────────────────────────────────────────────────────────
+    def _route_delete(self, rest):
+        if not config.ACCOUNTS_ENABLED:
+            return self._send(503, {"ok": False, "reason": "disabled"})
+
+        if rest == ["account"]:
+            return self._send(501, {"ok": False, "reason": "not-implemented"})  # CP4
+
+        user = self._current_user()
+        if not user:
+            return self._send(401, {"ok": False, "reason": "unauthorized"})
+
+        if rest == ["follows", "favorite-team"]:
+            db.clear_favorite_team(user["id"])
+            return self._follows_ok(user["id"])
+
+        if len(rest) == 3 and rest[:2] == ["follows", "teams"]:
+            db.remove_followed_team(user["id"], rest[2])
+            return self._follows_ok(user["id"])
+
+        if len(rest) == 3 and rest[:2] == ["follows", "competitions"]:
+            db.remove_followed_competition(user["id"], rest[2])
+            return self._follows_ok(user["id"])
 
         return self._send(404, {"ok": False, "reason": "not-found"})
 

@@ -85,6 +85,11 @@ SESSION_TTL_DAYS = _int("ACCOUNTS_SESSION_TTL_DAYS", 30)
 # el navegador acepte la cookie (start.py --accounts lo hace).
 SESSION_COOKIE_SECURE = _flag("ACCOUNTS_COOKIE_SECURE", True)
 
+# ── Follows (límites de robustez) ─────────────────────────────────────────────
+# Topes por usuario para que nadie pueda inflar la DB. Holgados para uso normal.
+MAX_FOLLOWED_TEAMS = _int("ACCOUNTS_MAX_TEAMS", 100)
+MAX_FOLLOWED_COMPETITIONS = _int("ACCOUNTS_MAX_COMPETITIONS", 30)  # solo existen 15
+
 # ── CORS ──────────────────────────────────────────────────────────────────────
 # En producción el frontend y la API comparten origen (predictmotion.com, Caddy
 # proxya /api/*) → CORS irrelevante. Solo hace falta en dev cross-port

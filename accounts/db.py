@@ -115,6 +115,103 @@ def upsert_user(google_sub: str, email: str, name: str | None, picture_url: str 
     return {"id": row["id"], "email": row["email"], "name": row["name"], "picture": row["picture_url"]}
 
 
+# ── Follows (equipo favorito, equipos y competiciones seguidas) ───────────────
+def get_follows(user_id: int) -> dict:
+    """Devuelve el estado de follows del usuario: favorito + equipos + competiciones."""
+    with connect() as conn:
+        fav = conn.execute(
+            "SELECT espn_team_id, league_slug FROM favorite_team WHERE user_id=?",
+            (user_id,),
+        ).fetchone()
+        teams = conn.execute(
+            "SELECT espn_team_id, league_slug FROM followed_teams WHERE user_id=? ORDER BY rowid",
+            (user_id,),
+        ).fetchall()
+        comps = conn.execute(
+            "SELECT league_slug FROM followed_competitions WHERE user_id=? ORDER BY rowid",
+            (user_id,),
+        ).fetchall()
+    return {
+        "favorite_team": ({"espn_team_id": fav["espn_team_id"], "league_slug": fav["league_slug"]}
+                          if fav else None),
+        "teams": [{"espn_team_id": r["espn_team_id"], "league_slug": r["league_slug"]} for r in teams],
+        "competitions": [r["league_slug"] for r in comps],
+    }
+
+
+def set_favorite_team(user_id: int, espn_team_id: str, league_slug: str) -> None:
+    """Fija el equipo favorito (uno solo por usuario; upsert)."""
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO favorite_team(user_id, espn_team_id, league_slug) VALUES(?,?,?)"
+            " ON CONFLICT(user_id) DO UPDATE SET"
+            "   espn_team_id=excluded.espn_team_id, league_slug=excluded.league_slug",
+            (user_id, espn_team_id, league_slug),
+        )
+
+
+def clear_favorite_team(user_id: int) -> None:
+    with connect() as conn:
+        conn.execute("DELETE FROM favorite_team WHERE user_id=?", (user_id,))
+
+
+def add_followed_team(user_id: int, espn_team_id: str, league_slug: str, cap: int) -> bool:
+    """Sigue un equipo. Devuelve False si se alcanzó el tope (y el equipo es nuevo)."""
+    with connect() as conn:
+        exists = conn.execute(
+            "SELECT 1 FROM followed_teams WHERE user_id=? AND espn_team_id=?",
+            (user_id, espn_team_id),
+        ).fetchone()
+        if not exists:
+            n = conn.execute(
+                "SELECT count(*) FROM followed_teams WHERE user_id=?", (user_id,)
+            ).fetchone()[0]
+            if n >= cap:
+                return False
+        conn.execute(
+            "INSERT INTO followed_teams(user_id, espn_team_id, league_slug) VALUES(?,?,?)"
+            " ON CONFLICT(user_id, espn_team_id) DO UPDATE SET league_slug=excluded.league_slug",
+            (user_id, espn_team_id, league_slug),
+        )
+    return True
+
+
+def remove_followed_team(user_id: int, espn_team_id: str) -> None:
+    with connect() as conn:
+        conn.execute(
+            "DELETE FROM followed_teams WHERE user_id=? AND espn_team_id=?",
+            (user_id, espn_team_id),
+        )
+
+
+def add_followed_competition(user_id: int, league_slug: str, cap: int) -> bool:
+    """Sigue una competición. Devuelve False si se alcanzó el tope (y es nueva)."""
+    with connect() as conn:
+        exists = conn.execute(
+            "SELECT 1 FROM followed_competitions WHERE user_id=? AND league_slug=?",
+            (user_id, league_slug),
+        ).fetchone()
+        if not exists:
+            n = conn.execute(
+                "SELECT count(*) FROM followed_competitions WHERE user_id=?", (user_id,)
+            ).fetchone()[0]
+            if n >= cap:
+                return False
+            conn.execute(
+                "INSERT INTO followed_competitions(user_id, league_slug) VALUES(?,?)",
+                (user_id, league_slug),
+            )
+    return True
+
+
+def remove_followed_competition(user_id: int, league_slug: str) -> None:
+    with connect() as conn:
+        conn.execute(
+            "DELETE FROM followed_competitions WHERE user_id=? AND league_slug=?",
+            (user_id, league_slug),
+        )
+
+
 def health() -> dict:
     """Comprobación ligera para /api/health: la DB abre y responde una consulta."""
     try:
