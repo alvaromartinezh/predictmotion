@@ -108,6 +108,19 @@ def euro_top2_bands():
     ])
 
 
+def euro_league_phase_bands():
+    """Fase de liga UEFA (36 equipos, 8 partidos): octavos directos (1º–8º) /
+    play-off de eliminatorias (9º–24º) / eliminado (25º–36º). Reusa las mismas
+    zonas internas que el resto (promo/playoff/relega) para que
+    derive_bands_from_notes derive los cortes de las notas de ESPN sin lógica
+    nueva. Los lo/hi son fallback (inicio de fase, sin notas)."""
+    return _table_bands([
+        ("octavos",   "Octavos de final",          "green", lambda n: 1,      lambda n: 8,      "promo"),
+        ("playoff",   "Play-off de eliminatorias", "blue",  lambda n: 9,      lambda n: n - 12, "playoff"),
+        ("eliminado", "Eliminado",                 "red",   lambda n: n - 11, lambda n: n,      "relega"),
+    ])
+
+
 # ── Registro de ligas ──────────────────────────────────────────────────────
 # slug        → identificador en URLs (/equipos/<slug>/...)
 # espn_code   → código de liga en la API de ESPN
@@ -260,6 +273,45 @@ LEAGUES = [
         "shortname": "Ligue 2", "releg_to": "National",
         "p_home": 0.45, "p_draw": 0.28, "playoff_top": None,
         "bands_from_notes": True, "bands": euro_top2_bands(),
+    },
+
+    # ── Fase 2: competiciones UEFA (fase de liga, plantilla `uefa`) ─────────────
+    # NO son round-robin: 36 equipos, 8 partidos cada uno → `matches_per_team: 8`
+    # (el motor lo usa en vez de 2·(n−1)). Zonas por notas de ESPN: octavos
+    # directos (1º–8º) / play-off de eliminatorias (9º–24º) / eliminado (25º–36º).
+    # `use_strength: False` → modelo UNIFORME, SIN prior de fuerza: el prior actual
+    # es por país (z-score dentro de cada escalera) y NO es comparable entre países,
+    # así que para 36 clubes de ~15 ligas no daría una fuerza válida. PENDIENTE
+    # FASE 4: prior cross-country con dato real (coeficiente UEFA / regresión), no
+    # una heurística improvisada. En pretemporada, por tanto, los 36 salen con % casi
+    # iguales hasta que se juegan jornadas. p_home/p_draw heurísticos.
+    # La fase eliminatoria (bracket) es la Fase 3, aparte.
+    {
+        "slug": "champions", "espn_code": "uefa.champions", "kind": "table",
+        "name": "Champions League", "article": "la", "season": "2025-26",
+        "country": "Europa", "dashboard": "/champions",
+        "dashboard_template": "uefa", "subtitle": "Fase de liga",
+        "p_home": 0.45, "p_draw": 0.25, "playoff_top": None,
+        "matches_per_team": 8, "use_strength": False,
+        "bands_from_notes": True, "bands": euro_league_phase_bands(),
+    },
+    {
+        "slug": "europa", "espn_code": "uefa.europa", "kind": "table",
+        "name": "Europa League", "article": "la", "season": "2025-26",
+        "country": "Europa", "dashboard": "/europa",
+        "dashboard_template": "uefa", "subtitle": "Fase de liga",
+        "p_home": 0.45, "p_draw": 0.25, "playoff_top": None,
+        "matches_per_team": 8, "use_strength": False,
+        "bands_from_notes": True, "bands": euro_league_phase_bands(),
+    },
+    {
+        "slug": "conference", "espn_code": "uefa.europa.conf", "kind": "table",
+        "name": "Conference League", "article": "la", "season": "2025-26",
+        "country": "Europa", "dashboard": "/conference",
+        "dashboard_template": "uefa", "subtitle": "Fase de liga",
+        "p_home": 0.45, "p_draw": 0.25, "playoff_top": None,
+        "matches_per_team": 8, "use_strength": False,
+        "bands_from_notes": True, "bands": euro_league_phase_bands(),
     },
 ]
 

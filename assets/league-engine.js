@@ -103,7 +103,10 @@
     var sc = opts.sc || null;
 
     var n = standings.length;
-    var totalMd = 2 * (n - 1);
+    // totalMd: partidos por equipo en la temporada. Por defecto doble round-robin
+    // 2·(n−1); opts.totalMd lo fija para formatos que no lo son (fase de liga UEFA:
+    // 36 equipos, 8 partidos). Los 12 dashboards de liga no lo pasan → sin cambio.
+    var totalMd = opts.totalMd || 2 * (n - 1);
     var names = standings.map(function (t) { return t.name; });
     var teamGp = {}; standings.forEach(function (t) { teamGp[t.name] = t.gp; });
     var minGp = Math.min.apply(null, standings.map(function (t) { return t.gp; }));

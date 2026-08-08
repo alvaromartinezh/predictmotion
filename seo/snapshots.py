@@ -52,7 +52,9 @@ def build_table_snapshot(league, rows, sim, sim_n, today, league_logo=None,
     if league.get("bands_from_notes"):
         bands = derive_bands_from_notes(bands, rows)
     jornada = max(r["gp"] for r in rows)
-    total_md = 2 * (n - 1)
+    # matches_per_team: formatos que no son round-robin (fase de liga UEFA: 36
+    # equipos, 8 partidos). None → doble vuelta de siempre.
+    total_md = league.get("matches_per_team") or 2 * (n - 1)
 
     # Fuerza por equipo (misma resolución que la sim) para que el fallback JS de
     # los dashboards aplique el mismo prior sin re-derivarlo. None → no se guarda.

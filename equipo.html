@@ -17,8 +17,8 @@
   <link rel="dns-prefetch" href="https://site.api.espn.com" />
   <link rel="dns-prefetch" href="https://sports.core.api.espn.com" />
   <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
-  <link rel="stylesheet" href="/styles.css?v=20260807a" />
-  <script src="/theme.js?v=20260807a"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260808a" />
+  <script src="/theme.js?v=20260808a"></script>
   <title>Equipo · PredictMotion</title>
 
   <style>
@@ -309,6 +309,144 @@ const LEAGUES = {
       { key: 'descenso',   label: 'Descenso',          sub: 'últimos 3', cls: 'red',    test: (p, n) => p > n - 3 },
     ],
   },
+
+  // Fase de liga UEFA (36 equipos, 8 partidos): octavos directos / play-off de
+  // eliminatorias / eliminado. `matchesPerTeam: 8` → el fallback en cliente usa 8
+  // partidos, no 2·(n−1). Las zonas de DISPLAY salen del `bands` del snapshot; estas
+  // son solo fallback sin snapshot. SIN prior de fuerza (uniforme; pendiente Fase 4).
+  champions: {
+    slug: 'champions',
+    code: 'uefa.champions', name: 'Champions League', dashboard: '/champions',
+    pHome: 0.45, pDraw: 0.25, matchesPerTeam: 8,
+    zones: [
+      { key: 'octavos',   label: 'Octavos de final',          sub: 'top 8',      cls: 'green', test: (p, n) => p <= 8 },
+      { key: 'playoff',   label: 'Play-off de eliminatorias', sub: '9º–24º',     cls: 'blue',  test: (p, n) => p >= 9 && p <= 24 },
+      { key: 'eliminado', label: 'Eliminado',                 sub: 'últimos 12', cls: 'red',   test: (p, n) => p > n - 12 },
+    ],
+  },
+  europa: {
+    slug: 'europa',
+    code: 'uefa.europa', name: 'Europa League', dashboard: '/europa',
+    pHome: 0.45, pDraw: 0.25, matchesPerTeam: 8,
+    zones: [
+      { key: 'octavos',   label: 'Octavos de final',          sub: 'top 8',      cls: 'green', test: (p, n) => p <= 8 },
+      { key: 'playoff',   label: 'Play-off de eliminatorias', sub: '9º–24º',     cls: 'blue',  test: (p, n) => p >= 9 && p <= 24 },
+      { key: 'eliminado', label: 'Eliminado',                 sub: 'últimos 12', cls: 'red',   test: (p, n) => p > n - 12 },
+    ],
+  },
+  conference: {
+    slug: 'conference',
+    code: 'uefa.europa.conf', name: 'Conference League', dashboard: '/conference',
+    pHome: 0.45, pDraw: 0.25, matchesPerTeam: 8,
+    zones: [
+      { key: 'octavos',   label: 'Octavos de final',          sub: 'top 8',      cls: 'green', test: (p, n) => p <= 8 },
+      { key: 'playoff',   label: 'Play-off de eliminatorias', sub: '9º–24º',     cls: 'blue',  test: (p, n) => p >= 9 && p <= 24 },
+      { key: 'eliminado', label: 'Eliminado',                 sub: 'últimos 12', cls: 'red',   test: (p, n) => p > n - 12 },
+    ],
+  },
+
+  // ── 1as divisiones europeas (plantilla top1). Zonas de DISPLAY salen del `bands`
+  //    del snapshot (cortes reales por notas de ESPN, varían por país); estas son
+  //    solo fallback sin snapshot. Champions/Europa/Conference/Descenso. ──────────
+  premier: {
+    slug: 'premier', code: 'eng.1', name: 'Premier League', dashboard: '/premier',
+    pHome: 0.45, pDraw: 0.24,
+    zones: [
+      { key: 'champions',  label: 'Champions League',  sub: 'top 4',     cls: 'green',  test: (p, n) => p <= 4 },
+      { key: 'europa',     label: 'Europa League',     sub: '5º–6º',     cls: 'blue',   test: (p, n) => p >= 5 && p <= 6 },
+      { key: 'conference', label: 'Conference League', sub: '7º',        cls: 'violet', test: (p, n) => p === 7 },
+      { key: 'descenso',   label: 'Descenso',          sub: 'últimos 3', cls: 'red',    test: (p, n) => p > n - 3 },
+    ],
+  },
+  seriea: {
+    slug: 'seriea', code: 'ita.1', name: 'Serie A', dashboard: '/seriea',
+    pHome: 0.45, pDraw: 0.27,
+    zones: [
+      { key: 'champions',  label: 'Champions League',  sub: 'top 4',     cls: 'green',  test: (p, n) => p <= 4 },
+      { key: 'europa',     label: 'Europa League',     sub: '5º–6º',     cls: 'blue',   test: (p, n) => p >= 5 && p <= 6 },
+      { key: 'conference', label: 'Conference League', sub: '7º',        cls: 'violet', test: (p, n) => p === 7 },
+      { key: 'descenso',   label: 'Descenso',          sub: 'últimos 3', cls: 'red',    test: (p, n) => p > n - 3 },
+    ],
+  },
+  bundesliga: {
+    slug: 'bundesliga', code: 'ger.1', name: 'Bundesliga', dashboard: '/bundesliga',
+    pHome: 0.44, pDraw: 0.24,
+    zones: [
+      { key: 'champions',  label: 'Champions League',  sub: 'top 4',     cls: 'green',  test: (p, n) => p <= 4 },
+      { key: 'europa',     label: 'Europa League',     sub: '5º–6º',     cls: 'blue',   test: (p, n) => p >= 5 && p <= 6 },
+      { key: 'conference', label: 'Conference League', sub: '7º',        cls: 'violet', test: (p, n) => p === 7 },
+      { key: 'descenso',   label: 'Descenso',          sub: 'últimos 3', cls: 'red',    test: (p, n) => p > n - 3 },
+    ],
+  },
+  ligue1: {
+    slug: 'ligue1', code: 'fra.1', name: 'Ligue 1', dashboard: '/ligue1',
+    pHome: 0.45, pDraw: 0.27,
+    zones: [
+      { key: 'champions',  label: 'Champions League',  sub: 'top 4',     cls: 'green',  test: (p, n) => p <= 4 },
+      { key: 'europa',     label: 'Europa League',     sub: '5º–6º',     cls: 'blue',   test: (p, n) => p >= 5 && p <= 6 },
+      { key: 'conference', label: 'Conference League', sub: '7º',        cls: 'violet', test: (p, n) => p === 7 },
+      { key: 'descenso',   label: 'Descenso',          sub: 'últimos 3', cls: 'red',    test: (p, n) => p > n - 3 },
+    ],
+  },
+  primeira: {
+    slug: 'primeira', code: 'por.1', name: 'Primeira Liga', dashboard: '/primeira',
+    pHome: 0.46, pDraw: 0.27,
+    zones: [
+      { key: 'champions',  label: 'Champions League',  sub: 'top 4',     cls: 'green',  test: (p, n) => p <= 4 },
+      { key: 'europa',     label: 'Europa League',     sub: '5º–6º',     cls: 'blue',   test: (p, n) => p >= 5 && p <= 6 },
+      { key: 'conference', label: 'Conference League', sub: '7º',        cls: 'violet', test: (p, n) => p === 7 },
+      { key: 'descenso',   label: 'Descenso',          sub: 'últimos 3', cls: 'red',    test: (p, n) => p > n - 3 },
+    ],
+  },
+  eredivisie: {
+    slug: 'eredivisie', code: 'ned.1', name: 'Eredivisie', dashboard: '/eredivisie',
+    pHome: 0.46, pDraw: 0.24,
+    zones: [
+      { key: 'champions',  label: 'Champions League',  sub: 'top 4',     cls: 'green',  test: (p, n) => p <= 4 },
+      { key: 'europa',     label: 'Europa League',     sub: '5º–6º',     cls: 'blue',   test: (p, n) => p >= 5 && p <= 6 },
+      { key: 'conference', label: 'Conference League', sub: '7º',        cls: 'violet', test: (p, n) => p === 7 },
+      { key: 'descenso',   label: 'Descenso',          sub: 'últimos 3', cls: 'red',    test: (p, n) => p > n - 3 },
+    ],
+  },
+
+  // ── 2as divisiones europeas (plantilla tier2). Ascenso/Play-off/Descenso; cortes
+  //    reales por notas en el snapshot, estos son fallback. ────────────────────────
+  championship: {
+    slug: 'championship', code: 'eng.2', name: 'Championship', dashboard: '/championship',
+    pHome: 0.45, pDraw: 0.26,
+    zones: [
+      { key: 'ascenso',  label: 'Ascenso directo',     sub: 'top 2',     cls: 'green', test: (p, n) => p <= 2 },
+      { key: 'playoff',  label: 'Play-off de ascenso', sub: '3º–6º',     cls: 'blue',  test: (p, n) => p >= 3 && p <= 6 },
+      { key: 'descenso', label: 'Descenso',            sub: 'últimos 3', cls: 'red',   test: (p, n) => p > n - 3 },
+    ],
+  },
+  serieb: {
+    slug: 'serieb', code: 'ita.2', name: 'Serie B', dashboard: '/serieb',
+    pHome: 0.45, pDraw: 0.28,
+    zones: [
+      { key: 'ascenso',  label: 'Ascenso directo',     sub: 'top 2',     cls: 'green', test: (p, n) => p <= 2 },
+      { key: 'playoff',  label: 'Play-off de ascenso', sub: '3º–6º',     cls: 'blue',  test: (p, n) => p >= 3 && p <= 6 },
+      { key: 'descenso', label: 'Descenso',            sub: 'últimos 3', cls: 'red',   test: (p, n) => p > n - 3 },
+    ],
+  },
+  bundesliga2: {
+    slug: 'bundesliga2', code: 'ger.2', name: '2. Bundesliga', dashboard: '/bundesliga2',
+    pHome: 0.44, pDraw: 0.26,
+    zones: [
+      { key: 'ascenso',  label: 'Ascenso directo',     sub: 'top 2',     cls: 'green', test: (p, n) => p <= 2 },
+      { key: 'playoff',  label: 'Play-off de ascenso', sub: '3º–6º',     cls: 'blue',  test: (p, n) => p >= 3 && p <= 6 },
+      { key: 'descenso', label: 'Descenso',            sub: 'últimos 3', cls: 'red',   test: (p, n) => p > n - 3 },
+    ],
+  },
+  ligue2: {
+    slug: 'ligue2', code: 'fra.2', name: 'Ligue 2', dashboard: '/ligue2',
+    pHome: 0.45, pDraw: 0.28,
+    zones: [
+      { key: 'ascenso',  label: 'Ascenso directo',     sub: 'top 2',     cls: 'green', test: (p, n) => p <= 2 },
+      { key: 'playoff',  label: 'Play-off de ascenso', sub: '3º–6º',     cls: 'blue',  test: (p, n) => p >= 3 && p <= 6 },
+      { key: 'descenso', label: 'Descenso',            sub: 'últimos 3', cls: 'red',   test: (p, n) => p > n - 3 },
+    ],
+  },
 };
 
 // ─── URL params ───────────────────────────────────────────────────────────
@@ -415,7 +553,9 @@ function buildFixtures(names, gp, totalMd){const mds=[];for(let md=gp+1;md<=tota
 // snapshot cuando lo hay) y `sc` el contexto de fuerza ya calculado (buildStrengthCtx).
 function simulate(standings, teamName, zones, sc) {
   const numTeams = standings.length;
-  const totalMd  = 2 * (numTeams - 1);
+  // matchesPerTeam: formatos que no son round-robin (fase de liga UEFA: 8). Sin
+  // valor → doble vuelta 2·(n−1) de siempre.
+  const totalMd  = LG.matchesPerTeam || 2 * (numTeams - 1);
   const minGp    = Math.min(...standings.map(t => t.gp));
   const blank    = () => Object.fromEntries(zones.map(z => [z.key, 0]));
 
