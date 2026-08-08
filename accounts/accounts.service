@@ -1,0 +1,21 @@
+[Unit]
+Description=PredictMotion accounts API (login Google + follows, SQLite)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/predictmotion
+ExecStart=/usr/bin/python3 -m accounts
+Restart=on-failure
+RestartSec=5
+# Feature flag y ajustes (descomenta para sobreescribir config.py).
+# En CP0 se despliega A OSCURAS: la feature queda apagada por defecto.
+# Environment=ACCOUNTS_ENABLED=false
+# Environment=ACCOUNTS_PORT=8771
+# El Client ID de Google y demás credenciales se leen del entorno/.env en CP1.
+# Environment=GOOGLE_CLIENT_ID=
+
+[Install]
+WantedBy=multi-user.target
