@@ -19,14 +19,29 @@ sudo systemctl enable "$UNIT"
 sudo systemctl restart "$UNIT"
 
 echo "==> 2/3 Caddy: asegurar reverse_proxy de las rutas de cuentas -> :8771"
-# Las rutas específicas de cuentas deben ir ANTES de try_files. /api/live/* (:8770)
-# lo gestiona el deploy del live_tracker; aquí solo añadimos las de cuentas.
+# IMPORTANTE (orden en un bloque route{}): el bloque route ejecuta las directivas
+# EN EL ORDEN ESCRITO y reverse_proxy es terminal. El live_tracker instala un
+# catch-all 'reverse_proxy /api/* localhost:8770' que, si queda por ENCIMA,
+# captura /api/me, /api/auth/*, etc. y las rutas de cuentas nunca se alcanzan.
+# Por eso las rutas de cuentas (más específicas) deben insertarse ANTES de ese
+# catch-all. Si el catch-all no existe (live_tracker sin desplegar), se usa como
+# ancla 'try_files {path}'.
 ROUTES=(
+  "reverse_proxy /api/health localhost:8771"
   "reverse_proxy /api/auth/* localhost:8771"
   "reverse_proxy /api/me localhost:8771"
   "reverse_proxy /api/follows/* localhost:8771"
   "reverse_proxy /api/account localhost:8771"
 )
+
+# Ancla de inserción: preferimos justo antes del catch-all de live_tracker.
+if sudo grep -qF "reverse_proxy /api/* localhost:8770" "$CADDY"; then
+  ANCHOR_RE='reverse_proxy /api/\* localhost:8770'
+  echo "    ancla: antes del catch-all /api/* -> :8770 (live_tracker)"
+else
+  ANCHOR_RE='try_files {path}'
+  echo "    ancla: antes de try_files (no hay catch-all de live_tracker)"
+fi
 
 NEED_RELOAD=0
 BAK="$CADDY.bak.$(date +%s)"
@@ -42,8 +57,9 @@ for ROUTE in "${ROUTES[@]}"; do
     echo "    backup en $BAK"
   fi
   NEED_RELOAD=1
-  # Inserta la línea justo antes de 'try_files {path}', conservando la sangría.
-  sudo sed -i "s#^\([[:space:]]*\)try_files {path}#\1${ROUTE}\n\1try_files {path}#" "$CADDY"
+  # Inserta la línea justo antes del ancla, conservando la sangría. `&` reproduce
+  # el texto emparejado (sangría + ancla), así la línea ancla queda intacta.
+  sudo sed -i "s#^\([[:space:]]*\)${ANCHOR_RE}#\1${ROUTE}\n&#" "$CADDY"
   echo "    añadida: $ROUTE"
 done
 
