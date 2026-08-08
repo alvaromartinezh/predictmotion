@@ -18,6 +18,7 @@
   <link rel="dns-prefetch" href="https://sports.core.api.espn.com" />
   <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
   <link rel="stylesheet" href="/styles.css?v=20260808a" />
+  <link rel="stylesheet" href="/assets/account.css?v=20260808a" />
   <script src="/theme.js?v=20260808a"></script>
   <title>Equipo · PredictMotion</title>
 
@@ -211,6 +212,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="badge" id="badge-pos">—</div>
   </div>
 </div>
+<div class="pm-followbar" id="pm-followbar" hidden></div>
 </div>
 
 <div class="status-bar">
@@ -1187,6 +1189,46 @@ async function updateSeason() {
 }
 
 if (TEAM_ID) { triggerUpdate(); updateSeason(); }
+
+// ===== Seguir equipo / marcar favorito (mejora progresiva; anónimo = sin barra) =====
+(function () {
+  var SLUG = params.get('league') || 'hypermotion';
+  var bar = document.getElementById('pm-followbar');
+  if (!TEAM_ID || !bar) return;
+  function teamName() {
+    var t = document.getElementById('team-title').textContent;
+    if (t && t !== 'Cargando…' && t !== 'Equipo no encontrado') return t;
+    return TEAM_NAME_HINT || '';
+  }
+  function render() {
+    var acct = window.PMAccount;
+    if (!acct || !acct.isEnabled()) { bar.hidden = true; return; }
+    bar.hidden = false;
+    if (!acct.isLoggedIn()) {
+      bar.innerHTML = '<a class="pm-fbtn" href="/cuenta">Inicia sesión para seguir este equipo</a>';
+      return;
+    }
+    var following = acct.followsTeam(TEAM_ID), fav = acct.isFavorite(TEAM_ID);
+    bar.innerHTML =
+      '<button type="button" class="pm-fbtn' + (following ? ' is-on' : '') + '" id="pm-follow-team">'
+        + (following ? '✓ Siguiendo' : '+ Seguir equipo') + '</button>'
+      + '<button type="button" class="pm-fbtn pm-fbtn--fav' + (fav ? ' is-on' : '') + '" id="pm-fav-team">'
+        + (fav ? '★ Favorito' : '☆ Marcar favorito') + '</button>';
+    document.getElementById('pm-follow-team').addEventListener('click', function () {
+      var b = this; b.disabled = true;
+      (following ? acct.unfollowTeam(TEAM_ID) : acct.followTeam(TEAM_ID, SLUG, teamName()))
+        .catch(function () {}).then(function () { b.disabled = false; });
+    });
+    document.getElementById('pm-fav-team').addEventListener('click', function () {
+      var b = this; b.disabled = true;
+      (fav ? acct.clearFavorite() : acct.setFavorite(TEAM_ID, SLUG, teamName()))
+        .catch(function () {}).then(function () { b.disabled = false; });
+    });
+  }
+  document.addEventListener('pm-account-ready', render);
+  document.addEventListener('pm-follows-changed', render);
+})();
 </script>
+<script src="/assets/account.js?v=20260808a"></script>
 </body>
 </html>

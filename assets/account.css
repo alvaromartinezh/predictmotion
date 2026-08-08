@@ -1,0 +1,61 @@
+/* Estilos de cuentas/follows (topbar, estrellas de seguir, tiras personalizadas).
+   Usa los tokens de styles.css. Compartido por index/equipo (y /cuenta). */
+
+/* ── Widget de cuenta en la topbar ── */
+.pm-account {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px;
+  color: var(--text); text-decoration: none; font-family: var(--font-display);
+  font-weight: 700; font-size: var(--fs-13); text-transform: uppercase; letter-spacing: .03em;
+  white-space: nowrap;
+}
+.pm-account:hover { border-color: var(--accent); }
+.pm-account__pic { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; }
+.pm-account__pic--ph { background: var(--panel-2); border: 1px solid var(--line); }
+.pm-account__name { max-width: 8ch; overflow: hidden; text-overflow: ellipsis; }
+.pm-account__login { color: var(--accent); }
+
+/* ── Estrella "seguir" (competiciones en las tarjetas del selector) ── */
+.pm-star {
+  position: absolute; top: 10px; right: 10px; z-index: 2;
+  width: 34px; height: 34px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  border: 1px solid var(--line); color: var(--muted);
+  cursor: pointer; font-size: 16px; line-height: 1; padding: 0;
+  transition: transform .08s ease, color .15s ease, border-color .15s ease;
+}
+.pm-star:hover { transform: scale(1.08); border-color: var(--accent); color: var(--text); }
+.pm-star.is-on { color: #ffcf3f; border-color: #ffcf3f; }
+.comp-card { position: relative; }  /* ancla para la estrella */
+
+/* ── Tiras personalizadas en la home ── */
+.pm-mine { margin: var(--sp-4) 0 var(--sp-6); }
+.pm-mine__title {
+  font-family: var(--font-display); font-size: var(--fs-18); color: var(--muted);
+  margin: 0 0 var(--sp-3); text-transform: uppercase; letter-spacing: .04em;
+}
+.pm-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.pm-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px;
+  color: var(--text); text-decoration: none; font-size: var(--fs-14); background: var(--panel);
+}
+.pm-chip:hover { border-color: var(--accent); }
+.pm-chip img { width: 20px; height: 20px; object-fit: contain; }
+.pm-chip--fav { border-color: #ffcf3f; }
+.pm-chip__star { color: #ffcf3f; }
+.pm-mine__hint { color: var(--muted); font-size: var(--fs-13); }
+
+/* ── Botones de seguir en la página de equipo ── */
+.pm-followbar { display: flex; flex-wrap: wrap; gap: 10px; margin-top: var(--sp-3); }
+.pm-fbtn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 14px; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--text);
+  font-family: var(--font-display); font-weight: 700; font-size: var(--fs-13);
+  text-transform: uppercase; letter-spacing: .03em;
+}
+.pm-fbtn:hover { border-color: var(--accent); }
+.pm-fbtn.is-on { border-color: var(--accent); color: var(--accent); }
+.pm-fbtn--fav.is-on { border-color: #ffcf3f; color: #ffcf3f; }
