@@ -3,6 +3,10 @@
 Con `--live` arranca también el backend de seguimiento en vivo (live_tracker) en
 :8770, para que las páginas /partido tengan su API en desarrollo. En producción
 ese servicio corre por systemd y Caddy proxya /api/*.
+
+Con `--accounts` arranca el backend de cuentas (accounts) en :8771, con la feature
+encendida y la cookie de sesión en modo NO-Secure (para poder probar el login por
+http en local). En producción corre por systemd (flag off en CP0).
 """
 import http.server, threading, webbrowser, socket, os, sys, subprocess
 
@@ -13,6 +17,14 @@ if '--live' in sys.argv:
     repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     print('Arrancando live_tracker en :8770 …')
     subprocess.Popen([sys.executable, '-m', 'live_tracker'], cwd=repo)
+
+# Backend de cuentas en dev (opt-in). Feature encendida y cookie NO-Secure para
+# poder probar el login por http en local; en producción corre por systemd.
+if '--accounts' in sys.argv:
+    repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    print('Arrancando accounts en :8771 …')
+    env = {**os.environ, 'ACCOUNTS_ENABLED': 'true', 'ACCOUNTS_COOKIE_SECURE': 'false'}
+    subprocess.Popen([sys.executable, '-m', 'accounts'], cwd=repo, env=env)
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *args): pass  # silencia el log

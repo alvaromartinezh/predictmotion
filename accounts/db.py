@@ -92,6 +92,29 @@ def init_db() -> None:
     log.info("DB lista en %s", config.DB_PATH)
 
 
+def upsert_user(google_sub: str, email: str, name: str | None, picture_url: str | None) -> dict:
+    """Crea o actualiza el usuario por su `google_sub` (id estable de Google).
+
+    Actualiza email/nombre/foto y last_login_at en cada login. Devuelve el usuario.
+    """
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).isoformat()
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO users(google_sub, email, name, picture_url, created_at, last_login_at)"
+            " VALUES(?,?,?,?,?,?)"
+            " ON CONFLICT(google_sub) DO UPDATE SET"
+            "   email=excluded.email, name=excluded.name,"
+            "   picture_url=excluded.picture_url, last_login_at=excluded.last_login_at",
+            (google_sub, email, name, picture_url, now, now),
+        )
+        row = conn.execute(
+            "SELECT id, email, name, picture_url FROM users WHERE google_sub=?",
+            (google_sub,),
+        ).fetchone()
+    return {"id": row["id"], "email": row["email"], "name": row["name"], "picture": row["picture_url"]}
+
+
 def health() -> dict:
     """Comprobación ligera para /api/health: la DB abre y responde una consulta."""
     try:

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" href="/media/twitter_profile.png" />
+  <link rel="apple-touch-icon" href="/media/twitter_profile.png" />
+
+  <title>Mi cuenta · PredictMotion</title>
+  <meta name="description" content="Cuenta de usuario de PredictMotion." />
+  <!-- Página de cuenta: no se indexa (CP1, a oscuras, sin enlazar en el sitio). -->
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#060916" />
+
+  <link rel="stylesheet" href="/styles.css?v=20260808a" />
+  <script src="/theme.js?v=20260808a"></script>
+  <style>
+  main.wrap { max-width: 560px; padding-bottom: var(--sp-9); }
+  .account { padding-block: var(--sp-7); }
+  .account h1 {
+    font-family: var(--font-display); font-weight: 800; text-transform: uppercase;
+    font-size: clamp(1.8rem, 4.6vw, var(--fs-36)); line-height: 1.06; margin-bottom: var(--sp-2);
+  }
+  .account__sub { color: var(--muted); font-family: var(--font-mono); font-size: var(--fs-12); letter-spacing: .12em; text-transform: uppercase; margin-bottom: var(--sp-6); }
+  .account .panel { padding: var(--sp-7); }
+  .account p { font-size: var(--fs-15); color: var(--text-2); line-height: 1.7; }
+  .who { display: flex; align-items: center; gap: var(--sp-4); margin-bottom: var(--sp-5); }
+  .who img { width: 56px; height: 56px; border-radius: 50%; }
+  .who__name { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-18); color: var(--text); }
+  .who__email { color: var(--muted); font-size: var(--fs-13); font-family: var(--font-mono); }
+  .btn {
+    font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+    padding: var(--sp-3) var(--sp-5); border-radius: 10px; cursor: pointer; font-size: var(--fs-14);
+  }
+  .btn:hover { border-color: var(--accent); }
+  .msg { margin-top: var(--sp-4); font-size: var(--fs-13); font-family: var(--font-mono); color: var(--muted); }
+  .msg.err { color: #ff7a7a; }
+  #g_btn { margin-top: var(--sp-4); }
+  </style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar__inner">
+    <a class="logo" href="/" aria-label="PredictMotion — inicio">
+      <span class="logo__dot" aria-hidden="true"></span>Predict<b>Motion</b>
+    </a>
+    <div class="topbar__right">
+      <button class="theme-toggle" data-theme-toggle type="button" aria-pressed="false" aria-label="Cambiar tema" title="Tema claro / oscuro">
+        <span class="tt-opt tt-dark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8Z"/></svg></span>
+        <span class="tt-opt tt-light" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap account">
+  <a class="back-link" href="/">← Volver al inicio</a>
+  <h1>Mi cuenta</h1>
+  <p class="account__sub">PredictMotion</p>
+
+  <div class="panel">
+    <!-- Estado LOGUEADO -->
+    <div id="signed-in" hidden>
+      <div class="who">
+        <img id="who-pic" alt="" referrerpolicy="no-referrer" />
+        <div>
+          <div class="who__name" id="who-name"></div>
+          <div class="who__email" id="who-email"></div>
+        </div>
+      </div>
+      <button class="btn" id="logout-btn" type="button">Cerrar sesión</button>
+    </div>
+
+    <!-- Estado ANÓNIMO -->
+    <div id="signed-out" hidden>
+      <p>Inicia sesión para seguir tus equipos y competiciones favoritas.</p>
+      <div id="g_btn"></div>
+    </div>
+
+    <p class="msg" id="msg">Cargando…</p>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="wrap footer__inner">
+    <p>© 2025 PredictMotion · Todos los derechos reservados</p>
+    <nav class="footer__links" aria-label="Enlaces legales">
+      <a href="mailto:contact@predictmotion.com">contact@predictmotion.com</a>
+      <a href="/privacy">Política de privacidad</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+(function () {
+  // Base de la API: en producción, mismo origen (Caddy proxya /api/*). En dev
+  // (página en :8765) usamos el MISMO host que la página para :8771, para que la
+  // cookie de sesión (SameSite=Lax) se considere same-site y viaje en los fetch.
+  var API = (location.port === '8765')
+    ? (location.protocol + '//' + location.hostname + ':8771')
+    : '';
+  var $ = function (id) { return document.getElementById(id); };
+  var msg = $('msg');
+  function say(text, isErr) { msg.textContent = text || ''; msg.className = 'msg' + (isErr ? ' err' : ''); }
+
+  function api(path, opts) {
+    opts = opts || {};
+    opts.credentials = 'include';           // manda/recibe la cookie de sesión
+    return fetch(API + path, opts).then(function (r) { return r.json().catch(function () { return {}; }); });
+  }
+
+  function showSignedIn(user) {
+    $('signed-out').hidden = true;
+    $('signed-in').hidden = false;
+    $('who-name').textContent = user.name || user.email || 'Usuario';
+    $('who-email').textContent = user.email || '';
+    if (user.picture) { $('who-pic').src = user.picture; $('who-pic').hidden = false; }
+    else { $('who-pic').hidden = true; }
+    say('');
+  }
+
+  function showSignedOut(clientId) {
+    $('signed-in').hidden = true;
+    $('signed-out').hidden = false;
+    say('');
+    if (window.google && google.accounts && google.accounts.id && clientId) {
+      google.accounts.id.initialize({ client_id: clientId, callback: onCredential });
+      google.accounts.id.renderButton($('g_btn'), { theme: 'filled_black', size: 'large', text: 'signin_with', shape: 'pill' });
+    } else {
+      say('El inicio de sesión no está disponible ahora mismo.', true);
+    }
+  }
+
+  function onCredential(resp) {
+    say('Verificando…');
+    api('/api/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credential: resp.credential }),
+    }).then(function (data) {
+      if (data && data.ok) { showSignedIn(data.user); }
+      else { say('No se pudo iniciar sesión.', true); }
+    }).catch(function () { say('Error de red al iniciar sesión.', true); });
+  }
+
+  $('logout-btn').addEventListener('click', function () {
+    say('Cerrando sesión…');
+    api('/api/auth/logout', { method: 'POST' }).then(function () {
+      loadConfigThenState();
+    });
+  });
+
+  function loadConfigThenState() {
+    // 1) ¿está la feature encendida y con qué client_id? 2) ¿hay sesión?
+    api('/api/auth/config').then(function (cfg) {
+      if (!cfg || !cfg.enabled) { say('Las cuentas no están disponibles.', true); $('signed-out').hidden = true; return; }
+      api('/api/me').then(function (me) {
+        if (me && me.ok) { showSignedIn(me.user); }
+        else { showSignedOut(cfg.client_id); }
+      });
+    }).catch(function () { say('No se pudo contactar con el servidor.', true); });
+  }
+
+  loadConfigThenState();
+})();
+</script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</body>
+</html>
