@@ -45,6 +45,10 @@ sys.path.insert(0, str(ROOT))
 
 from seo import notify  # noqa: E402  (reusa el envío de alertas + carga de .env)
 
+# Cargar ROOT/.env ANTES de leer la config de módulo (si no, REPO_DIR/EMAIL_WEEKDAY/
+# etc. definidos solo en .env se ignorarían por leerse en tiempo de import).
+notify._load_env()
+
 
 def log(msg):
     print(f"[backup] {datetime.now().isoformat(timespec='seconds')} {msg}", flush=True)
