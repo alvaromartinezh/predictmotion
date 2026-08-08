@@ -17,6 +17,10 @@ sitemap-data.xml
 # Live tracker — partidos finalizados guardados (solo en el servidor)
 live_data/
 
+# Cuentas de usuario — DB SQLite con datos de personas reales (solo en el
+# servidor; backup off-site aparte). NUNCA en git.
+user_data/
+
 __pycache__/
 seo/__pycache__/_grupo_preview.png
 
