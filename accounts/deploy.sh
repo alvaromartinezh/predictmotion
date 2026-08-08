@@ -30,6 +30,7 @@ ROUTES=(
   "reverse_proxy /api/health localhost:8771"
   "reverse_proxy /api/auth/* localhost:8771"
   "reverse_proxy /api/me localhost:8771"
+  "reverse_proxy /api/follows localhost:8771"
   "reverse_proxy /api/follows/* localhost:8771"
   "reverse_proxy /api/account localhost:8771"
 )

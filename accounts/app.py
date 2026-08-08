@@ -69,14 +69,12 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _read_json(self):
-        try:
-            length = int(self.headers.get("Content-Length", 0))
-        except (TypeError, ValueError):
-            return None
-        if length <= 0 or length > _MAX_BODY:
+        # El cuerpo ya se leyó entero en _guard (self._raw_body); aquí solo se parsea.
+        raw = getattr(self, "_raw_body", b"")
+        if not raw:
             return None
         try:
-            return json.loads(self.rfile.read(length) or b"{}")
+            return json.loads(raw)
         except (ValueError, json.JSONDecodeError):
             return None
 
@@ -131,6 +129,19 @@ class Handler(BaseHTTPRequestHandler):
 
     def _guard(self, fn):
         try:
+            # Consume SIEMPRE el cuerpo, aunque la ruta no lo lea. En keep-alive
+            # (Caddy reusa la conexión upstream a :8771) los bytes de cuerpo sin
+            # leer corromperían la SIGUIENTE petición de esa conexión.
+            try:
+                n = int(self.headers.get("Content-Length", 0) or 0)
+            except (TypeError, ValueError):
+                self.close_connection = True
+                return self._send(400, {"ok": False, "reason": "bad-request"})
+            if n > _MAX_BODY:
+                self.close_connection = True  # no drenamos cuerpos enormes (DoS)
+                return self._send(413, {"ok": False, "reason": "payload-too-large"})
+            self._raw_body = self.rfile.read(n) if n > 0 else b""
+
             path = self.path.split("?", 1)[0].rstrip("/")
             parts = [p for p in path.split("/") if p]
             if not parts or parts[0] != "api":
