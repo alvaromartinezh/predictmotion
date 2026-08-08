@@ -85,6 +85,10 @@ SESSION_TTL_DAYS = _int("ACCOUNTS_SESSION_TTL_DAYS", 30)
 # el navegador acepte la cookie (start.py --accounts lo hace).
 SESSION_COOKIE_SECURE = _flag("ACCOUNTS_COOKIE_SECURE", True)
 
+# ── Rate limiting de /api/auth (defensa en profundidad) ───────────────────────
+RATE_LIMIT_MAX = _int("ACCOUNTS_RATE_MAX", 20)          # peticiones por ventana e IP
+RATE_LIMIT_WINDOW = _int("ACCOUNTS_RATE_WINDOW", 300)   # ventana en segundos (5 min)
+
 # ── Follows (límites de robustez) ─────────────────────────────────────────────
 # Topes por usuario para que nadie pueda inflar la DB. Holgados para uso normal.
 MAX_FOLLOWED_TEAMS = _int("ACCOUNTS_MAX_TEAMS", 100)

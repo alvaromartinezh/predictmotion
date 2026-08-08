@@ -212,6 +212,15 @@ def remove_followed_competition(user_id: int, league_slug: str) -> None:
         )
 
 
+def delete_user(user_id: int) -> None:
+    """Borra el usuario y, por FK ON DELETE CASCADE, sus sesiones y follows.
+
+    La cascada requiere PRAGMA foreign_keys=ON (lo pone connect()).
+    """
+    with connect() as conn:
+        conn.execute("DELETE FROM users WHERE id=?", (user_id,))
+
+
 def health() -> dict:
     """Comprobación ligera para /api/health: la DB abre y responde una consulta."""
     try:

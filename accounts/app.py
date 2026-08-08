@@ -32,10 +32,14 @@ from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import auth, catalog, config, db, sessions
+from .ratelimit import RateLimiter
 
 log = logging.getLogger("accounts.app")
 
 _MAX_BODY = 64 * 1024  # los ID token de Google rondan 1-2 KB; 64 KB es de sobra
+
+# Rate limiter compartido para /api/auth (anti-abuso del login). Por IP de cliente.
+_auth_limiter = RateLimiter(config.RATE_LIMIT_MAX, config.RATE_LIMIT_WINDOW)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -61,6 +65,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
         for k, v in self._cors_headers():
             self.send_header(k, v)
         for k, v in (extra_headers or []):
@@ -99,6 +104,14 @@ class Handler(BaseHTTPRequestHandler):
 
     def _current_user(self):
         return sessions.user_for_token(self._cookie(config.SESSION_COOKIE))
+
+    def _client_ip(self):
+        # Detrás de Cloudflare + Caddy: la IP real llega en cabeceras. (Ojo: el
+        # origen es accesible directo, así que estas cabeceras son spoofables si se
+        # salta Cloudflare — es defensa en profundidad, no la barrera principal.)
+        return (self.headers.get("CF-Connecting-IP")
+                or self.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+                or self.client_address[0])
 
     # ── verbos ────────────────────────────────────────────────────────────────
     def do_OPTIONS(self):
@@ -198,6 +211,10 @@ class Handler(BaseHTTPRequestHandler):
         if not config.ACCOUNTS_ENABLED:
             return self._send(503, {"ok": False, "reason": "disabled"})
 
+        # Rate limit de /api/auth (login/logout) por IP — anti-abuso.
+        if rest[:1] == ["auth"] and not _auth_limiter.allow(self._client_ip()):
+            return self._send(429, {"ok": False, "reason": "rate-limited"})
+
         if rest == ["auth", "google"]:
             data = self._read_json() or {}
             try:
@@ -270,12 +287,15 @@ class Handler(BaseHTTPRequestHandler):
         if not config.ACCOUNTS_ENABLED:
             return self._send(503, {"ok": False, "reason": "disabled"})
 
-        if rest == ["account"]:
-            return self._send(501, {"ok": False, "reason": "not-implemented"})  # CP4
-
         user = self._current_user()
         if not user:
             return self._send(401, {"ok": False, "reason": "unauthorized"})
+
+        # Borrado de cuenta (RGPD, derecho de supresión). El DELETE del usuario
+        # cascada a sesiones y follows (FK ON DELETE CASCADE); se limpia la cookie.
+        if rest == ["account"]:
+            db.delete_user(user["id"])
+            return self._send(200, {"ok": True}, extra_headers=[self._set_session_cookie("", 0)])
 
         if rest == ["follows", "favorite-team"]:
             db.clear_favorite_team(user["id"])
