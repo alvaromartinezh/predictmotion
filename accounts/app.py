@@ -245,9 +245,10 @@ class Handler(BaseHTTPRequestHandler):
             data = self._read_json() or {}
             tid = str(data.get("espn_team_id", "")).strip()
             slug = str(data.get("league_slug", "")).strip()
+            name = str(data.get("name", "")).strip()[:80]
             if not self._valid_team(tid, slug):
                 return self._send(400, {"ok": False, "reason": "invalid-team"})
-            if not db.add_followed_team(user["id"], tid, slug, config.MAX_FOLLOWED_TEAMS):
+            if not db.add_followed_team(user["id"], tid, slug, name, config.MAX_FOLLOWED_TEAMS):
                 return self._send(409, {"ok": False, "reason": "limit-reached"})
             return self._follows_ok(user["id"])
 
@@ -275,9 +276,10 @@ class Handler(BaseHTTPRequestHandler):
             data = self._read_json() or {}
             tid = str(data.get("espn_team_id", "")).strip()
             slug = str(data.get("league_slug", "")).strip()
+            name = str(data.get("name", "")).strip()[:80]
             if not self._valid_team(tid, slug):
                 return self._send(400, {"ok": False, "reason": "invalid-team"})
-            db.set_favorite_team(user["id"], tid, slug)
+            db.set_favorite_team(user["id"], tid, slug, name)
             return self._follows_ok(user["id"])
 
         return self._send(404, {"ok": False, "reason": "not-found"})

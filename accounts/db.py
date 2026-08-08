@@ -49,13 +49,15 @@ CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
 CREATE TABLE IF NOT EXISTS favorite_team (
     user_id      INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     espn_team_id TEXT NOT NULL,
-    league_slug  TEXT NOT NULL
+    league_slug  TEXT NOT NULL,
+    name         TEXT
 );
 
 CREATE TABLE IF NOT EXISTS followed_teams (
     user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     espn_team_id TEXT NOT NULL,
     league_slug  TEXT NOT NULL,
+    name         TEXT,
     PRIMARY KEY (user_id, espn_team_id)
 );
 CREATE INDEX IF NOT EXISTS idx_followed_teams_user ON followed_teams(user_id);
@@ -89,7 +91,17 @@ def init_db() -> None:
     """Crea el esquema si no existe. Idempotente; seguro en cada arranque."""
     with connect() as conn:
         conn.executescript(_SCHEMA)
+        _migrate(conn)
     log.info("DB lista en %s", config.DB_PATH)
+
+
+def _migrate(conn) -> None:
+    """Migraciones idempotentes de columnas nuevas sobre tablas ya existentes."""
+    # `name` en las tablas de equipos (para mostrar el equipo sin llamar a ESPN).
+    for table in ("favorite_team", "followed_teams"):  # nombres fijos, no user input
+        cols = [r[1] for r in conn.execute(f"PRAGMA table_info({table})")]
+        if "name" not in cols:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN name TEXT")
 
 
 def upsert_user(google_sub: str, email: str, name: str | None, picture_url: str | None) -> dict:
@@ -120,11 +132,11 @@ def get_follows(user_id: int) -> dict:
     """Devuelve el estado de follows del usuario: favorito + equipos + competiciones."""
     with connect() as conn:
         fav = conn.execute(
-            "SELECT espn_team_id, league_slug FROM favorite_team WHERE user_id=?",
+            "SELECT espn_team_id, league_slug, name FROM favorite_team WHERE user_id=?",
             (user_id,),
         ).fetchone()
         teams = conn.execute(
-            "SELECT espn_team_id, league_slug FROM followed_teams WHERE user_id=? ORDER BY rowid",
+            "SELECT espn_team_id, league_slug, name FROM followed_teams WHERE user_id=? ORDER BY rowid",
             (user_id,),
         ).fetchall()
         comps = conn.execute(
@@ -132,21 +144,22 @@ def get_follows(user_id: int) -> dict:
             (user_id,),
         ).fetchall()
     return {
-        "favorite_team": ({"espn_team_id": fav["espn_team_id"], "league_slug": fav["league_slug"]}
-                          if fav else None),
-        "teams": [{"espn_team_id": r["espn_team_id"], "league_slug": r["league_slug"]} for r in teams],
+        "favorite_team": ({"espn_team_id": fav["espn_team_id"], "league_slug": fav["league_slug"],
+                           "name": fav["name"]} if fav else None),
+        "teams": [{"espn_team_id": r["espn_team_id"], "league_slug": r["league_slug"],
+                   "name": r["name"]} for r in teams],
         "competitions": [r["league_slug"] for r in comps],
     }
 
 
-def set_favorite_team(user_id: int, espn_team_id: str, league_slug: str) -> None:
+def set_favorite_team(user_id: int, espn_team_id: str, league_slug: str, name: str = "") -> None:
     """Fija el equipo favorito (uno solo por usuario; upsert)."""
     with connect() as conn:
         conn.execute(
-            "INSERT INTO favorite_team(user_id, espn_team_id, league_slug) VALUES(?,?,?)"
+            "INSERT INTO favorite_team(user_id, espn_team_id, league_slug, name) VALUES(?,?,?,?)"
             " ON CONFLICT(user_id) DO UPDATE SET"
-            "   espn_team_id=excluded.espn_team_id, league_slug=excluded.league_slug",
-            (user_id, espn_team_id, league_slug),
+            "   espn_team_id=excluded.espn_team_id, league_slug=excluded.league_slug, name=excluded.name",
+            (user_id, espn_team_id, league_slug, name),
         )
 
 
@@ -155,7 +168,7 @@ def clear_favorite_team(user_id: int) -> None:
         conn.execute("DELETE FROM favorite_team WHERE user_id=?", (user_id,))
 
 
-def add_followed_team(user_id: int, espn_team_id: str, league_slug: str, cap: int) -> bool:
+def add_followed_team(user_id: int, espn_team_id: str, league_slug: str, name: str, cap: int) -> bool:
     """Sigue un equipo. Devuelve False si se alcanzó el tope (y el equipo es nuevo)."""
     with connect() as conn:
         exists = conn.execute(
@@ -169,9 +182,10 @@ def add_followed_team(user_id: int, espn_team_id: str, league_slug: str, cap: in
             if n >= cap:
                 return False
         conn.execute(
-            "INSERT INTO followed_teams(user_id, espn_team_id, league_slug) VALUES(?,?,?)"
-            " ON CONFLICT(user_id, espn_team_id) DO UPDATE SET league_slug=excluded.league_slug",
-            (user_id, espn_team_id, league_slug),
+            "INSERT INTO followed_teams(user_id, espn_team_id, league_slug, name) VALUES(?,?,?,?)"
+            " ON CONFLICT(user_id, espn_team_id) DO UPDATE SET"
+            "   league_slug=excluded.league_slug, name=excluded.name",
+            (user_id, espn_team_id, league_slug, name),
         )
     return True
 

@@ -55,6 +55,7 @@
   </script>
 
   <link rel="stylesheet" href="/styles.css?v=20260808a" />
+  <link rel="stylesheet" href="/assets/account.css?v=20260808a" />
   <style>
     .comps-group { margin-bottom: var(--sp-6); }
     .comps-group__title {
@@ -154,6 +155,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       nav.setAttribute('aria-label', 'Competiciones de ' + country);
       list.forEach(function (c) {
         var a = document.createElement('a'); a.className = 'comp-card ' + c.theme; a.href = '/' + c.slug;
+        a.setAttribute('data-slug', c.slug);
         a.innerHTML =
           '<div class="comp-card__top"><span class="comp-card__shield">'
           + '<img alt="' + c.name + '" loading="lazy" id="logo-' + c.slug + '" /></span></div>'
@@ -179,6 +181,76 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           if (href) { var img = document.getElementById('logo-' + c.slug); if (img) img.src = href.replace('http://', 'https://'); }
         }).catch(function () {});
     });
+
+    // ===== Personalización (mejora progresiva; anónimo = vista de siempre) =====
+    var compBySlug = {}; COMPS.forEach(function (c) { compBySlug[c.slug] = c; });
+
+    function teamHref(t) {
+      return '/equipo?id=' + encodeURIComponent(t.espn_team_id)
+        + '&league=' + encodeURIComponent(t.league_slug)
+        + '&name=' + encodeURIComponent(t.name || '');
+    }
+
+    function personalize() {
+      var acct = window.PMAccount; if (!acct) return;
+      var loggedIn = acct.isEnabled() && acct.isLoggedIn();
+
+      // 1) estrella de seguir en cada tarjeta de competición
+      document.querySelectorAll('.comp-card[data-slug]').forEach(function (card) {
+        var slug = card.getAttribute('data-slug');
+        var star = card.querySelector('.pm-star');
+        if (!loggedIn) { if (star) star.remove(); return; }
+        if (!star) {
+          star = document.createElement('button');
+          star.type = 'button'; star.className = 'pm-star';
+          star.addEventListener('click', function (e) {
+            e.preventDefault(); e.stopPropagation();
+            var on = acct.followsCompetition(slug);
+            star.disabled = true;
+            (on ? acct.unfollowCompetition(slug) : acct.followCompetition(slug))
+              .then(function () {}).catch(function () {})
+              .then(function () { star.disabled = false; });
+          });
+          card.appendChild(star);
+        }
+        var on = acct.followsCompetition(slug);
+        star.classList.toggle('is-on', on);
+        star.textContent = on ? '★' : '☆';
+        star.title = on ? 'Dejar de seguir' : 'Seguir competición';
+        star.setAttribute('aria-label', star.title);
+      });
+
+      // 2) tiras "Tus competiciones / Tus equipos"
+      var old = document.getElementById('pm-mine'); if (old) old.remove();
+      if (!loggedIn) return;
+      var f = acct.follows() || { competitions: [], teams: [], favorite_team: null };
+      var html = '<h2 class="pm-mine__title">Tus competiciones</h2>';
+      if (f.competitions.length) {
+        html += '<div class="pm-chips">' + f.competitions.map(function (s) {
+          var c = compBySlug[s]; return '<a class="pm-chip" href="/' + s + '">' + (c ? c.name : s) + '</a>';
+        }).join('') + '</div>';
+      } else {
+        html += '<p class="pm-mine__hint">Sigue competiciones con la ☆ de cada tarjeta para verlas aquí.</p>';
+      }
+      var fav = f.favorite_team;
+      if (f.teams.length || fav) {
+        html += '<h2 class="pm-mine__title" style="margin-top:var(--sp-5)">Tus equipos</h2><div class="pm-chips">';
+        if (fav) html += '<a class="pm-chip pm-chip--fav" href="' + teamHref(fav) + '"><span class="pm-chip__star">★</span>' + (fav.name || 'Favorito') + '</a>';
+        f.teams.forEach(function (t) {
+          if (fav && t.espn_team_id === fav.espn_team_id) return;
+          html += '<a class="pm-chip" href="' + teamHref(t) + '">' + (t.name || 'Equipo') + '</a>';
+        });
+        html += '</div>';
+      }
+      var wrap = document.createElement('section'); wrap.id = 'pm-mine'; wrap.className = 'pm-mine';
+      wrap.innerHTML = html;
+      var main = document.querySelector('main.wrap');
+      main.insertBefore(wrap, document.getElementById('comps-root'));
+    }
+
+    document.addEventListener('pm-account-ready', personalize);
+    document.addEventListener('pm-follows-changed', personalize);
   </script>
+  <script src="/assets/account.js?v=20260808a"></script>
 </body>
 </html>
