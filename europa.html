@@ -30,18 +30,13 @@
   <link rel="stylesheet" href="/styles.css?v=20260808a" />
   <link rel="stylesheet" href="/assets/fixtures.css?v=20260808a" />
   <link rel="stylesheet" href="/assets/ads.css?v=20260808a" />
+  <link rel="stylesheet" href="/assets/bracket.css?v=20260808a" />
   <script src="/theme.js?v=20260808a"></script>
   <script src="/assets/league-engine.js?v=20260808a"></script>
 
-  <title>Serie B 2025-26 · Probabilidades de Ascenso y Descenso</title>
+  <title>Europa League 2025-26 · Probabilidades de la fase de liga</title>
   <style>
-  /* ===== serieb.html · estilos de página (sistema base en styles.css) ===== */
-  /* Alias de variables heredadas que usan los strings inline del JS (bracket) */
-  body {
-    --green: var(--up);    --blue: var(--accent); --red: var(--down);
-    --surface2: var(--surface-2); --border: var(--line); --radius: var(--r-md);
-  }
-
+  /* ===== europa.html · estilos de página (sistema base en styles.css) ===== */
   main.wrap { padding-bottom: var(--sp-9); }
   .table-toolbar { margin-top: var(--sp-2); }
 
@@ -67,68 +62,23 @@
   /* Skeleton */
   .skeleton { animation: shimmer 1.4s infinite; background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%); background-size: 400% 100%; border-radius: var(--r-xs); }
   @keyframes shimmer { to { background-position: -400% 0; } }
-
-  /* ===== Play-off de Ascenso (cuadro) ===== */
-  .playoff-section { margin-top: var(--sp-8); }
-  .section-label { font-family: var(--font-mono); font-size: var(--fs-12); font-weight: 500; text-transform: uppercase; letter-spacing: .16em; color: var(--muted); margin-bottom: var(--sp-4); }
-  .playoff-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); overflow-x: auto; }
-
-  .bracket-grid { display: grid; grid-template-columns: 1fr 28px minmax(160px,200px) 28px 1fr; padding: 24px 20px; min-width: 520px; }
-  .bkg-lt { grid-column: 1; grid-row: 1; display: flex; justify-content: flex-end; align-items: center; padding-bottom: 10px; }
-  .bkg-lb { grid-column: 1; grid-row: 2; display: flex; justify-content: flex-end; align-items: center; padding-top: 10px; }
-  .bkg-cl { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; }
-  .bkg-cl .ch { flex: 1; border-right: 2px solid var(--line); border-bottom: 2px solid var(--line); border-bottom-right-radius: 5px; }
-  .bkg-cl .cb { flex: 1; border-right: 2px solid var(--line); border-top: 2px solid var(--line); border-top-right-radius: 5px; }
-  .bkg-cf {
-    grid-column: 3; grid-row: 1 / span 2;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px;
-    background: var(--surface-2); border: 1px solid var(--accent-line);
-    border-radius: var(--r-md); padding: 18px 12px; text-align: center; margin: 0 2px;
-  }
-  .bk-final-title { font-family: var(--font-display); font-size: var(--fs-15); font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
-  .bk-final-badge { font-family: var(--font-display); font-size: var(--fs-13); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--up); background: var(--up-soft); border: 1px solid rgba(46,201,138,.2); border-radius: var(--r-pill); padding: 3px 10px; }
-  .bk-finalist { width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-xs); padding: 8px 10px; font-size: var(--fs-14); font-weight: 500; display: flex; align-items: center; gap: 6px; min-height: 34px; }
-  .bk-finalist img { width: 18px; height: 18px; object-fit: contain; flex-shrink: 0; }
-  .bk-finalist .fin-name { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .bk-finalist .fin-tbd { color: var(--muted); font-size: var(--fs-13); font-style: italic; }
-  .bkg-cr { grid-column: 4; grid-row: 1 / span 2; display: flex; flex-direction: column; }
-  .bkg-cr .ch { flex: 1; border-left: 2px solid var(--line); border-bottom: 2px solid var(--line); border-bottom-left-radius: 5px; }
-  .bkg-cr .cb { flex: 1; border-left: 2px solid var(--line); border-top: 2px solid var(--line); border-top-left-radius: 5px; }
-  .bkg-rt { grid-column: 5; grid-row: 1; display: flex; justify-content: flex-start; align-items: center; padding-bottom: 10px; }
-  .bkg-rb { grid-column: 5; grid-row: 2; display: flex; justify-content: flex-start; align-items: center; padding-top: 10px; }
-  .bk-team { background: var(--surface-2); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 6px; padding: 9px 10px; display: flex; align-items: center; gap: 8px; width: 100%; }
-  .bk-team-pos { font-family: var(--font-display); font-size: var(--fs-14); font-weight: 700; color: var(--accent); width: 22px; text-align: center; flex-shrink: 0; }
-  .bk-team-logo { width: 24px; height: 24px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-  .bk-team-logo img { width: 100%; height: 100%; object-fit: contain; }
-  .bk-team-logo.fallback { background: var(--surface); font-size: .55rem; font-weight: 700; border-radius: 4px; color: #fff; }
-  .bk-team-info { flex: 1; min-width: 0; }
-  .bk-team-name { font-size: var(--fs-14); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
-  .bk-team-p { font-size: var(--fs-12); color: var(--muted); margin-top: 2px; line-height: 1.4; }
-  .bk-team-p .pf { color: var(--accent); font-weight: 600; }
-  .bk-team-p .pw { color: var(--up); font-weight: 600; }
-  .bracket-semi-labels { display: grid; grid-template-columns: 1fr 28px minmax(160px,200px) 28px 1fr; padding: 0 20px; min-width: 520px; }
-  .semi-lbl { font-family: var(--font-display); font-size: var(--fs-12); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); padding-bottom: 6px; }
-  .semi-lbl.left { grid-column: 1; text-align: right; }
-  .semi-lbl.center { grid-column: 3; text-align: center; color: var(--accent); }
-  .semi-lbl.right { grid-column: 5; text-align: left; }
   </style>
 
   <!-- SEO principal -->
-  <meta name="description" content="Simulación Monte Carlo de la Serie B 2025-26. Probabilidades en tiempo real de ascenso directo, play-off y descenso para los 22 equipos de Italia española." />
-  <meta name="keywords" content="Serie B, Italia probabilidades, ascenso Italia, play-off ascenso, descenso Serie B, predicción fútbol, simulación Italia 2025-26" />
+  <meta name="description" content="Simulación Monte Carlo de la Europa League 2025-26. Probabilidades en tiempo real de octavos de final, play-off de eliminatorias y eliminación para los 36 equipos de la fase de liga." />
+  <meta name="keywords" content="Europa League, Europa League probabilidades, fase de liga Europa League, octavos Europa League, play-off eliminatorias, clasificación Europa League 2025-26, predicción fútbol, simulación Monte Carlo" />
   <meta name="author" content="PredictMotion" />
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
   <meta name="theme-color" content="#060916" />
   <meta name="application-name" content="PredictMotion" />
-  <meta name="geo.region" content="ES" />
-  <link rel="canonical" href="https://predictmotion.com/serieb" />
-  <link rel="alternate" hreflang="es" href="https://predictmotion.com/serieb" />
+  <link rel="canonical" href="https://predictmotion.com/europa" />
+  <link rel="alternate" hreflang="es" href="https://predictmotion.com/europa" />
 
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://predictmotion.com/serieb" />
-  <meta property="og:title" content="Serie B 2025-26 · Probabilidades de Ascenso y Descenso" />
-  <meta property="og:description" content="Simulación Monte Carlo de la Serie B 2025-26. Probabilidades en tiempo real de ascenso directo, play-off y descenso para los 22 equipos de Italia." />
+  <meta property="og:url" content="https://predictmotion.com/europa" />
+  <meta property="og:title" content="Europa League 2025-26 · Probabilidades de la fase de liga" />
+  <meta property="og:description" content="Simulación Monte Carlo de la Europa League 2025-26. Probabilidades en tiempo real de octavos, play-off de eliminatorias y eliminación para los 36 equipos de la fase de liga." />
   <meta property="og:image" content="https://predictmotion.com/media/twitter_profile.png" />
   <meta property="og:image:alt" content="Logo PredictMotion" />
   <meta property="og:locale" content="es_ES" />
@@ -136,8 +86,8 @@
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Serie B 2025-26 · Probabilidades de Ascenso y Descenso" />
-  <meta name="twitter:description" content="20 000 simulaciones Monte Carlo para predecir el final de la temporada en Italia española." />
+  <meta name="twitter:title" content="Europa League 2025-26 · Probabilidades de la fase de liga" />
+  <meta name="twitter:description" content="20 000 simulaciones Monte Carlo para predecir la fase de liga de la Europa League 2025-26." />
   <meta name="twitter:image" content="https://predictmotion.com/media/twitter_profile.png" />
   <meta name="twitter:image:alt" content="Logo PredictMotion" />
 
@@ -146,17 +96,16 @@
   {
     "@context": "https://schema.org",
     "@type": "WebApplication",
-    "name": "PredictMotion – Serie B 2025-26",
-    "description": "Simulador Monte Carlo para la Serie B 2025-26. Probabilidades de ascenso directo, play-off y descenso para los 22 equipos de Italia española.",
-    "url": "https://predictmotion.com/",
+    "name": "PredictMotion – Europa League 2025-26",
+    "description": "Simulador Monte Carlo para la fase de liga de la Europa League 2025-26. Probabilidades de octavos, play-off de eliminatorias y eliminación para los 36 equipos.",
+    "url": "https://predictmotion.com/europa",
     "applicationCategory": "SportsApplication",
     "operatingSystem": "Web",
     "inLanguage": "es-ES",
     "about": {
       "@type": "SportsOrganization",
-      "name": "Serie B",
-      "sport": "Soccer",
-      "url": "https://www.laliga.com/laliga-serieb"
+      "name": "Europa League",
+      "sport": "Soccer"
     },
     "offers": {
       "@type": "Offer",
@@ -172,7 +121,7 @@
   <!-- Umami Analytics -->
   <script async src="https://umami.predictmotion.com/script.js" data-website-id="08e9969f-6743-48f3-bdf5-b69dff0a8a84"></script>
 </head>
-<body class="theme-serieb">
+<body class="theme-europa">
 <!-- Google Tag Manager (noscript) -->
 <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NG2T7CM4"
 height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
@@ -186,7 +135,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </a>
     <div class="topbar__right">
       <nav class="topbar__nav" aria-label="Competiciones">
-        <a href="/serieb">Serie B</a>
+        <a href="/europa">Europa League</a>
         <a href="/laliga">LaLiga</a>
         <a href="/noticias">Noticias</a>
       </nav>
@@ -198,17 +147,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </div>
 </header>
 
-<!-- ===== CABECERA DE LIGA ===== -->
+<!-- ===== CABECERA DE COMPETICIÓN ===== -->
 <section class="league-head">
   <div class="wrap">
     <a class="back-link" href="/">← Todas las competiciones</a>
     <div class="league-head__row">
       <span class="league-shield">
-        <img id="league-logo" src="https://a.espncdn.com/i/leaguelogos/soccer/500/107.png" alt="Serie B" />
+        <img id="league-logo" src="https://a.espncdn.com/i/leaguelogos/soccer/500/2.png" alt="Europa League" />
       </span>
       <div class="league-head__meta">
-        <p class="eyebrow">Italia · España</p>
-        <h1 class="league-head__title">Serie B 2025‑26</h1>
+        <p class="eyebrow">Fase de liga · Europa</p>
+        <h1 class="league-head__title">Europa League 2025‑26</h1>
         <p class="league-head__sub">Temporada <b id="league-season">2025-26</b> · Jornada <b id="badge-jornada">—</b> · <span class="num">20.000</span> simulaciones</p>
       </div>
     </div>
@@ -216,6 +165,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="page-tabs">
       <button class="page-tab active" type="button" data-section="clasificacion">Clasificación</button>
       <button class="page-tab" type="button" data-section="partidos">Próximos partidos</button>
+      <button class="page-tab" type="button" data-section="cuadro">Cuadro</button>
     </div>
   </div>
 </section>
@@ -242,9 +192,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
               <th class="col-team" scope="col">Equipo</th>
               <th class="col-pj" scope="col">PJ</th>
               <th scope="col">Pts</th>
-              <th class="col-prob" scope="col">Ascenso</th>
+              <th class="col-prob" scope="col">Octavos</th>
               <th class="col-prob" scope="col">Play-off</th>
-              <th class="col-prob" scope="col">Descenso</th>
+              <th class="col-prob" scope="col">Eliminado</th>
             </tr>
           </thead>
           <tbody id="tbody"></tbody>
@@ -252,15 +202,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </div>
     </div>
 
-    <div class="playoff-section" id="playoff-section" style="display:none">
-      <div class="section-label">Play-off de Ascenso — Probabilidades &amp; Cuadro</div>
-      <div class="playoff-card" id="playoff-card">
-        <div class="bracket-semi-labels" id="bracket-semi-labels"></div>
-        <div class="bracket-grid" id="bracket-grid"></div>
-      </div>
-    </div>
-
-    <!-- ===== ANUNCIO: tras la tabla de clasificación / cuadro de play-off ===== -->
+    <!-- ===== ANUNCIO: tras la tabla de clasificación ===== -->
     <div class="ad-wrap"><span class="ad-label">Publicidad</span>
       <div class="ad-slot" data-ad-slot="mid"></div></div>
   </div><!-- /clasificacion -->
@@ -273,6 +215,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div id="fx-mount" class="fx"></div>
   </div>
 
+  <!-- ===== CUADRO (eliminatoria concéntrica; SOLO visualización, sin probabilidad) ===== -->
+  <div class="tab-section" data-section="cuadro" hidden>
+    <div class="ad-wrap"><span class="ad-label">Publicidad</span>
+      <div class="ad-slot" data-ad-slot="mid"></div></div>
+    <div id="bk-mount"></div>
+  </div>
+
 
 </main>
 
@@ -283,23 +232,28 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <nav class="footer__links" aria-label="Enlaces">
       <a href="mailto:contact@predictmotion.com">contact@predictmotion.com</a>
       <a href="/privacy">Política de privacidad</a>
-      <a href="/equipos/serieb">Probabilidades por equipo</a>
+      <a href="/equipos/europa">Probabilidades por equipo</a>
     </nav>
   </div>
 </footer>
 
 <script>
-// ─── League config — añadir aquí nuevas ligas cuando se expanda ───────────
+// ─── Config de la competición ─────────────────────────────────────────────
+// Fase de liga UEFA: 36 equipos, 8 partidos por equipo (NO round-robin). Zonas:
+//   octavos directos (1º–8º) · play-off de eliminatorias (9º–24º) · eliminado
+//   (25º–36º). Reusa las mismas zonas internas (promo/playoff/relega) y la misma
+//   mecánica de cortes por notas de ESPN que las 2as europeas; solo cambian las
+//   etiquetas, el nº de partidos y el mapeo de notas.
 const LEAGUE = {
-  espnCode:    'ita.2',
-  promoSlots:  2,   // ascenso directo (top N)
-  playoffTop:  6,   // clasifican al play-off (incluye los directos)
-  relegSlots:  3,   // fallback; se deriva de notas (deriveSlots)
+  espnCode:       'uefa.europa',
+  matchesPerTeam: 8,   // partidos por equipo en la fase de liga (no 2·(n−1))
+  promoSlots:     8,   // octavos directos (top N) — fallback; se deriva de notas
+  playoffTop:     24,  // hasta aquí siguen vivos (octavos + play-off) — fallback
+  relegSlots:     12,  // eliminados (cola) — fallback; se deriva de notas
   labels: {
-    promo:   'Ascenso directo',
-    playoff: 'Play-off de ascenso',
-    perma:   'Zona de permanencia',
-    relega:  'Descenso a Serie C',
+    promo:   'Octavos de final',
+    playoff: 'Play-off de eliminatorias',
+    relega:  'Eliminado',
   },
 };
 
@@ -308,11 +262,11 @@ const ESPN_SCOREBOARD = `https://site.api.espn.com/apis/site/v2/sports/soccer/${
 // Resultado precalculado por el cron SEO (mismo Monte Carlo, cada 3h). El dashboard
 // lo LEE en lugar de simular en cada carga; solo re-simula en cliente cuando el
 // snapshot no cuadra con la tabla actual (partido en vivo o resultado aún no
-// recogido por el cron). Ver SIM_N alineado a la escala del generador (20000).
-const SNAPSHOT_URL = '/data/serieb/latest.json';
+// recogido por el cron). SIM_N alineado a la escala del generador (20000).
+const SNAPSHOT_URL = '/data/europa/latest.json';
 const SIM_N  = 20000;
 const P_HOME = 0.45;
-const P_DRAW = 0.28;
+const P_DRAW = 0.25;
 
 const COLOR_PALETTE = [
   '#e11d48','#7c3aed','#2563eb','#0891b2','#059669','#ca8a04','#ea580c',
@@ -320,28 +274,31 @@ const COLOR_PALETTE = [
   '#0369a1','#15803d','#b45309','#be185d','#6d28d9','#0e7490','#166534','#92400e',
 ];
 
-let cachedNumTeams = 22;
+let cachedNumTeams = 36;
 
-// PRNG, seed y helpers de simulación viven ahora en assets/league-engine.js
-// (PMEngine). Aquí solo quedan los helpers de zona/render específicos de la liga.
+// PRNG, seed y helpers de simulación viven en assets/league-engine.js (PMEngine).
+// Aquí solo quedan los helpers de zona/render específicos de la competición.
 
 // ─── Zone helpers — todo derivado del config, sin números hardcodeados ────
 function zoneOf(pos, numTeams) {
   if (pos <= LEAGUE.promoSlots) return 'promo';
   if (pos <= LEAGUE.playoffTop) return 'playoff';
-  if (pos > numTeams - LEAGUE.relegSlots) return 'relega';
-  return 'none';
+  return 'relega';                                // resto: eliminado (sin permanencia)
 }
 
-// ─── Zonas por notas de ESPN (2ª división: Promotion / Promotion playoffs) ──
+// ─── Zonas por notas de ESPN (fase de liga UEFA) ───────────────────────────
+// "Qualifies for round of 16" · "Knockout phase playoffs - seeded|unseeded" ·
+// "Eliminated". Espeja seo/espn.py:_note_to_zone (fuente del snapshot) para que el
+// fallback en cliente y el precálculo coincidan.
 function noteToZone(desc) {
   const d = (desc || '').toLowerCase();
-  if (d.indexOf('promotion') >= 0) return d.indexOf('playoff') >= 0 ? 'playoff' : 'promo';
-  if (d.indexOf('relegat') >= 0)   return d.indexOf('playoff') >= 0 ? 'none' : 'relega';
+  if (d.indexOf('round of 16') >= 0) return 'promo';
+  if (d.indexOf('knockout')    >= 0) return 'playoff';
+  if (d.indexOf('eliminat')    >= 0) return 'relega';
   return 'none';
 }
-// Deriva nº de plazas por caminata CONTIGUA desde la cabeza (ascenso → play-off)
-// y desde el fondo (descenso). Sin notas → fallback de LEAGUE.
+// Deriva los cortes por caminata CONTIGUA desde la cabeza (octavos → play-off) y
+// desde el fondo (eliminados). Sin notas → fallback de LEAGUE.
 function deriveSlots(standings) {
   const byRank = [...standings].sort((a, b) => a.rank - b.rank);
   let i = 0, promo = 0, playoff = 0, releg = 0;
@@ -356,64 +313,52 @@ function deriveSlots(standings) {
   };
 }
 
-function getZoneLabels(numTeams) {
-  const relegStart = numTeams - LEAGUE.relegSlots + 1;
-  return {
-    1:                        { text: LEAGUE.labels.promo,   cls: 'green' },
-    [LEAGUE.promoSlots + 1]:  { text: LEAGUE.labels.playoff, cls: 'blue'  },
-    [LEAGUE.playoffTop + 1]:  { text: LEAGUE.labels.perma,   cls: 'gray'  },
-    [relegStart]:             { text: LEAGUE.labels.relega,  cls: 'red'   },
-  };
-}
-
 // Mapa zona interna → data-zone del sistema de diseño (up/po/down)
 const ZONE_DATA = { promo: 'up', playoff: 'po', relega: 'down', none: '' };
 
 function renderLegend(numTeams) {
-  const relegStart = numTeams - LEAGUE.relegSlots + 1;
+  const elimStart = LEAGUE.playoffTop + 1;
   document.getElementById('legend').innerHTML = `
     <span class="up"><i></i>${LEAGUE.labels.promo} (1º–${LEAGUE.promoSlots}º)</span>
     <span class="po"><i></i>Play-off (${LEAGUE.promoSlots + 1}º–${LEAGUE.playoffTop}º)</span>
-    <span class="down"><i></i>Descenso (${relegStart}º–${numTeams}º)</span>
+    <span class="down"><i></i>${LEAGUE.labels.relega} (${elimStart}º–${numTeams}º)</span>
   `;
 }
 
-// ─── Simulation ───────────────────────────────────────────────────────────
-// Motor compartido: assets/league-engine.js (PMEngine). La rama de temporada
-// TERMINADA queda aquí (zonas por rank, específica de liga); el Monte Carlo se
-// delega a PMEngine.simulate → histograma de posición → zonas por zoneProb.
-// Paridad bit-idéntica con el motor embebido anterior verificada.
+// ─── Simulación ────────────────────────────────────────────────────────────
+// Motor compartido: assets/league-engine.js (PMEngine). La rama de fase TERMINADA
+// queda aquí (zonas por rank); el Monte Carlo se delega a PMEngine.simulate con
+// totalMd = 8 (fase de liga, no round-robin) → histograma de posición → zonas por
+// zoneProb. SIN prior de fuerza (modelo uniforme): el snapshot UEFA no trae
+// strength (ver config.py; pendiente Fase 4).
 function simulate(standings, sc) {
   const numTeams = standings.length;
-  const totalMd  = 2 * (numTeams - 1);
+  const totalMd  = LEAGUE.matchesPerTeam;
   const minGp    = Math.min(...standings.map(t => t.gp));
 
-  // Temporada terminada: usar el orden oficial de ESPN (ya aplica los desempates
-  // por enfrentamiento directo); reordenar por DG colocaba mal a equipos empatados.
+  // Fase terminada: usar el orden oficial de ESPN (ya aplica los desempates UEFA).
   if (minGp >= totalMd) {
     return Object.fromEntries(standings.map((t, idx) => {
       const p = t.rank || idx + 1;
       return [t.name, {
-        top2:    p <= LEAGUE.promoSlots             ? 100 : 0,
-        playoff: p > LEAGUE.promoSlots && p <= LEAGUE.playoffTop ? 100 : 0,
-        relega:  p > numTeams - LEAGUE.relegSlots   ? 100 : 0,
-        pSemi: 0, pFinal: 0, pWin: 0,
+        octavos:   p <= LEAGUE.promoSlots ? 100 : 0,
+        playoff:   p > LEAGUE.promoSlots && p <= LEAGUE.playoffTop ? 100 : 0,
+        eliminado: p > LEAGUE.playoffTop ? 100 : 0,
       }];
     }));
   }
 
   const res = PMEngine.simulate(standings, {
     pHome: P_HOME, pDraw: P_DRAW, simN: SIM_N,
-    playoffTop: null, promoSlots: LEAGUE.promoSlots, sc: sc,
+    totalMd: LEAGUE.matchesPerTeam, playoffTop: null, sc: sc,
   });
   const out = {};
   standings.forEach(t => {
     const h = res.posHist[t.name];
     out[t.name] = {
-      top2:    PMEngine.zoneProb(h, 1, LEAGUE.promoSlots, res.simN),
-      playoff: PMEngine.zoneProb(h, LEAGUE.promoSlots + 1, LEAGUE.playoffTop, res.simN),
-      relega:  PMEngine.zoneProb(h, numTeams - LEAGUE.relegSlots + 1, numTeams, res.simN),
-      pSemi:   res.pSemi[t.name], pFinal: res.pFinal[t.name], pWin: res.pWin[t.name],
+      octavos:   PMEngine.zoneProb(h, 1, LEAGUE.promoSlots, res.simN),
+      playoff:   PMEngine.zoneProb(h, LEAGUE.promoSlots + 1, LEAGUE.playoffTop, res.simN),
+      eliminado: PMEngine.zoneProb(h, LEAGUE.playoffTop + 1, numTeams, res.simN),
     };
   });
   return out;
@@ -464,11 +409,6 @@ function applyLiveScores(standings, liveMatches) {
   return adjusted;
 }
 
-// Filiales sin escudo propio en ESPN → usar el del club matriz (por id ESPN).
-const LOGO_OVERRIDES = {
-  '131858': 'https://a.espncdn.com/i/teamlogos/soccer/500/85.png', // Celta Fortuna → Celta de Vigo
-};
-
 async function fetchStandings() {
   const res  = await fetch(ESPN_STANDINGS, { cache: 'no-store' });
   if (!res.ok) throw new Error(`ESPN API ${res.status}`);
@@ -476,8 +416,7 @@ async function fetchStandings() {
   const entries = data.children[0].standings.entries;
   return entries.map((e, i) => {
     const stat = name => (e.stats.find(s => s.name === name) || {}).value || 0;
-    const logo = ((e.team.logos && e.team.logos[0]) ? e.team.logos[0].href : null)
-                 || LOGO_OVERRIDES[e.team.id] || null;
+    const logo = (e.team.logos && e.team.logos[0]) ? e.team.logos[0].href : null;
     return {
       rank:   i + 1,
       id:     e.team.id,
@@ -522,7 +461,7 @@ function render(standings, results) {
 
   standings.forEach((t, i) => {
     const z     = zoneOf(t.rank, numTeams);
-    const res   = results[t.name] || { top2: 0, playoff: 0, relega: 0 };
+    const res   = results[t.name] || { octavos: 0, playoff: 0, eliminado: 0 };
     const dz    = ZONE_DATA[z] ? ` data-zone="${ZONE_DATA[z]}"` : '';
     const color = COLOR_PALETTE[i % COLOR_PALETTE.length];
     const nameEsc = t.name.replace(/'/g, "\\'");
@@ -535,15 +474,15 @@ function render(standings, results) {
             <img class="team__crest" src="${t.logo || ''}" alt="${t.name}" loading="lazy"
               onerror="fallbackAvatar(${i},'${nameEsc}','${color}')" />
           </span>
-          <a class="team__name team-link" href="/equipo?id=${t.id}&name=${encodeURIComponent(t.name)}&league=serieb">${t.name}</a>
-          ${t.live ? `<a class="live-badge-link" href="/partido?league=serieb&id=${t.live.eventId}" title="Seguir en vivo"><span class="live-badge"><span class="live-dot"></span>${t.live.score}<span class="live-clk"> ${t.live.clock}</span></span></a>` : ''}
+          <a class="team__name team-link" href="/equipo?id=${t.id}&name=${encodeURIComponent(t.name)}&league=europa">${t.name}</a>
+          ${t.live ? `<a class="live-badge-link" href="/partido?league=europa&id=${t.live.eventId}" title="Seguir en vivo"><span class="live-badge"><span class="live-dot"></span>${t.live.score}<span class="live-clk"> ${t.live.clock}</span></span></a>` : ''}
         </span>
       </td>
       <td class="col-pj col-dim"><span class="num">${t.gp}</span></td>
       <td class="col-pts${t.live ? ' pts-live' : ''}"><span class="num">${t.pts}</span></td>
-      ${probPill(res.top2,    'up',   'Ascenso')}
-      ${probPill(res.playoff, 'po',   'Play-off')}
-      ${probPill(res.relega,  'down', 'Descenso')}
+      ${probPill(res.octavos,   'up',   'Octavos')}
+      ${probPill(res.playoff,   'po',   'Play-off')}
+      ${probPill(res.eliminado, 'down', 'Eliminado')}
     </tr>`;
   });
 
@@ -564,94 +503,6 @@ function fallbackAvatar(i, name, color) {
   el.classList.add('fallback');
   el.style.background = color;
   el.innerHTML = initials(name);
-}
-
-// ─── Bracket del play-off ─────────────────────────────────────────────────
-function fallbackBkAvatar(id, name, color) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.classList.add('fallback');
-  el.style.background = color;
-  el.style.color = '#fff';
-  el.innerHTML = initials(name);
-}
-
-function renderBracket(standings, results) {
-  if (standings.length < LEAGUE.playoffTop) return;
-
-  const p3 = standings[LEAGUE.promoSlots];          // 3º
-  const p4 = standings[LEAGUE.promoSlots + 1];      // 4º
-  const p5 = standings[LEAGUE.playoffTop - 2];      // 5º
-  const p6 = standings[LEAGUE.playoffTop - 1];      // 6º
-
-  function teamCard(t) {
-    const res   = results[t.name] || {};
-    const pf    = res.pFinal || 0;
-    const pw    = res.pWin   || 0;
-    const si    = standings.findIndex(s => s.name === t.name);
-    const color = COLOR_PALETTE[si % COLOR_PALETTE.length];
-    const avId  = `bkav_${t.id}`;
-    return `<div class="bk-team">
-      <div class="bk-team-pos">${t.rank}º</div>
-      <div class="bk-team-logo" id="${avId}">
-        <img src="${t.logo || ''}" alt="${t.name}" loading="lazy"
-          onerror="fallbackBkAvatar('${avId}','${t.name.replace(/'/g,"\\'")}','${color}')" />
-      </div>
-      <div class="bk-team-info">
-        <div class="bk-team-name">${t.name}</div>
-        <div class="bk-team-p">
-          <span class="pf">${pf > 0 ? pf.toFixed(1) + '%' : '—'}</span> final
-          &nbsp;·&nbsp;
-          <span class="pw">${pw > 0 ? pw.toFixed(1) + '%' : '—'}</span> ascenso
-        </div>
-      </div>
-    </div>`;
-  }
-
-  function finalistSlot(id, t) {
-    if (!t) {
-      return `<div class="bk-finalist" id="${id}"><span class="fin-tbd">Por determinar</span></div>`;
-    }
-    const color = COLOR_PALETTE[standings.findIndex(s => s.name === t.name) % COLOR_PALETTE.length];
-    const avId  = `bkfin_av_${t.id}`;
-    const res   = results[t.name] || {};
-    const pw    = res.pWin || 0;
-    return `<div class="bk-finalist" id="${id}">
-      <div class="bk-team-logo" id="${avId}" style="width:18px;height:18px">
-        <img src="${t.logo || ''}" alt="${t.name}" loading="lazy"
-          onerror="fallbackBkAvatar('${avId}','${t.name.replace(/'/g,"\\'")}','${color}')" style="width:18px;height:18px" />
-      </div>
-      <span class="fin-name">${t.name}</span>
-      <span style="margin-left:auto;font-family:var(--font-mono);font-size:.7rem;color:var(--up);white-space:nowrap">${pw > 0 ? pw.toFixed(1) + '%' : ''}</span>
-    </div>`;
-  }
-
-  // Favoritos a final: el equipo con mayor pFinal de cada eliminatoria
-  const likelyL = (results[p3.name] || {}).pFinal >= (results[p6.name] || {}).pFinal ? p3 : p6;
-  const likelyR = (results[p4.name] || {}).pFinal >= (results[p5.name] || {}).pFinal ? p4 : p5;
-
-  document.getElementById('bracket-semi-labels').innerHTML = `
-    <div class="semi-lbl left">Semifinal 1 · 3º vs 6º</div>
-    <div class="semi-lbl center">Final</div>
-    <div class="semi-lbl right">Semifinal 2 · 4º vs 5º</div>
-  `;
-
-  document.getElementById('bracket-grid').innerHTML = `
-    <div class="bkg-lt">${teamCard(p3)}</div>
-    <div class="bkg-cl"><div class="ch"></div><div class="cb"></div></div>
-    <div class="bkg-cf">
-      ${finalistSlot('bk-fin-l', likelyL)}
-      <div class="bk-final-title">Final</div>
-      <div class="bk-final-badge">→ Ascenso a Primera</div>
-      ${finalistSlot('bk-fin-r', likelyR)}
-    </div>
-    <div class="bkg-cr"><div class="ch"></div><div class="cb"></div></div>
-    <div class="bkg-rt">${teamCard(p4)}</div>
-    <div class="bkg-lb">${teamCard(p6)}</div>
-    <div class="bkg-rb">${teamCard(p5)}</div>
-  `;
-
-  document.getElementById('playoff-section').style.display = '';
 }
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────
@@ -681,7 +532,6 @@ function setBadge(gp) {
 }
 
 // ─── Precálculo (snapshot del cron SEO) ─────────────────────────────────────
-// Lee el resultado ya calculado. Devuelve null si no se puede (→ fallback a sim).
 async function fetchSnapshot() {
   try {
     const res = await fetch(SNAPSHOT_URL, { cache: 'no-store' });
@@ -695,11 +545,8 @@ async function fetchSnapshot() {
 function snapshotMatches(snap, standings) {
   return PMEngine.snapshotMatches(snap, standings);
 }
-// Contexto de prior de fuerza para el fallback en cliente. Lee la `strength` ya
-// calculada en el snapshot (fuente única de verdad; el Python la deriva de la
-// temporada anterior) y los parámetros del prior. Devuelve null si no hay fuerzas
-// o si el prior ya se desvaneció (a media temporada) → sim uniforme de siempre.
-// Ruta secundaria: solo corre en el fallback (partido en vivo / snapshot desfasado).
+// UEFA corre SIN prior de fuerza: el snapshot no trae strength → buildStrengthCtx
+// devuelve null → sim uniforme. Se mantiene el hook por simetría con el resto.
 function buildStrengthCtx(snapshot, standings) {
   return PMEngine.buildStrengthCtx(snapshot, standings, P_HOME, P_DRAW);
 }
@@ -710,12 +557,9 @@ function resultsFromSnapshot(snap) {
   for (const t of snap.teams) {
     const p = t.prob || {};
     out[t.name] = {
-      top2:    p.ascenso  || 0,
-      playoff: p.playoff  || 0,
-      relega:  p.descenso || 0,
-      pSemi:   p.pSemi || 0,
-      pFinal:  p.pFinal || 0,
-      pWin:    p.pWin || 0,
+      octavos:   p.octavos   || 0,
+      playoff:   p.playoff   || 0,
+      eliminado: p.eliminado || 0,
     };
   }
   return out;
@@ -736,7 +580,7 @@ async function triggerUpdate(silent = false) {
       fetchStandings(), fetchLiveScores(), fetchSnapshot(),
     ]);
     cachedNumTeams = standings.length;
-    // Slots por notas de ESPN (ascenso/play-off/descenso varían por país).
+    // Cortes por notas de ESPN (octavos/play-off/eliminado).
     const _slots = deriveSlots(standings);
     LEAGUE.promoSlots = _slots.promoSlots;
     LEAGUE.playoffTop = _slots.playoffTop;
@@ -761,7 +605,7 @@ async function triggerUpdate(silent = false) {
     const results = (liveMatches.length === 0 && snapshotMatches(snapshot, standings))
       ? resultsFromSnapshot(snapshot)
       : simulate(adjusted, buildStrengthCtx(snapshot, adjusted));
-    render(adjusted, results);  // sin bracket en 2ª europea (solo zonas)
+    render(adjusted, results);
 
     const now = new Date();
     document.getElementById('footer-update').textContent =
@@ -800,10 +644,12 @@ triggerUpdate();
 updateSeason();
 </script>
 <script src="/assets/fixtures.js?v=20260808a"></script>
+<script src="/assets/bracket.js?v=20260808a"></script>
 <script>
   PMTabs.init();
   window.addEventListener('pmtab', function (e) {
-    if (e.detail === 'partidos') PMFixtures.init('ita.2', '#fx-mount');
+    if (e.detail === 'partidos') PMFixtures.init('uefa.europa', '#fx-mount');
+    if (e.detail === 'cuadro')   PMBracket.init('uefa.europa', '#bk-mount');
   });
 </script>
 <script src="/assets/ads-config.js?v=20260808a"></script>

@@ -66,6 +66,21 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://predictmotion.com/champions</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://predictmotion.com/europa</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://predictmotion.com/conference</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://predictmotion.com/noticias</loc>
     <changefreq>hourly</changefreq>
     <priority>0.8</priority>

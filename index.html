@@ -54,7 +54,7 @@
   }
   </script>
 
-  <link rel="stylesheet" href="/styles.css?v=20260807a" />
+  <link rel="stylesheet" href="/styles.css?v=20260808a" />
   <style>
     .comps-group { margin-bottom: var(--sp-6); }
     .comps-group__title {
@@ -63,7 +63,7 @@
       text-transform: uppercase; letter-spacing: .04em;
     }
   </style>
-  <script src="/theme.js?v=20260807a"></script>
+  <script src="/theme.js?v=20260808a"></script>
 
   <!-- Google AdSense -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3055585323326983" crossorigin="anonymous"></script>
@@ -137,8 +137,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       { slug: 'serieb',       name: 'Serie B',         country: 'Italia',        code: 'ita.2', theme: '' },
       { slug: 'bundesliga2',  name: '2. Bundesliga',   country: 'Alemania',      code: 'ger.2', theme: '' },
       { slug: 'ligue2',       name: 'Ligue 2',         country: 'Francia',       code: 'fra.2', theme: '' },
+      { slug: 'champions',    name: 'Champions League', country: 'Europa',       code: 'uefa.champions',   theme: '' },
+      { slug: 'europa',       name: 'Europa League',    country: 'Europa',       code: 'uefa.europa',      theme: '' },
+      { slug: 'conference',   name: 'Conference League', country: 'Europa',      code: 'uefa.europa.conf', theme: '' },
     ];
-    var ORDER = ['España', 'Inglaterra', 'Italia', 'Alemania', 'Francia', 'Portugal', 'Países Bajos'];
+    var ORDER = ['España', 'Inglaterra', 'Italia', 'Alemania', 'Francia', 'Portugal', 'Países Bajos', 'Europa'];
     var root = document.getElementById('comps-root');
     var byCountry = {};
     COMPS.forEach(function (c) { (byCountry[c.country] = byCountry[c.country] || []).push(c); });
