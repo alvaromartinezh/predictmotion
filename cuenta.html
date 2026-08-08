@@ -12,6 +12,13 @@
   <meta name="robots" content="noindex, nofollow" />
   <meta name="theme-color" content="#060916" />
 
+  <!-- El botón de Google es la pieza más lenta: empezamos a conectar y a bajar su
+       script CUANTO ANTES (preconnect + script async en el head), en paralelo con
+       el resto de la página, para que aparezca en <1-2s sin depender del spinner. -->
+  <link rel="preconnect" href="https://accounts.google.com" crossorigin />
+  <link rel="dns-prefetch" href="https://accounts.google.com" />
+  <script src="https://accounts.google.com/gsi/client" async></script>
+
   <link rel="stylesheet" href="/styles.css?v=20260808a" />
   <script src="/theme.js?v=20260808a"></script>
   <style>
@@ -121,16 +128,31 @@
     say('');
   }
 
+  // Resuelve cuando el script de Google (cargado async en el head) está listo.
+  // Sondea en vez de fallar al instante: así el botón se pinta en cuanto GIS
+  // termina de cargar, sin depender de un orden de carga concreto.
+  function gisReady() {
+    return new Promise(function (resolve) {
+      function ok() { return window.google && google.accounts && google.accounts.id; }
+      if (ok()) return resolve(true);
+      var t = setInterval(function () { if (ok()) { clearInterval(t); resolve(true); } }, 40);
+      setTimeout(function () { clearInterval(t); resolve(ok()); }, 8000);  // no colgar
+    });
+  }
+
   function showSignedOut(clientId) {
     $('signed-in').hidden = true;
     $('signed-out').hidden = false;
-    say('');
-    if (window.google && google.accounts && google.accounts.id && clientId) {
-      google.accounts.id.initialize({ client_id: clientId, callback: onCredential });
-      google.accounts.id.renderButton($('g_btn'), { theme: 'filled_black', size: 'large', text: 'signin_with', shape: 'pill' });
-    } else {
-      say('El inicio de sesión no está disponible ahora mismo.', true);
-    }
+    say('Cargando el botón de Google…');
+    gisReady().then(function (ready) {
+      if (ready && clientId) {
+        google.accounts.id.initialize({ client_id: clientId, callback: onCredential });
+        google.accounts.id.renderButton($('g_btn'), { theme: 'filled_black', size: 'large', text: 'signin_with', shape: 'pill' });
+        say('');
+      } else {
+        say('El inicio de sesión no está disponible ahora mismo.', true);
+      }
+    });
   }
 
   function onCredential(resp) {
@@ -152,20 +174,21 @@
     });
   });
 
-  function loadConfigThenState() {
-    // 1) ¿está la feature encendida y con qué client_id? 2) ¿hay sesión?
-    api('/api/auth/config').then(function (cfg) {
-      if (!cfg || !cfg.enabled) { say('Las cuentas no están disponibles.', true); $('signed-out').hidden = true; return; }
-      api('/api/me').then(function (me) {
-        if (me && me.ok) { showSignedIn(me.user); }
-        else { showSignedOut(cfg.client_id); }
-      });
+  function loadState() {
+    // Las dos consultas van EN PARALELO (antes eran secuenciales, sumando latencia
+    // antes de poder pintar el botón): config (¿feature on? ¿client_id?) y me (¿hay
+    // sesión?). Con la respuesta de /api/me se decide signed-in vs signed-out; el
+    // botón (si toca) se pinta en cuanto GIS está listo (gisReady), en paralelo.
+    Promise.all([api('/api/auth/config'), api('/api/me')]).then(function (res) {
+      var cfg = res[0] || {}, me = res[1] || {};
+      if (!cfg.enabled) { say('Las cuentas no están disponibles.', true); $('signed-out').hidden = true; return; }
+      if (me.ok) { showSignedIn(me.user); }
+      else { showSignedOut(cfg.client_id); }
     }).catch(function () { say('No se pudo contactar con el servidor.', true); });
   }
 
-  loadConfigThenState();
+  loadState();
 })();
 </script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 </body>
 </html>
