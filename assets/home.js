@@ -120,8 +120,9 @@
     return '<div class="feed-sec"><h2 class="feed-sec__title">' + esc(title) + (tagHTML || '') + '</h2>'
       + (moreTxt ? '<a class="feed-sec__more" href="' + (moreHref || '#') + '">' + esc(moreTxt) + '</a>' : '') + '</div>';
   }
-  var AD = '<div class="pm-adph">Publicidad · 300×250 / 320×50</div>';
-  var AD_RAIL = '<div class="pm-adph">Publicidad · 300×250</div>';
+  // Ranura Adsterra real (PMAds monta el iframe aislado; mid = rectángulo 300×250).
+  var AD = '<div class="ad-wrap"><span class="ad-label">Publicidad</span><div class="ad-slot" data-ad-slot="mid"></div></div>';
+  var AD_RAIL = AD;
 
   // ── builder PURO del feed logueado (sin fetch) ──
   function buildUserHTML(f, matches, snaps, allNews) {
@@ -198,7 +199,11 @@
   }
   function skeleton() { return shellMain('<div class="card" style="height:180px"></div><div class="card" style="height:240px"></div>', ''); }
   function shellMain(colHTML, railHTML) { return '<div class="feed"><div class="feed__col">' + colHTML + '</div><div class="feed__rail">' + railHTML + '</div></div>'; }
-  function mount(out) { window.PMShell.mount({ active: 'home', main: shellMain(out.col, out.rail) }); }
+  // onRender (se ejecuta tras CADA render del shell, incl. re-render por eventos de
+  // cuenta) → re-inicia PMAds sobre las ranuras recién creadas. PMAds es idempotente
+  // por slot (dataset.adLoaded), así que no duplica banners ya montados.
+  function afterRender() { if (window.PMAds) window.PMAds.init(); }
+  function mount(out) { window.PMShell.mount({ active: 'home', main: shellMain(out.col, out.rail), onRender: afterRender }); }
   function fail() { window.PMShell.mount({ active: 'home', main: shellMain('<div class="card"><div style="padding:var(--sp-6);color:var(--text-2)">No se pudo cargar el feed. Reintenta en unos segundos.</div></div>', '') }); }
 
   var token = 0;
