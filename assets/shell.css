@@ -47,7 +47,8 @@ html[data-theme="light"] .pm-theme-toggle .tt-dark  { display: none; }
 
 /* ---- Bottom tabs (mobile) ---- */
 .tabbar {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: grid; grid-template-columns: repeat(5, 1fr);
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;  /* se ajusta al nº real de pestañas */
   height: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px);
   background: color-mix(in oklab, var(--bg-elev) 92%, transparent); backdrop-filter: blur(18px) saturate(1.3); border-top: 1px solid var(--line);
 }

@@ -43,13 +43,17 @@
     moon: '<path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8Z"/>',
     sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'
   };
+  // ready:false = la página de esa pestaña aún no existe (Partidos → CP-R5, Buscar →
+  // CP-R4). Se OCULTAN hasta entonces para no llevar a un 404 (regla del plan: una
+  // pestaña visible siempre resuelve a una página real). Al aterrizar su fase, ready:true.
   var NAV = [
-    { id: 'home', label: 'Inicio', href: '/', icon: IC.home },
-    { id: 'follow', label: 'Siguiendo', href: '#', icon: IC.star },
-    { id: 'matches', label: 'Partidos', href: '/partidos', icon: IC.ball },
-    { id: 'search', label: 'Buscar', href: '#', icon: IC.search },
-    { id: 'settings', label: 'Ajustes', href: '/cuenta', icon: IC.gear }
+    { id: 'home', label: 'Inicio', href: '/', icon: IC.home, ready: true },
+    { id: 'follow', label: 'Siguiendo', href: '/cuenta', icon: IC.star, ready: true },
+    { id: 'matches', label: 'Partidos', href: '/partidos', icon: IC.ball, ready: false },
+    { id: 'search', label: 'Buscar', href: '#', icon: IC.search, ready: false },
+    { id: 'settings', label: 'Ajustes', href: '/cuenta', icon: IC.gear, ready: true }
   ];
+  function navItems() { return NAV.filter(function (n) { return n.ready; }); }
   var LOGIN = '/cuenta';
 
   function themeToggle() {
@@ -75,7 +79,7 @@
   }
 
   function tabbar(active) {
-    return '<nav class="tabbar" aria-label="Navegación">' + NAV.map(function (n) {
+    return '<nav class="tabbar" aria-label="Navegación">' + navItems().map(function (n) {
       return '<a class="tabbar__item ' + (n.id === active ? 'is-active' : '') + '" href="' + n.href + '">' + svg(n.icon) + '<span>' + n.label + '</span></a>';
     }).join('') + '</nav>';
   }
@@ -90,7 +94,7 @@
   }
 
   function sidebar(s, active) {
-    var items = NAV.map(function (n) {
+    var items = navItems().map(function (n) {
       return '<a class="navitem ' + (n.id === active ? 'is-active' : '') + '" href="' + n.href + '">' + svg(n.icon) + '<span>' + n.label + '</span></a>';
     }).join('');
 
@@ -109,8 +113,11 @@
       follows = (comps ? '<div class="sidenav__label eyebrow">Tus competiciones</div><div class="sidenav__follows">' + comps + '</div>' : '')
         + (teams ? '<div class="sidenav__label eyebrow">Tus equipos</div><div class="sidenav__follows">' + teams + '</div>' : '');
     } else {
+      // Orden EXPLÍCITO de prioridad (PM_LEAGUES_ORDER: ligas top primero), no el
+      // orden de iteración del objeto. Visible para visitantes anónimos (la mayoría).
+      var order = (window.PM_LEAGUES_ORDER || Object.keys(LEAGUES)).filter(function (s) { return LEAGUES[s]; });
       follows = '<div class="sidenav__label eyebrow">Competiciones</div><div class="sidenav__follows">'
-        + Object.keys(LEAGUES).slice(0, 8).map(function (slug) {
+        + order.slice(0, 8).map(function (slug) {
           var L = LEAGUES[slug];
           return '<a class="side-follow" href="/' + slug + '"><img class="crest" src="' + L.logo + '" alt="" style="background:transparent;border:none"><span>' + L.name + '</span></a>';
         }).join('') + '</div>';
