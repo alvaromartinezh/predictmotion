@@ -50,8 +50,8 @@
     { id: 'home', label: 'Inicio', href: '/', icon: IC.home, ready: true },
     { id: 'follow', label: 'Siguiendo', href: '/cuenta', icon: IC.star, ready: true },
     { id: 'matches', label: 'Partidos', href: '/partidos', icon: IC.ball, ready: false },
-    { id: 'search', label: 'Buscar', href: '#', icon: IC.search, ready: false },
-    { id: 'settings', label: 'Ajustes', href: '/cuenta', icon: IC.gear, ready: true }
+    { id: 'search', label: 'Buscar', href: '/buscar', icon: IC.search, ready: true },
+    { id: 'settings', label: 'Ajustes', href: '/ajustes', icon: IC.gear, ready: true }
   ];
   function navItems() { return NAV.filter(function (n) { return n.ready; }); }
   var LOGIN = '/cuenta';

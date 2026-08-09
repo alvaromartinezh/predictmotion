@@ -201,6 +201,44 @@ html[data-theme="light"] .pm-theme-toggle .tt-dark  { display: none; }
 .pm-line.lose .sc { color: var(--muted); }
 .winbar--pm { margin: 3px 0 0; height: 5px; }
 
+/* ============================================================
+   BUSCAR
+   ============================================================ */
+.search-box { position: sticky; top: 0; z-index: 5; padding: var(--sp-3) 0 var(--sp-2); background: linear-gradient(var(--bg) 70%, transparent); }
+.search-field { display: flex; align-items: center; gap: var(--sp-3); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill); padding: 10px var(--sp-4); }
+.search-field:focus-within { border-color: var(--accent-line); }
+.search-field svg { width: 20px; height: 20px; color: var(--muted); flex: none; }
+.search-field input { flex: 1; background: none; border: none; outline: none; color: var(--text); font: inherit; font-size: var(--fs-16); }
+.search-field input::placeholder { color: var(--muted); }
+.search-clear { color: var(--muted); font-size: var(--fs-18); padding: 0 4px; }
+.search-clear:hover { color: var(--text); }
+.search-empty { text-align: center; color: var(--muted); padding: var(--sp-7) var(--sp-4); }
+.search-row { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--line-soft); transition: background .14s var(--ease); }
+.search-row:last-child { border-bottom: none; }
+.search-row:hover { background: var(--surface-2); }
+.search-row .lg-logo, .search-row .crest, .search-row .crest-ph { width: 26px; height: 26px; object-fit: contain; flex: none; }
+.search-row .r-name { font-weight: 600; color: var(--text); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.search-row .r-tag { font-family: var(--font-mono); font-size: var(--fs-11); color: var(--muted); }
+.search-row .r-arrow { color: var(--faint); }
+
+/* ============================================================
+   AJUSTES
+   ============================================================ */
+.set-group { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; }
+.set-row { display: flex; align-items: center; gap: var(--sp-4); padding: var(--sp-4); border-bottom: 1px solid var(--line-soft); }
+.set-row:last-child { border-bottom: none; }
+.set-row .s-main { flex: 1; min-width: 0; }
+.set-row .s-label { display: block; font-weight: 600; color: var(--text); }
+.set-row .s-hint { display: block; font-size: var(--fs-13); color: var(--muted); margin-top: 2px; }
+.set-row a.s-main:hover .s-label { color: var(--accent); }
+.set-row .crest, .set-row .crest-ph, .set-row .lg-logo { width: 28px; height: 28px; object-fit: contain; flex: none; }
+.set-row .s-arrow { color: var(--faint); }
+.seg { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface-2); flex: none; }
+.seg button { padding: 6px 14px; border-radius: var(--r-pill); font-size: var(--fs-13); font-weight: 600; color: var(--muted); }
+.seg button.is-on { background: var(--accent); color: var(--accent-ink); }
+.set-unfollow { flex: none; font-size: var(--fs-12); font-weight: 600; color: var(--muted); border: 1px solid var(--line); border-radius: var(--r-pill); padding: 5px 12px; }
+.set-unfollow:hover { color: var(--down); border-color: var(--down); }
+
 /* ---- Rail de desktop ---- */
 .rail-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--sp-4); }
 .rail-card h4 { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; font-size: var(--fs-16); letter-spacing: .02em; margin-bottom: var(--sp-3); }
