@@ -136,6 +136,17 @@ def save_snapshot(snap):
     return path
 
 
+def save_offseason_latest(slug, snap):
+    """Escribe SOLO el latest.json raíz (contrato de los dashboards) con un snapshot
+    de temporada fuera de temporada (offseason). No crea histórico por temporada:
+    la competición que viene aún no existe en ESPN, así que no hay nada que archivar
+    ni de qué llevar histórico. Sustituye a la tabla congelada de la temporada
+    anterior (Principio 1: una competición terminada no se congela)."""
+    (DATA_DIR / slug).mkdir(parents=True, exist_ok=True)
+    payload = json.dumps(snap, ensure_ascii=False, indent=1)
+    (DATA_DIR / slug / "latest.json").write_text(payload, encoding="utf-8")
+
+
 def load_all(slug, season):
     """Snapshots de UNA temporada de una liga, ordenados por fecha ascendente."""
     d = DATA_DIR / slug / season / "snapshots"

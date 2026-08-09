@@ -64,6 +64,23 @@
   /* Skeleton */
   .skeleton { animation: shimmer 1.4s infinite; background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%); background-size: 400% 100%; border-radius: var(--r-xs); }
   @keyframes shimmer { to { background-position: -400% 0; } }
+
+  /* Fuera de temporada: la fase de liga aún no ha empezado (Principio 1) */
+  .offseason { display: none; }
+  body.is-offseason .page-tabs,
+  body.is-offseason .tab-section { display: none !important; }
+  body.is-offseason .offseason { display: block; }
+  .offseason__card {
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    gap: var(--sp-4); max-width: 520px; margin: var(--sp-8) auto;
+    padding: var(--sp-8) var(--sp-6);
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+  }
+  .offseason__logo { width: 72px; height: 72px; object-fit: contain; opacity: .95; }
+  .offseason__title { font-size: var(--fs-20); font-weight: 800; margin: 0; }
+  .offseason__sub { color: var(--muted); font-size: var(--fs-14); line-height: 1.5; margin: 0; }
+  .offseason__hint { color: var(--muted); font-size: var(--fs-12); margin: 0; }
   </style>
 
   <!-- SEO principal -->
@@ -163,6 +180,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <!-- ===== ANUNCIO: debajo de la cabecera (visible en todas las pestañas) ===== -->
   <div class="ad-wrap"><span class="ad-label">Publicidad</span>
     <div class="ad-slot" data-ad-slot="top"></div></div>
+
+  <!-- ===== FUERA DE TEMPORADA (Principio 1: no se congela la fase terminada) ===== -->
+  <section class="offseason" id="offseason" aria-live="polite">
+    <div class="offseason__card">
+      <img class="offseason__logo" id="offseason-logo" src="" alt="" />
+      <h2 class="offseason__title" id="offseason-title">La fase de liga aún no ha comenzado</h2>
+      <p class="offseason__sub" id="offseason-sub"></p>
+      <p class="offseason__hint">Las clasificaciones y probabilidades aparecerán en cuanto se dispute la primera jornada.</p>
+    </div>
+  </section>
 
   <!-- ===== CLASIFICACIÓN ===== -->
   <div class="tab-section" data-section="clasificacion">
@@ -557,12 +584,49 @@ function resultsFromSnapshot(snap) {
   return out;
 }
 
+// ─── Fuera de temporada ─────────────────────────────────────────────────────
+// La competición ya terminó y ESPN aún no publica la temporada nueva (típico de
+// agosto). No congelamos la tabla final (Principio 1): mostramos un placeholder.
+// Detección PRIMARIA: el snapshot del cron trae `offseason:true`. FALLBACK cliente
+// (si el snapshot no está): ESPN sirve una temporada de un año ya pasado. Ambas
+// se auto-revierten a tabla viva en cuanto ESPN publica el sorteo nuevo.
+function footballYear(d) {
+  d = d || new Date();
+  return (d.getMonth() + 1) >= 7 ? d.getFullYear() : d.getFullYear() - 1;
+}
+function upcomingSeasonLabel() {
+  const y = footballYear();
+  return `${y}-${String(y + 1).slice(2)}`;
+}
+let offseasonShown = false;
+function showOffseason(info) {
+  info = info || {};
+  offseasonShown = true;
+  document.body.classList.add('is-offseason');
+  clearTimeout(liveTimer);
+  const label = info.upcoming_season || upcomingSeasonLabel();
+  const logoEl = document.getElementById('offseason-logo');
+  const logo = info.league_logo || (document.querySelector('.league-head__logo img') || {}).src || '';
+  if (logoEl) { if (logo) { logoEl.src = logo; logoEl.alt = info.name || ''; } else { logoEl.style.display = 'none'; } }
+  const t = document.getElementById('offseason-title');
+  if (t) t.textContent = `La fase de liga ${label} aún no ha comenzado`;
+  const sub = document.getElementById('offseason-sub');
+  if (sub) sub.textContent = info.prev_season
+    ? `La edición ${info.prev_season} ya ha finalizado. El sorteo de la nueva fase de liga se publicará próximamente.`
+    : 'El sorteo de la nueva fase de liga se publicará próximamente.';
+  const s = document.getElementById('league-season');
+  if (s) s.textContent = label;
+  const h1 = document.querySelector('.league-head__title');
+  if (h1) h1.textContent = h1.textContent.replace(/\d{4}[-‑]\d{2}/, label);
+  document.title = document.title.replace(/\d{4}[-‑]\d{2}/, label);
+}
+
 // ─── Main update flow ──────────────────────────────────────────────────────
 let liveTimer  = null;
 let isUpdating = false;
 
 async function triggerUpdate(silent = false) {
-  if (isUpdating) return;
+  if (isUpdating || offseasonShown) return;
   isUpdating = true;
 
   try {
@@ -571,6 +635,9 @@ async function triggerUpdate(silent = false) {
     const [standings, liveMatches, snapshot] = await Promise.all([
       fetchStandings(), fetchLiveScores(), fetchSnapshot(),
     ]);
+
+    // Fuera de temporada (snapshot del cron): placeholder, sin tabla congelada.
+    if (snapshot && snapshot.offseason) { showOffseason(snapshot); return; }
     cachedNumTeams = standings.length;
     // Cortes por notas de ESPN (octavos/play-off/eliminado).
     const _slots = deriveSlots(standings);
@@ -622,6 +689,13 @@ async function updateSeason() {
     const dn = (((data.leagues || [])[0] || {}).season || {}).displayName || '';
     const m = dn.match(/\d{4}-\d{2}/);
     if (!m) return;
+    // Fallback cliente: si ESPN sirve una temporada de un ciclo ya pasado y el
+    // snapshot no lo marcó (p. ej. cron aún sin correr), mostramos el placeholder.
+    if (!offseasonShown && parseInt(m[0].slice(0, 4), 10) < footballYear()) {
+      showOffseason({ prev_season: m[0] });
+      return;
+    }
+    if (offseasonShown) return;
     const s = document.getElementById('league-season');
     if (s) s.textContent = m[0];
     const h1 = document.querySelector('.league-head__title');

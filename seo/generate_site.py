@@ -31,8 +31,43 @@ for _stream in (sys.stdout, sys.stderr):
 
 from . import espn, render_table, sitemap, predictions, zone_predictions, notify
 from .config import LEAGUES, ROOT, SIM_N_TABLE, league_by_slug
-from .snapshots import build_table_snapshot, save_snapshot, load_all
+from .snapshots import (build_table_snapshot, save_snapshot, load_all,
+                        save_offseason_latest)
 from . import sim_table
+
+
+def _football_year(today):
+    """Año de la temporada de fútbol EUROPEA vigente según el calendario.
+    Julio en adelante → temporada que empieza este año; antes → la anterior. La
+    ventana julio es segura: ninguna liga europea (dom. mediados de agosto; sorteo
+    UEFA finales de agosto) empieza antes."""
+    y, m = int(today[:4]), int(today[5:7])
+    return y if m >= 7 else y - 1
+
+
+def _season_start_year(season):
+    """Año inicial de una etiqueta 'YYYY-YY' de ESPN (p. ej. '2025-26' → 2025)."""
+    try:
+        return int(str(season)[:4])
+    except (TypeError, ValueError):
+        return None
+
+
+def _is_offseason(season, today):
+    """True si la temporada que sirve ESPN es de un ciclo YA PASADO respecto al
+    calendario (p. ej. hoy es agosto de 2026 pero ESPN sigue dando la UEFA 2025-26,
+    ya terminada, porque el sorteo 2026-27 aún no se ha publicado). Genérico y
+    auto-recuperable: en cuanto ESPN publica la temporada nueva, start_year sube y
+    esto vuelve a False solo. En temporada (p. ej. febrero, con la fase de liga ya
+    cerrada pero la eliminatoria en curso) da False, así que NO oculta nada vivo."""
+    start = _season_start_year(season)
+    return start is not None and start < _football_year(today)
+
+
+def _upcoming_season_label(today):
+    """Etiqueta 'YYYY-YY' de la temporada que está por empezar (la del calendario)."""
+    y = _football_year(today)
+    return f"{y}-{str(y + 1)[2:]}"
 
 
 def _write_files(files, dry_run):
@@ -45,9 +80,42 @@ def _write_files(files, dry_run):
         path.write_text(html, encoding="utf-8")
 
 
+def _process_offseason(league, meta, today, dry_run):
+    """Escribe un latest.json de 'fuera de temporada' para una competición cuyo
+    ciclo ya terminó y cuya temporada nueva ESPN aún no ha publicado (típico de la
+    fase de liga UEFA en agosto). El dashboard lo lee y muestra el estado
+    placeholder en vez de la tabla final congelada. Se re-genera cada run y se
+    auto-revierte a tabla viva en cuanto ESPN publique la temporada nueva."""
+    upcoming = _upcoming_season_label(today)
+    snap = {
+        "league":       league["slug"],
+        "kind":         "table",
+        "name":         league["name"],
+        "season":       upcoming,
+        "offseason":    True,
+        "upcoming_season": upcoming,
+        "prev_season":  meta.get("season"),
+        "league_logo":  meta.get("logo"),
+        "date":         today,
+        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+    if not dry_run:
+        save_offseason_latest(league["slug"], snap)
+    return snap
+
+
 def _process_table(league, today, dry_run, ratings=None):
-    rows = espn.fetch_table(league["espn_code"])
     meta = espn.fetch_league_meta(league["espn_code"])
+    # Fuera de temporada (Principio 1): si ESPN aún sirve un ciclo ya terminado
+    # (UEFA en agosto, antes del sorteo nuevo), NO congelamos la tabla final; se
+    # escribe un latest.json 'offseason' que el dashboard muestra como placeholder.
+    # Se limita a los dashboards `uefa` (los únicos con render de placeholder); las
+    # ligas domésticas ruedan de temporada solas en ESPN y no entran en este hueco.
+    if league.get("dashboard_template") == "uefa" and _is_offseason(meta.get("season"), today):
+        snap = _process_offseason(league, meta, today, dry_run)
+        return snap, []
+
+    rows = espn.fetch_table(league["espn_code"])
     # use_strength=False (UEFA) → modelo uniforme, sin prior. Se fuerza ratings=None
     # para NO heredar un prior parcial e inconsistente (los clubes que además juegan
     # su liga doméstica activa sí estarían en `ratings`). Ver config.py / Fase 4.
