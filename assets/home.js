@@ -98,18 +98,6 @@
       + '</div>' + (pill ? '<div style="text-align:center;margin-top:var(--sp-5)">' + pill + '</div>' : '') + '</section>';
   }
   // Rail de seguidos: competiciones (con logo) + equipos (con escudo) + añadir.
-  function followRail(f) {
-    var favId = f.favorite_team && String(f.favorite_team.espn_team_id);
-    var comps = (f.competitions || []).map(function (slug) {
-      return '<a class="follow-pill" href="/' + slug + '"><span class="crest-ph" style="background:var(--surface-2);overflow:hidden"><img src="' + esc(llogo(slug)) + '" alt="" style="width:66%;height:66%;object-fit:contain"></span><span class="lbl">' + esc(lname(slug)) + '</span></a>';
-    }).join('');
-    var teams = (f.teams || []).map(function (t) {
-      return '<a class="follow-pill" href="/equipo?id=' + t.espn_team_id + '&league=' + (t.league_slug || '') + '&name=' + encodeURIComponent(t.name || '') + '">'
-        + crest('', t.name, t.espn_team_id) + '<span class="lbl">' + (favId === String(t.espn_team_id) ? '★ ' : '') + esc((t.name || '').split(' ').slice(-1)[0]) + '</span></a>';
-    }).join('');
-    return '<div class="rail">' + comps + teams + '<a class="follow-pill add" href="/buscar"><div class="crest-ph">+</div><span class="lbl">Añadir</span></a></div>';
-  }
-
   // Líderes de una competición. En PRETEMPORADA o con datos inestables (prob.first
   // degenerada: varios equipos a ~100%) muestra la CLASIFICACIÓN real (pts); en
   // temporada, los favoritos al título (prob.first). Evita el rail sin sentido.
@@ -171,9 +159,9 @@
     }
 
     var col = [];
-    col.push(feedSec('Siguiendo', 'Editar', '/siguiendo', ' <span class="tag">' + (teams.length + comps.length) + '</span>'));
-    col.push(followRail(f));
-
+    // La sección "Siguiendo" (cabecera + rail de follows) se retiró del feed: es
+    // redundante con la pestaña dedicada /siguiendo. El feed abre directamente con
+    // el partido destacado del favorito.
     var fav = teams[0], favM = fav && matches[fav.espn_team_id], favSnap = fav && snaps[fav.league_slug];
     if (favM) {
       var pill = '';
