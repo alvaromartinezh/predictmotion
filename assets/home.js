@@ -120,8 +120,8 @@
     return '<div class="feed-sec"><h2 class="feed-sec__title">' + esc(title) + (tagHTML || '') + '</h2>'
       + (moreTxt ? '<a class="feed-sec__more" href="' + (moreHref || '#') + '">' + esc(moreTxt) + '</a>' : '') + '</div>';
   }
-  var AD = '<div class="ad-slot">Publicidad · 300×250 / 320×50</div>';
-  var AD_RAIL = '<div class="ad-slot">Publicidad · 300×250</div>';
+  var AD = '<div class="pm-adph">Publicidad · 300×250 / 320×50</div>';
+  var AD_RAIL = '<div class="pm-adph">Publicidad · 300×250</div>';
 
   // ── builder PURO del feed logueado (sin fetch) ──
   function buildUserHTML(f, matches, snaps, allNews) {

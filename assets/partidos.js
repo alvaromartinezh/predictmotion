@@ -72,7 +72,7 @@
         + '<span class="name">' + esc(initials(m.home.name)) + ' ' + (m.home.score == null ? 0 : m.home.score) + '-' + (m.away.score == null ? 0 : m.away.score) + ' ' + esc(initials(m.away.name)) + '</span>'
         + '<span class="val" style="color:var(--live)">' + esc(m.clock || '') + '</span></div>';
     }).join('') : '<p class="time">Sin partidos en vivo</p>';
-    return '<div class="rail-card"><h4>En directo ahora</h4>' + rows + '</div><div class="ad-slot">Publicidad · 300×250</div>';
+    return '<div class="rail-card"><h4>En directo ahora</h4>' + rows + '</div><div class="pm-adph">Publicidad · 300×250</div>';
   }
 
   function renderMain() {
@@ -99,7 +99,7 @@
     }
 
     var col = '<div class="feed-sec" style="margin-top:var(--sp-2)"><h2 class="feed-sec__title">Partidos</h2></div>'
-      + daystrip() + chips + groups + '<div class="ad-slot">Publicidad · 300×250 / 320×50</div>';
+      + daystrip() + chips + groups + '<div class="pm-adph">Publicidad · 300×250 / 320×50</div>';
     window.PMShell.mount({ active: 'matches', main: '<div class="feed"><div class="feed__col">' + col + '</div><div class="feed__rail">' + liveRail(live) + '</div></div>', onRender: wire });
   }
 

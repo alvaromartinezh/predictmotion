@@ -248,7 +248,7 @@ html[data-theme="light"] .pm-theme-toggle .tt-dark  { display: none; }
 .trend .crest, .trend .crest-ph { width: 22px; height: 22px; font-size: 10px; }
 .trend .name { flex: 1; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .trend .val { font-family: var(--font-mono); font-weight: 600; color: var(--up); }
-.ad-slot { border: 1px dashed var(--line); border-radius: var(--r-lg); min-height: 120px; display: grid; place-items: center; color: var(--faint); font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: .12em; text-transform: uppercase; text-align: center; }
+.pm-adph { border: 1px dashed var(--line); border-radius: var(--r-lg); min-height: 120px; display: grid; place-items: center; color: var(--faint); font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: .12em; text-transform: uppercase; text-align: center; }
 
 .feed__rail { display: none; }
 
