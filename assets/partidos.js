@@ -6,6 +6,9 @@
   var L = window.PM_LEAGUES || {}, ORDER = window.PM_LEAGUES_ORDER || Object.keys(L), D = window.PMData;
   var DEFAULT = ['laliga', 'hypermotion', 'premier', 'seriea', 'bundesliga', 'ligue1'].filter(function (s) { return L[s]; });
   var DW = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  // Ligas con página de partido en vivo propia (/partido lo sirve el live_tracker,
+  // que SOLO cubre estas). En el resto la fila enlaza solo a las páginas de equipo.
+  var MATCH_LEAGUES = { hypermotion: 1, laliga: 1 };
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
   function initials(n) { var p = (n || '').trim().split(/\s+/).filter(Boolean); return ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); }
@@ -16,7 +19,10 @@
     return '<img class="crest" loading="lazy" alt="" src="' + esc(src) + '" data-ab="' + ab + '" onerror="PMPartCrestFallback(this)">';
   }
   function ymd(d) { return d.getFullYear() + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2); }
+  function ymdToInput(y) { return y.slice(0, 4) + '-' + y.slice(4, 6) + '-' + y.slice(6, 8); }   // YYYYMMDD → YYYY-MM-DD (input date)
+  function humanDate(y) { try { return new Date(+y.slice(0, 4), +y.slice(4, 6) - 1, +y.slice(6, 8)).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }); } catch (e) { return 'este día'; } }
   function kick(iso) { try { return new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
+  function teamHref(slug, t) { return '/equipo?id=' + encodeURIComponent(t.id) + '&name=' + encodeURIComponent(t.name || '') + '&league=' + encodeURIComponent(slug); }
   function lname(s) { return (L[s] || {}).name || s; }
   function llogo(s) { return (L[s] || {}).logo || ''; }
   // Ranura Adsterra real (PMAds; mid = rectángulo 300×250).
@@ -46,19 +52,32 @@
 
   // ── componentes ──
   function daystrip() {
-    return '<div class="daystrip">' + DAYS.map(function (d) {
+    var buttons = DAYS.map(function (d) {
       return '<button class="day ' + (d.ymd === state.ymd ? 'is-on' : '') + '" type="button" data-ymd="' + d.ymd + '">'
         + '<span class="dw">' + d.dw + '</span><span class="dn">' + d.dn + '</span></button>';
-    }).join('') + '</div>';
+    }).join('');
+    // Fuera de la franja rápida (hoy-1…hoy+6): pastilla con la fecha elegida.
+    var inStrip = DAYS.some(function (d) { return d.ymd === state.ymd; });
+    var far = inStrip ? '' : '<button class="day is-on" type="button" data-ymd="' + state.ymd + '"><span class="dw">Fecha</span><span class="dn">' + (+state.ymd.slice(6, 8)) + '</span></button>';
+    // Selector de fecha (nativo, oculto tras un icono) para saltar más allá de la franja.
+    var picker = '<label class="day-pick" title="Ir a otra fecha">'
+      + '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>'
+      + '<input type="date" id="pm-datepick" aria-label="Elegir fecha" value="' + ymdToInput(state.ymd) + '"></label>';
+    return '<div class="daystrip-row"><div class="daystrip">' + buttons + far + '</div>' + picker + '</div>';
   }
   function matchRow(m) {
-    var status;
-    if (m.state === 'in') status = '<span class="pm-time live"><i></i>' + esc(m.clock || m.detail || '') + '</span>';
-    else if (m.state === 'post') status = '<span class="pm-time ft">Final</span>';
-    else status = '<span class="pm-time">' + esc(kick(m.date)) + '</span>';
+    var inner;
+    if (m.state === 'in') inner = '<span class="pm-time live"><i></i>' + esc(m.clock || m.detail || '') + '</span>';
+    else if (m.state === 'post') inner = '<span class="pm-time ft">Final</span>';
+    else inner = '<span class="pm-time">' + esc(kick(m.date)) + '</span>';
+    // Estado → página de partido en vivo (solo ligas con /partido propio).
+    var status = (MATCH_LEAGUES[m.slug] && m.id)
+      ? '<a class="pm-status-link" href="/partido?league=' + encodeURIComponent(m.slug) + '&id=' + encodeURIComponent(m.id) + '" title="Ver partido">' + inner + '</a>'
+      : inner;
+    // Cada equipo → su página de equipo (todas las ligas).
     function line(t, win) {
-      return '<div class="pm-line ' + (m.state !== 'pre' && !win ? 'lose' : '') + '">' + crest(t.logo, t.name, t.id)
-        + '<span class="name">' + esc(t.name) + '</span>' + (m.state === 'pre' ? '' : '<span class="sc">' + (t.score == null ? '-' : t.score) + '</span>') + '</div>';
+      return '<a class="pm-line ' + (m.state !== 'pre' && !win ? 'lose' : '') + '" href="' + esc(teamHref(m.slug, t)) + '">' + crest(t.logo, t.name, t.id)
+        + '<span class="name">' + esc(t.name) + '</span>' + (m.state === 'pre' ? '' : '<span class="sc">' + (t.score == null ? '-' : t.score) + '</span>') + '</a>';
     }
     return '<div class="pm-row">' + status + '<div class="pm-body">' + line(m.home, m.home.winner) + line(m.away, m.away.winner) + '</div></div>';
   }
@@ -93,8 +112,8 @@
     var shown = present.filter(function (s) { return state.filter === 'all' || state.filter === s; });
     var groups;
     if (!present.length) {
-      var dl = DAYS.filter(function (d) { return d.ymd === state.ymd; })[0];
-      groups = '<article class="card"><div style="padding:var(--sp-7) var(--sp-5);text-align:center;color:var(--text-2)">No hay partidos ' + (dl ? (dl.dw === 'Hoy' ? 'hoy' : 'el ' + dl.dn) : 'este día') + '. Prueba con otra fecha.</div></article>';
+      var when = state.ymd === ymd(today) ? 'hoy' : 'el ' + humanDate(state.ymd);
+      groups = '<article class="card"><div style="padding:var(--sp-7) var(--sp-5);text-align:center;color:var(--text-2)">No hay partidos ' + when + '. Prueba con otra fecha.</div></article>';
     } else {
       var liveSec = live.length ? ('<div class="feed-sec"><h2 class="feed-sec__title">En vivo <span class="tag tag--live">' + live.length + '</span></h2></div><section class="matchlist">' + live.map(matchRow).join('') + '</section>') : '';
       groups = liveSec + shown.map(function (s) { return leagueGroup(s, byLeague[s]); }).join('');
@@ -125,6 +144,15 @@
       var b = e.target.closest('.day'); if (!b) return;
       state.ymd = b.getAttribute('data-ymd'); state.filter = 'all'; loadDay();
     });
+    // Selector de fecha: salta a cualquier día fuera de la franja rápida.
+    var dp = document.getElementById('pm-datepick');
+    if (dp) {
+      dp.addEventListener('click', function () { try { dp.showPicker(); } catch (e) {} });
+      dp.addEventListener('change', function () {
+        if (!dp.value) return;
+        state.ymd = dp.value.replace(/-/g, ''); state.filter = 'all'; loadDay();
+      });
+    }
     var bar = document.getElementById('pm-filter');
     if (bar) bar.addEventListener('click', function (e) {
       var b = e.target.closest('.league-chip'); if (!b) return;
