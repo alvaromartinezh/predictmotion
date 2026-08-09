@@ -97,24 +97,50 @@
       + '<div class="hero-match__team">' + crest(m.away.logo, m.away.name, m.away.id) + '<span class="name">' + esc(m.away.name) + '</span></div>'
       + '</div>' + (pill ? '<div style="text-align:center;margin-top:var(--sp-5)">' + pill + '</div>' : '') + '</section>';
   }
+  // Rail de seguidos: competiciones (con logo) + equipos (con escudo) + añadir.
   function followRail(f) {
     var favId = f.favorite_team && String(f.favorite_team.espn_team_id);
-    var pills = (f.teams || []).map(function (t) {
+    var comps = (f.competitions || []).map(function (slug) {
+      return '<a class="follow-pill" href="/' + slug + '"><span class="crest-ph" style="background:var(--surface-2);overflow:hidden"><img src="' + esc(llogo(slug)) + '" alt="" style="width:66%;height:66%;object-fit:contain"></span><span class="lbl">' + esc(lname(slug)) + '</span></a>';
+    }).join('');
+    var teams = (f.teams || []).map(function (t) {
       return '<a class="follow-pill" href="/equipo?id=' + t.espn_team_id + '&league=' + (t.league_slug || '') + '&name=' + encodeURIComponent(t.name || '') + '">'
         + crest('', t.name, t.espn_team_id) + '<span class="lbl">' + (favId === String(t.espn_team_id) ? '★ ' : '') + esc((t.name || '').split(' ').slice(-1)[0]) + '</span></a>';
     }).join('');
-    pills += '<a class="follow-pill add" href="#"><div class="crest-ph">+</div><span class="lbl">Añadir</span></a>';
-    return '<div class="rail">' + pills + '</div>';
+    return '<div class="rail">' + comps + teams + '<a class="follow-pill add" href="/buscar"><div class="crest-ph">+</div><span class="lbl">Añadir</span></a></div>';
   }
-  function trendingCard(snap, title) {
+
+  // Líderes de una competición. En PRETEMPORADA o con datos inestables (prob.first
+  // degenerada: varios equipos a ~100%) muestra la CLASIFICACIÓN real (pts); en
+  // temporada, los favoritos al título (prob.first). Evita el rail sin sentido.
+  function leaders(snap, n) {
+    var byProb = snap.teams.slice().map(function (t) { return { t: t, p: pct(t.prob && t.prob.first) || 0 }; }).sort(function (a, b) { return b.p - a.p; });
+    var degenerate = (snap.jornada || 0) < 3 || byProb.filter(function (r) { return r.p >= 99; }).length >= 2;
+    if (degenerate) return { mode: 'std', rows: snap.teams.slice().sort(function (a, b) { return a.rank - b.rank; }).slice(0, n).map(function (t) { return { t: t, val: t.pts, num: t.rank }; }) };
+    return { mode: 'prob', rows: byProb.slice(0, n).map(function (r, i) { return { t: r.t, val: r.p + '%', num: i + 1 }; }) };
+  }
+  function leadersRail(snap, slug) {
     if (!snap || !snap.teams) return '';
-    var top = snap.teams.slice().map(function (t) { return { t: t, p: pct(t.prob && t.prob.first) || 0 }; })
-      .sort(function (a, b) { return b.p - a.p; }).slice(0, 5);
-    var rows = top.map(function (r, i) {
-      return '<div class="trend"><span class="rank num">' + (i + 1) + '</span>' + crest(r.t.logo, r.t.name, r.t.id)
-        + '<span class="name">' + esc(r.t.name) + '</span><span class="val">' + r.p + '%</span></div>';
+    var L = leaders(snap, 5), title = (L.mode === 'std' ? 'Clasificación · ' : 'Favoritos al título · ') + lname(slug);
+    var rows = L.rows.map(function (r) { return '<div class="trend"><span class="rank num">' + r.num + '</span>' + crest(r.t.logo, r.t.name, r.t.id) + '<span class="name">' + esc(r.t.name) + '</span><span class="val">' + r.val + '</span></div>'; }).join('');
+    return '<div class="rail-card"><h4>' + esc(title) + '</h4>' + rows + '</div>';
+  }
+  function leadersCard(snap, slug) {
+    if (!snap || !snap.teams) return '';
+    var L = leaders(snap, 5), head = (L.mode === 'std' ? 'Clasificación · ' : 'Favoritos al título · Monte Carlo · ') + lname(slug);
+    var rows = L.rows.map(function (r) { return '<div class="mini__row"><span class="pos num">' + r.num + '</span>' + crest(r.t.logo, r.t.name, r.t.id) + '<span class="name">' + esc(r.t.name) + '</span><span class="pj"></span><span class="pts" style="color:var(--up)">' + r.val + '</span></div>'; }).join('');
+    return '<article class="card"><div class="card__head"><span class="lg-name">' + esc(head) + '</span></div><div class="mini">' + rows + '</div></article>';
+  }
+  // Tarjeta de una COMPETICIÓN seguida: clasificación (top 6 con zonas) + enlace.
+  function competitionCard(slug, snap) {
+    if (!snap || !snap.teams) return '';
+    var top = snap.teams.slice().sort(function (a, b) { return a.rank - b.rank; }).slice(0, 6);
+    var rows = top.map(function (t) {
+      var band = bandForRank(snap, t.rank);
+      return '<div class="mini__row" data-zone="' + zoneClass(band) + '"><span class="pos num">' + t.rank + '</span>' + crest(t.logo, t.name, t.id)
+        + '<span class="name">' + esc(t.name) + '</span><span class="pj num">' + t.gp + '</span><span class="pts num">' + t.pts + '</span></div>';
     }).join('');
-    return '<div class="rail-card"><h4>' + esc(title || 'Favoritos al título') + '</h4>' + rows + '</div>';
+    return '<article class="card"><div class="card__head"><img class="lg-logo" src="' + esc(llogo(slug)) + '" alt=""><span class="lg-name">' + esc(lname(slug)) + '</span><span class="spacer"></span><a class="feed-sec__more" href="/' + slug + '" style="font-size:var(--fs-11)">Clasificación</a></div><div class="mini">' + rows + '</div></article>';
   }
   function feedSec(title, moreTxt, moreHref, tagHTML) {
     return '<div class="feed-sec"><h2 class="feed-sec__title">' + esc(title) + (tagHTML || '') + '</h2>'
@@ -136,8 +162,16 @@
       return (it.leagues || []).some(function (l) { return fLeagues[l]; }) || (it.teams || []).some(function (t) { return fTeamIds[String(t.id)]; });
     });
 
+    var comps = f.competitions || [];
+    var teamLeagues = {}; teams.forEach(function (t) { teamLeagues[t.league_slug] = 1; });
+    var usedLinks = {};
+    function nextNews(pred) {
+      for (var i = 0; i < relNews.length; i++) { var it = relNews[i]; if (usedLinks[it.link]) continue; if (!pred || pred(it)) { usedLinks[it.link] = 1; return newsCard(it); } }
+      return '';
+    }
+
     var col = [];
-    col.push(feedSec('Siguiendo', 'Editar', '/cuenta', ' <span class="tag">' + teams.length + '</span>'));
+    col.push(feedSec('Siguiendo', 'Editar', '/siguiendo', ' <span class="tag">' + (teams.length + comps.length) + '</span>'));
     col.push(followRail(f));
 
     var fav = teams[0], favM = fav && matches[fav.espn_team_id], favSnap = fav && snaps[fav.league_slug];
@@ -151,18 +185,26 @@
     }
 
     col.push(feedSec('Tu día', 'Ver todo', '/partidos'));
-    var newsUsed = 0;
+    var adPut = false;
+    // Equipos seguidos: resultado + mini-tabla (±3) + noticia del equipo
     teams.slice(0, 3).forEach(function (t, i) {
       var m = matches[t.espn_team_id]; if (m) col.push(resultCard(m, true));
       var mt = miniTable(snaps[t.league_slug], t.espn_team_id, t.name); if (mt) col.push(mt);
-      if (relNews[newsUsed]) { col.push(newsCard(relNews[newsUsed])); newsUsed++; }
-      if (i === 1) col.push(AD);
+      col.push(nextNews(function (it) { return (it.teams || []).some(function (x) { return String(x.id) === String(t.espn_team_id); }) || (it.leagues || []).indexOf(t.league_slug) >= 0; }));
+      if (i === 1) { col.push(AD); adPut = true; }
     });
-    if (relNews.length > newsUsed) {
-      col.push(feedSec('Más noticias'));
-      relNews.slice(newsUsed, newsUsed + 4).forEach(function (it) { col.push(newsCard(it)); });
-    }
-    var rail = (favSnap ? trendingCard(favSnap, 'Favoritos · ' + lname(fav.league_slug)) : '') + AD_RAIL;
+    // Competiciones seguidas (que no cubra ya un equipo): clasificación + noticia
+    comps.filter(function (s) { return !teamLeagues[s]; }).slice(0, 4).forEach(function (slug, i) {
+      var cc = competitionCard(slug, snaps[slug]); if (cc) col.push(cc);
+      col.push(nextNews(function (it) { return (it.leagues || []).indexOf(slug) >= 0; }));
+      if (!adPut && i === 1) { col.push(AD); adPut = true; }
+    });
+
+    var extra = relNews.filter(function (it) { return !usedLinks[it.link]; }).slice(0, 4);
+    if (extra.length) { col.push(feedSec('Más noticias')); extra.forEach(function (it) { col.push(newsCard(it)); }); }
+
+    var primary = (teams[0] && teams[0].league_slug) || comps[0];
+    var rail = (primary && snaps[primary] ? leadersRail(snaps[primary], primary) : '') + AD_RAIL;
     return { col: col.join(''), rail: rail };
   }
 
@@ -177,17 +219,11 @@
       col.push(feedSec('Elige tu competición'));
       col.push('<div class="league-chips">' + ORDER.map(function (s) { return '<a class="league-chip" href="/' + s + '"><img src="' + esc(llogo(s)) + '" alt="">' + esc(lname(s)) + '</a>'; }).join('') + '</div>');
       if (events.length) { col.push(feedSec('Partidos de hoy', 'Ver todos', '/partidos')); events.slice(0, 4).forEach(function (m) { col.push(resultCard(m, false)); }); }
-      if (snap) {
-        col.push(feedSec('Predicciones que suenan'));
-        col.push('<article class="card"><div class="card__head"><span class="lg-name">Favoritos al título · Monte Carlo · ' + esc(lname('laliga')) + '</span></div><div class="mini">'
-          + snap.teams.slice().map(function (t) { return { t: t, p: pct(t.prob && t.prob.first) || 0 }; }).sort(function (a, b) { return b.p - a.p; }).slice(0, 5)
-            .map(function (r, i) { return '<div class="mini__row"><span class="pos num">' + (i + 1) + '</span>' + crest(r.t.logo, r.t.name, r.t.id) + '<span class="name">' + esc(r.t.name) + '</span><span class="pj"></span><span class="pts" style="color:var(--up)">' + r.p + '%</span></div>'; }).join('')
-          + '</div></article>');
-      }
+      if (snap) { col.push(feedSec('Predicciones que suenan')); col.push(leadersCard(snap, 'laliga')); }
       col.push('<section class="cta-card"><h3>Sigue a los tuyos</h3><p>Crea tu cuenta gratis y tu portada se llena con los resultados, la clasificación y las noticias de tus equipos.</p><div class="btns"><a class="btn btn--primary" href="/cuenta">Crear cuenta</a><a class="btn btn--ghost" href="/cuenta">Entrar</a></div></section>');
       if (allNews.length) { col.push(feedSec('Lo último', 'Más', '/noticias')); allNews.slice(0, 4).forEach(function (it) { col.push(newsCard(it)); }); }
       col.push(AD);
-      return { col: col.join(''), rail: (snap ? trendingCard(snap, 'Favoritos · LaLiga') : '') + AD_RAIL };
+      return { col: col.join(''), rail: (snap ? leadersRail(snap, 'laliga') : '') + AD_RAIL };
     });
   }
 

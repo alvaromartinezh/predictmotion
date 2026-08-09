@@ -6,13 +6,13 @@
   'use strict';
   window.PM_LEAGUES = {
     laliga:       { name: 'LaLiga',          code: 'esp.1',            country: 'España',       logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/15.png' },
-    hypermotion:  { name: 'Hypermotion',     code: 'esp.2',            country: 'España',       logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/1868.png' },
+    hypermotion:  { name: 'Hypermotion',     code: 'esp.2',            country: 'España',       logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500/107.png' },
     premier:      { name: 'Premier League',  code: 'eng.1',            country: 'Inglaterra',   logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/23.png' },
     championship: { name: 'Championship',    code: 'eng.2',            country: 'Inglaterra',   logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/24.png' },
     seriea:       { name: 'Serie A',         code: 'ita.1',            country: 'Italia',       logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/12.png' },
-    serieb:       { name: 'Serie B',         code: 'ita.2',            country: 'Italia',       logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/13.png' },
+    serieb:       { name: 'Serie B',         code: 'ita.2',            country: 'Italia',       logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500/99.png' },
     bundesliga:   { name: 'Bundesliga',      code: 'ger.1',            country: 'Alemania',     logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/10.png' },
-    bundesliga2:  { name: '2. Bundesliga',   code: 'ger.2',            country: 'Alemania',     logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/3521.png' },
+    bundesliga2:  { name: '2. Bundesliga',   code: 'ger.2',            country: 'Alemania',     logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500/97.png' },
     ligue1:       { name: 'Ligue 1',         code: 'fra.1',            country: 'Francia',      logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/9.png' },
     ligue2:       { name: 'Ligue 2',         code: 'fra.2',            country: 'Francia',      logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/96.png' },
     primeira:     { name: 'Primeira Liga',   code: 'por.1',            country: 'Portugal',     logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/14.png' },

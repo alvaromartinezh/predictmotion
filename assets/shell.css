@@ -224,6 +224,8 @@ html[data-theme="light"] .pm-theme-toggle .tt-dark  { display: none; }
 .set-row { display: flex; align-items: center; gap: var(--sp-4); padding: var(--sp-4); border-bottom: 1px solid var(--line-soft); }
 .set-row:last-child { border-bottom: none; }
 .set-row .s-main { flex: 1; min-width: 0; }
+.set-row .s-go { display: flex; align-items: center; gap: var(--sp-4); flex: 1; min-width: 0; color: inherit; }
+.set-row .s-go:hover .s-label { color: var(--accent); }
 .set-row .s-label { display: block; font-weight: 600; color: var(--text); }
 .set-row .s-hint { display: block; font-size: var(--fs-13); color: var(--muted); margin-top: 2px; }
 .set-row a.s-main:hover .s-label { color: var(--accent); }
