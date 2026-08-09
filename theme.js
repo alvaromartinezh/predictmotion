@@ -40,4 +40,10 @@
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
   else wire();
+
+  // Hook para UI inyectada por JS después de DOMContentLoaded (p. ej. el shell del
+  // rediseño): tras montar, llamar PMTheme.wire() para cablear su botón
+  // [data-theme-toggle]. Sigue habiendo UN solo sistema de tema (este). wire() es
+  // idempotente (guard data-bound), así que re-llamarlo no duplica handlers.
+  window.PMTheme = { wire: wire, toggle: toggle, current: current };
 })();

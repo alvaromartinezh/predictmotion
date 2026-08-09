@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="dark">
 <head>
   <!-- Google Tag Manager -->
   <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -17,7 +17,7 @@
     gtag('config', 'G-YMRF085WZS');
   </script>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <link rel="icon" type="image/png" href="/media/twitter_profile.png" />
   <link rel="apple-touch-icon" href="/media/twitter_profile.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -27,16 +27,16 @@
   <link rel="dns-prefetch" href="https://site.api.espn.com" />
 
   <title>PredictMotion · Probabilidades de fútbol por simulación Monte Carlo</title>
-  <meta name="description" content="Elige competición y consulta probabilidades de ascenso, descenso y clasificación en tiempo real: Liga Hypermotion y LaLiga. Simulación Monte Carlo con datos reales." />
-  <meta name="keywords" content="probabilidades fútbol, Liga Hypermotion, LaLiga, ascenso, descenso, simulación Monte Carlo" />
+  <meta name="description" content="Tu portada de fútbol: resultados, clasificación con probabilidades de ascenso, descenso y Europa, y noticias de tus equipos y competiciones. 15 ligas en tiempo real con simulación Monte Carlo." />
+  <meta name="keywords" content="probabilidades fútbol, resultados, clasificación, ascenso, descenso, LaLiga, Liga Hypermotion, Premier League, Champions, simulación Monte Carlo" />
   <meta name="author" content="PredictMotion" />
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
-  <meta name="theme-color" content="#060916" />
+  <meta name="theme-color" content="#05070e" />
   <link rel="canonical" href="https://predictmotion.com/" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://predictmotion.com/" />
   <meta property="og:title" content="PredictMotion · Probabilidades de fútbol" />
-  <meta property="og:description" content="Probabilidades de ascenso, descenso y clasificación por simulación Monte Carlo. Liga Hypermotion y LaLiga." />
+  <meta property="og:description" content="Resultados, clasificación con probabilidades y noticias de tus equipos y competiciones. 15 ligas, simulación Monte Carlo." />
   <meta property="og:image" content="https://predictmotion.com/media/twitter_profile.png" />
   <meta property="og:locale" content="es_ES" />
   <meta property="og:site_name" content="PredictMotion" />
@@ -49,22 +49,15 @@
     "@type": "WebSite",
     "name": "PredictMotion",
     "url": "https://predictmotion.com/",
-    "description": "Probabilidades de fútbol por simulación Monte Carlo: Liga Hypermotion y LaLiga.",
+    "description": "Probabilidades de fútbol por simulación Monte Carlo: resultados, clasificación y noticias de 15 competiciones.",
     "inLanguage": "es-ES"
   }
   </script>
 
-  <link rel="stylesheet" href="/styles.css?v=20260808a" />
-  <link rel="stylesheet" href="/assets/account.css?v=20260808a" />
-  <style>
-    .comps-group { margin-bottom: var(--sp-6); }
-    .comps-group__title {
-      font-family: var(--font-display); font-size: var(--fs-18);
-      color: var(--muted); margin: var(--sp-5) 0 var(--sp-3);
-      text-transform: uppercase; letter-spacing: .04em;
-    }
-  </style>
-  <script src="/theme.js?v=20260808a"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260810a" />
+  <link rel="stylesheet" href="/assets/shell.css?v=20260810a" />
+  <link rel="stylesheet" href="/assets/ads.css?v=20260810a" />
+  <script src="/theme.js?v=20260810a"></script>
 
   <!-- Google AdSense -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3055585323326983" crossorigin="anonymous"></script>
@@ -77,180 +70,33 @@
 height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- End Google Tag Manager (noscript) -->
 
-  <!-- ===== BARRA SUPERIOR ===== -->
-  <header class="topbar">
-    <div class="wrap topbar__inner">
-      <a class="logo" href="/" aria-label="PredictMotion — inicio">
-        <span class="logo__dot" aria-hidden="true"></span>Predict<b>Motion</b>
-      </a>
-      <div class="topbar__right">
-        <nav class="topbar__nav" aria-label="Competiciones">
-          <a href="/hypermotion">Hypermotion</a>
-          <a href="/laliga">LaLiga</a>
+  <!-- .pm-app envuelve AMBOS puntos de montaje (la barra inferior fixed va fuera de #app) -->
+  <div class="pm-app">
+    <div class="app" id="app">
+      <!-- Contenido SEO/no-JS: el shell lo reemplaza al montar. Encapsula lo que
+           antes era el selector de competiciones: enlaces internos a las 15 ligas. -->
+      <main class="wrap section" style="max-width:var(--maxw);margin-inline:auto;padding-inline:var(--sp-5)">
+        <h1 class="display" style="font-size:clamp(2rem,6vw,3rem)">Probabilidades de fútbol que se leen solas</h1>
+        <p class="lede" style="margin-top:var(--sp-4);max-width:640px">Resultados, clasificación con probabilidades de ascenso, descenso y Europa, y noticias de tus equipos. 15 competiciones, recalculadas a diario con simulación Monte Carlo.</p>
+        <nav aria-label="Competiciones" style="margin-top:var(--sp-6);display:flex;flex-wrap:wrap;gap:var(--sp-3)">
+          <a href="/laliga">LaLiga</a> · <a href="/hypermotion">Liga Hypermotion</a> · <a href="/premier">Premier League</a> ·
+          <a href="/seriea">Serie A</a> · <a href="/bundesliga">Bundesliga</a> · <a href="/ligue1">Ligue 1</a> ·
+          <a href="/primeira">Primeira Liga</a> · <a href="/eredivisie">Eredivisie</a> · <a href="/championship">Championship</a> ·
+          <a href="/serieb">Serie B</a> · <a href="/bundesliga2">2. Bundesliga</a> · <a href="/ligue2">Ligue 2</a> ·
+          <a href="/champions">Champions League</a> · <a href="/europa">Europa League</a> · <a href="/conference">Conference League</a> ·
           <a href="/noticias">Noticias</a>
         </nav>
-        <button class="theme-toggle" data-theme-toggle type="button" aria-pressed="false" aria-label="Cambiar tema" title="Tema claro / oscuro">
-          <span class="tt-opt tt-dark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8Z"/></svg></span>
-          <span class="tt-opt tt-light" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></span>
-        </button>
-      </div>
+      </main>
     </div>
-  </header>
+    <div id="shell-tabbar"></div>
+  </div>
 
-  <main class="wrap">
-
-    <!-- ===== HERO ===== -->
-    <section class="hero">
-      <p class="eyebrow">Simulación Monte Carlo · datos reales</p>
-      <h1>Probabilidades que <span class="hl">se leen solas</span></h1>
-      <p class="lede">Ascenso, descenso, Europa y clasificación final de cada competición, recalculadas a diario tras miles de simulaciones.</p>
-    </section>
-
-    <!-- ===== TARJETAS DE COMPETICIÓN (agrupadas por país, data-driven) ===== -->
-    <div id="comps-root"></div>
-  </main>
-
-  <!-- ===== PIE ===== -->
-  <footer class="footer">
-    <div class="wrap footer__inner">
-      <p>© 2025 PredictMotion · Todos los derechos reservados</p>
-      <nav class="footer__links" aria-label="Enlaces legales">
-        <a href="mailto:contact@predictmotion.com">contact@predictmotion.com</a>
-        <a href="/privacy">Política de privacidad</a>
-      </nav>
-    </div>
-  </footer>
-
-  <!-- Selector data-driven: tarjetas agrupadas por país. Logo y temporada se
-       rellenan en vivo desde ESPN (sin hardcodear). Añadir una liga = una entrada
-       en COMPS (debe casar con seo/config.py → LEAGUES). -->
-  <script>
-    var COMPS = [
-      { slug: 'laliga',      name: 'LaLiga',           country: 'España',        code: 'esp.1', theme: 'theme-laliga' },
-      { slug: 'hypermotion', name: 'Liga Hypermotion', country: 'España',        code: 'esp.2', theme: 'theme-hypermotion' },
-      { slug: 'premier',     name: 'Premier League',   country: 'Inglaterra',    code: 'eng.1', theme: '' },
-      { slug: 'seriea',      name: 'Serie A',          country: 'Italia',        code: 'ita.1', theme: '' },
-      { slug: 'bundesliga',  name: 'Bundesliga',       country: 'Alemania',      code: 'ger.1', theme: '' },
-      { slug: 'ligue1',      name: 'Ligue 1',          country: 'Francia',       code: 'fra.1', theme: '' },
-      { slug: 'primeira',    name: 'Primeira Liga',    country: 'Portugal',      code: 'por.1', theme: '' },
-      { slug: 'eredivisie',  name: 'Eredivisie',       country: 'Países Bajos',  code: 'ned.1', theme: '' },
-      { slug: 'championship', name: 'Championship',    country: 'Inglaterra',    code: 'eng.2', theme: '' },
-      { slug: 'serieb',       name: 'Serie B',         country: 'Italia',        code: 'ita.2', theme: '' },
-      { slug: 'bundesliga2',  name: '2. Bundesliga',   country: 'Alemania',      code: 'ger.2', theme: '' },
-      { slug: 'ligue2',       name: 'Ligue 2',         country: 'Francia',       code: 'fra.2', theme: '' },
-      { slug: 'champions',    name: 'Champions League', country: 'Europa',       code: 'uefa.champions',   theme: '' },
-      { slug: 'europa',       name: 'Europa League',    country: 'Europa',       code: 'uefa.europa',      theme: '' },
-      { slug: 'conference',   name: 'Conference League', country: 'Europa',      code: 'uefa.europa.conf', theme: '' },
-    ];
-    var ORDER = ['España', 'Inglaterra', 'Italia', 'Alemania', 'Francia', 'Portugal', 'Países Bajos', 'Europa'];
-    var root = document.getElementById('comps-root');
-    var byCountry = {};
-    COMPS.forEach(function (c) { (byCountry[c.country] = byCountry[c.country] || []).push(c); });
-    ORDER.forEach(function (country) {
-      var list = byCountry[country]; if (!list) return;
-      var sec = document.createElement('section'); sec.className = 'comps-group';
-      var h = document.createElement('h2'); h.className = 'comps-group__title'; h.textContent = country;
-      sec.appendChild(h);
-      var nav = document.createElement('nav'); nav.className = 'comps';
-      nav.setAttribute('aria-label', 'Competiciones de ' + country);
-      list.forEach(function (c) {
-        var a = document.createElement('a'); a.className = 'comp-card ' + c.theme; a.href = '/' + c.slug;
-        a.setAttribute('data-slug', c.slug);
-        a.innerHTML =
-          '<div class="comp-card__top"><span class="comp-card__shield">'
-          + '<img alt="' + c.name + '" loading="lazy" id="logo-' + c.slug + '" /></span></div>'
-          + '<div><div class="comp-card__name">' + c.name + '</div>'
-          + '<div class="comp-card__season" id="season-' + c.slug + '">' + c.country + '</div></div>'
-          + '<div class="comp-card__cta">Ver probabilidades <span class="arrow" aria-hidden="true">→</span></div>';
-        nav.appendChild(a);
-      });
-      sec.appendChild(nav); root.appendChild(sec);
-    });
-    COMPS.forEach(function (c) {
-      fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/' + c.code + '/scoreboard', { cache: 'no-store' })
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (d) {
-          if (!d) return;
-          var lg = (d.leagues || [])[0] || {};
-          var dn = (lg.season && lg.season.displayName) || '';
-          var m = dn.match(/\d{4}-\d{2}/);
-          if (m) { var s = document.getElementById('season-' + c.slug); if (s) s.textContent = c.country + ' · ' + m[0]; }
-          var logos = lg.logos || [];
-          var dark = logos.filter(function (l) { return (l.rel || []).indexOf('dark') >= 0; })[0];
-          var href = (dark || logos[0] || {}).href;
-          if (href) { var img = document.getElementById('logo-' + c.slug); if (img) img.src = href.replace('http://', 'https://'); }
-        }).catch(function () {});
-    });
-
-    // ===== Personalización (mejora progresiva; anónimo = vista de siempre) =====
-    var compBySlug = {}; COMPS.forEach(function (c) { compBySlug[c.slug] = c; });
-
-    function teamHref(t) {
-      return '/equipo?id=' + encodeURIComponent(t.espn_team_id)
-        + '&league=' + encodeURIComponent(t.league_slug)
-        + '&name=' + encodeURIComponent(t.name || '');
-    }
-
-    function personalize() {
-      var acct = window.PMAccount; if (!acct) return;
-      var loggedIn = acct.isEnabled() && acct.isLoggedIn();
-
-      // 1) estrella de seguir en cada tarjeta de competición
-      document.querySelectorAll('.comp-card[data-slug]').forEach(function (card) {
-        var slug = card.getAttribute('data-slug');
-        var star = card.querySelector('.pm-star');
-        if (!loggedIn) { if (star) star.remove(); return; }
-        if (!star) {
-          star = document.createElement('button');
-          star.type = 'button'; star.className = 'pm-star';
-          star.addEventListener('click', function (e) {
-            e.preventDefault(); e.stopPropagation();
-            var on = acct.followsCompetition(slug);
-            star.disabled = true;
-            (on ? acct.unfollowCompetition(slug) : acct.followCompetition(slug))
-              .then(function () {}).catch(function () {})
-              .then(function () { star.disabled = false; });
-          });
-          card.appendChild(star);
-        }
-        var on = acct.followsCompetition(slug);
-        star.classList.toggle('is-on', on);
-        star.textContent = on ? '★' : '☆';
-        star.title = on ? 'Dejar de seguir' : 'Seguir competición';
-        star.setAttribute('aria-label', star.title);
-      });
-
-      // 2) tiras "Tus competiciones / Tus equipos"
-      var old = document.getElementById('pm-mine'); if (old) old.remove();
-      if (!loggedIn) return;
-      var f = acct.follows() || { competitions: [], teams: [], favorite_team: null };
-      var html = '<h2 class="pm-mine__title">Tus competiciones</h2>';
-      if (f.competitions.length) {
-        html += '<div class="pm-chips">' + f.competitions.map(function (s) {
-          var c = compBySlug[s]; return '<a class="pm-chip" href="/' + s + '">' + (c ? c.name : s) + '</a>';
-        }).join('') + '</div>';
-      } else {
-        html += '<p class="pm-mine__hint">Sigue competiciones con la ☆ de cada tarjeta para verlas aquí.</p>';
-      }
-      var fav = f.favorite_team;
-      if (f.teams.length || fav) {
-        html += '<h2 class="pm-mine__title" style="margin-top:var(--sp-5)">Tus equipos</h2><div class="pm-chips">';
-        if (fav) html += '<a class="pm-chip pm-chip--fav" href="' + teamHref(fav) + '"><span class="pm-chip__star">★</span>' + (fav.name || 'Favorito') + '</a>';
-        f.teams.forEach(function (t) {
-          if (fav && t.espn_team_id === fav.espn_team_id) return;
-          html += '<a class="pm-chip" href="' + teamHref(t) + '">' + (t.name || 'Equipo') + '</a>';
-        });
-        html += '</div>';
-      }
-      var wrap = document.createElement('section'); wrap.id = 'pm-mine'; wrap.className = 'pm-mine';
-      wrap.innerHTML = html;
-      var main = document.querySelector('main.wrap');
-      main.insertBefore(wrap, document.getElementById('comps-root'));
-    }
-
-    document.addEventListener('pm-account-ready', personalize);
-    document.addEventListener('pm-follows-changed', personalize);
-  </script>
-  <script src="/assets/account.js?v=20260808a"></script>
+  <script src="/assets/pm-leagues.js?v=20260810a"></script>
+  <script src="/assets/account.js?v=20260810a"></script>
+  <script src="/assets/shell.js?v=20260810a"></script>
+  <script src="/assets/pm-data.js?v=20260810a"></script>
+  <script src="/assets/ads-config.js?v=20260810a"></script>
+  <script src="/assets/ads.js?v=20260810a"></script>
+  <script src="/assets/home.js?v=20260810a"></script>
 </body>
 </html>

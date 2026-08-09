@@ -10,6 +10,7 @@
   /* Superficies (partiendo de #060916) */
   --bg:        #060916;
   --bg-2:      #080d1e;
+  --bg-elev:   #080b15;   /* superficie de barra lateral/pestañas del shell */
   --surface:   #0b1124;
   --surface-2: #0f1730;
   --surface-3: #14203c;
@@ -29,6 +30,14 @@
   --accent-line: rgba(240,169,42,.42);
   --accent-glow: rgba(240,169,42,.20);
 
+  /* Acento del REDISEÑO (esmeralda) — se aplica vía .pm-app (superficies del shell:
+     home, partidos, buscar, ajustes, noticias…). Los dashboards conservan su acento
+     por-liga (D2). El acento GLOBAL sigue siendo oro (identidad de páginas heredadas). */
+  --accent-2:    #2fe0d0;         /* cian, para degradados/glow */
+  --brand:       #f0a92a;         /* oro de marca (= acento global heredado) */
+  --brand-soft:  rgba(240,169,42,.14);
+  --live:        #ff4d6d;
+
   /* Semánticos de probabilidad (fijos en todas las ligas) */
   --up:        #2ec98a;   /* ascenso directo */
   --up-soft:   rgba(46,201,138,.12);
@@ -42,7 +51,7 @@
   --font-data:    'Geist', system-ui, -apple-system, sans-serif;
   --font-mono:    'Geist Mono', ui-monospace, 'SFMono-Regular', monospace;
 
-  --fs-12: .75rem;  --fs-13: .8125rem; --fs-14: .875rem; --fs-15: .9375rem;
+  --fs-11: .6875rem; --fs-12: .75rem;  --fs-13: .8125rem; --fs-14: .875rem; --fs-15: .9375rem;
   --fs-16: 1rem;    --fs-18: 1.125rem; --fs-22: 1.375rem; --fs-28: 1.75rem;
   --fs-36: 2.25rem; --fs-48: 3rem;     --fs-64: 4rem;
 
@@ -61,6 +70,19 @@
 
   --maxw: 1080px;
   --ease: cubic-bezier(.2,.7,.3,1);
+}
+
+/* Superficies del REDISEÑO (shell app): acento esmeralda. Se declara ANTES que los
+   .theme-* por-liga para que, cuando un dashboard viva dentro del shell (CP-R6), su
+   acento por-liga (misma especificidad) gane por orden. */
+.pm-app {
+  --accent:      #24d08a;
+  --accent-2:    #2fe0d0;
+  --accent-ink:  #04130c;
+  --accent-soft: rgba(36,208,138,.12);
+  --accent-line: rgba(36,208,138,.40);
+  --accent-glow: rgba(36,208,138,.55);
+  background: var(--bg);
 }
 
 /* Temas por competición — aplica a un contenedor (.theme-x) */
@@ -116,28 +138,8 @@ button { font: inherit; color: inherit; cursor: pointer; background: none; borde
 }
 .lede { font-size: var(--fs-18); color: var(--text-2); line-height: 1.55; }
 
-/* ============================================================
-   MARCA / CABECERA GLOBAL
-   ============================================================ */
-.topbar {
-  position: sticky; top: 0; z-index: 40;
-  background: color-mix(in oklab, var(--bg) 78%, transparent);
-  backdrop-filter: blur(14px) saturate(1.2);
-  border-bottom: 1px solid var(--line-soft);
-}
-.topbar__inner {
-  height: 60px; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4);
-}
-.logo {
-  display: inline-flex; align-items: baseline; gap: .12em;
-  font-family: var(--font-display); font-weight: 800; font-size: var(--fs-22);
-  text-transform: uppercase; letter-spacing: .01em; color: var(--text);
-}
-.logo b { color: var(--accent); font-weight: 800; }
-.logo__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); align-self: center; box-shadow: 0 0 12px var(--accent-glow); }
-.topbar__nav { display: flex; gap: var(--sp-5); font-size: var(--fs-14); color: var(--text-2); }
-.topbar__nav a:hover { color: var(--text); }
-.topbar__right { display: flex; align-items: center; gap: var(--sp-5); }
+/* Topbar/logo antiguos RETIRADOS en CP-R7 — el sitio entero usa el shell del
+   rediseño (.appbar / .sidenav / .tabbar en assets/shell.css). */
 
 /* ============================================================
    HUB / PORTADA
@@ -158,56 +160,8 @@ button { font: inherit; color: inherit; cursor: pointer; background: none; borde
 .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--up); box-shadow: 0 0 0 0 var(--up); animation: pulse 2.4s var(--ease) infinite; }
 @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(46,201,138,.5);} 70%{box-shadow:0 0 0 8px rgba(46,201,138,0);} 100%{box-shadow:0 0 0 0 rgba(46,201,138,0);} }
 
-/* Rejilla de competiciones */
-.comps {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-5);
-  padding-bottom: var(--sp-9);
-}
-.comp-card {
-  position: relative; overflow: hidden; isolation: isolate;
-  display: flex; flex-direction: column; gap: var(--sp-5);
-  background: linear-gradient(180deg, var(--surface), var(--bg-2));
-  border: 1px solid var(--line); border-radius: var(--r-lg);
-  padding: var(--sp-7) var(--sp-6) var(--sp-6);
-  transition: transform .22s var(--ease), border-color .22s var(--ease), box-shadow .22s var(--ease);
-}
-.comp-card::before {
-  content: ""; position: absolute; inset: 0 0 auto 0; height: 3px;
-  background: linear-gradient(90deg, var(--accent), transparent 78%);
-}
-.comp-card::after {
-  content: ""; position: absolute; z-index: -1; inset: -40% 40% auto auto;
-  width: 220px; height: 220px; border-radius: 50%;
-  background: radial-gradient(circle, var(--accent-glow), transparent 68%); opacity: .55;
-}
-.comp-card:hover { transform: translateY(-4px); border-color: var(--accent-line); box-shadow: var(--shadow-md); }
-.comp-card__top { display: flex; align-items: center; justify-content: space-between; }
-.comp-card__shield {
-  width: 64px; height: 64px; display: grid; place-items: center;
-  background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-md);
-  padding: 10px; filter: drop-shadow(0 4px 12px rgba(0,0,0,.5));
-}
-.comp-card__shield img { width: 100%; height: 100%; object-fit: contain; }
-.comp-card__idx { font-family: var(--font-mono); font-size: var(--fs-12); color: var(--faint); letter-spacing: .12em; }
-.comp-card__name {
-  font-family: var(--font-display); font-weight: 800; text-transform: uppercase;
-  font-size: var(--fs-28); line-height: 1.06; letter-spacing: .006em;
-}
-.comp-card__season {
-  margin-top: var(--sp-2); font-family: var(--font-mono); font-size: var(--fs-12);
-  letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
-}
-.comp-card__legend { display: flex; gap: var(--sp-4); margin-top: auto; padding-top: var(--sp-5); border-top: 1px solid var(--line-soft); }
-.legend-dot { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-12); color: var(--text-2); }
-.legend-dot i { width: 8px; height: 8px; border-radius: 50%; }
-.legend-dot.up i { background: var(--up); } .legend-dot.po i { background: var(--po); } .legend-dot.down i { background: var(--down); }
-.comp-card__cta {
-  display: flex; align-items: center; justify-content: space-between;
-  font-family: var(--font-display); font-weight: 700; text-transform: uppercase;
-  font-size: var(--fs-15); letter-spacing: .04em; color: var(--accent);
-}
-.comp-card__cta .arrow { transition: transform .22s var(--ease); }
-.comp-card:hover .comp-card__cta .arrow { transform: translateX(5px); }
+/* Selector de competiciones antiguo (.comps/.comp-card) RETIRADO en CP-R7:
+   la home / es ahora el feed del shell; el selector se pliega en la vista anónima. */
 
 /* ============================================================
    CABECERA DE LIGA + PESTAÑAS
@@ -440,18 +394,6 @@ tr[data-zone="down"] .pos-badge { color: var(--down); }
 }
 
 @media (max-width: 680px) {
-  /* La nav de la topbar NO se oculta en móvil: es el único acceso a Noticias
-     y a las demás ligas. A ancho móvil (320px incl.) no caben en una fila el
-     wordmark + los 3 enlaces + el theme-toggle sin cortarse, así que la topbar
-     pasa a DOS filas: [logo ····· toggle] arriba, la nav a ancho completo debajo.
-     `display:contents` disuelve el wrapper .topbar__right para que .topbar__nav y
-     .theme-toggle participen directamente en el flex de .topbar__inner (permite
-     ordenarlos/envolverlos sin tocar el HTML, idéntico en las 20+ páginas). */
-  .topbar__inner { flex-wrap: wrap; height: auto; row-gap: var(--sp-2); padding-block: var(--sp-3); }
-  .topbar__right { display: contents; }
-  .logo { order: 0; }
-  .theme-toggle { order: 1; margin-left: auto; }
-  .topbar__nav { order: 2; flex-basis: 100%; gap: var(--sp-6); font-size: var(--fs-14); white-space: nowrap; }
   .league-head__row { gap: var(--sp-4); }
   .league-shield { width: 56px; height: 56px; }
   .tabs { gap: 0; }
@@ -523,6 +465,7 @@ tr[data-zone="down"] .pos-badge { color: var(--down); }
 html[data-theme="light"] {
   --bg:        #eef1f7;
   --bg-2:      #e7ebf3;
+  --bg-elev:   #ffffff;
   --surface:   #ffffff;
   --surface-2: #f3f5fa;
   --surface-3: #e7ebf3;
@@ -540,6 +483,11 @@ html[data-theme="light"] {
   --accent-glow: rgba(197,134,15,.18);
   --accent-ink:  #ffffff;
 
+  --accent-2:    #109c93;
+  --brand:       #c5860f;
+  --brand-soft:  rgba(197,134,15,.14);
+  --live:        #e11d48;
+
   --up:        #0f9e68; --up-soft:   rgba(15,158,104,.13);
   --po:        #c4860f; --po-soft:   rgba(196,134,15,.14);
   --down:      #e23a52; --down-soft: rgba(226,58,82,.12);
@@ -553,6 +501,14 @@ html[data-theme="light"] body {
     radial-gradient(60% 38% at 2% -4%, rgba(197,134,15,.06), transparent 60%),
     radial-gradient(48% 40% at 100% 102%, rgba(47,111,224,.05), transparent 60%);
 }
+html[data-theme="light"] .pm-app {
+  --accent:      #0f9d67;
+  --accent-2:    #109c93;
+  --accent-ink:  #ffffff;
+  --accent-soft: rgba(15,157,103,.12);
+  --accent-line: rgba(15,157,103,.38);
+  --accent-glow: rgba(15,157,103,.30);
+}
 html[data-theme="light"] .theme-hypermotion {
   --accent:#c5860f; --accent-soft:rgba(197,134,15,.14); --accent-line:rgba(197,134,15,.45); --accent-glow:rgba(197,134,15,.16); --accent-ink:#ffffff;
 }
@@ -564,22 +520,8 @@ html[data-theme="light"] .prob.is-lock.up,
 html[data-theme="light"] .prob.is-lock.po,
 html[data-theme="light"] .prob.is-lock.down { color: #fff; }
 
-/* ============================================================
-   CONMUTADOR DE TEMA (sol / luna)
-   ============================================================ */
-.theme-toggle {
-  display: inline-flex; align-items: center; gap: 2px; padding: 3px;
-  border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface-2);
-  flex: none;
-}
-.theme-toggle .tt-opt {
-  width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%;
-  color: var(--muted); transition: background .18s var(--ease), color .18s var(--ease);
-}
-.theme-toggle .tt-opt svg { width: 15px; height: 15px; display: block; }
-html[data-theme="dark"]  .theme-toggle .tt-dark  { background: var(--surface-3); color: var(--accent); }
-html[data-theme="light"] .theme-toggle .tt-light { background: var(--surface-3); color: var(--accent); }
-.theme-toggle:hover { border-color: var(--accent-line); }
+/* Conmutador de tema en PÍLDORA (.theme-toggle) RETIRADO en CP-R7. El shell usa
+   .pm-theme-toggle (assets/shell.css); el único sistema de tema sigue siendo theme.js. */
 
 /* Chapa "en vivo" enlazable a la vista de partido (/partido). */
 .live-badge-link { text-decoration: none; color: inherit; cursor: pointer; }
