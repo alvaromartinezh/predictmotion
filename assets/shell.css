@@ -280,7 +280,11 @@ html[data-theme="light"] .pm-theme-toggle .tt-dark  { display: none; }
   .sidenav__user .who .n { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sidenav__user .who .e { font-size: var(--fs-12); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-  .feed { max-width: none; display: grid; grid-template-columns: minmax(0, var(--feed-w)) var(--rail-w); gap: var(--sp-6); padding: var(--sp-6); align-items: start; }
+  /* Columna de contenido FLEXIBLE (1fr) para aprovechar el ancho en monitores
+     grandes; el rail mantiene su ancho fijo. Se acota el conjunto y se centra para
+     no estirar el texto sin límite en pantallas muy anchas (4K). En desktop estrecho
+     (~980–1280) el 1fr se encoge igual que antes: sin cambios de comportamiento. */
+  .feed { max-width: 1560px; margin-inline: auto; display: grid; grid-template-columns: minmax(0, 1fr) var(--rail-w); gap: var(--sp-6); padding: var(--sp-6); align-items: start; }
   .feed__col { min-width: 0; }
   .feed__col > * + * { margin-top: var(--sp-4); }
   .feed__rail { display: flex; position: sticky; top: var(--sp-6); flex-direction: column; gap: var(--sp-4); }
