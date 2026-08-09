@@ -138,28 +138,8 @@ button { font: inherit; color: inherit; cursor: pointer; background: none; borde
 }
 .lede { font-size: var(--fs-18); color: var(--text-2); line-height: 1.55; }
 
-/* ============================================================
-   MARCA / CABECERA GLOBAL
-   ============================================================ */
-.topbar {
-  position: sticky; top: 0; z-index: 40;
-  background: color-mix(in oklab, var(--bg) 78%, transparent);
-  backdrop-filter: blur(14px) saturate(1.2);
-  border-bottom: 1px solid var(--line-soft);
-}
-.topbar__inner {
-  height: 60px; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4);
-}
-.logo {
-  display: inline-flex; align-items: baseline; gap: .12em;
-  font-family: var(--font-display); font-weight: 800; font-size: var(--fs-22);
-  text-transform: uppercase; letter-spacing: .01em; color: var(--text);
-}
-.logo b { color: var(--accent); font-weight: 800; }
-.logo__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); align-self: center; box-shadow: 0 0 12px var(--accent-glow); }
-.topbar__nav { display: flex; gap: var(--sp-5); font-size: var(--fs-14); color: var(--text-2); }
-.topbar__nav a:hover { color: var(--text); }
-.topbar__right { display: flex; align-items: center; gap: var(--sp-5); }
+/* Topbar/logo antiguos RETIRADOS en CP-R7 — el sitio entero usa el shell del
+   rediseño (.appbar / .sidenav / .tabbar en assets/shell.css). */
 
 /* ============================================================
    HUB / PORTADA
@@ -462,18 +442,6 @@ tr[data-zone="down"] .pos-badge { color: var(--down); }
 }
 
 @media (max-width: 680px) {
-  /* La nav de la topbar NO se oculta en móvil: es el único acceso a Noticias
-     y a las demás ligas. A ancho móvil (320px incl.) no caben en una fila el
-     wordmark + los 3 enlaces + el theme-toggle sin cortarse, así que la topbar
-     pasa a DOS filas: [logo ····· toggle] arriba, la nav a ancho completo debajo.
-     `display:contents` disuelve el wrapper .topbar__right para que .topbar__nav y
-     .theme-toggle participen directamente en el flex de .topbar__inner (permite
-     ordenarlos/envolverlos sin tocar el HTML, idéntico en las 20+ páginas). */
-  .topbar__inner { flex-wrap: wrap; height: auto; row-gap: var(--sp-2); padding-block: var(--sp-3); }
-  .topbar__right { display: contents; }
-  .logo { order: 0; }
-  .theme-toggle { order: 1; margin-left: auto; }
-  .topbar__nav { order: 2; flex-basis: 100%; gap: var(--sp-6); font-size: var(--fs-14); white-space: nowrap; }
   .league-head__row { gap: var(--sp-4); }
   .league-shield { width: 56px; height: 56px; }
   .tabs { gap: 0; }
@@ -600,22 +568,8 @@ html[data-theme="light"] .prob.is-lock.up,
 html[data-theme="light"] .prob.is-lock.po,
 html[data-theme="light"] .prob.is-lock.down { color: #fff; }
 
-/* ============================================================
-   CONMUTADOR DE TEMA (sol / luna)
-   ============================================================ */
-.theme-toggle {
-  display: inline-flex; align-items: center; gap: 2px; padding: 3px;
-  border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface-2);
-  flex: none;
-}
-.theme-toggle .tt-opt {
-  width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%;
-  color: var(--muted); transition: background .18s var(--ease), color .18s var(--ease);
-}
-.theme-toggle .tt-opt svg { width: 15px; height: 15px; display: block; }
-html[data-theme="dark"]  .theme-toggle .tt-dark  { background: var(--surface-3); color: var(--accent); }
-html[data-theme="light"] .theme-toggle .tt-light { background: var(--surface-3); color: var(--accent); }
-.theme-toggle:hover { border-color: var(--accent-line); }
+/* Conmutador de tema en PÍLDORA (.theme-toggle) RETIRADO en CP-R7. El shell usa
+   .pm-theme-toggle (assets/shell.css); el único sistema de tema sigue siendo theme.js. */
 
 /* Chapa "en vivo" enlazable a la vista de partido (/partido). */
 .live-badge-link { text-decoration: none; color: inherit; cursor: pointer; }
