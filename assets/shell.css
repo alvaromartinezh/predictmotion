@@ -95,9 +95,6 @@ html[data-theme="light"] .pm-theme-toggle .tt-dark  { display: none; }
 .badge-live i { width: 6px; height: 6px; border-radius: 50%; background: var(--live); animation: pmblink 1.3s var(--ease) infinite; }
 @keyframes pmblink { 50% { opacity: .3; } }
 
-.winbar { display: flex; height: 6px; border-radius: var(--r-pill); overflow: hidden; margin: 0 var(--sp-4) var(--sp-4); background: var(--surface-3); }
-.winbar i { height: 100%; }
-.winbar .h { background: var(--up); } .winbar .d { background: var(--muted); } .winbar .a { background: var(--accent); }
 
 /* ---- Mini-tabla ±3 ---- */
 .mini { padding: var(--sp-2) 0; }
@@ -199,7 +196,6 @@ html[data-theme="light"] .pm-theme-toggle .tt-dark  { display: none; }
 .pm-line .sc { font-family: var(--font-mono); font-weight: 700; font-size: var(--fs-15); color: var(--text); }
 .pm-line.lose .name { color: var(--text-2); }
 .pm-line.lose .sc { color: var(--muted); }
-.winbar--pm { margin: 3px 0 0; height: 5px; }
 
 /* ============================================================
    BUSCAR
