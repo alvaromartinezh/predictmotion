@@ -10,6 +10,7 @@
   /* Superficies (partiendo de #060916) */
   --bg:        #060916;
   --bg-2:      #080d1e;
+  --bg-elev:   #080b15;   /* superficie de barra lateral/pestañas del shell */
   --surface:   #0b1124;
   --surface-2: #0f1730;
   --surface-3: #14203c;
@@ -29,6 +30,14 @@
   --accent-line: rgba(240,169,42,.42);
   --accent-glow: rgba(240,169,42,.20);
 
+  /* Acento del REDISEÑO (esmeralda) — se aplica vía .pm-app (superficies del shell:
+     home, partidos, buscar, ajustes, noticias…). Los dashboards conservan su acento
+     por-liga (D2). El acento GLOBAL sigue siendo oro (identidad de páginas heredadas). */
+  --accent-2:    #2fe0d0;         /* cian, para degradados/glow */
+  --brand:       #f0a92a;         /* oro de marca (= acento global heredado) */
+  --brand-soft:  rgba(240,169,42,.14);
+  --live:        #ff4d6d;
+
   /* Semánticos de probabilidad (fijos en todas las ligas) */
   --up:        #2ec98a;   /* ascenso directo */
   --up-soft:   rgba(46,201,138,.12);
@@ -42,7 +51,7 @@
   --font-data:    'Geist', system-ui, -apple-system, sans-serif;
   --font-mono:    'Geist Mono', ui-monospace, 'SFMono-Regular', monospace;
 
-  --fs-12: .75rem;  --fs-13: .8125rem; --fs-14: .875rem; --fs-15: .9375rem;
+  --fs-11: .6875rem; --fs-12: .75rem;  --fs-13: .8125rem; --fs-14: .875rem; --fs-15: .9375rem;
   --fs-16: 1rem;    --fs-18: 1.125rem; --fs-22: 1.375rem; --fs-28: 1.75rem;
   --fs-36: 2.25rem; --fs-48: 3rem;     --fs-64: 4rem;
 
@@ -61,6 +70,19 @@
 
   --maxw: 1080px;
   --ease: cubic-bezier(.2,.7,.3,1);
+}
+
+/* Superficies del REDISEÑO (shell app): acento esmeralda. Se declara ANTES que los
+   .theme-* por-liga para que, cuando un dashboard viva dentro del shell (CP-R6), su
+   acento por-liga (misma especificidad) gane por orden. */
+.pm-app {
+  --accent:      #24d08a;
+  --accent-2:    #2fe0d0;
+  --accent-ink:  #04130c;
+  --accent-soft: rgba(36,208,138,.12);
+  --accent-line: rgba(36,208,138,.40);
+  --accent-glow: rgba(36,208,138,.55);
+  background: var(--bg);
 }
 
 /* Temas por competición — aplica a un contenedor (.theme-x) */
@@ -523,6 +545,7 @@ tr[data-zone="down"] .pos-badge { color: var(--down); }
 html[data-theme="light"] {
   --bg:        #eef1f7;
   --bg-2:      #e7ebf3;
+  --bg-elev:   #ffffff;
   --surface:   #ffffff;
   --surface-2: #f3f5fa;
   --surface-3: #e7ebf3;
@@ -540,6 +563,11 @@ html[data-theme="light"] {
   --accent-glow: rgba(197,134,15,.18);
   --accent-ink:  #ffffff;
 
+  --accent-2:    #109c93;
+  --brand:       #c5860f;
+  --brand-soft:  rgba(197,134,15,.14);
+  --live:        #e11d48;
+
   --up:        #0f9e68; --up-soft:   rgba(15,158,104,.13);
   --po:        #c4860f; --po-soft:   rgba(196,134,15,.14);
   --down:      #e23a52; --down-soft: rgba(226,58,82,.12);
@@ -552,6 +580,14 @@ html[data-theme="light"] body {
   background-image:
     radial-gradient(60% 38% at 2% -4%, rgba(197,134,15,.06), transparent 60%),
     radial-gradient(48% 40% at 100% 102%, rgba(47,111,224,.05), transparent 60%);
+}
+html[data-theme="light"] .pm-app {
+  --accent:      #0f9d67;
+  --accent-2:    #109c93;
+  --accent-ink:  #ffffff;
+  --accent-soft: rgba(15,157,103,.12);
+  --accent-line: rgba(15,157,103,.38);
+  --accent-glow: rgba(15,157,103,.30);
 }
 html[data-theme="light"] .theme-hypermotion {
   --accent:#c5860f; --accent-soft:rgba(197,134,15,.14); --accent-line:rgba(197,134,15,.45); --accent-glow:rgba(197,134,15,.16); --accent-ink:#ffffff;
