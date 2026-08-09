@@ -80,53 +80,74 @@
     return null;
   }
 
-  // Árbol desde la FINAL hacia fuera. Cada nodo = un cruce; sus 2 hijos son los cruces
-  // de la ronda anterior que ganaron sus 2 equipos. Cruce por jugar → hijo vacío.
-  function buildTree(rounds) {
-    function node(ri, tie) {
-      var n = { ri: ri, tie: tie, children: [] };
-      if (ri === 0) return n;
-      var childRound = rounds[ORDER[ri - 1]];
-      var kids = [null, null];
-      if (tie && tie.teams) kids = [findByWinner(childRound, tie.teams[0].id), findByWinner(childRound, tie.teams[1].id)];
-      n.children = [node(ri - 1, kids[0]), node(ri - 1, kids[1])];
-      return n;
+  // Árbol de EQUIPOS (dendrograma). Raíces = finalistas (anillo 3); cada equipo
+  // desciende por los cruces que GANÓ hasta octavos (hojas). Un equipo aparece en cada
+  // anillo que alcanzó (su recorrido hacia dentro): el campeón NO se duplica en un disco
+  // central (lo marcan el brillo de su recorrido + la etiqueta CAMPEÓN). Cruce sin
+  // decidir → la rama se corta ahí, sin escudos vacíos.
+  function buildTeam(team, ri, rounds) {
+    var n = { team: team, ri: ri, children: [] };
+    if (ri > 0) {
+      var tie = findByWinner(rounds[ORDER[ri - 1]], team.id);
+      if (tie && tie.teams) n.children = [buildTeam(tie.teams[0], ri - 1, rounds), buildTeam(tie.teams[1], ri - 1, rounds)];
     }
-    return node(3, (rounds['final'] || [])[0] || null);
-  }
-  // Pre-order → cruces por ronda EN ORDEN de posición (hojas alrededor del anillo).
-  function slotsFromTree(root) {
-    var b = { 0: [], 1: [], 2: [], 3: [] };
-    (function walk(n) { b[n.ri].push(n.tie); n.children.forEach(walk); })(root);
-    return b;
-  }
-  // Fallback (eliminatoria a medias, sin final): coloca lo que haya en orden de ESPN.
-  // Los conectores se dibujan por enlace de ganador, así que siguen siendo correctos.
-  function slotsFallback(rounds) {
-    return { 0: rounds['round-of-16'].slice(), 1: rounds['quarterfinals'].slice(),
-             2: rounds['semifinals'].slice(), 3: rounds['final'].slice() };
+    n.leaf = n.children.length === 0;
+    return n;
   }
 
-  // ── Geometría radial ───────────────────────────────────────────────────────
-  var CX = 500, CY = 500;
-  var COUNT = { 0: 8, 1: 4, 2: 2, 3: 1 };            // cruces por anillo
-  var RAD_T = { 0: 430, 1: 300, 2: 180, 3: 96 };     // radio del escudo por anillo
-  var CREST_R = { 0: 23, 1: 29, 2: 37, 3: 46 };      // tamaño del escudo por anillo (crece hacia dentro)
-  var CHAMP_R = 58;                                   // campeón (centro)
-  var DELTA = { 0: 11, 1: 15, 2: 22, 3: 30 };        // medio-ángulo (º) que separa los 2 escudos de un cruce
-  // Ángulos de cada cruce (grados; 0 = derecha, +horario). Octavos: 8 desde arriba.
-  var ANG = { 0: [], 1: [], 2: [], 3: [0] };
-  for (var i = 0; i < 8; i++) ANG[0][i] = -90 + i * 45;
-  for (var j = 0; j < 4; j++) ANG[1][j] = (ANG[0][2 * j] + ANG[0][2 * j + 1]) / 2;
-  for (var k = 0; k < 2; k++) ANG[2][k] = (ANG[1][2 * k] + ANG[1][2 * k + 1]) / 2;
+  // ── Geometría radial (anillos concéntricos, simétricos) ────────────────────
+  var CX = 500, CY = 500, BASE = 90;                 // BASE=90 → los 2 finalistas caen a izq./dcha.
+  var RAD = { 0: 442, 1: 316, 2: 192, 3: 90 };       // radio del escudo por anillo (fuera→dentro)
+  var CREST = { 0: 24, 1: 30, 2: 38, 3: 44 };        // tamaño del escudo por anillo (progresión suave)
+  function radOf(ri) { return RAD[ri] != null ? RAD[ri] : 90; }
+  function crOf(ri) { return CREST[ri] != null ? CREST[ri] : 24; }
+  function pos(angDeg, r) { var a = angDeg * Math.PI / 180; return { x: CX + r * Math.cos(a), y: CY + r * Math.sin(a) }; }
 
-  // Posición del escudo del equipo `side` (0/1) del cruce (ri, idx).
-  function teamPos(ri, idx, side) {
-    var a = (ANG[ri][idx] + (side === 0 ? -DELTA[ri] : DELTA[ri])) * Math.PI / 180, r = RAD_T[ri];
-    return { x: CX + r * Math.cos(a), y: CY + r * Math.sin(a) };
+  // Coloca el árbol: hojas repartidas por igual en 360°, cada nodo interno en el ángulo
+  // MEDIO de sus hijos (malla angular simétrica). Devuelve escudos + conectores + campeón.
+  function buildPlacement(rounds) {
+    var finalTie = (rounds['final'] || [])[0], roots = [], champion = null, centerLabel = '', haveCenter = false;
+    if (finalTie && finalTie.teams) {
+      roots = [buildTeam(finalTie.teams[0], 3, rounds), buildTeam(finalTie.teams[1], 3, rounds)];
+      champion = finalTie.winner || null;
+      centerLabel = champion ? 'CAMPEÓN' : 'FINAL';
+      haveCenter = true;
+    } else {                                          // eliminatoria a medias (sin final): raíces = ronda más profunda con datos
+      var D = 2; while (D >= 0 && !((rounds[ORDER[D]] || []).length)) D--;
+      if (D < 0) return null;
+      (rounds[ORDER[D]] || []).forEach(function (tie) {
+        if (tie && tie.teams) { roots.push(buildTeam(tie.teams[0], D, rounds)); roots.push(buildTeam(tie.teams[1], D, rounds)); }
+      });
+    }
+    function leaves(n) { return n.leaf ? 1 : leaves(n.children[0]) + leaves(n.children[1]); }
+    var total = roots.reduce(function (s, t) { return s + leaves(t); }, 0) || 1;
+    var step = 360 / total, li = 0, crests = [], edges = [];
+    function place(n, parent) {
+      var ang;
+      if (n.leaf) { ang = BASE + (li + 0.5) * step; li++; }
+      else {
+        var a0 = place(n.children[0], n), a1 = place(n.children[1], n);
+        ang = (a0 + a1) / 2;
+        n.children.forEach(function (c) {                                   // conector hijo → padre (línea recta = ángulo limpio)
+          edges.push({ a: pos(c._ang, radOf(c.ri)), b: pos(ang, radOf(n.ri)), champPath: champion && c.team.id === champion });
+        });
+      }
+      n._ang = ang;
+      var p = pos(ang, radOf(n.ri));
+      crests.push({ team: n.team, ri: n.ri, x: p.x, y: p.y, cr: crOf(n.ri),
+        champ: !!(champion && n.ri === 3 && n.team.id === champion),
+        champPath: !!(champion && n.team.id === champion) });
+      return ang;
+    }
+    roots.forEach(function (r) { place(r, null); });
+    if (haveCenter) roots.forEach(function (n) {                            // finalistas → centro (la final): campeón con brillo
+      edges.push({ a: pos(n._ang, radOf(3)), b: { x: CX, y: CY }, champPath: !!(champion && n.team.id === champion), center: true });
+    });
+    crests.sort(function (a, b) { return a.ri - b.ri; });                    // anillos internos encima
+    return { crests: crests, edges: edges, champion: champion, centerLabel: centerLabel };
   }
 
-  // ── Render (SVG de escudos circulares + líneas con brillo) ──────────────────
+  // ── Render (SVG de escudos circulares + malla + brillo del campeón) ─────────
   function esc(s) { return String(s || '').replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
   var UID = 0;
 
@@ -137,15 +158,13 @@
     '<stop offset="0%" stop-color="rgba(36,208,138,.32)"/><stop offset="70%" stop-color="rgba(36,208,138,.05)"/><stop offset="100%" stop-color="transparent"/>' +
     '</radialGradient></defs>';
 
-  function crest(team, x, y, cr, opts) {
-    opts = opts || {};
-    x = +x.toFixed(1); y = +y.toFixed(1);
-    if (!team) return '<circle class="bk-ghost" cx="' + x + '" cy="' + y + '" r="' + cr + '"/>';
+  function crest(c) {
+    var x = +c.x.toFixed(1), y = +c.y.toFixed(1), cr = c.cr, team = c.team;
     var uid = 'bkc' + (UID++);
-    var ring = opts.champ ? 'var(--accent)' : (opts.win ? 'rgba(45,224,208,.9)' : 'rgba(150,175,210,.35)');
-    var glow = opts.champ
-      ? '<circle cx="' + x + '" cy="' + y + '" r="' + (cr + 10) + '" fill="none" stroke="rgba(36,208,138,.5)" stroke-width="3" filter="url(#bkGlow)"/>'
-      : (opts.win ? '<circle cx="' + x + '" cy="' + y + '" r="' + (cr + 4) + '" fill="none" stroke="rgba(45,224,208,.35)" stroke-width="3" filter="url(#bkGlow)"/>' : '');
+    var ring = c.champ ? 'var(--accent, #24d08a)' : (c.champPath ? 'rgba(45,224,208,.9)' : 'rgba(150,175,210,.4)');
+    var glow = c.champ
+      ? '<circle cx="' + x + '" cy="' + y + '" r="' + (cr + 9) + '" fill="none" stroke="rgba(36,208,138,.55)" stroke-width="3" filter="url(#bkGlow)"/>'
+      : (c.champPath ? '<circle cx="' + x + '" cy="' + y + '" r="' + (cr + 4) + '" fill="none" stroke="rgba(45,224,208,.3)" stroke-width="2.5" filter="url(#bkGlow)"/>' : '');
     var img = team.logo
       ? '<image href="' + esc(team.logo) + '" x="' + (x - cr) + '" y="' + (y - cr) + '" width="' + (2 * cr) + '" height="' + (2 * cr) + '" clip-path="url(#' + uid + ')" preserveAspectRatio="xMidYMid slice" ' +
         'onload="this.previousElementSibling.style.display=\'none\'" onerror="this.remove()"/>'
@@ -154,68 +173,40 @@
       '<title>' + esc(team.name || team.abbr) + '</title>' + glow +
       '<clipPath id="' + uid + '"><circle cx="' + x + '" cy="' + y + '" r="' + cr + '"/></clipPath>' +
       '<circle class="bk-disc" cx="' + x + '" cy="' + y + '" r="' + cr + '"/>' +
-      '<text class="bk-init" x="' + x + '" y="' + (y + cr * 0.34).toFixed(1) + '" text-anchor="middle" font-size="' + (cr * 0.8).toFixed(0) + '">' + esc(team.abbr || team.name) + '</text>' +
+      '<text class="bk-init" x="' + x + '" y="' + (y + cr * 0.34).toFixed(1) + '" text-anchor="middle" font-size="' + (cr * 0.72).toFixed(0) + '">' + esc(team.abbr || team.name) + '</text>' +
       img +
-      '<circle class="bk-border" cx="' + x + '" cy="' + y + '" r="' + cr + '" fill="none" stroke="' + ring + '" stroke-width="' + (opts.champ ? 3 : 2) + '"/>' +
+      '<circle class="bk-border" cx="' + x + '" cy="' + y + '" r="' + cr + '" fill="none" stroke="' + ring + '" stroke-width="' + (c.champ ? 3 : 2) + '"/>' +
       '</g>';
   }
 
-  function dimLine(a, b) { return '<line class="bk-tie" x1="' + a.x.toFixed(1) + '" y1="' + a.y.toFixed(1) + '" x2="' + b.x.toFixed(1) + '" y2="' + b.y.toFixed(1) + '"/>'; }
-  function glowLine(a, b) {
-    var c = 'x1="' + a.x.toFixed(1) + '" y1="' + a.y.toFixed(1) + '" x2="' + b.x.toFixed(1) + '" y2="' + b.y.toFixed(1) + '"';
-    return '<line ' + c + ' stroke="rgba(45,224,208,.55)" stroke-width="6" filter="url(#bkGlow)"/>' +
-           '<line ' + c + ' stroke="#8ef7d0" stroke-width="1.6" filter="url(#bkGlowS)"/>' +
-           '<line ' + c + ' stroke="#d7fff0" stroke-width="1"/>';
-  }
-
-  function placedTies(slots) {
-    var placed = [];
-    [0, 1, 2, 3].forEach(function (ri) { (slots[ri] || []).forEach(function (tie, idx) { if (tie) placed.push({ ri: ri, idx: idx, tie: tie }); }); });
-    return placed;
-  }
-  function winnerSide(tie) { return tie.winner ? (tie.teams[0].id === tie.winner ? 0 : 1) : -1; }
-
-  function edgesSVG(slots) {
-    var placed = placedTies(slots), dim = '', glow = '';
-    placed.forEach(function (p) {
-      dim += dimLine(teamPos(p.ri, p.idx, 0), teamPos(p.ri, p.idx, 1));   // enfrentamiento del cruce
-      var ws = winnerSide(p.tie); if (ws < 0) return;
-      var from = teamPos(p.ri, p.idx, ws);
-      if (p.ri === 3) { glow += glowLine(from, { x: CX, y: CY }); return; }  // finalista → campeón
-      var parent = placed.filter(function (q) { return q.ri === p.ri + 1 && q.tie.teams.some(function (t) { return t.id === p.tie.winner; }); })[0];
-      if (!parent) return;
-      var pside = parent.tie.teams[0].id === p.tie.winner ? 0 : 1;
-      glow += glowLine(from, teamPos(p.ri + 1, parent.idx, pside));         // ganador → su escudo en la ronda de dentro
-    });
-    return { dim: dim, glow: glow };
-  }
-
-  function crestsSVG(slots) {
-    var s = '';
-    [0, 1, 2, 3].forEach(function (ri) {
-      for (var idx = 0; idx < COUNT[ri]; idx++) {
-        var tie = (slots[ri] || [])[idx] || null, cr = CREST_R[ri];
-        var p0 = teamPos(ri, idx, 0), p1 = teamPos(ri, idx, 1);
-        if (!tie) { s += crest(null, p0.x, p0.y, cr) + crest(null, p1.x, p1.y, cr); continue; }
-        var ws = winnerSide(tie);
-        s += crest(tie.teams[0], p0.x, p0.y, cr, { win: ws === 0 });
-        s += crest(tie.teams[1], p1.x, p1.y, cr, { win: ws === 1 });
+  function edgesSVG(edges) {
+    var dim = '', glow = '';
+    edges.forEach(function (e) {
+      var co = 'x1="' + e.a.x.toFixed(1) + '" y1="' + e.a.y.toFixed(1) + '" x2="' + e.b.x.toFixed(1) + '" y2="' + e.b.y.toFixed(1) + '"';
+      if (e.champPath) {
+        glow += '<line ' + co + ' stroke="rgba(36,208,138,.5)" stroke-width="6" filter="url(#bkGlow)"/>' +
+                '<line ' + co + ' stroke="#7ef0c2" stroke-width="1.7" filter="url(#bkGlowS)"/>' +
+                '<line ' + co + ' stroke="#e6fff5" stroke-width="1"/>';
+      } else {
+        dim += '<line class="bk-tie" ' + co + '/>';
       }
     });
-    return s;
-  }
-
-  function championSVG(rounds) {
-    var fin = (rounds['final'] || [])[0];
-    var champ = (fin && fin.winner) ? (fin.teams[0].id === fin.winner ? fin.teams[0] : fin.teams[1]) : null;
-    return crest(champ, CX, CY, CHAMP_R, { champ: !!champ }) +
-      (champ ? '<text class="bk-champ-lbl" x="' + CX + '" y="' + (CY + CHAMP_R + 28) + '" text-anchor="middle">Campeón</text>' : '');
+    return '<g class="bk-links-dim">' + dim + '</g><g class="bk-links-glow">' + glow + '</g>';
   }
 
   function guidesSVG() {
-    return [RAD_T[0], RAD_T[1], RAD_T[2]].map(function (r) {
+    return [RAD[0], RAD[1], RAD[2], RAD[3]].map(function (r) {
       return '<circle class="bk-guide" cx="' + CX + '" cy="' + CY + '" r="' + r + '"/>';
-    }).join('') + '<circle cx="' + CX + '" cy="' + CY + '" r="150" fill="url(#bkCore)"/>';
+    }).join('') + '<circle cx="' + CX + '" cy="' + CY + '" r="120" fill="url(#bkCore)"/>';
+  }
+
+  function centerSVG(p) {
+    if (!p.centerLabel) return '';
+    var champ = null;
+    (p.crests || []).forEach(function (c) { if (c.champ) champ = c.team; });
+    var name = (p.centerLabel === 'CAMPEÓN' && champ)
+      ? '<text class="bk-champ-name" x="' + CX + '" y="' + (CY + 16) + '" text-anchor="middle">' + esc(champ.abbr || champ.name) + '</text>' : '';
+    return '<text class="bk-champ-lbl" x="' + CX + '" y="' + (CY - 4) + '" text-anchor="middle">' + esc(p.centerLabel) + '</text>' + name;
   }
 
   function legendHTML() {
@@ -227,14 +218,13 @@
   // HTML del cuadro como STRING (sin tocar el DOM) → render determinista en tests.
   function buildHTML(rounds) {
     UID = 0;
-    var haveFinal = (rounds['final'] || []).length > 0;
-    var slots = haveFinal ? slotsFromTree(buildTree(rounds)) : slotsFallback(rounds);
-    var e = edgesSVG(slots);
+    var p = buildPlacement(rounds);
+    if (!p) return '<div class="bk-empty">La eliminatoria aún no está definida.</div>';
     var svg = '<svg class="bk-svg" viewBox="0 0 1000 1000" role="img" aria-label="Cuadro de eliminatoria">' +
       DEFS + guidesSVG() +
-      '<g class="bk-links-dim">' + e.dim + '</g>' +
-      '<g class="bk-links-glow">' + e.glow + '</g>' +
-      crestsSVG(slots) + championSVG(rounds) +
+      edgesSVG(p.edges) +
+      p.crests.map(crest).join('') +
+      centerSVG(p) +
       '</svg>';
     return '<div class="bk-head">' + legendHTML() + '</div><div class="bk-stage">' + svg + '</div>';
   }
