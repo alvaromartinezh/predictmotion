@@ -160,56 +160,8 @@ button { font: inherit; color: inherit; cursor: pointer; background: none; borde
 .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--up); box-shadow: 0 0 0 0 var(--up); animation: pulse 2.4s var(--ease) infinite; }
 @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(46,201,138,.5);} 70%{box-shadow:0 0 0 8px rgba(46,201,138,0);} 100%{box-shadow:0 0 0 0 rgba(46,201,138,0);} }
 
-/* Rejilla de competiciones */
-.comps {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-5);
-  padding-bottom: var(--sp-9);
-}
-.comp-card {
-  position: relative; overflow: hidden; isolation: isolate;
-  display: flex; flex-direction: column; gap: var(--sp-5);
-  background: linear-gradient(180deg, var(--surface), var(--bg-2));
-  border: 1px solid var(--line); border-radius: var(--r-lg);
-  padding: var(--sp-7) var(--sp-6) var(--sp-6);
-  transition: transform .22s var(--ease), border-color .22s var(--ease), box-shadow .22s var(--ease);
-}
-.comp-card::before {
-  content: ""; position: absolute; inset: 0 0 auto 0; height: 3px;
-  background: linear-gradient(90deg, var(--accent), transparent 78%);
-}
-.comp-card::after {
-  content: ""; position: absolute; z-index: -1; inset: -40% 40% auto auto;
-  width: 220px; height: 220px; border-radius: 50%;
-  background: radial-gradient(circle, var(--accent-glow), transparent 68%); opacity: .55;
-}
-.comp-card:hover { transform: translateY(-4px); border-color: var(--accent-line); box-shadow: var(--shadow-md); }
-.comp-card__top { display: flex; align-items: center; justify-content: space-between; }
-.comp-card__shield {
-  width: 64px; height: 64px; display: grid; place-items: center;
-  background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-md);
-  padding: 10px; filter: drop-shadow(0 4px 12px rgba(0,0,0,.5));
-}
-.comp-card__shield img { width: 100%; height: 100%; object-fit: contain; }
-.comp-card__idx { font-family: var(--font-mono); font-size: var(--fs-12); color: var(--faint); letter-spacing: .12em; }
-.comp-card__name {
-  font-family: var(--font-display); font-weight: 800; text-transform: uppercase;
-  font-size: var(--fs-28); line-height: 1.06; letter-spacing: .006em;
-}
-.comp-card__season {
-  margin-top: var(--sp-2); font-family: var(--font-mono); font-size: var(--fs-12);
-  letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
-}
-.comp-card__legend { display: flex; gap: var(--sp-4); margin-top: auto; padding-top: var(--sp-5); border-top: 1px solid var(--line-soft); }
-.legend-dot { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-12); color: var(--text-2); }
-.legend-dot i { width: 8px; height: 8px; border-radius: 50%; }
-.legend-dot.up i { background: var(--up); } .legend-dot.po i { background: var(--po); } .legend-dot.down i { background: var(--down); }
-.comp-card__cta {
-  display: flex; align-items: center; justify-content: space-between;
-  font-family: var(--font-display); font-weight: 700; text-transform: uppercase;
-  font-size: var(--fs-15); letter-spacing: .04em; color: var(--accent);
-}
-.comp-card__cta .arrow { transition: transform .22s var(--ease); }
-.comp-card:hover .comp-card__cta .arrow { transform: translateX(5px); }
+/* Selector de competiciones antiguo (.comps/.comp-card) RETIRADO en CP-R7:
+   la home / es ahora el feed del shell; el selector se pliega en la vista anónima. */
 
 /* ============================================================
    CABECERA DE LIGA + PESTAÑAS
