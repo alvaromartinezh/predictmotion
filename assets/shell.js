@@ -84,16 +84,17 @@
     }).join('') + '</nav>';
   }
 
-  function appbar(s) {
+  function appbarInner(s) {
     var right = s.on
       ? themeToggle() + '<button class="iconbtn" aria-label="Notificaciones">' + svg(IC.bell) + '</button>'
         + '<a href="' + LOGIN + '" aria-label="Mi cuenta">' + avatar(s.user) + '</a>'
       : themeToggle() + '<a class="btn btn--primary" style="padding:8px 16px;font-size:var(--fs-13)" href="' + LOGIN + '">Entrar</a>';
-    return '<header class="appbar"><a class="appbar__brand" href="/"><span class="dot"></span>Predict<b>Motion</b></a>'
-      + '<span class="appbar__spacer"></span>' + right + '</header>';
+    return '<a class="appbar__brand" href="/"><span class="dot"></span>Predict<b>Motion</b></a>'
+      + '<span class="appbar__spacer"></span>' + right;
   }
+  function appbar(s) { return '<header class="appbar">' + appbarInner(s) + '</header>'; }
 
-  function sidebar(s, active) {
+  function sidebarInner(s, active) {
     var items = navItems().map(function (n) {
       return '<a class="navitem ' + (n.id === active ? 'is-active' : '') + '" href="' + n.href + '">' + svg(n.icon) + '<span>' + n.label + '</span></a>';
     }).join('');
@@ -130,9 +131,10 @@
         + '<span class="who"><span class="n">' + ((s.user && s.user.name) || 'Mi cuenta') + '</span><span class="e">Ver cuenta</span></span></a>' + themeToggle() + '</div>'
       : '<div class="sidenav__user" style="justify-content:space-between"><a class="btn btn--primary" href="' + LOGIN + '" style="flex:1">Crear cuenta</a>' + themeToggle() + '</div>';
 
-    return '<aside class="sidenav"><a class="sidenav__brand" href="/"><span class="dot"></span>Predict<b>M</b></a>'
-      + items + follows + '<div class="sidenav__spacer"></div>' + user + '</aside>';
+    return '<a class="sidenav__brand" href="/"><span class="dot"></span>Predict<b>M</b></a>'
+      + items + follows + '<div class="sidenav__spacer"></div>' + user;
   }
+  function sidebar(s, active) { return '<aside class="sidenav">' + sidebarInner(s, active) + '</aside>'; }
 
   var last = null;
   function render() {
@@ -152,9 +154,25 @@
     render();
   }
 
-  // Re-render cuando PMAccount conoce/actualiza el estado
-  document.addEventListener('pm-account-ready', render);
-  document.addEventListener('pm-follows-changed', render);
+  // ── Modo CHROME (páginas de contenido: dashboards, noticias, privacy…) ──
+  // No reemplaza el <main> de la página; solo RELLENA los huecos del shell alrededor
+  // del contenido existente: <aside id="pm-sidenav">, <header id="pm-appbar"> y
+  // #shell-tabbar. Así una página con su propia estructura adopta la navegación del
+  // rediseño sin reescribir su contenido. Reutiliza el ÚNICO theme.js.
+  var chromeActive = null, chromeOn = false;
+  function renderChrome() {
+    var s = acct();
+    var sn = document.getElementById('pm-sidenav'); if (sn) sn.innerHTML = sidebarInner(s, chromeActive);
+    var ab = document.getElementById('pm-appbar'); if (ab) ab.innerHTML = appbarInner(s);
+    var tb = document.getElementById('shell-tabbar'); if (tb) tb.innerHTML = tabbar(chromeActive);
+    if (window.PMTheme && window.PMTheme.wire) window.PMTheme.wire();
+  }
+  function chrome(opts) { chromeOn = true; chromeActive = (opts && opts.active) || null; renderChrome(); }
 
-  window.PMShell = { mount: mount, LEAGUES: LEAGUES };
+  // Re-render cuando PMAccount conoce/actualiza el estado (ambos modos)
+  function onAccountChange() { if (last) render(); if (chromeOn) renderChrome(); }
+  document.addEventListener('pm-account-ready', onAccountChange);
+  document.addEventListener('pm-follows-changed', onAccountChange);
+
+  window.PMShell = { mount: mount, chrome: chrome, LEAGUES: LEAGUES };
 })();

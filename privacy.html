@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <link rel="icon" type="image/png" href="/media/twitter_profile.png" />
   <link rel="apple-touch-icon" href="/media/twitter_profile.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -11,7 +11,7 @@
   <title>Política de Privacidad · PredictMotion</title>
   <meta name="description" content="Política de privacidad de PredictMotion. Información sobre el uso de Google AdSense, cookies y protección de datos según el RGPD y la LOPD-GDD." />
   <meta name="robots" content="index, follow" />
-  <meta name="theme-color" content="#060916" />
+  <meta name="theme-color" content="#05070e" />
   <link rel="canonical" href="https://predictmotion.com/privacy" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://predictmotion.com/privacy" />
@@ -21,11 +21,12 @@
   <meta property="og:site_name" content="PredictMotion" />
   <meta property="og:locale" content="es_ES" />
 
-  <link rel="stylesheet" href="/styles.css?v=20260808a" />
-  <link rel="stylesheet" href="/assets/account.css?v=20260808a" />
-  <script src="/theme.js?v=20260808a"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260809a" />
+  <link rel="stylesheet" href="/assets/shell.css?v=20260809a" />
+  <script src="/theme.js?v=20260809a"></script>
+  <script src="/assets/pm-leagues.js?v=20260809a"></script>
   <style>
-  main.wrap { max-width: 760px; padding-bottom: var(--sp-9); }
+  .app__main main.wrap { max-width: 820px; padding-bottom: var(--sp-9); }
   .legal { padding-block: var(--sp-7); }
   .legal h1 {
     font-family: var(--font-display); font-weight: 800; text-transform: uppercase;
@@ -33,7 +34,7 @@
     margin-bottom: var(--sp-2);
   }
   .legal__sub { color: var(--muted); font-family: var(--font-mono); font-size: var(--fs-12); letter-spacing: .12em; text-transform: uppercase; margin-bottom: var(--sp-6); }
-  .legal .panel { padding: var(--sp-7); }
+  .legal .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--sp-7); }
   .legal h2 { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: .03em; font-size: var(--fs-18); margin: var(--sp-6) 0 var(--sp-3); color: var(--text); }
   .legal h2:first-child { margin-top: 0; }
   .legal p { font-size: var(--fs-15); color: var(--text-2); line-height: 1.7; margin-bottom: var(--sp-3); }
@@ -42,82 +43,75 @@
   .legal ul { margin: 0 0 var(--sp-3) var(--sp-5); }
   .legal li { font-size: var(--fs-15); color: var(--text-2); line-height: 1.7; }
   .legal strong { color: var(--text); }
+  .back-link { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-13); color: var(--muted); margin-bottom: var(--sp-4); }
+  .back-link:hover { color: var(--text); }
   </style>
 </head>
 <body>
+  <!-- Shell del rediseño en modo CHROME: rellena sidenav/appbar/tabbar alrededor
+       del contenido existente (el <main> de la página no se reescribe). -->
+  <div class="pm-app app">
+    <aside class="sidenav" id="pm-sidenav"></aside>
+    <div class="app__main">
+      <header class="appbar" id="pm-appbar"></header>
 
-<!-- ===== BARRA SUPERIOR ===== -->
-<header class="topbar">
-  <div class="wrap topbar__inner">
-    <a class="logo" href="/" aria-label="PredictMotion — inicio">
-      <span class="logo__dot" aria-hidden="true"></span>Predict<b>Motion</b>
-    </a>
-    <div class="topbar__right">
-      <nav class="topbar__nav" aria-label="Competiciones">
-        <a href="/hypermotion">Hypermotion</a>
-        <a href="/laliga">LaLiga</a>
-        <a href="/noticias">Noticias</a>
-      </nav>
-      <button class="theme-toggle" data-theme-toggle type="button" aria-pressed="false" aria-label="Cambiar tema" title="Tema claro / oscuro">
-        <span class="tt-opt tt-dark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8Z"/></svg></span>
-        <span class="tt-opt tt-light" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></span>
-      </button>
+      <main class="wrap legal">
+        <a class="back-link" href="/">← Volver al inicio</a>
+        <h1>Política de privacidad</h1>
+        <p class="legal__sub">PredictMotion · Última actualización: agosto de 2026</p>
+
+        <div class="panel">
+          <p>Esta página explica qué información se recoge cuando visitas este sitio web y cómo se utiliza.</p>
+
+          <h2>Publicidad — Google AdSense</h2>
+          <p>Este sitio utiliza <strong>Google AdSense</strong> para mostrar anuncios. Google y sus socios pueden usar cookies y tecnologías similares para personalizar los anuncios que ves, basándose en tus visitas anteriores a este u otros sitios web.</p>
+          <p>Puedes desactivar la publicidad personalizada de Google en cualquier momento visitando <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener">Configuración de anuncios de Google</a>. También puedes optar por no participar a través de <a href="https://optout.aboutads.info/" target="_blank" rel="noopener">aboutads.info</a>.</p>
+
+          <h2>Cookies</h2>
+          <p>Las cookies de Google AdSense pueden almacenarse en tu dispositivo para los siguientes fines:</p>
+          <ul>
+            <li>Medir el rendimiento de los anuncios</li>
+            <li>Personalizar los anuncios según tus intereses</li>
+            <li>Limitar la frecuencia con la que se muestra un anuncio</li>
+          </ul>
+          <p>Puedes gestionar o eliminar las cookies desde la configuración de tu navegador.</p>
+
+          <h2>Cuentas de usuario (inicio de sesión con Google)</h2>
+          <p>Puedes <strong>iniciar sesión con Google</strong> (opcional) para seguir tus equipos y competiciones favoritas y personalizar la página de inicio. Navegar por el sitio <strong>sin iniciar sesión no requiere ninguna cuenta ni recoge datos personales</strong> por nuestra parte.</p>
+          <p>Si inicias sesión, usamos <strong>«Iniciar sesión con Google»</strong> como proveedor de identidad. <strong>No gestionamos ni almacenamos contraseñas.</strong> De tu perfil de Google recibimos y guardamos únicamente:</p>
+          <ul>
+            <li>tu <strong>dirección de correo</strong>, tu <strong>nombre</strong> y la <strong>URL de tu foto</strong> de perfil;</li>
+            <li>un <strong>identificador</strong> de Google que permite reconocer tu cuenta;</li>
+            <li>tus <strong>preferencias</strong>: equipo favorito, y equipos y competiciones que sigues.</li>
+          </ul>
+          <p><strong>Base legal:</strong> tu consentimiento, que otorgas al iniciar sesión. <strong>Finalidad:</strong> únicamente ofrecerte el seguimiento y la personalización; no vendemos ni cedemos estos datos, ni los usamos para publicidad.</p>
+          <p><strong>Sesión:</strong> mantenemos tu sesión con una cookie técnica propia (<code>pm_session</code>), necesaria para reconocerte entre visitas; no es una cookie publicitaria.</p>
+          <p><strong>Conservación:</strong> guardamos tus datos mientras tu cuenta exista. Puedes <strong>eliminar tu cuenta</strong> en cualquier momento desde tu página de cuenta; al hacerlo se borran de forma permanente tu perfil y todas tus preferencias. Mantenemos copias de seguridad cifradas que se rotan periódicamente.</p>
+
+          <h2>Derechos del usuario (RGPD / LOPD-GDD)</h2>
+          <p>Si eres residente en la Unión Europea, tienes derecho a acceder, rectificar, suprimir y oponerte al tratamiento de tus datos personales, así como a la portabilidad y a retirar tu consentimiento en cualquier momento.</p>
+          <p>Sobre los datos de tu cuenta en PredictMotion puedes <strong>ejercerlos tú mismo</strong>: elimina la cuenta desde tu página de cuenta (borrado permanente) o escríbenos a <a href="mailto:contact@predictmotion.com">contact@predictmotion.com</a>. Sobre los datos gestionados por Google, consulta la <a href="https://policies.google.com/privacy?hl=es" target="_blank" rel="noopener">Política de privacidad de Google</a>.</p>
+
+          <h2>Contacto</h2>
+          <p>Si tienes alguna pregunta sobre esta política, puedes escribirnos a <a href="mailto:contact@predictmotion.com">contact@predictmotion.com</a>.</p>
+        </div>
+      </main>
+
+      <footer class="footer">
+        <div class="wrap footer__inner">
+          <p>© 2025 PredictMotion · Todos los derechos reservados</p>
+          <nav class="footer__links" aria-label="Enlaces legales">
+            <a href="mailto:contact@predictmotion.com">contact@predictmotion.com</a>
+            <a href="/privacy">Política de privacidad</a>
+          </nav>
+        </div>
+      </footer>
     </div>
   </div>
-</header>
+  <div id="shell-tabbar"></div>
 
-<main class="wrap legal">
-  <a class="back-link" href="/">← Volver al inicio</a>
-  <h1>Política de privacidad</h1>
-  <p class="legal__sub">PredictMotion · Última actualización: agosto de 2026</p>
-
-  <div class="panel">
-    <p>Esta página explica qué información se recoge cuando visitas este sitio web y cómo se utiliza.</p>
-
-    <h2>Publicidad — Google AdSense</h2>
-    <p>Este sitio utiliza <strong>Google AdSense</strong> para mostrar anuncios. Google y sus socios pueden usar cookies y tecnologías similares para personalizar los anuncios que ves, basándose en tus visitas anteriores a este u otros sitios web.</p>
-    <p>Puedes desactivar la publicidad personalizada de Google en cualquier momento visitando <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener">Configuración de anuncios de Google</a>. También puedes optar por no participar a través de <a href="https://optout.aboutads.info/" target="_blank" rel="noopener">aboutads.info</a>.</p>
-
-    <h2>Cookies</h2>
-    <p>Las cookies de Google AdSense pueden almacenarse en tu dispositivo para los siguientes fines:</p>
-    <ul>
-      <li>Medir el rendimiento de los anuncios</li>
-      <li>Personalizar los anuncios según tus intereses</li>
-      <li>Limitar la frecuencia con la que se muestra un anuncio</li>
-    </ul>
-    <p>Puedes gestionar o eliminar las cookies desde la configuración de tu navegador.</p>
-
-    <h2>Cuentas de usuario (inicio de sesión con Google)</h2>
-    <p>Puedes <strong>iniciar sesión con Google</strong> (opcional) para seguir tus equipos y competiciones favoritas y personalizar la página de inicio. Navegar por el sitio <strong>sin iniciar sesión no requiere ninguna cuenta ni recoge datos personales</strong> por nuestra parte.</p>
-    <p>Si inicias sesión, usamos <strong>«Iniciar sesión con Google»</strong> como proveedor de identidad. <strong>No gestionamos ni almacenamos contraseñas.</strong> De tu perfil de Google recibimos y guardamos únicamente:</p>
-    <ul>
-      <li>tu <strong>dirección de correo</strong>, tu <strong>nombre</strong> y la <strong>URL de tu foto</strong> de perfil;</li>
-      <li>un <strong>identificador</strong> de Google que permite reconocer tu cuenta;</li>
-      <li>tus <strong>preferencias</strong>: equipo favorito, y equipos y competiciones que sigues.</li>
-    </ul>
-    <p><strong>Base legal:</strong> tu consentimiento, que otorgas al iniciar sesión. <strong>Finalidad:</strong> únicamente ofrecerte el seguimiento y la personalización; no vendemos ni cedemos estos datos, ni los usamos para publicidad.</p>
-    <p><strong>Sesión:</strong> mantenemos tu sesión con una cookie técnica propia (<code>pm_session</code>), necesaria para reconocerte entre visitas; no es una cookie publicitaria.</p>
-    <p><strong>Conservación:</strong> guardamos tus datos mientras tu cuenta exista. Puedes <strong>eliminar tu cuenta</strong> en cualquier momento desde tu página de cuenta; al hacerlo se borran de forma permanente tu perfil y todas tus preferencias. Mantenemos copias de seguridad cifradas que se rotan periódicamente.</p>
-
-    <h2>Derechos del usuario (RGPD / LOPD-GDD)</h2>
-    <p>Si eres residente en la Unión Europea, tienes derecho a acceder, rectificar, suprimir y oponerte al tratamiento de tus datos personales, así como a la portabilidad y a retirar tu consentimiento en cualquier momento.</p>
-    <p>Sobre los datos de tu cuenta en PredictMotion puedes <strong>ejercerlos tú mismo</strong>: elimina la cuenta desde tu página de cuenta (borrado permanente) o escríbenos a <a href="mailto:contact@predictmotion.com">contact@predictmotion.com</a>. Sobre los datos gestionados por Google, consulta la <a href="https://policies.google.com/privacy?hl=es" target="_blank" rel="noopener">Política de privacidad de Google</a>.</p>
-
-    <h2>Contacto</h2>
-    <p>Si tienes alguna pregunta sobre esta política, puedes escribirnos a <a href="mailto:contact@predictmotion.com">contact@predictmotion.com</a>.</p>
-  </div>
-</main>
-
-<!-- ===== PIE ===== -->
-<footer class="footer">
-  <div class="wrap footer__inner">
-    <p>© 2025 PredictMotion · Todos los derechos reservados</p>
-    <nav class="footer__links" aria-label="Enlaces legales">
-      <a href="mailto:contact@predictmotion.com">contact@predictmotion.com</a>
-      <a href="/privacy">Política de privacidad</a>
-    </nav>
-  </div>
-</footer>
-  <script src="/assets/account.js?v=20260808a"></script>
+  <script src="/assets/account.js?v=20260809a"></script>
+  <script src="/assets/shell.js?v=20260809a"></script>
+  <script>PMShell.chrome({ active: null });</script>
 </body>
 </html>
