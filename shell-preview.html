@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Shell CP-R1 (preview interno) · PredictMotion</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <!-- Assets de PRODUCCIÓN reales -->
+  <link rel="stylesheet" href="/styles.css?v=20260809a" />
+  <link rel="stylesheet" href="/assets/shell.css?v=20260809a" />
+  <!-- preview-only: permite ?theme=light escribiendo la MISMA clave que theme.js (pm-theme) -->
+  <script>try{var t=new URLSearchParams(location.search).get('theme');if(t)localStorage.setItem('pm-theme',t);}catch(e){}</script>
+  <script src="/theme.js?v=20260809a"></script>
+  <script src="/assets/pm-leagues.js?v=20260809a"></script>
+</head>
+<body>
+  <!-- .pm-app = capa de acento esmeralda; envuelve #app y la barra inferior fixed -->
+  <div class="pm-app">
+    <div class="app" id="app"></div>
+    <div id="shell-tabbar"></div>
+  </div>
+
+  <script>
+    // Contenido placeholder: en CP-R1 solo validamos el SHELL. El feed real (home)
+    // y la lista de partidos se conectan a datos reales en CP-R2…CP-R5.
+    window.__MAIN =
+      '<div class="feed">'
+      + '<div class="feed__col">'
+      +   '<div class="feed-sec"><h2 class="feed-sec__title">Inicio</h2></div>'
+      +   '<section class="hero-match"><p class="eyebrow hero-match__eyebrow">Shell CP-R1 · placeholder</p>'
+      +     '<div class="hero-match__row">'
+      +       '<div class="hero-match__team"><img class="crest" style="width:68px;height:68px" src="https://a.espncdn.com/i/teamlogos/soccer/500/244.png" alt=""><span class="name">Real Betis</span></div>'
+      +       '<div class="hero-match__vs"><span class="kick">21:00</span>Derbi</div>'
+      +       '<div class="hero-match__team"><img class="crest" style="width:68px;height:68px" src="https://a.espncdn.com/i/teamlogos/soccer/500/243.png" alt=""><span class="name">Sevilla</span></div>'
+      +     '</div>'
+      +     '<div class="hero-match__odds"><div class="odds-cell best"><span class="k">1</span><span class="v">47%</span></div><div class="odds-cell"><span class="k">X</span><span class="v">28%</span></div><div class="odds-cell"><span class="k">2</span><span class="v">25%</span></div></div>'
+      +   '</section>'
+      +   '<article class="card"><div class="card__head"><span class="lg-name">Nota de la fase</span></div>'
+      +     '<div style="padding:var(--sp-5)"><p style="color:var(--text-2)">Este es el <b>shell</b> montado con los assets reales (styles.css + shell.css + theme.js) y el estado de sesión leído de <b>PMAccount</b>. El contenido real (feed personalizado, partidos) llega en CP-R2–CP-R5.</p></div>'
+      +   '</article>'
+      + '</div>'
+      + '<div class="feed__rail"><div class="rail-card"><h4>Rail (desktop)</h4><p class="time">Tendencias / en directo → CP-R2</p></div><div class="ad-slot">Publicidad · 300×250</div></div>'
+      + '</div>';
+
+    function loadScript(src, cb) { var s = document.createElement('script'); s.src = src; s.onload = cb; document.head.appendChild(s); }
+    function boot() { PMShell.mount({ active: 'home', main: window.__MAIN }); }
+
+    var demo = new URLSearchParams(location.search).get('demo');
+    if (demo === 'user') {
+      // STUB SOLO-PREVIEW: simula una sesión sin backend de cuentas. En producción
+      // esto NO existe; el shell lee el PMAccount real (assets/account.js).
+      window.PMAccount = {
+        isEnabled: function () { return true; },
+        isLoggedIn: function () { return true; },
+        user: function () { return { name: 'Álvaro Martínez', picture: null }; },
+        follows: function () {
+          return {
+            competitions: ['laliga', 'hypermotion'],
+            teams: [
+              { espn_team_id: '244', league_slug: 'laliga', name: 'Real Betis' },
+              { espn_team_id: '86', league_slug: 'laliga', name: 'Real Madrid' },
+              { espn_team_id: '2922', league_slug: 'hypermotion', name: 'Deportivo' }
+            ],
+            favorite_team: { espn_team_id: '244', league_slug: 'laliga', name: 'Real Betis' }
+          };
+        }
+      };
+      loadScript('/assets/shell.js?v=20260809a', boot);
+    } else {
+      // Ruta real: PMAccount de producción (anónimo en local si el backend está apagado)
+      loadScript('/assets/account.js?v=20260809a', function () {
+        loadScript('/assets/shell.js?v=20260809a', boot);
+      });
+    }
+  </script>
+</body>
+</html>

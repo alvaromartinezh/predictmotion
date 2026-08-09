@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Inicio (beta) · PredictMotion</title>
+  <!-- Ruta OCULTA de revisión (CP-R2): no indexar. En el servidor, añadir además
+       X-Robots-Tag en Caddy para /inicio-beta (como la ruta del deck). -->
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="stylesheet" href="/styles.css?v=20260809a" />
+  <link rel="stylesheet" href="/assets/shell.css?v=20260809a" />
+  <script>try{var t=new URLSearchParams(location.search).get('theme');if(t)localStorage.setItem('pm-theme',t);}catch(e){}</script>
+  <script src="/theme.js?v=20260809a"></script>
+  <script src="/assets/pm-leagues.js?v=20260809a"></script>
+</head>
+<body>
+  <!-- .pm-app envuelve AMBOS puntos de montaje para que la barra inferior (fixed,
+       fuera de #app) también reciba el acento esmeralda del rediseño. -->
+  <div class="pm-app">
+    <div class="app" id="app"></div>
+    <div id="shell-tabbar"></div>
+  </div>
+
+  <script>
+    // Carga en orden: (cuenta real | stub demo) → shell → data → home.
+    function loadScript(src, cb) { var s = document.createElement('script'); s.src = src; s.onload = cb; document.head.appendChild(s); }
+    function chain(list, done) { (function next(i) { if (i >= list.length) return done && done(); loadScript(list[i], function () { next(i + 1); }); })(0); }
+
+    var demo = new URLSearchParams(location.search).get('demo');
+    if (demo === 'user') {
+      // STUB SOLO-PREVIEW (se elimina al promover a / en CP-R3). Simula sesión sin
+      // backend de cuentas para poder revisar el feed logueado. En prod NO existe.
+      window.PMAccount = {
+        isEnabled: function () { return true; }, isLoggedIn: function () { return true; },
+        user: function () { return { name: 'Álvaro Martínez', picture: null }; },
+        follows: function () {
+          return {
+            competitions: ['laliga', 'hypermotion'],
+            teams: [
+              { espn_team_id: '244', league_slug: 'laliga', name: 'Real Betis' },
+              { espn_team_id: '86', league_slug: 'laliga', name: 'Real Madrid' },
+              { espn_team_id: '2922', league_slug: 'hypermotion', name: 'Deportivo' }
+            ],
+            favorite_team: { espn_team_id: '244', league_slug: 'laliga', name: 'Real Betis' }
+          };
+        }
+      };
+      chain(['/assets/pm-data.js?v=20260809a', '/assets/shell.js?v=20260809a', '/assets/home.js?v=20260809a']);
+    } else {
+      chain(['/assets/account.js?v=20260809a', '/assets/pm-data.js?v=20260809a', '/assets/shell.js?v=20260809a', '/assets/home.js?v=20260809a']);
+    }
+  </script>
+</body>
+</html>
