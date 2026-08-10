@@ -131,7 +131,7 @@
         + '<span class="who"><span class="n">' + ((s.user && s.user.name) || 'Mi cuenta') + '</span><span class="e">Ver cuenta</span></span></a>' + themeToggle() + '</div>'
       : '<div class="sidenav__user" style="justify-content:space-between"><a class="btn btn--primary" href="' + LOGIN + '" style="flex:1">Crear cuenta</a>' + themeToggle() + '</div>';
 
-    return '<a class="sidenav__brand" href="/"><span class="dot"></span>Predict<b>M</b></a>'
+    return '<a class="sidenav__brand" href="/"><span class="dot"></span>Predict<b>Motion</b></a>'
       + items + follows + '<div class="sidenav__spacer"></div>' + user;
   }
   function sidebar(s, active) { return '<aside class="sidenav">' + sidebarInner(s, active) + '</aside>'; }
