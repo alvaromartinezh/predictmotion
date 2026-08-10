@@ -91,6 +91,23 @@ STRENGTH_LEVEL_GAP_ABS  = 1.5     # offset de nivel entre divisiones, en goles/p
 DRAW_SHRINK_KAPPA       = 0.15    # encoge el empate: p_draw·exp(-kappa·|Δlogit|)
 PROJECTION_HORIZON_FADE = 1.0     # el prior decae a 0 en N·temporada proyectada (None=frozen)
 
+# ── Prior MULTI-TEMPORADA (H1) — validado 2026-08-10 (seo/backtest.py --multi) ──
+# El prior de UNA sola temporada previa es de alta varianza: un dominante perenne
+# que tuvo un año flojo sale infravalorado (Barça ~2× Madrid, PSG bajo). Mezclar las
+# últimas PRIOR_SEASONS temporadas (media de goles/partido ponderada por PRIOR_DECAY**k,
+# offset de nivel por división de CADA temporada, keyed por id de ESPN) estabiliza el
+# nivel real. Validado OFFLINE vs. resultados reales de 4 temporadas × 7 ligas: bate al
+# prior de 1 temporada en Brier/LogLoss y sobre todo en la predicción del campeón real
+# (champLogLoss 1.45→1.20), mejora 6/7 ligas (sin overfit a los casos famosos), y acerca
+# a PSG (49→60%) y al ratio Barça/Madrid (2.3×→1.7×). n=3/d=0.6 = mejor equilibrio del
+# barrido (n=4 apenas mejora). Solo muerde el rating ABSOLUTO; el z-score (ruta OFF) usa
+# 1 temporada. PRIOR_SEASONS=1 reproduce la salida previa BIT A BIT (ancla verificada).
+# Descartado extender el histórico vía datasets externos (football-data.co.uk): licencia
+# ambigua para un sitio monetizado y, con este decaimiento rápido, upside marginal
+# (el peso cae <10% pasada la 5ª temporada; el barrido ya satura en 3-4).
+PRIOR_SEASONS           = 3       # nº de temporadas previas a mezclar (1 = comportamiento antiguo)
+PRIOR_DECAY             = 0.6     # peso geométrico de cada temporada más antigua (decay**k)
+
 
 def _table_bands(slots):
     """Devuelve una función bands(n) -> lista de bandas de zona ordenadas.

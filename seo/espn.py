@@ -196,7 +196,8 @@ def build_strength_ratings(current_year, active_codes=None):
     esa división se salta; el resto sigue.
     """
     from .config import (STRENGTH_LADDERS, STRENGTH_LEVEL_GAP,
-                         USE_ABSOLUTE_RATING, STRENGTH_LEVEL_GAP_ABS)
+                         USE_ABSOLUTE_RATING, STRENGTH_LEVEL_GAP_ABS,
+                         PRIOR_SEASONS, PRIOR_DECAY)
 
     if not current_year:
         return {}
@@ -204,30 +205,47 @@ def build_strength_ratings(current_year, active_codes=None):
     # Modelo v2 (flag): rating absoluto por diferencia de goles/partido (conserva la
     # dominancia). OFF: z-score de puntos de siempre (ruta INTACTA).
     gap = STRENGTH_LEVEL_GAP_ABS if USE_ABSOLUTE_RATING else STRENGTH_LEVEL_GAP
+    # Prior multi-temporada (H1): solo el rating absoluto se mezcla (validado offline);
+    # el z-score usa 1 temporada como siempre. PRIOR_SEASONS=1 ⇒ salida bit-idéntica.
+    n_seasons = PRIOR_SEASONS if USE_ABSOLUTE_RATING else 1
     ratings = {}
+    wsum = {}   # peso acumulado por equipo (solo blend absoluto)
     for ladder in STRENGTH_LADDERS:
         if active_codes is not None and not any(c in active_codes for c in ladder):
             continue  # ninguna liga activa usa esta escalera → sin peticiones
         for level, code in enumerate(ladder):
-            try:
-                rows = fetch_table(code, season=prev)
-            except Exception:
-                continue  # una división falla → se salta; las demás siguen
-            n = len(rows)
-            if n < 2:
-                continue
             offset = -level * gap
-            if USE_ABSOLUTE_RATING:
-                for r in rows:
-                    gdpg = (r["gf"] - r["gc"]) / max(r["gp"], 1)
-                    ratings[r["id"]] = gdpg + offset
-            else:
+            if not USE_ABSOLUTE_RATING:
+                try:
+                    rows = fetch_table(code, season=prev)
+                except Exception:
+                    continue  # una división falla → se salta; las demás siguen
+                if len(rows) < 2:
+                    continue
                 pts = [r["pts"] for r in rows]
-                mean = sum(pts) / n
-                std = (sum((p - mean) ** 2 for p in pts) / n) ** 0.5
+                mean = sum(pts) / len(rows)
+                std = (sum((p - mean) ** 2 for p in pts) / len(rows)) ** 0.5
                 for r in rows:
                     z = (r["pts"] - mean) / std if std > 0 else 0.0
                     ratings[r["id"]] = z + offset
+                continue
+            # Rating absoluto, mezclado sobre las últimas n_seasons temporadas. El offset
+            # de nivel se aplica por la división de CADA temporada (un equipo pudo alternar
+            # 1ª/2ª); los ids de ESPN son globales, así que el blend acumula por equipo.
+            for k in range(n_seasons):
+                w = PRIOR_DECAY ** k
+                try:
+                    rows = fetch_table(code, season=prev - k)
+                except Exception:
+                    continue  # una temporada/división falla → se salta; el resto sigue
+                if len(rows) < 2:
+                    continue
+                for r in rows:
+                    gdpg = (r["gf"] - r["gc"]) / max(r["gp"], 1)
+                    wsum[r["id"]] = wsum.get(r["id"], 0.0) + w
+                    ratings[r["id"]] = ratings.get(r["id"], 0.0) + w * (gdpg + offset)
+    if USE_ABSOLUTE_RATING:
+        ratings = {tid: ratings[tid] / wsum[tid] for tid in ratings}  # media ponderada
     return ratings
 
 

@@ -34,7 +34,9 @@ from pathlib import Path
 
 from . import espn
 from .config import (STRENGTH_LADDERS, STRENGTH_SCALE, STRENGTH_LEVEL_GAP,
-                     STRENGTH_FADE_FRACTION, DATA_DIR, league_by_slug, LEAGUES)
+                     STRENGTH_FADE_FRACTION, STRENGTH_SCALE_ABS, DRAW_SHRINK_KAPPA,
+                     STRENGTH_LEVEL_GAP_ABS, PROJECTION_HORIZON_FADE,
+                     DATA_DIR, league_by_slug, LEAGUES)
 from .sim_table import fade_weight
 
 # ── Caché en disco (data/_backtest_cache, gitignored) para iterar sin re-pegar a ESPN ──
@@ -144,8 +146,46 @@ def build_ratings_recency(code, prev_season, level_gap, half_life_days):
     return ratings
 
 
+# ── Prior MULTI-TEMPORADA (H1): blend de GDPG de las últimas N temporadas ─────
+# El prior vivo usa UNA sola temporada previa → estimación de alta varianza: un
+# dominante perenne que tuvo un año flojo sale infravalorado (y un sobrerendidor
+# de un año, inflado). Mezclar las últimas N temporadas estabiliza el nivel real.
+# Mismos datos (tabla final por temporada de ESPN, ya cacheados), mismas unidades
+# (goles/partido) y mismo offset de nivel que el esquema 'absolute' → n_seasons=1
+# reproduce 'absolute' EXACTAMENTE (ancla de paridad). Cero números por-equipo.
+# Globals fijados por cmd_multi (harness offline; evita cablear params por 4 capas).
+_MS_SEASONS = 3
+_MS_DECAY = 0.5
+
+
+def build_ratings_multiseason(code, prev_season, level_gap, n_seasons, decay):
+    """{team_id: R} = media de GDPG de las últimas n_seasons ponderada por decay**k.
+
+    El offset de nivel se aplica por la división en la que jugó el equipo CADA
+    temporada (un equipo puede haber alternado 1ª/2ª), igual que 'absolute'.
+    """
+    wsum, wgd = {}, {}
+    for k in range(n_seasons):
+        season = prev_season - k
+        w = decay ** k
+        for level, c in enumerate(ladder_for(code)):
+            try:
+                rows = table_cached(c, season)
+            except Exception:
+                continue
+            if len(rows) < 2:
+                continue
+            for r in rows:
+                rating = (r["gf"] - r["gc"]) / max(r["gp"], 1) - level * level_gap
+                wsum[r["id"]] = wsum.get(r["id"], 0.0) + w
+                wgd[r["id"]] = wgd.get(r["id"], 0.0) + w * rating
+    return {tid: wgd[tid] / wsum[tid] for tid in wsum}
+
+
 def _ratings_for(code, prev_season, scheme, level_gap, half_life):
     """half_life None → esquema de tabla (build_ratings); si no, recencia por partido."""
+    if scheme == "multi":
+        return build_ratings_multiseason(code, prev_season, level_gap, _MS_SEASONS, _MS_DECAY)
     if half_life is None:
         return build_ratings(code, prev_season, scheme, level_gap)
     return build_ratings_recency(code, prev_season, level_gap, half_life)
@@ -331,7 +371,7 @@ MARKET_TITLE = {   # P(título) implícita de mercado (aprox., pretemporada 2026
 
 
 def sim_titles(names, ratings, default, p_home, p_draw, scale, kappa, level_gap,
-               fade, n_sim=3000, seed=12345, hfrac=None):
+               fade, n_sim=3000, seed=12345, hfrac=None, calib=None):
     """P(acabar 1º) por equipo proyectando la temporada entera desde la jornada
     actual (pretemporada aquí).
 
@@ -359,6 +399,8 @@ def sim_titles(names, ratings, default, p_home, p_draw, scale, kappa, level_gap,
                 h, a = order[k], order[k + 1]
                 ph, pd, pa = predict(ratings.get(h, default), ratings.get(a, default),
                                      w, p_home, p_draw, scale, kappa)
+                if calib is not None:
+                    ph, pd, pa = _calibrate_1x2(ph, pd, pa, calib)
                 r = rng.random()
                 if r < ph: pts[h] += 3
                 elif r < ph + pd: pts[h] += 1; pts[a] += 1
@@ -369,7 +411,7 @@ def sim_titles(names, ratings, default, p_home, p_draw, scale, kappa, level_gap,
 
 
 def champion_backtest(leagues, seasons, scale, kappa, level_gap, fade, hfrac,
-                      n_sim=800, half_life=None):
+                      n_sim=800, half_life=None, scheme="absolute"):
     """Valida la PROYECCIÓN contra resultados REALES: proyecta cada temporada pasada
     desde pretemporada (prior de S-1) y puntúa P(campeón) contra quién ganó de verdad.
     Devuelve (logloss_campeón, brier_campeón) sobre todas las liga-temporadas."""
@@ -383,7 +425,7 @@ def champion_backtest(leagues, seasons, scale, kappa, level_gap, fade, hfrac,
                 continue
             names = {r["id"]: r["name"] for r in final}
             champ = min(final, key=lambda r: r["rank"])["id"]   # rank 1 = campeón real
-            ratings = _ratings_for(code, s - 1, "absolute", level_gap, half_life)
+            ratings = _ratings_for(code, s - 1, scheme, level_gap, half_life)
             default = min(ratings.values()) if ratings else 0.0
             P = sim_titles(names, ratings, default, lg["p_home"], lg["p_draw"],
                            scale, kappa, level_gap, fade, n_sim=n_sim, hfrac=hfrac)
@@ -521,12 +563,317 @@ def cmd_recency(args):
         print(f"  {team:22} {hdr}   mercado≈{int(mk[1]*100) if mk else '?'}%")
 
 
+# ── H1: barrido del prior multi-temporada vs. el prior vivo (1 temporada) ────
+def cmd_multi(args):
+    """Compara el prior multi-temporada (H1) contra el modelo VIVO (v2, 1 temporada)
+    barriendo (n_seasons, decay). Todo lo demás = receta viva de config.py, así el
+    único cambio es de dónde sale el rating. n_seasons=1 debe ≈ la baseline (ancla)."""
+    global _MS_SEASONS, _MS_DECAY
+    leagues = _leagues(args.leagues or DEFAULT_LEAGUE_SLUGS)
+    seasons = args.seasons or DEFAULT_SEASONS
+    sc, kp = STRENGTH_SCALE_ABS, DRAW_SHRINK_KAPPA
+    lgp, hf, fade = STRENGTH_LEVEL_GAP_ABS, PROJECTION_HORIZON_FADE, STRENGTH_FADE_FRACTION
+    print(f"H1 multi-temporada: {len(leagues)} ligas × {len(seasons)} temporadas | "
+          f"receta viva (scale={sc} kappa={kp} level_gap={lgp} hfrac={hf} fade={fade})\n")
+
+    def row(label, scheme):
+        m, e = run_config(leagues, seasons, scheme, sc, kp, lgp, fade)
+        cll, cbr = champion_backtest(leagues, seasons, sc, kp, lgp, fade, hf, scheme=scheme)
+        print(f"  {label:22} {m.brier_mean:8.4f} {m.logloss_mean:9.4f} {m.ece:7.4f} "
+              f"{e.logloss_mean:8.4f} {e.ece:9.4f} {cll:8.4f} {cbr:8.4f}")
+
+    print(f"  {'prior':22} {'Brier':>8} {'LogLoss':>9} {'ECE':>7} "
+          f"{'earlyLL':>8} {'earlyECE':>9} {'champLL':>8} {'champBr':>8}")
+    print("  " + "-" * 84)
+    row("VIVO (1 temp.)", "absolute")
+    for ns in [1, 2, 3, 4]:
+        for dc in [0.4, 0.6, 0.8]:
+            if ns == 1 and dc != 0.4:
+                continue  # decay no aplica con 1 temporada (fila única de ancla)
+            _MS_SEASONS, _MS_DECAY = ns, dc
+            label = f"multi n={ns}" + ("" if ns == 1 else f" d={dc}")
+            row(label, "multi")
+    print("\n(Menor todo = mejor. earlyLL/earlyECE = primeras 6 jornadas, donde el prior manda.\n"
+          " 'multi n=1' debe ≈ 'VIVO': ancla de paridad.)")
+
+    # Sanity de mercado: P(título) pretemporada ACTUAL de los dominantes.
+    print("\nSanity de mercado — P(título) pretemporada actual:")
+    dominants = {"bundesliga": "Bayern Munich", "ligue1": "Paris Saint-Germain",
+                 "laliga": "Barcelona"}
+    grid = [("VIVO", 1, 0.4, "absolute")] + [("multi", ns, dc, "multi")
+            for ns in [2, 3, 4] for dc in [0.6]]
+    for slug, team in dominants.items():
+        lg = league_by_slug(slug)
+        if not lg or lg not in leagues:
+            continue
+        code = lg["espn_code"]; cur = espn.fetch_current_season_year(code)
+        rows = espn.fetch_table(code)
+        names = {r["id"]: r["name"] for r in rows}
+        tid = next((i for i, nm in names.items() if nm == team), None)
+        cells = []
+        for _lbl, ns, dc, scheme in grid:
+            _MS_SEASONS, _MS_DECAY = ns, dc
+            rats = _ratings_for(code, cur - 1, scheme, lgp, None)
+            default = min(rats.values()) if rats else 0.0
+            P = sim_titles(names, rats, default, lg["p_home"], lg["p_draw"], sc, kp,
+                           lgp, fade, n_sim=2000, hfrac=hf)
+            cells.append(P.get(tid, 0) * 100)
+        mk = MARKET_TITLE.get(slug)
+        hdr = "  ".join(f"{lbl}{'' if ns==1 else f'/n{ns}'}={c:4.1f}%"
+                        for (lbl, ns, _d, _s), c in zip(grid, cells))
+        print(f"  {team:22} {hdr}   mercado≈{int(mk[1]*100) if mk else '?'}%")
+
+
+# ── Capa de calibración post-hoc (isotónica, stdlib PAV) ─────────────────────
+# Fix INDEPENDIENTE y ADITIVO sobre el prior multi-temporada: no lo reemplaza.
+# Mapea prob_predicha → frecuencia observada, UNIFORME (no por equipo). Se valida
+# leave-one-season-out (LOSO): ajustar en 3 temporadas, medir en la 4ª. El ajuste
+# in-sample siempre "mejora" (overfit por construcción); solo cuenta el held-out.
+import bisect as _bisect
+
+
+def _pav(ys):
+    """Pool-Adjacent-Violators: ys en orden de x ascendente → yhat monótona nodecr.
+    Cada punto pesa 1. Devuelve el yhat por punto (misma longitud)."""
+    sv, sw, sc = [], [], []
+    for y in ys:
+        sv.append(float(y)); sw.append(1.0); sc.append(1)
+        while len(sv) > 1 and sv[-2] > sv[-1]:
+            v, w, c = sv.pop(), sw.pop(), sc.pop()
+            sv[-1] = (sv[-1] * sw[-1] + v * w) / (sw[-1] + w)
+            sw[-1] += w; sc[-1] += c
+    out = []
+    for v, c in zip(sv, sc):
+        out.extend([v] * c)
+    return out
+
+
+def isotonic_mapper(pairs):
+    """pairs: [(x, y in {0,1})]. Ajusta isotónica y devuelve f(q) interpolada
+    (constante fuera de rango). f monótona nodecreciente."""
+    pts = sorted(pairs)
+    xs = [p[0] for p in pts]
+    yhat = _pav([p[1] for p in pts])
+    def f(q):
+        if q <= xs[0]:  return yhat[0]
+        if q >= xs[-1]: return yhat[-1]
+        j = _bisect.bisect_left(xs, q)
+        x0, x1, y0, y1 = xs[j - 1], xs[j], yhat[j - 1], yhat[j]
+        return y0 if x1 == x0 else y0 + (y1 - y0) * (q - x0) / (x1 - x0)
+    return f
+
+
+def _calibrate_1x2(ph, pd, pa, f):
+    """Aplica el mapper a las 3 clases y renormaliza a suma 1."""
+    a, b, c = max(1e-9, f(ph)), max(1e-9, f(pd)), max(1e-9, f(pa))
+    s = a + b + c
+    return a / s, b / s, c / s
+
+
+def raw_matches(league, season, scale, kappa, level_gap, fade, scheme="multi"):
+    """[(ph, pd, pa, result)] del modelo (con prior) para cada partido jugado de
+    `season`. Misma lógica que backtest_one, pero devuelve las predicciones crudas."""
+    code, p_home, p_draw = league["espn_code"], league["p_home"], league["p_draw"]
+    ratings = _ratings_for(code, season - 1, scheme, level_gap, None)
+    default = min(ratings.values()) if ratings else 0.0
+    evs = [e for e in matches_cached(code, season)
+           if e["state"] == "post" and e["home_score"] is not None]
+    evs.sort(key=lambda e: e["kickoff"] or e["date"])
+    ids = set()
+    for e in evs:
+        ids.add(e["home"]["id"]); ids.add(e["away"]["id"])
+    n = len(ids) or 20; total_md = 2 * (n - 1)
+    gp = {i: 0 for i in ids}
+    out = []
+    for e in evs:
+        hid, aid = e["home"]["id"], e["away"]["id"]
+        jornada = (gp[hid] + gp[aid]) / 2.0
+        w = fade_weight(jornada, total_md * (fade / STRENGTH_FADE_FRACTION)) if fade else 0.0
+        ph, pd, pa = predict(ratings.get(hid, default), ratings.get(aid, default),
+                             w, p_home, p_draw, scale, kappa)
+        hs, as_ = e["home_score"], e["away_score"]
+        res = "home" if hs > as_ else "away" if as_ > hs else "draw"
+        out.append((ph, pd, pa, res))
+        gp[hid] += 1; gp[aid] += 1
+    return out
+
+
+def _pooled_points(matches):
+    """[(ph,pd,pa,res)] → puntos (prob_clase, indicador) para las 3 clases (calibración
+    multiclase por pooling)."""
+    pts = []
+    for ph, pd, pa, res in matches:
+        pts.append((ph, 1.0 if res == "home" else 0.0))
+        pts.append((pd, 1.0 if res == "draw" else 0.0))
+        pts.append((pa, 1.0 if res == "away" else 0.0))
+    return pts
+
+
+def _reliability_table(pts, nbins=10):
+    bins = [[0.0, 0.0, 0] for _ in range(nbins)]
+    for x, y in pts:
+        b = min(nbins - 1, int(x * nbins))
+        bins[b][0] += x; bins[b][1] += y; bins[b][2] += 1
+    return bins
+
+
+def _brier_ll(matches, f=None):
+    br = ll = 0.0; n = 0
+    for ph, pd, pa, res in matches:
+        if f is not None:
+            ph, pd, pa = _calibrate_1x2(ph, pd, pa, f)
+        yh, yd, ya = res == "home", res == "draw", res == "away"
+        br += (ph - yh) ** 2 + (pd - yd) ** 2 + (pa - ya) ** 2
+        ll += -math.log(max(1e-12, ph if yh else pd if yd else pa))
+        n += 1
+    return br / n, ll / n, n
+
+
+def cmd_calib(args):
+    """Capa de calibración post-hoc sobre el prior multi-temporada (H1)."""
+    global _MS_SEASONS, _MS_DECAY
+    _MS_SEASONS, _MS_DECAY = 3, 0.6                       # modelo base = H1 elegido
+    leagues = _leagues(args.leagues or DEFAULT_LEAGUE_SLUGS)
+    seasons = args.seasons or DEFAULT_SEASONS
+    sc, kp, lgp, fade = STRENGTH_SCALE_ABS, DRAW_SHRINK_KAPPA, STRENGTH_LEVEL_GAP_ABS, STRENGTH_FADE_FRACTION
+    print(f"Calibración post-hoc | base = multi n=3 d=0.6 | "
+          f"{len(leagues)} ligas × {len(seasons)} temporadas\n")
+
+    # Predicciones crudas por (temporada, liga) — cacheadas en memoria.
+    by_season = {s: [] for s in seasons}
+    for lg in leagues:
+        for s in seasons:
+            by_season[s].extend(raw_matches(lg, s, sc, kp, lgp, fade))
+    all_matches = [m for s in seasons for m in by_season[s]]
+
+    # (1) Diagrama de fiabilidad per-partido (pooling 1X2).
+    print("(1) Fiabilidad per-partido (prob. predicha vs frecuencia real, pooling 1X2):")
+    print(f"    {'bin':>10} {'pred':>7} {'obs':>7} {'n':>7}")
+    for i, (ps, ys, c) in enumerate(_reliability_table(_pooled_points(all_matches))):
+        if c:
+            print(f"    {i/10:.1f}-{(i+1)/10:.1f}  {ps/c:7.3f} {ys/c:7.3f} {c:7d}")
+
+    # (2) Isotónica LOSO: ajustar en 3 temporadas, medir en la 4ª (held-out honesto).
+    print("\n(2) Isotónica LEAVE-ONE-SEASON-OUT (held-out; el único número honesto):")
+    print(f"    {'held-out':>10} {'Brier raw':>10} {'Brier cal':>10} {'LL raw':>8} {'LL cal':>8}")
+    agg = {"br0": 0.0, "br1": 0.0, "ll0": 0.0, "ll1": 0.0, "n": 0}
+    for s in seasons:
+        train = [m for s2 in seasons if s2 != s for m in by_season[s2]]
+        f = isotonic_mapper(_pooled_points(train))
+        br0, ll0, n = _brier_ll(by_season[s])
+        br1, ll1, _ = _brier_ll(by_season[s], f)
+        print(f"    {s:>10} {br0:10.4f} {br1:10.4f} {ll0:8.4f} {ll1:8.4f}")
+        agg["br0"] += br0 * n; agg["br1"] += br1 * n
+        agg["ll0"] += ll0 * n; agg["ll1"] += ll1 * n; agg["n"] += n
+    N = agg["n"]
+    print(f"    {'POOLED':>10} {agg['br0']/N:10.4f} {agg['br1']/N:10.4f} "
+          f"{agg['ll0']/N:8.4f} {agg['ll1']/N:8.4f}   (menor = mejor)")
+
+    # (3) Fiabilidad a NIVEL TEMPORADA (top-4) — donde vive la infra-confianza del
+    #     dominante. Proyecta cada liga-temporada pasada y registra P(top4) vs realidad.
+    print("\n(3) Fiabilidad a nivel TEMPORADA — P(top-4) vs frecuencia real de top-4:")
+    top4_by_season = {s: [] for s in seasons}
+    for lg in leagues:
+        code = lg["espn_code"]
+        for s in seasons:
+            final = table_cached(code, s)
+            if len(final) < 6:
+                continue
+            actual_top4 = set(r["id"] for r in sorted(final, key=lambda r: r["rank"])[:4])
+            names = {r["id"]: r["name"] for r in final}
+            ratings = _ratings_for(code, s - 1, "multi", lgp, None)
+            default = min(ratings.values()) if ratings else 0.0
+            P4 = sim_top4(names, ratings, default, lg["p_home"], lg["p_draw"], sc, kp)
+            for i in names:
+                top4_by_season[s].append((P4[i], 1.0 if i in actual_top4 else 0.0))
+    top4_pts = [p for s in seasons for p in top4_by_season[s]]
+    print(f"    {'bin':>10} {'pred':>7} {'obs':>7} {'n':>7}")
+    for i, (ps, ys, c) in enumerate(_reliability_table(top4_pts)):
+        if c:
+            print(f"    {i/10:.1f}-{(i+1)/10:.1f}  {ps/c:7.3f} {ys/c:7.3f} {c:7d}")
+    pos = sum(y for _, y in top4_pts)
+    print(f"    (top-4 positivos totales = {int(pos)} sobre {len(top4_pts)} equipo-temporadas)")
+
+    # (3b) ¿GENERALIZA una isotónica a nivel temporada? LOSO sobre P(top-4).
+    def _brier_bin(pts, f=None):
+        b = 0.0
+        for x, y in pts:
+            p = f(x) if f else x
+            b += (p - y) ** 2
+        return b / len(pts), len(pts)
+    print("\n(3b) Isotónica top-4 LEAVE-ONE-SEASON-OUT (held-out; ¿generaliza?):")
+    print(f"    {'held-out':>10} {'Brier raw':>10} {'Brier cal':>10}")
+    b0t = b1t = nt = 0.0
+    for s in seasons:
+        train = [p for s2 in seasons if s2 != s for p in top4_by_season[s2]]
+        f = isotonic_mapper(train)
+        b0, n = _brier_bin(top4_by_season[s])
+        b1, _ = _brier_bin(top4_by_season[s], f)
+        print(f"    {s:>10} {b0:10.4f} {b1:10.4f}")
+        b0t += b0 * n; b1t += b1 * n; nt += n
+    print(f"    {'POOLED':>10} {b0t/nt:10.4f} {b1t/nt:10.4f}   (menor = mejor)")
+
+    # (4) Casos de portada tras aplicar la isotónica per-partido (ajuste con las 4
+    #     temporadas — escenario de despliegue; no hay held-out para la temporada viva).
+    f_full = isotonic_mapper(_pooled_points(all_matches))
+    print("\n(4) Casos de portada — pretemporada actual, per-match calibrado (LaLiga/Ligue1/Bundesliga):")
+    _headline_calibrated(leagues, sc, kp, lgp, fade, f_full)
+
+
+def sim_top4(names, ratings, default, p_home, p_draw, scale, kappa, n_sim=1500, hfrac=1.0):
+    """P(terminar en top-4) por equipo proyectando la temporada (como sim_titles)."""
+    ids = list(names); n = len(ids); total_md = 2 * (n - 1)
+    rng = random.Random(777)
+    w0 = 1.0
+    top4 = {i: 0 for i in ids}
+    for _ in range(n_sim):
+        pts = {i: 0 for i in ids}
+        for md in range(total_md):
+            w = w0 * max(0.0, 1.0 - md / (hfrac * total_md))
+            order = ids[:]; rng.shuffle(order)
+            for k in range(0, n - 1, 2):
+                h, a = order[k], order[k + 1]
+                ph, pd, pa = predict(ratings.get(h, default), ratings.get(a, default),
+                                     w, p_home, p_draw, scale, kappa)
+                r = rng.random()
+                if r < ph: pts[h] += 3
+                elif r < ph + pd: pts[h] += 1; pts[a] += 1
+                else: pts[a] += 3
+        for i in sorted(ids, key=lambda i: (pts[i], rng.random()), reverse=True)[:4]:
+            top4[i] += 1
+    return {i: top4[i] / n_sim for i in ids}
+
+
+def _headline_calibrated(leagues, sc, kp, lgp, fade, f):
+    dominants = {"laliga": ["Real Madrid", "Barcelona"],
+                 "ligue1": ["Paris Saint-Germain"], "bundesliga": ["Bayern Munich"]}
+    for slug, teams in dominants.items():
+        lg = league_by_slug(slug)
+        if not lg or lg not in leagues:
+            continue
+        code = lg["espn_code"]; cur = espn.fetch_current_season_year(code)
+        rows = espn.fetch_table(code); names = {r["id"]: r["name"] for r in rows}
+        rats = _ratings_for(code, cur - 1, "multi", lgp, None)
+        default = min(rats.values()) if rats else 0.0
+        P_raw = sim_titles(names, rats, default, lg["p_home"], lg["p_draw"], sc, kp,
+                           lgp, fade, n_sim=2000, hfrac=1.0)
+        P_cal = sim_titles(names, rats, default, lg["p_home"], lg["p_draw"], sc, kp,
+                           lgp, fade, n_sim=2000, hfrac=1.0, calib=f)
+        for t in teams:
+            tid = next((i for i, nm in names.items() if nm == t), None)
+            if tid:
+                print(f"    {t:22} título raw={P_raw.get(tid,0)*100:5.1f}%  "
+                      f"cal={P_cal.get(tid,0)*100:5.1f}%")
+
+
 def main():
     ap = argparse.ArgumentParser(description="Backtest de calibración offline (Fase 4).")
     ap.add_argument("--grid", action="store_true", help="rejilla de parámetros del propuesto")
     ap.add_argument("--titles", action="store_true", help="P(título) pretemporada vs mercado (sanity)")
     ap.add_argument("--champion", action="store_true", help="barrido del horizonte de proyección vs campeones reales")
     ap.add_argument("--recency", action="store_true", help="barrido de la vida media (half-life) del prior por partido")
+    ap.add_argument("--multi", action="store_true", help="barrido del prior multi-temporada (H1) vs. el prior vivo")
+    ap.add_argument("--calib", action="store_true", help="capa de calibración post-hoc isotónica (LOSO) sobre H1")
     ap.add_argument("--leagues", nargs="*", help="slugs (por defecto: 1as europeas)")
     ap.add_argument("--seasons", nargs="*", type=int, help="años de inicio (2022 2023 …)")
     ap.add_argument("--scale", type=float, default=0.8)
@@ -536,6 +883,10 @@ def main():
     args = ap.parse_args()
     if args.grid:
         cmd_grid(args)
+    elif args.multi:
+        cmd_multi(args)
+    elif args.calib:
+        cmd_calib(args)
     elif args.recency:
         cmd_recency(args)
     elif args.champion:
