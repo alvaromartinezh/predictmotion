@@ -23,12 +23,17 @@
   function loadTeams() {
     if (!D) return Promise.resolve([]);
     return Promise.all(ORDER.map(function (s) { return D.snapshot(s); })).then(function (snaps) {
+      // Dedup por IDENTIDAD de equipo (id ESPN), NO por (liga, id): un mismo club
+      // (p. ej. Real Madrid, id 86) aparece en su liga doméstica Y en su competición
+      // UEFA; debe salir UNA sola vez. ORDER pone las ligas domésticas antes que las
+      // UEFA, así que el primero que se ve (y se conserva) es el doméstico → /equipo
+      // abre con el contexto de liga correcto.
       var seen = {};
       snaps.forEach(function (snap, i) {
         if (!snap || !snap.teams) return;
         var slug = ORDER[i];
         snap.teams.forEach(function (t) {
-          var key = slug + ':' + t.id; if (seen[key]) return; seen[key] = 1;
+          var key = String(t.id); if (seen[key]) return; seen[key] = 1;
           TEAMS.push({ id: t.id, name: t.name, logo: t.logo, slug: slug, norm: norm(t.name) });
         });
       });

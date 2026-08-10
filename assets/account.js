@@ -96,6 +96,18 @@
         return state;
       });
     },
+    // Re-carga el estado de cuenta/follows desde el backend y re-emite los eventos
+    // para que el shell y las vistas (home/siguiendo) se re-rendericen. Se usa (1)
+    // al restaurar la página desde bfcache (botón atrás) y (2) tras login/logout en
+    // /cuenta, para que la sesión/follows reales se reflejen SIN recargar a mano.
+    refresh: function () {
+      return loadState().then(function () {
+        renderWidget();
+        _emit('pm-account-ready');
+        _emit('pm-follows-changed');
+        return state;
+      });
+    },
     isReady: function () { return state.loaded; },
     isEnabled: function () { return state.enabled; },
     isLoggedIn: function () { return !!state.user; },
@@ -143,4 +155,13 @@
   window.PMAccount = PMAccount;
   if (document.readyState !== 'loading') PMAccount.init();
   else document.addEventListener('DOMContentLoaded', function () { PMAccount.init(); });
+
+  // bfcache (botón atrás/adelante): el navegador restaura un snapshot del DOM y del
+  // estado JS ANTERIOR a acciones hechas en otra página (p. ej. seguir un equipo).
+  // Al restaurar (event.persisted), re-cargamos el estado real para que los follows
+  // y la sesión no se queden obsoletos. En una carga normal (persisted=false) no
+  // hace nada: init() ya cargó el estado.
+  window.addEventListener('pageshow', function (e) {
+    if (e.persisted && window.PMAccount) PMAccount.refresh();
+  });
 })();
