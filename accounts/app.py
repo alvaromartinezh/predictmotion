@@ -96,11 +96,15 @@ class Handler(BaseHTTPRequestHandler):
         return m.value if m else None
 
     def _set_session_cookie(self, token, max_age):
-        parts = [f"{config.SESSION_COOKIE}={token}", "Path=/", "HttpOnly",
-                 "SameSite=Lax", f"Max-Age={max_age}"]
-        if config.SESSION_COOKIE_SECURE:
-            parts.append("Secure")
-        return ("Set-Cookie", "; ".join(parts))
+        # Devuelve DOS cookies: (1) la sesión real HttpOnly (secreto, ilegible por JS)
+        # y (2) un "hint" pm_auth=1 SIN HttpOnly, legible por JS, que el shell usa para
+        # elegir el primer paint (logueado/anónimo) sin esperar a /api/me y evitar el
+        # flash. No lleva secreto: solo marca "hay sesión probable"; /api/me manda.
+        common = ["Path=/", "SameSite=Lax", f"Max-Age={max_age}"]
+        secure = ["Secure"] if config.SESSION_COOKIE_SECURE else []
+        session = [f"{config.SESSION_COOKIE}={token}", "HttpOnly"] + common + secure
+        hint = [f"pm_auth={'1' if token else ''}"] + common + secure
+        return [("Set-Cookie", "; ".join(session)), ("Set-Cookie", "; ".join(hint))]
 
     def _current_user(self):
         return sessions.user_for_token(self._cookie(config.SESSION_COOKIE))
@@ -229,12 +233,12 @@ class Handler(BaseHTTPRequestHandler):
                 picture_url=claims.get("picture"),
             )
             token = sessions.create_session(user["id"], self.headers.get("User-Agent"))
-            cookie = self._set_session_cookie(token, config.SESSION_TTL_DAYS * 86400)
-            return self._send(200, {"ok": True, "user": user}, extra_headers=[cookie])
+            cookies = self._set_session_cookie(token, config.SESSION_TTL_DAYS * 86400)
+            return self._send(200, {"ok": True, "user": user}, extra_headers=cookies)
 
         if rest == ["auth", "logout"]:
             sessions.destroy_session(self._cookie(config.SESSION_COOKIE))
-            return self._send(200, {"ok": True}, extra_headers=[self._set_session_cookie("", 0)])
+            return self._send(200, {"ok": True}, extra_headers=self._set_session_cookie("", 0))
 
         # ── follows (requieren sesión) ──
         user = self._current_user()
@@ -297,7 +301,7 @@ class Handler(BaseHTTPRequestHandler):
         # cascada a sesiones y follows (FK ON DELETE CASCADE); se limpia la cookie.
         if rest == ["account"]:
             db.delete_user(user["id"])
-            return self._send(200, {"ok": True}, extra_headers=[self._set_session_cookie("", 0)])
+            return self._send(200, {"ok": True}, extra_headers=self._set_session_cookie("", 0))
 
         if rest == ["follows", "favorite-team"]:
             db.clear_favorite_team(user["id"])

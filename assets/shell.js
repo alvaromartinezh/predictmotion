@@ -62,20 +62,40 @@
       + '<span class="tt-light" aria-hidden="true">' + svg(IC.sun) + '</span></button>';
   }
 
-  // Estado de sesión (real). Degrada a anónimo si no hay PMAccount o está apagado.
+  var ANON_F = { competitions: [], teams: [], favorite_team: null };
+
+  // Cookie "hint" (pm_auth=1, legible por JS; la de sesión real es HttpOnly). La pone
+  // el backend junto a la sesión. Solo sirve para elegir el PRIMER paint sin esperar a
+  // /api/me: NO es fuente de verdad (una sesión revocada la deja obsoleta hasta que
+  // /api/me la corrige). No lleva secreto.
+  function sessionHint() { return /(?:^|;\s*)pm_auth=1(?:\s*;|\s*$)/.test(document.cookie); }
+
+  // Estado de sesión. Antes de que PMAccount resuelva (/api/me), elige el paint con la
+  // cookie hint para no fogonazar "Entrar" a un usuario logueado. `pending`: pintamos
+  // el chrome de logueado pero aún sin user/follows (llegan al re-render). Degrada a
+  // anónimo si no hay PMAccount.
   function acct() {
     var a = window.PMAccount;
-    if (!a || (a.isEnabled && !a.isEnabled())) return { on: false, user: null, f: { competitions: [], teams: [], favorite_team: null } };
+    if (!a) return { on: false, pending: false, user: null, f: ANON_F };
+    if (a.isReady && !a.isReady()) {
+      var hint = sessionHint();
+      return { on: hint, pending: hint, user: null, f: ANON_F };
+    }
+    if (a.isEnabled && !a.isEnabled()) return { on: false, pending: false, user: null, f: ANON_F };
     return {
       on: !!(a.isLoggedIn && a.isLoggedIn()),
+      pending: false,
       user: (a.user && a.user()) || null,
-      f: (a.follows && a.follows()) || { competitions: [], teams: [], favorite_team: null }
+      f: (a.follows && a.follows()) || ANON_F
     };
   }
 
   function avatar(user) {
     if (user && user.picture) return '<span class="avatar"><img src="' + user.picture + '" alt="" referrerpolicy="no-referrer"></span>';
-    return '<span class="avatar">' + initials(user && user.name) + '</span>';
+    // Sin datos de usuario aún (paint optimista por cookie hint): avatar neutro, sin
+    // "?". Se rellena en el re-render cuando /api/me resuelve.
+    if (!user) return '<span class="avatar avatar--ph"></span>';
+    return '<span class="avatar">' + initials(user.name) + '</span>';
   }
 
   function tabbar(active) {

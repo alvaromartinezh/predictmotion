@@ -35,6 +35,9 @@
 .iconbtn svg { width: 20px; height: 20px; }
 .avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; overflow: hidden; font-family: var(--font-display); font-weight: 700; font-size: var(--fs-14); background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: var(--accent-ink); }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
+/* Avatar placeholder del paint optimista (sesión probable, datos aún sin llegar). */
+.avatar--ph { background: var(--surface-3, rgba(128,128,128,.25)); animation: pm-avph 1.1s ease-in-out infinite; }
+@keyframes pm-avph { 0%,100% { opacity: .55; } 50% { opacity: .9; } }
 
 /* Conmutador de tema del shell (NO reutiliza .theme-toggle de styles.css) */
 .pm-theme-toggle { position: relative; }
