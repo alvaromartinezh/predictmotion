@@ -61,6 +61,25 @@ STRENGTH_SCALE       = 0.28   # cuánto sesga el partido una diferencia de 1 uni
 STRENGTH_FADE_FRACTION = 0.5  # fracción de temporada sobre la que se desvanece
 
 
+# ── Modelo de calibración v2 (Fase 4) — DETRÁS DE FLAG, por defecto OFF ───────
+# Validado OFFLINE (seo/backtest.py) contra RESULTADOS reales de 4 temporadas: mejora
+# Brier/LogLoss/ECE por-partido y la predicción del campeón real, y cuadra el mercado
+# de los favoritos dominantes (arregla el bug "Bayern 38%"). Tres piezas:
+#   1. rating ABSOLUTO por diferencia de goles/partido (NO z-score → conserva la
+#      escala de dominancia que el z-score aplasta),
+#   2. encogido del EMPATE al crecer |Δfuerza| (el empate ya no es fijo),
+#   3. desvanecimiento del prior DENTRO de la proyección (el frozen-w del modelo vivo
+#      sobre-confía al componer 34 partidos; decaer sobre la temporada proyectada
+#      predice MEJOR el campeón real).
+# OFF ⇒ ruta de código INTACTA (salida bit-idéntica al modelo vivo; verificado). Se
+# activa para shadow-compare antes de decidir el cambio en producción.
+USE_ABSOLUTE_RATING     = False   # master flag del modelo v2 (OFF = modelo actual)
+STRENGTH_SCALE_ABS      = 1.5     # escala sobre la dif. de goles/partido (v2)
+STRENGTH_LEVEL_GAP_ABS  = 1.5     # offset de nivel entre divisiones, en goles/partido
+DRAW_SHRINK_KAPPA       = 0.15    # encoge el empate: p_draw·exp(-kappa·|Δlogit|)
+PROJECTION_HORIZON_FADE = 1.0     # el prior decae a 0 en N·temporada proyectada (None=frozen)
+
+
 def _table_bands(slots):
     """Devuelve una función bands(n) -> lista de bandas de zona ordenadas.
 

@@ -12,7 +12,9 @@ a doble partido son idénticos al navegador.
 
 import math
 
-from .config import SIM_N_TABLE, STRENGTH_SCALE, STRENGTH_FADE_FRACTION
+from .config import (SIM_N_TABLE, STRENGTH_SCALE, STRENGTH_FADE_FRACTION,
+                     USE_ABSOLUTE_RATING, STRENGTH_SCALE_ABS, DRAW_SHRINK_KAPPA,
+                     PROJECTION_HORIZON_FADE)
 from .prng import make_rng, standings_seed
 
 
@@ -92,6 +94,20 @@ def _strength_context(rows, ratings, p_home, p_draw, total_md):
     return {"w": w, "logit_s0": math.log(s0 / (1 - s0)), "m": m, "strength": strength}
 
 
+def _match_ph_pd(sc, h, a, p_draw, w_md):
+    """1X2 (ph, pd) para un partido dado el contexto de fuerza. Separado para que la
+    ruta v2 (rating absoluto + encogido de empate + fade de proyección) conviva con
+    la ruta ACTUAL sin tocarla (USE_ABSOLUTE_RATING=False ⇒ fórmula idéntica)."""
+    if USE_ABSOLUTE_RATING:
+        d = w_md * STRENGTH_SCALE_ABS * (sc["strength"][h] - sc["strength"][a])
+        s = 1.0 / (1.0 + math.exp(-(sc["logit_s0"] + d)))
+        draw = p_draw * math.exp(-DRAW_SHRINK_KAPPA * abs(d))
+        return (1.0 - draw) * s, draw
+    delta = STRENGTH_SCALE * (sc["strength"][h] - sc["strength"][a])
+    s = 1.0 / (1.0 + math.exp(-(sc["logit_s0"] + sc["w"] * delta)))
+    return sc["m"] * s, p_draw
+
+
 def simulate(rows, p_home, p_draw, playoff_top=None, sim_n=SIM_N_TABLE, ratings=None,
              matches_per_team=None):
     """Devuelve dict slug->resultados. rows: tabla de fetch_table().
@@ -140,6 +156,16 @@ def simulate(rows, p_home, p_draw, playoff_top=None, sim_n=SIM_N_TABLE, ratings=
         md_num = min_gp
         for _md in range(min_gp + 1, total_md + 1):
             md_num += 1
+            # Peso del prior para esta jornada proyectada. OFF (o sin fade de
+            # proyección) → constante sc["w"], como siempre. v2 con horizonte → el
+            # prior decae dentro de la temporada proyectada (mejor P(campeón) real).
+            if sc is None:
+                w_md = 0.0
+            elif USE_ABSOLUTE_RATING and PROJECTION_HORIZON_FADE:
+                proj_i = _md - (min_gp + 1)
+                w_md = sc["w"] * max(0.0, 1.0 - proj_i / (PROJECTION_HORIZON_FADE * total_md))
+            else:
+                w_md = sc["w"]
             order = _shuffle(rng, list(names))
             for k in range(0, len(order) - 1, 2):
                 h, a = order[k], order[k + 1]
@@ -150,9 +176,7 @@ def simulate(rows, p_home, p_draw, playoff_top=None, sim_n=SIM_N_TABLE, ratings=
                 if sc is None:
                     ph, pd_ = p_home, p_draw
                 else:
-                    delta = STRENGTH_SCALE * (sc["strength"][h] - sc["strength"][a])
-                    s = 1.0 / (1.0 + math.exp(-(sc["logit_s0"] + sc["w"] * delta)))
-                    ph, pd_ = sc["m"] * s, p_draw
+                    ph, pd_ = _match_ph_pd(sc, h, a, p_draw, w_md)
                 r = rng()
                 if r < ph:
                     hp, ap = 3, 0

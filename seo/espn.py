@@ -195,11 +195,15 @@ def build_strength_ratings(current_year, active_codes=None):
     Best-effort y robusto: si el fetch de una temporada previa falla (p. ej. 403),
     esa división se salta; el resto sigue.
     """
-    from .config import STRENGTH_LADDERS, STRENGTH_LEVEL_GAP
+    from .config import (STRENGTH_LADDERS, STRENGTH_LEVEL_GAP,
+                         USE_ABSOLUTE_RATING, STRENGTH_LEVEL_GAP_ABS)
 
     if not current_year:
         return {}
     prev = current_year - 1
+    # Modelo v2 (flag): rating absoluto por diferencia de goles/partido (conserva la
+    # dominancia). OFF: z-score de puntos de siempre (ruta INTACTA).
+    gap = STRENGTH_LEVEL_GAP_ABS if USE_ABSOLUTE_RATING else STRENGTH_LEVEL_GAP
     ratings = {}
     for ladder in STRENGTH_LADDERS:
         if active_codes is not None and not any(c in active_codes for c in ladder):
@@ -209,17 +213,21 @@ def build_strength_ratings(current_year, active_codes=None):
                 rows = fetch_table(code, season=prev)
             except Exception:
                 continue  # una división falla → se salta; las demás siguen
-            pts = [r["pts"] for r in rows]
-            n = len(pts)
+            n = len(rows)
             if n < 2:
                 continue
-            mean = sum(pts) / n
-            var = sum((p - mean) ** 2 for p in pts) / n
-            std = var ** 0.5
-            offset = -level * STRENGTH_LEVEL_GAP
-            for r in rows:
-                z = (r["pts"] - mean) / std if std > 0 else 0.0
-                ratings[r["id"]] = z + offset
+            offset = -level * gap
+            if USE_ABSOLUTE_RATING:
+                for r in rows:
+                    gdpg = (r["gf"] - r["gc"]) / max(r["gp"], 1)
+                    ratings[r["id"]] = gdpg + offset
+            else:
+                pts = [r["pts"] for r in rows]
+                mean = sum(pts) / n
+                std = (sum((p - mean) ** 2 for p in pts) / n) ** 0.5
+                for r in rows:
+                    z = (r["pts"] - mean) / std if std > 0 else 0.0
+                    ratings[r["id"]] = z + offset
     return ratings
 
 
