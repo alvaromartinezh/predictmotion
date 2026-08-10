@@ -61,6 +61,7 @@ html[data-theme="light"] .pm-theme-toggle .tt-dark  { display: none; }
 /* ---- Feed ---- */
 .feed { width: 100%; max-width: var(--feed-w); margin-inline: auto; padding: var(--sp-4); }
 .feed > * + * { margin-top: var(--sp-4); }
+.feed__col > * + * { margin-top: var(--sp-4); }
 .feed-sec { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); margin: var(--sp-5) var(--sp-1) var(--sp-1); }
 .feed-sec:first-child { margin-top: var(--sp-1); }
 .feed-sec__title { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; font-size: var(--fs-18); letter-spacing: .02em; display: flex; align-items: center; gap: var(--sp-2); }
@@ -301,7 +302,6 @@ a.pm-status-link:hover .pm-time { color: var(--accent); }
      (~980–1280) el 1fr se encoge igual que antes: sin cambios de comportamiento. */
   .feed { max-width: 1560px; margin-inline: auto; display: grid; grid-template-columns: minmax(0, 1fr) var(--rail-w); gap: var(--sp-6); padding: var(--sp-6); align-items: start; }
   .feed__col { min-width: 0; }
-  .feed__col > * + * { margin-top: var(--sp-4); }
   .feed__rail { display: flex; position: sticky; top: var(--sp-6); flex-direction: column; gap: var(--sp-4); }
 
   .match__team .crest, .match__team .crest-ph { width: 52px; height: 52px; }
