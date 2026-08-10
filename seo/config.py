@@ -61,7 +61,7 @@ STRENGTH_SCALE       = 0.28   # cuánto sesga el partido una diferencia de 1 uni
 STRENGTH_FADE_FRACTION = 0.5  # fracción de temporada sobre la que se desvanece
 
 
-# ── Modelo de calibración v2 (Fase 4) — DETRÁS DE FLAG, por defecto OFF ───────
+# ── Modelo de calibración v2 (Fase 4) — ACTIVO (validado 2026-08-10) ──────────
 # Validado OFFLINE (seo/backtest.py) contra RESULTADOS reales de 4 temporadas: mejora
 # Brier/LogLoss/ECE por-partido y la predicción del campeón real, y cuadra el mercado
 # de los favoritos dominantes (arregla el bug "Bayern 38%"). Tres piezas:
@@ -71,9 +71,21 @@ STRENGTH_FADE_FRACTION = 0.5  # fracción de temporada sobre la que se desvanece
 #   3. desvanecimiento del prior DENTRO de la proyección (el frozen-w del modelo vivo
 #      sobre-confía al componer 34 partidos; decaer sobre la temporada proyectada
 #      predice MEJOR el campeón real).
-# OFF ⇒ ruta de código INTACTA (salida bit-idéntica al modelo vivo; verificado). Se
-# activa para shadow-compare antes de decidir el cambio en producción.
-USE_ABSOLUTE_RATING     = False   # master flag del modelo v2 (OFF = modelo actual)
+# Shadow-compare de las 15 ligas revisado antes de activar (OFF era bit-idéntico al
+# modelo vivo; verificado). Las 3 UEFA no cambian (use_strength=False → uniforme).
+#
+# LÍMITE CONOCIDO Y DOCUMENTADO — infra-predicción de favoritos MUY dominantes (p. ej.
+# PSG ~50% modelo vs ~90% mercado 2026-27). Es el TECHO de un modelo SOLO-RESULTADOS:
+# el mercado incorpora valor de plantilla/fichajes que ESPN NO expone (roster sin
+# métrica de calidad ni histórico que diferenciar; sin market value ni xG). NO se
+# persigue con más hiperparámetros. Se probó explícitamente ponderar por RECENCIA el
+# prior por partido (half-life sobre los partidos de la temporada previa, `--recency`
+# en backtest.py): empeora Brier/LogLoss y el backtest de campeón de forma monótona,
+# y NO acerca a PSG (los dominantes bajan su ritmo a final de liga → su forma reciente
+# es MENOR que su nivel real). Rechazado; vive solo en el harness offline. v2 con
+# rating de tabla agregada es la mejor versión validada. Cerrar el hueco requeriría
+# una fuente externa de valor de plantilla que hoy no tenemos.
+USE_ABSOLUTE_RATING     = True    # master flag del modelo v2 (ACTIVO desde 2026-08-10)
 STRENGTH_SCALE_ABS      = 1.5     # escala sobre la dif. de goles/partido (v2)
 STRENGTH_LEVEL_GAP_ABS  = 1.5     # offset de nivel entre divisiones, en goles/partido
 DRAW_SHRINK_KAPPA       = 0.15    # encoge el empate: p_draw·exp(-kappa·|Δlogit|)

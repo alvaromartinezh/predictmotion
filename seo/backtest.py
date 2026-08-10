@@ -29,6 +29,7 @@ Uso:
 import argparse
 import json
 import math
+from datetime import datetime
 from pathlib import Path
 
 from . import espn
@@ -101,6 +102,55 @@ def build_ratings(code, prev_season, scheme, level_gap):
     return ratings
 
 
+def _match_day(e):
+    return datetime.strptime((e["kickoff"] or e["date"])[:10], "%Y-%m-%d").toordinal()
+
+
+def build_ratings_recency(code, prev_season, level_gap, half_life_days):
+    """Rating 'absolute' pero desde los PARTIDOS de prev_season con decaimiento de
+    recencia, no desde el agregado de la tabla final.
+
+    R(equipo) = media de diferencia de goles por partido PONDERADA por recencia:
+    cada partido pesa 0.5**(edad_en_días / half_life_days) respecto al último
+    partido de esa temporada. Así el nivel de FINAL de temporada (forma real
+    reciente) pesa más que el arranque. Mismos datos que ya bajamos
+    (matches_cached); mismas unidades (goles/partido) → el offset de nivel por
+    división (level_gap) es idéntico al del esquema 'absolute'.
+
+    half_life_days = math.inf → peso uniforme = MEDIA de GDPG por partido, que es
+    exactamente el GDPG agregado de la tabla → ancla de paridad con el 'absolute'
+    actual (salvo partidos aplazados que la tabla y el scoreboard cuenten distinto).
+    """
+    ratings = {}
+    for level, c in enumerate(ladder_for(code)):
+        try:
+            evs = [e for e in matches_cached(c, prev_season)
+                   if e["state"] == "post" and e["home_score"] is not None]
+        except Exception:
+            continue
+        if len(evs) < 2:
+            continue
+        ref = max(_match_day(e) for e in evs)
+        wsum, wgd = {}, {}
+        for e in evs:
+            age = ref - _match_day(e)
+            w = 0.5 ** (age / half_life_days) if half_life_days != math.inf else 1.0
+            gd = e["home_score"] - e["away_score"]
+            for tid, g in ((e["home"]["id"], gd), (e["away"]["id"], -gd)):
+                wsum[tid] = wsum.get(tid, 0.0) + w
+                wgd[tid] = wgd.get(tid, 0.0) + w * g
+        for tid in wsum:
+            ratings[tid] = wgd[tid] / wsum[tid] - level * level_gap
+    return ratings
+
+
+def _ratings_for(code, prev_season, scheme, level_gap, half_life):
+    """half_life None → esquema de tabla (build_ratings); si no, recencia por partido."""
+    if half_life is None:
+        return build_ratings(code, prev_season, scheme, level_gap)
+    return build_ratings_recency(code, prev_season, level_gap, half_life)
+
+
 # ── Modelo de partido (kappa=0 == modelo vivo actual, verificado) ────────────
 def predict(Rh, Ra, w, p_home, p_draw, scale, kappa):
     p_away = 1.0 - p_home - p_draw
@@ -163,9 +213,10 @@ EARLY_MD = 6
 
 
 # ── Backtest de una liga-temporada ───────────────────────────────────────────
-def backtest_one(league, season_start, scheme, scale, kappa, level_gap, fade):
+def backtest_one(league, season_start, scheme, scale, kappa, level_gap, fade,
+                 half_life=None):
     code, p_home, p_draw = league["espn_code"], league["p_home"], league["p_draw"]
-    ratings = build_ratings(code, season_start - 1, scheme, level_gap)
+    ratings = _ratings_for(code, season_start - 1, scheme, level_gap, half_life)
     default = min(ratings.values()) if ratings else 0.0
 
     evs = [e for e in matches_cached(code, season_start)
@@ -195,11 +246,11 @@ def backtest_one(league, season_start, scheme, scale, kappa, level_gap, fade):
     return m, early
 
 
-def run_config(leagues, seasons, scheme, scale, kappa, level_gap, fade):
+def run_config(leagues, seasons, scheme, scale, kappa, level_gap, fade, half_life=None):
     total, early = Metrics(), Metrics()
     for lg in leagues:
         for s in seasons:
-            f, e = backtest_one(lg, s, scheme, scale, kappa, level_gap, fade)
+            f, e = backtest_one(lg, s, scheme, scale, kappa, level_gap, fade, half_life)
             total.merge(f); early.merge(e)
     return total, early
 
@@ -280,21 +331,29 @@ MARKET_TITLE = {   # P(título) implícita de mercado (aprox., pretemporada 2026
 
 
 def sim_titles(names, ratings, default, p_home, p_draw, scale, kappa, level_gap,
-               fade, n_sim=3000, seed=12345):
+               fade, n_sim=3000, seed=12345, hfrac=None):
+    """P(acabar 1º) por equipo proyectando la temporada entera desde la jornada
+    actual (pretemporada aquí).
+
+    hfrac (horizonte de desvanecimiento del prior DENTRO de la proyección):
+      None → prior CONGELADO en todos los partidos proyectados (comportamiento vivo
+             actual; sobre-confía en el favorito porque compone 34 partidos).
+      x>0  → el peso del prior decae linealmente a 0 a lo largo de x·temporada de la
+             proyección: los partidos proyectados lejanos pesan menos (un prior de
+             hace una temporada predice peor la forma de mayo). Doma el exceso de los
+             dominantes sin tocar la calibración por-partido (que se puntúa aparte
+             con resultados reales)."""
     ids = list(names.keys())
     n = len(ids)
     total_md = 2 * (n - 1)
     rng = random.Random(seed)
     firsts = {i: 0 for i in ids}
-    # El peso del prior se CONGELA en la jornada actual (pretemporada → w=1) y se
-    # aplica igual a TODOS los partidos futuros de la simulación, igual que el modelo
-    # vivo (sim_table): la creencia pretemporada de que un equipo es fuerte vale para
-    # toda la temporada; el desvanecimiento depende de cuántos resultados REALES hay,
-    # no de la posición del partido simulado.
-    w = fade_weight(0, total_md * (fade / STRENGTH_FADE_FRACTION)) if fade else 0.0
+    # Peso del prior por resultados REALES acumulados (pretemporada → w0=1).
+    w0 = fade_weight(0, total_md * (fade / STRENGTH_FADE_FRACTION)) if fade else 0.0
     for _ in range(n_sim):
         pts = {i: 0 for i in ids}
         for md in range(total_md):
+            w = w0 if hfrac is None else w0 * max(0.0, 1.0 - md / (hfrac * total_md))
             order = ids[:]; rng.shuffle(order)
             for k in range(0, n - 1, 2):
                 h, a = order[k], order[k + 1]
@@ -307,6 +366,31 @@ def sim_titles(names, ratings, default, p_home, p_draw, scale, kappa, level_gap,
         win = max(ids, key=lambda i: (pts[i], rng.random()))
         firsts[win] += 1
     return {i: firsts[i] / n_sim for i in ids}
+
+
+def champion_backtest(leagues, seasons, scale, kappa, level_gap, fade, hfrac,
+                      n_sim=800, half_life=None):
+    """Valida la PROYECCIÓN contra resultados REALES: proyecta cada temporada pasada
+    desde pretemporada (prior de S-1) y puntúa P(campeón) contra quién ganó de verdad.
+    Devuelve (logloss_campeón, brier_campeón) sobre todas las liga-temporadas."""
+    ll = brier = 0.0
+    cnt = 0
+    for lg in leagues:
+        code = lg["espn_code"]
+        for s in seasons:
+            final = table_cached(code, s)
+            if len(final) < 2:
+                continue
+            names = {r["id"]: r["name"] for r in final}
+            champ = min(final, key=lambda r: r["rank"])["id"]   # rank 1 = campeón real
+            ratings = _ratings_for(code, s - 1, "absolute", level_gap, half_life)
+            default = min(ratings.values()) if ratings else 0.0
+            P = sim_titles(names, ratings, default, lg["p_home"], lg["p_draw"],
+                           scale, kappa, level_gap, fade, n_sim=n_sim, hfrac=hfrac)
+            ll += -math.log(max(1e-6, P.get(champ, 0.0)))
+            brier += sum((P.get(i, 0.0) - (1.0 if i == champ else 0.0)) ** 2 for i in names)
+            cnt += 1
+    return (ll / cnt, brier / cnt) if cnt else (float("nan"), float("nan"))
 
 
 def cmd_titles(args):
@@ -338,10 +422,111 @@ def cmd_titles(args):
             print(f"   {names[i][:24]:24} {p_z[i]*100:7.1f}% {p_a[i]*100:9.1f}%")
 
 
+def cmd_champion(args):
+    """Barre el horizonte de desvanecimiento de la proyección (hfrac) y muestra:
+    (1) log-loss/Brier de P(campeón) contra los campeones REALES de las 4 temporadas
+    y (2) P(título) pretemporada actual de los dominantes vs mercado (sanity)."""
+    leagues = _leagues(args.leagues or DEFAULT_LEAGUE_SLUGS)
+    seasons = args.seasons or DEFAULT_SEASONS
+    sc, kp, lg_ = args.scale, args.kappa, args.level_gap
+    print(f"Proyección: scale={sc} kappa={kp} level_gap={lg_}  "
+          f"(campeón real de {len(leagues)}×{len(seasons)} liga-temporadas)\n")
+    print(f"{'hfrac (horizonte)':22} {'ChampLogLoss':>13} {'ChampBrier':>11}")
+    print("-" * 48)
+    for hfrac in [None, 1.0, 0.75, 0.5, 0.35]:
+        ll, br = champion_backtest(leagues, seasons, sc, kp, lg_,
+                                   STRENGTH_FADE_FRACTION, hfrac)
+        label = "congelado (actual)" if hfrac is None else f"decae en {hfrac}·temp."
+        print(f"{label:22} {ll:13.4f} {br:11.4f}")
+
+    print("\nSanity de mercado — P(título) pretemporada actual por horizonte:")
+    dominants = {"bundesliga": "Bayern Munich", "ligue1": "Paris Saint-Germain",
+                 "laliga": "Barcelona"}
+    for slug, team in dominants.items():
+        lg = league_by_slug(slug)
+        if not lg or lg not in leagues:
+            continue
+        code = lg["espn_code"]; cur = espn.fetch_current_season_year(code)
+        rows = espn.fetch_table(code)
+        names = {r["id"]: r["name"] for r in rows}
+        tid = next((i for i, nm in names.items() if nm == team), None)
+        rats = build_ratings(code, cur - 1, "absolute", lg_)
+        default = min(rats.values()) if rats else 0.0
+        cells = []
+        for hfrac in [None, 1.0, 0.75, 0.5]:
+            P = sim_titles(names, rats, default, lg["p_home"], lg["p_draw"], sc, kp,
+                           lg_, STRENGTH_FADE_FRACTION, n_sim=2000, hfrac=hfrac)
+            cells.append(f"{P.get(tid, 0)*100:5.1f}%")
+        mk = MARKET_TITLE.get(slug)
+        print(f"  {team:22} congelado={cells[0]}  h1.0={cells[1]}  h0.75={cells[2]}  "
+              f"h0.5={cells[3]}   mercado≈{int(mk[1]*100) if mk else '?'}%")
+
+
+# ── Barrido de recencia (half-life del prior por partido) ────────────────────
+# Recipe v2 ON (validada en --grid/--champion). El barrido de recencia se hace
+# SOBRE esta receta: solo cambia de dónde sale el rating (agregado de tabla vs
+# media ponderada por recencia de los partidos de la temporada previa).
+RECENCY_RECIPE = dict(scale=1.5, kappa=0.15, level_gap=1.5, hfrac=1.0)
+
+
+def cmd_recency(args):
+    leagues = _leagues(args.leagues or DEFAULT_LEAGUE_SLUGS)
+    seasons = args.seasons or DEFAULT_SEASONS
+    sc = RECENCY_RECIPE["scale"]; kp = RECENCY_RECIPE["kappa"]
+    lgp = RECENCY_RECIPE["level_gap"]; hf = RECENCY_RECIPE["hfrac"]
+    print(f"Recencia del prior: {len(leagues)} ligas × {len(seasons)} temporadas | "
+          f"receta v2 ON (scale={sc} kappa={kp} level_gap={lgp} hfrac={hf})")
+    print("half_life = vida media en DÍAS del peso de cada partido de la temporada previa "
+          "(inf = uniforme = agregado de tabla).\n")
+
+    # None = agregado de tabla (v2 ON actual, el ancla); inf = uniforme por partido
+    # (debe ≈ al ancla → verifica que la ruta por-partido es equivalente); resto = decae.
+    hls = [None, math.inf, 240, 180, 120, 90, 60]
+    print(f"  {'rating':22} {'Brier':>8} {'LogLoss':>9} {'ECE':>7} "
+          f"{'earlyLL':>8} {'earlyECE':>9} {'champLL':>8} {'champBr':>8}")
+    print("  " + "-" * 84)
+    for hl in hls:
+        m, e = run_config(leagues, seasons, "absolute", sc, kp, lgp,
+                          STRENGTH_FADE_FRACTION, half_life=hl)
+        cll, cbr = champion_backtest(leagues, seasons, sc, kp, lgp,
+                                     STRENGTH_FADE_FRACTION, hf, half_life=hl)
+        label = ("tabla (v2 ON)" if hl is None else
+                 "uniforme/partido" if hl == math.inf else f"half-life {hl}d")
+        print(f"  {label:22} {m.brier_mean:8.4f} {m.logloss_mean:9.4f} {m.ece:7.4f} "
+              f"{e.logloss_mean:8.4f} {e.ece:9.4f} {cll:8.4f} {cbr:8.4f}")
+    print("\n(Menor todo = mejor. earlyLL/earlyECE = primeras 6 jornadas, donde el prior manda.)")
+
+    # Sanity de mercado: P(título) pretemporada ACTUAL de los dominantes por half-life.
+    print("\nSanity de mercado — P(título) pretemporada actual por half-life:")
+    dominants = {"bundesliga": "Bayern Munich", "ligue1": "Paris Saint-Germain",
+                 "laliga": "Barcelona"}
+    for slug, team in dominants.items():
+        lg = league_by_slug(slug)
+        if not lg or lg not in leagues:
+            continue
+        code = lg["espn_code"]; cur = espn.fetch_current_season_year(code)
+        rows = espn.fetch_table(code)
+        names = {r["id"]: r["name"] for r in rows}
+        tid = next((i for i, nm in names.items() if nm == team), None)
+        cells = []
+        for hl in hls:
+            rats = _ratings_for(code, cur - 1, "absolute", lgp, hl)
+            default = min(rats.values()) if rats else 0.0
+            P = sim_titles(names, rats, default, lg["p_home"], lg["p_draw"], sc, kp,
+                           lgp, STRENGTH_FADE_FRACTION, n_sim=2000, hfrac=hf)
+            cells.append(P.get(tid, 0) * 100)
+        mk = MARKET_TITLE.get(slug)
+        hdr = "  ".join(f"{('tabla' if h is None else 'unif' if h==math.inf else f'{h}d')}={c:4.1f}%"
+                        for h, c in zip(hls, cells))
+        print(f"  {team:22} {hdr}   mercado≈{int(mk[1]*100) if mk else '?'}%")
+
+
 def main():
     ap = argparse.ArgumentParser(description="Backtest de calibración offline (Fase 4).")
     ap.add_argument("--grid", action="store_true", help="rejilla de parámetros del propuesto")
     ap.add_argument("--titles", action="store_true", help="P(título) pretemporada vs mercado (sanity)")
+    ap.add_argument("--champion", action="store_true", help="barrido del horizonte de proyección vs campeones reales")
+    ap.add_argument("--recency", action="store_true", help="barrido de la vida media (half-life) del prior por partido")
     ap.add_argument("--leagues", nargs="*", help="slugs (por defecto: 1as europeas)")
     ap.add_argument("--seasons", nargs="*", type=int, help="años de inicio (2022 2023 …)")
     ap.add_argument("--scale", type=float, default=0.8)
@@ -351,6 +536,10 @@ def main():
     args = ap.parse_args()
     if args.grid:
         cmd_grid(args)
+    elif args.recency:
+        cmd_recency(args)
+    elif args.champion:
+        cmd_champion(args)
     elif args.titles:
         cmd_titles(args)
     else:
