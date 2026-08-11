@@ -71,12 +71,12 @@
   --maxw: 1080px;
   --ease: cubic-bezier(.2,.7,.3,1);
 
-  /* Patrón de fondo del shell (balón/banderín/estadio), tema por color.
+  /* Patrón de fondo del shell (camiseta/silbato/botas/portería), tema por color.
      El color lo pone --bg-accent (nunca baked en el SVG); presets en
      html[data-bg-theme="…"] más abajo. bg-theme.js aplica el atributo. */
   --bg-accent: #7c5cff;
-  --bg-pattern-tile: url('/assets/bg-pattern.svg?v=20260811c');
-  --bg-pattern-size: 200px;
+  --bg-pattern-tile: url('/assets/bg-pattern.svg?v=20260811d');
+  --bg-pattern-size: 128px;
   --bg-pattern-opacity: .05;
 
   /* Muestras fijas para el selector de Ajustes (independientes de cuál esté
