@@ -254,9 +254,6 @@ html[data-theme="light"] .poss__seg { color: #fff; }
 /* Banner no disponible */
 .lv-msg { max-width: 600px; margin: 60px auto; text-align: center; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--sp-8); color: var(--text-2); }
 
-/* Slot de anuncio dentro de cada pestaña */
-.tab-section .ad-wrap { margin-top: var(--sp-7); }
-
 .footer { max-width: var(--maxw); margin: var(--sp-8) auto 0; }
 
 @media (max-width: 720px) {

@@ -1,6 +1,6 @@
 /* PMAccount — estado de cuenta + login en la topbar + API de follows.
  *
- * Componente compartido (patrón como PMFixtures/PMAds). Al cargar:
+ * Componente compartido (patrón como PMFixtures). Al cargar:
  *  - inyecta en la topbar un enlace a /cuenta ("Iniciar sesión" o el nombre del
  *    usuario) según haya sesión;
  *  - carga el estado (config → me → follows) y lo cachea;

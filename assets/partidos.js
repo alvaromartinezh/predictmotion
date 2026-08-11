@@ -25,8 +25,6 @@
   function teamHref(slug, t) { return '/equipo?id=' + encodeURIComponent(t.id) + '&name=' + encodeURIComponent(t.name || '') + '&league=' + encodeURIComponent(slug); }
   function lname(s) { return (L[s] || {}).name || s; }
   function llogo(s) { return (L[s] || {}).logo || ''; }
-  // Ranura Adsterra real (PMAds; mid = rectángulo 300×250).
-  var AD = '<div class="ad-wrap"><span class="ad-label">Publicidad</span><div class="ad-slot" data-ad-slot="mid"></div></div>';
 
   // ── días (hoy-1 … hoy+6). ?date=YYYYMMDD fija el día inicial (deep-link) ──
   var today = new Date(); today.setHours(12, 0, 0, 0);
@@ -93,7 +91,7 @@
         + '<span class="name">' + esc(initials(m.home.name)) + ' ' + (m.home.score == null ? 0 : m.home.score) + '-' + (m.away.score == null ? 0 : m.away.score) + ' ' + esc(initials(m.away.name)) + '</span>'
         + '<span class="val" style="color:var(--live)">' + esc(m.clock || '') + '</span></div>';
     }).join('') : '<p class="time">Sin partidos en vivo</p>';
-    return '<div class="rail-card"><h4>En directo ahora</h4>' + rows + '</div>' + AD;
+    return '<div class="rail-card"><h4>En directo ahora</h4>' + rows + '</div>';
   }
 
   function renderMain() {
@@ -120,7 +118,7 @@
     }
 
     var col = '<div class="feed-sec" style="margin-top:var(--sp-2)"><h2 class="feed-sec__title">Partidos</h2></div>'
-      + daystrip() + chips + groups + AD;
+      + daystrip() + chips + groups;
     window.PMShell.mount({ active: 'matches', main: '<div class="feed"><div class="feed__col">' + col + '</div><div class="feed__rail">' + liveRail(live) + '</div></div>', onRender: wire });
   }
 
@@ -158,9 +156,7 @@
       var b = e.target.closest('.league-chip'); if (!b) return;
       state.filter = b.getAttribute('data-f'); renderMain();
     });
-    if (window.PMAds) window.PMAds.init();   // re-inicia banners tras cada render
   }
-
   function start() { loadDay(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
   document.addEventListener('pm-account-ready', loadDay);

@@ -135,9 +135,6 @@
     return '<div class="feed-sec"><h2 class="feed-sec__title">' + esc(title) + (tagHTML || '') + '</h2>'
       + (moreTxt ? '<a class="feed-sec__more" href="' + (moreHref || '#') + '">' + esc(moreTxt) + '</a>' : '') + '</div>';
   }
-  // Ranura Adsterra real (PMAds monta el iframe aislado; mid = rectángulo 300×250).
-  var AD = '<div class="ad-wrap"><span class="ad-label">Publicidad</span><div class="ad-slot" data-ad-slot="mid"></div></div>';
-  var AD_RAIL = AD;
 
   // ── builder PURO del feed logueado (sin fetch) ──
   function buildUserHTML(f, matches, snaps, allNews) {
@@ -174,26 +171,23 @@
     }
 
     col.push(feedSec('Tu día', 'Ver todo', '/partidos'));
-    var adPut = false;
     // Equipos seguidos: resultado + mini-tabla (±3) + noticia del equipo
     teams.slice(0, 3).forEach(function (t, i) {
       var m = matches[t.espn_team_id]; if (m) col.push(resultCard(m, true));
       var mt = miniTable(snaps[t.league_slug], t.espn_team_id, t.name); if (mt) col.push(mt);
       col.push(nextNews(function (it) { return (it.teams || []).some(function (x) { return String(x.id) === String(t.espn_team_id); }) || (it.leagues || []).indexOf(t.league_slug) >= 0; }));
-      if (i === 1) { col.push(AD); adPut = true; }
     });
     // Competiciones seguidas (que no cubra ya un equipo): clasificación + noticia
     comps.filter(function (s) { return !teamLeagues[s]; }).slice(0, 4).forEach(function (slug, i) {
       var cc = competitionCard(slug, snaps[slug]); if (cc) col.push(cc);
       col.push(nextNews(function (it) { return (it.leagues || []).indexOf(slug) >= 0; }));
-      if (!adPut && i === 1) { col.push(AD); adPut = true; }
     });
 
     var extra = relNews.filter(function (it) { return !usedLinks[it.link]; }).slice(0, 4);
     if (extra.length) { col.push(feedSec('Más noticias')); extra.forEach(function (it) { col.push(newsCard(it)); }); }
 
     var primary = (teams[0] && teams[0].league_slug) || comps[0];
-    var rail = (primary && snaps[primary] ? leadersRail(snaps[primary], primary) : '') + AD_RAIL;
+    var rail = (primary && snaps[primary] ? leadersRail(snaps[primary], primary) : '');
     return { col: col.join(''), rail: rail };
   }
 
@@ -211,8 +205,7 @@
       if (snap) { col.push(feedSec('Predicciones que suenan')); col.push(leadersCard(snap, 'laliga')); }
       col.push('<section class="cta-card"><h3>Sigue a los tuyos</h3><p>Crea tu cuenta gratis y tu portada se llena con los resultados, la clasificación y las noticias de tus equipos.</p><div class="btns"><a class="btn btn--primary" href="/cuenta">Crear cuenta</a><a class="btn btn--ghost" href="/cuenta">Entrar</a></div></section>');
       if (allNews.length) { col.push(feedSec('Lo último', 'Más', '/noticias')); allNews.slice(0, 4).forEach(function (it) { col.push(newsCard(it)); }); }
-      col.push(AD);
-      return { col: col.join(''), rail: (snap ? leadersRail(snap, 'laliga') : '') + AD_RAIL };
+      return { col: col.join(''), rail: (snap ? leadersRail(snap, 'laliga') : '') };
     });
   }
 
@@ -224,11 +217,7 @@
   }
   function skeleton() { return shellMain('<div class="card" style="height:180px"></div><div class="card" style="height:240px"></div>', ''); }
   function shellMain(colHTML, railHTML) { return '<div class="feed"><div class="feed__col">' + colHTML + '</div><div class="feed__rail">' + railHTML + '</div></div>'; }
-  // onRender (se ejecuta tras CADA render del shell, incl. re-render por eventos de
-  // cuenta) → re-inicia PMAds sobre las ranuras recién creadas. PMAds es idempotente
-  // por slot (dataset.adLoaded), así que no duplica banners ya montados.
-  function afterRender() { if (window.PMAds) window.PMAds.init(); }
-  function mount(out) { window.PMShell.mount({ active: 'home', main: shellMain(out.col, out.rail), onRender: afterRender }); }
+  function mount(out) { window.PMShell.mount({ active: 'home', main: shellMain(out.col, out.rail) }); }
   function fail() { window.PMShell.mount({ active: 'home', main: shellMain('<div class="card"><div style="padding:var(--sp-6);color:var(--text-2)">No se pudo cargar el feed. Reintenta en unos segundos.</div></div>', '') }); }
 
   var token = 0;
