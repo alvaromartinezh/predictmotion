@@ -38,6 +38,7 @@ def render(league):
         "{{P_DRAW}}":    str(league["p_draw"]),
         "{{SHORTNAME}}": league.get("shortname", league["name"]),
         "{{RELEG_TO}}":  league.get("releg_to", "categoría inferior"),
+        "{{ABOUT}}":     league.get("about", ""),
     }
     for tok, val in vals.items():
         tmpl = tmpl.replace(tok, val)

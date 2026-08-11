@@ -41,6 +41,14 @@
   main.wrap { padding-bottom: var(--sp-9); }
   .table-toolbar { margin-top: var(--sp-2); }
 
+  /* Texto editorial (SEO, indexable) */
+  .league-about { border-top: 1px solid var(--line); margin-top: var(--sp-8); padding-top: var(--sp-6); }
+  .league-about__inner { max-width: 74ch; }
+  .league-about h2 { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: .02em; font-size: var(--fs-16); margin: var(--sp-5) 0 var(--sp-2); }
+  .league-about h2:first-child { margin-top: 0; }
+  .league-about p { color: var(--text-2); line-height: 1.7; margin-bottom: var(--sp-3); }
+  .league-about a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+
   /* Equipo: crest + fallback de iniciales */
   .team__crest-box { width: 26px; height: 26px; flex: none; display: grid; place-items: center; }
   .team__crest-box img { width: 100%; height: 100%; object-fit: contain; }
@@ -226,11 +234,26 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 </main>
 
+<!-- ===== Texto editorial (SEO, indexable) ===== -->
+<section class="league-about" aria-label="Sobre esta competición">
+  <div class="wrap">
+    <div class="league-about__inner">
+      <h2>Sobre {{NAME}} {{SUBTITLE}}</h2>
+      <p>{{ABOUT}}</p>
+      <h2>Cómo se calculan las probabilidades</h2>
+      <p>El porcentaje que acompaña a cada club indica la probabilidad de que termine la fase de liga en cada zona: clasificación directa para octavos de final (primeros ocho puestos), play-off de eliminatorias (del noveno al vigésimo cuarto) o eliminación. Las posiciones exactas se toman de los datos en vivo de la propia competición.</p>
+      <p>Las probabilidades se obtienen con una simulación Monte Carlo que proyecta el resto de la fase de liga partido a partido. Por cada partido pendiente se estima la victoria local, el empate o la victoria visitante a partir de las estadísticas históricas de la competición, y la simulación completa se repite miles de veces para contar con qué frecuencia acaba cada club en cada posición. Los resultados se recalculan en cada jornada, y también en directo mientras hay partidos en juego.</p>
+      <p><a href="/acerca">Conoce la metodología completa</a></p>
+    </div>
+  </div>
+</section>
+
 <!-- ===== PIE ===== -->
 <footer class="footer">
   <div class="wrap footer__inner">
     <p id="footer-update">© 2025 PredictMotion · Todos los derechos reservados</p>
     <nav class="footer__links" aria-label="Enlaces">
+      <a href="/acerca">Cómo funciona</a>
       <a href="mailto:contact@predictmotion.com">contact@predictmotion.com</a>
       <a href="/privacy">Política de privacidad</a>
       <a href="/equipos/{{SLUG}}">Probabilidades por equipo</a>

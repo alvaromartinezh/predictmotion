@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <link rel="icon" type="image/png" href="/media/twitter_profile.png" />
+  <link rel="apple-touch-icon" href="/media/twitter_profile.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+  <title>Cómo funciona PredictMotion · Metodología</title>
+  <meta name="description" content="Qué es PredictMotion y cómo se calculan las probabilidades de ascenso, descenso, Champions y eliminatorias europeas: simulación Monte Carlo sobre los datos en vivo de cada competición." />
+  <meta name="robots" content="index, follow" />
+  <meta name="theme-color" content="#05070e" />
+  <link rel="canonical" href="https://predictmotion.com/acerca" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://predictmotion.com/acerca" />
+  <meta property="og:title" content="Cómo funciona PredictMotion · Metodología" />
+  <meta property="og:description" content="Qué es PredictMotion y cómo se calculan las probabilidades de cada competición con simulación Monte Carlo." />
+  <meta property="og:image" content="https://predictmotion.com/media/twitter_profile.png" />
+  <meta property="og:site_name" content="PredictMotion" />
+  <meta property="og:locale" content="es_ES" />
+
+  <link rel="stylesheet" href="/styles.css?v=20260811f" />
+  <link rel="stylesheet" href="/assets/shell.css?v=20260811f" />
+  <script src="/theme.js?v=20260811f"></script>
+  <script src="/assets/pm-leagues.js?v=20260811f"></script>
+  <style>
+  .app__main main.wrap { max-width: 820px; padding-bottom: var(--sp-9); }
+  .legal { padding-block: var(--sp-7); }
+  .legal h1 {
+    font-family: var(--font-display); font-weight: 800; text-transform: uppercase;
+    font-size: clamp(1.8rem, 4.6vw, var(--fs-36)); line-height: 1.06; letter-spacing: .01em;
+    margin-bottom: var(--sp-2);
+  }
+  .legal__sub { color: var(--muted); font-family: var(--font-mono); font-size: var(--fs-12); letter-spacing: .12em; text-transform: uppercase; margin-bottom: var(--sp-6); }
+  .legal .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--sp-7); }
+  .legal h2 { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: .03em; font-size: var(--fs-18); margin: var(--sp-6) 0 var(--sp-3); color: var(--text); }
+  .legal h2:first-child { margin-top: 0; }
+  .legal p { font-size: var(--fs-15); color: var(--text-2); line-height: 1.7; margin-bottom: var(--sp-3); }
+  .legal a { color: var(--accent); }
+  .legal a:hover { text-decoration: underline; }
+  .legal ul { margin: 0 0 var(--sp-3) var(--sp-5); }
+  .legal li { font-size: var(--fs-15); color: var(--text-2); line-height: 1.7; }
+  .legal strong { color: var(--text); }
+  .back-link { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-13); color: var(--muted); margin-bottom: var(--sp-4); }
+  .back-link:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+  <!-- Shell del rediseño en modo CHROME: rellena sidenav/appbar/tabbar alrededor
+       del contenido existente (el <main> de la página no se reescribe). -->
+  <div class="pm-app app">
+    <aside class="sidenav" id="pm-sidenav"></aside>
+    <div class="app__main">
+      <header class="appbar" id="pm-appbar"></header>
+
+      <main class="wrap legal">
+        <a class="back-link" href="/">← Volver al inicio</a>
+        <h1>Qué es PredictMotion</h1>
+        <p class="legal__sub">PredictMotion · Cómo funciona y metodología</p>
+
+        <div class="panel">
+          <p>PredictMotion muestra en tiempo real la probabilidad de cada equipo de conseguir sus objetivos en su competición: ascender, jugar el play-off, clasificarse para Europa, luchar por el título o descender.</p>
+
+          <h2>Cómo se calculan las probabilidades</h2>
+          <p>La clasificación con porcentajes se obtiene con una <strong>simulación Monte Carlo</strong>: se proyecta el resto de la temporada miles de veces y se cuenta, en cada simulación, en qué posición acaba cada equipo.</p>
+          <ul>
+            <li>Para cada partido pendiente se estima la probabilidad de victoria local, empate o victoria visitante, usando los parámetros históricos de esa competición y la fuerza de cada equipo según sus resultados recientes.</li>
+            <li>Cada una de las miles de temporadas simuladas resuelve todos los partidos pendientes, suma los puntos finales y aplica los desempates reales de la competición (puntos, diferencia de goles, goles a favor).</li>
+            <li>Al terminar, se divide el número de veces que un equipo ha acabado en cada posición entre el total de simulaciones: ese es el porcentaje que ves junto a su nombre.</li>
+          </ul>
+          <p>El resultado se recalcula a lo largo de la temporada: con cada jornada disputada la simulación parte de la clasificación real, y durante los partidos en directo los puntos provisionales se actualizan en el momento.</p>
+
+          <h2>De dónde salen los datos</h2>
+          <p>Clasificaciones, calendarios, resultados, plantillas y logos se obtienen en directo de la API pública de ESPN, la misma fuente que alimenta los marcadores. No hay datos introducidos a mano: todo se actualiza solo, jornada a jornada.</p>
+          <p>Los cortes de cada zona (qué puesto da ascenso directo, play-off, Europa o descenso) se leen de las notas oficiales que publica cada competición, por lo que se ajustan automáticamente si cambia el número de plazas de una temporada a otra.</p>
+
+          <h2>Competiciones disponibles</h2>
+          <p>PredictMotion cubre 15 competiciones de clubes:</p>
+          <ul>
+            <li><strong>España:</strong> LaLiga y la Liga Hypermotion (Segunda División).</li>
+            <li><strong>Inglaterra:</strong> Premier League y Championship.</li>
+            <li><strong>Italia:</strong> Serie A y Serie B.</li>
+            <li><strong>Alemania:</strong> Bundesliga y 2. Bundesliga.</li>
+            <li><strong>Francia:</strong> Ligue 1 y Ligue 2.</li>
+            <li><strong>Portugal:</strong> Primeira Liga.</li>
+            <li><strong>Países Bajos:</strong> Eredivisie.</li>
+            <li><strong>Europa:</strong> la fase de liga de la Champions League, la Europa League y la Conference League, con su formato de 36 clubes y 8 partidos.</li>
+          </ul>
+
+          <h2>Preguntas frecuentes</h2>
+          <p><strong>¿Qué significa el porcentaje de cada equipo?</strong> Es la frecuencia con la que ese equipo acaba en esa zona en la simulación. Por ejemplo, un 35&nbsp;% de ascenso directo significa que el equipo asciende en 35 de cada 100 temporadas simuladas con los datos actuales.</p>
+          <p><strong>¿Las probabilidades son una apuesta o una predicción?</strong> Son una estimación estadística, no una cuota de apuestas ni una garantía de resultado. El fútbol tiene una componente aleatoria que ninguna simulación puede eliminar.</p>
+          <p><strong>¿Con qué frecuencia se actualizan?</strong> Con cada jornada disputada. Entre jornadas, la simulación se rehace cuando cambian los resultados en directo, de modo que los porcentajes reflejan siempre la clasificación más reciente.</p>
+          <p><strong>¿Se pueden ver los próximos partidos de cada equipo?</strong> Sí. Cada competición tiene su pestaña de «Próximos partidos», cada equipo tiene su página propia y el sitio dispone de un buscador de equipos y competiciones.</p>
+
+          <h2>Contacto</h2>
+          <p>Si tienes preguntas o sugerencias, escríbenos a <a href="mailto:contact@predictmotion.com">contact@predictmotion.com</a>. Consulta también nuestra <a href="/privacy">política de privacidad</a>.</p>
+        </div>
+      </main>
+
+      <footer class="footer">
+        <div class="wrap footer__inner">
+          <p>© 2025 PredictMotion · Todos los derechos reservados</p>
+          <nav class="footer__links" aria-label="Enlaces legales">
+            <a href="/acerca">Cómo funciona</a>
+            <a href="mailto:contact@predictmotion.com">contact@predictmotion.com</a>
+            <a href="/privacy">Política de privacidad</a>
+          </nav>
+        </div>
+      </footer>
+    </div>
+  </div>
+  <div id="shell-tabbar"></div>
+
+  <script src="/assets/account.js?v=20260811f"></script>
+  <script src="/assets/shell.js?v=20260811f"></script>
+  <script>PMShell.chrome({ active: null });</script>
+</body>
+</html>
