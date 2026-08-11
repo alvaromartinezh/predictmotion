@@ -15,9 +15,9 @@
     return '<img class="crest" loading="lazy" alt="" src="' + esc(src) + '" data-ab="' + ab + '" onerror="PMSearchCrestFallback(this)">';
   }
   var ICSEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.2-3.2"/></svg>';
-  var ARROW = '<span class="r-arrow">›</span>';
+  var ARROW = '<span class="pm-item__end"><span class="pm-item__arrow">›</span></span>';
 
-  var COMPS = ORDER.filter(function (s) { return L[s]; }).map(function (s) { return { slug: s, name: L[s].name, logo: L[s].logo, norm: norm(L[s].name + ' ' + s) }; });
+  var COMPS = ORDER.filter(function (s) { return L[s]; }).map(function (s) { return { slug: s, name: L[s].name, logo: L[s].logo, country: L[s].country, norm: norm(L[s].name + ' ' + s) }; });
   var TEAMS = [], teamsReady = false;
 
   function loadTeams() {
@@ -42,13 +42,16 @@
   }
 
   function compRow(c) {
-    return '<a class="search-row" href="/' + c.slug + '"><img class="lg-logo" src="' + esc(c.logo) + '" alt=""><span class="r-name">' + esc(c.name) + '</span>' + ARROW + '</a>';
+    return '<a class="pm-item" href="/' + c.slug + '"><img class="lg-logo" src="' + esc(c.logo) + '" alt="">'
+      + '<span class="pm-item__body"><span class="pm-item__title">' + esc(c.name) + '</span>'
+      + (c.country ? '<span class="pm-item__sub">' + esc(c.country) + '</span>' : '') + '</span>' + ARROW + '</a>';
   }
   function teamRow(t) {
-    return '<a class="search-row" href="/equipo?id=' + encodeURIComponent(t.id) + '&league=' + encodeURIComponent(t.slug) + '&name=' + encodeURIComponent(t.name || '') + '">'
-      + crest(t.logo, t.name, t.id) + '<span class="r-name">' + esc(t.name) + '</span><span class="r-tag">' + esc((L[t.slug] || {}).name || t.slug) + '</span>' + ARROW + '</a>';
+    return '<a class="pm-item pm-item--team" href="/equipo?id=' + encodeURIComponent(t.id) + '&league=' + encodeURIComponent(t.slug) + '&name=' + encodeURIComponent(t.name || '') + '">'
+      + crest(t.logo, t.name, t.id) + '<span class="pm-item__body"><span class="pm-item__title">' + esc(t.name) + '</span>'
+      + '<span class="pm-item__sub">' + esc((L[t.slug] || {}).name || t.slug) + '</span></span>' + ARROW + '</a>';
   }
-  function section(title, rowsHTML) { return '<div class="feed-sec"><h2 class="feed-sec__title">' + title + '</h2></div><section class="card">' + rowsHTML + '</section>'; }
+  function section(title, rowsHTML) { return '<div class="feed-sec"><h2 class="feed-sec__title">' + title + '</h2></div><section class="pm-list">' + rowsHTML + '</section>'; }
 
   function results(q) {
     var out = document.getElementById('search-results'); if (!out) return;

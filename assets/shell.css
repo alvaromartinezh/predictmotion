@@ -65,9 +65,12 @@ html[data-theme="light"] .pm-theme-toggle .tt-dark  { display: none; }
 .feed { width: 100%; max-width: var(--feed-w); margin-inline: auto; padding: var(--sp-4); }
 .feed > * + * { margin-top: var(--sp-4); }
 .feed__col > * + * { margin-top: var(--sp-4); }
-.feed-sec { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); margin: var(--sp-5) var(--sp-1) var(--sp-1); }
+.feed-sec { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin: var(--sp-7) var(--sp-1) var(--sp-3); }
 .feed-sec:first-child { margin-top: var(--sp-1); }
-.feed-sec__title { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; font-size: var(--fs-18); letter-spacing: .02em; display: flex; align-items: center; gap: var(--sp-2); }
+.feed-sec__title { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; font-size: var(--fs-22); letter-spacing: .02em; line-height: 1; display: flex; align-items: center; gap: var(--sp-3); }
+/* Tick de acento antes del título (jerarquía editorial). Se omite en títulos que
+   ya llevan su propio logo de liga (partidos) para no duplicar el ancla visual. */
+.feed-sec__title:not(:has(img))::before { content: ""; width: 4px; align-self: stretch; min-height: 1em; border-radius: var(--r-pill); background: var(--accent); box-shadow: 0 0 10px var(--accent-glow); }
 .feed-sec__title .tag { font-family: var(--font-mono); font-size: var(--fs-11); font-weight: 500; letter-spacing: .1em; color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent-line); padding: 2px 7px; border-radius: var(--r-pill); text-transform: none; }
 .feed-sec__title .tag--live { color: var(--live); background: rgba(255,77,109,.12); border-color: rgba(255,77,109,.4); }
 .feed-sec__more { font-size: var(--fs-13); color: var(--muted); font-weight: 600; }
@@ -85,6 +88,49 @@ html[data-theme="light"] .pm-theme-toggle .tt-dark  { display: none; }
 /* ---- Crest circular ---- */
 .crest { border-radius: 50%; object-fit: cover; background: var(--surface-2); border: 1px solid var(--line); flex: none; }
 .crest-ph { border-radius: 50%; display: grid; place-items: center; flex: none; font-family: var(--font-display); font-weight: 700; color: var(--text-2); background: var(--surface-2); border: 1px solid var(--line); font-size: 11px; }
+
+/* ============================================================
+   LISTA DE ENTIDADES — componente compartido (Editorial / ref. FotMob)
+   Filas de competición / equipo / seguido. Escudo grande = ancla visual;
+   jerarquía tipográfica clara; hover con barra de acento a la izquierda y
+   desplazamiento sutil de fondo. Sustituye a .search-row y a las filas de
+   seguidos de .set-row. Usado por: Buscar, Siguiendo, Ajustes (seguidos).
+   ============================================================ */
+.pm-list { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; }
+.pm-item {
+  position: relative; display: flex; align-items: center; gap: var(--sp-4);
+  padding: 13px var(--sp-4); min-height: 62px; color: inherit;
+  border-bottom: 1px solid var(--line-soft);
+  transition: background .16s var(--ease);
+}
+.pm-item:last-child { border-bottom: none; }
+/* Barra de acento a la izquierda (aparece en hover / fila activa) */
+.pm-item::before {
+  content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px;
+  border-radius: 0 3px 3px 0; background: var(--accent);
+  transform: scaleY(0); transform-origin: center; transition: transform .18s var(--ease);
+}
+a.pm-item:hover, .pm-item:hover { background: var(--surface-2); }
+a.pm-item:hover::before, .pm-item:hover::before { transform: scaleY(1); }
+.pm-item.is-active { background: var(--accent-soft); }
+.pm-item.is-active::before { transform: scaleY(1); }
+
+/* __go = zona clicable (escudo + texto) cuando la fila lleva un botón de acción
+   aparte (p. ej. "Dejar de seguir"). En filas 100% enlace no hace falta. */
+.pm-item__go { display: flex; align-items: center; gap: var(--sp-4); flex: 1; min-width: 0; color: inherit; }
+.pm-item .crest, .pm-item .crest-ph { width: 40px; height: 40px; font-size: var(--fs-15); }
+.pm-item .lg-logo { width: 34px; height: 34px; object-fit: contain; flex: none; }
+.pm-item__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.pm-item__title { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-18); letter-spacing: .01em; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.15; }
+.pm-item__sub { font-size: var(--fs-13); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pm-item .fav { color: var(--brand); }
+.pm-item__end { display: flex; align-items: center; gap: var(--sp-3); flex: none; }
+.pm-item__arrow { color: var(--faint); font-size: var(--fs-22); line-height: 1; transition: color .16s var(--ease), transform .16s var(--ease); }
+.pm-item:hover .pm-item__arrow { color: var(--accent); transform: translateX(2px); }
+.pm-item__tag { font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: .04em; color: var(--muted); background: var(--surface-2); border: 1px solid var(--line-soft); border-radius: var(--r-pill); padding: 3px 9px; }
+/* título de fila con escudo circular de equipo → un pelín más pequeño para
+   equilibrar con el nombre largo de un club */
+.pm-item--team .pm-item__title { font-family: var(--font-data); font-weight: 600; font-size: var(--fs-15); text-transform: none; letter-spacing: 0; }
 
 /* ---- Resultado (centrado, Editorial) ---- */
 .match { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--sp-3); padding: var(--sp-4) var(--sp-4) var(--sp-5); }
@@ -188,18 +234,20 @@ html[data-theme="light"] .pm-theme-toggle .tt-dark  { display: none; }
 .day.is-on .dw { color: var(--accent); }
 
 .matchlist { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; }
-.pm-row { display: grid; grid-template-columns: 52px 1fr; gap: var(--sp-3); align-items: center; padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--line-soft); transition: background .14s var(--ease); }
+.pm-row { position: relative; display: grid; grid-template-columns: 58px 1fr; gap: var(--sp-4); align-items: center; padding: 14px var(--sp-4); border-bottom: 1px solid var(--line-soft); transition: background .14s var(--ease); }
 .pm-row:last-child { border-bottom: none; }
-.matchlist a.pm-row:hover { background: var(--surface-2); }
+.pm-row::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform .16s var(--ease); }
+.matchlist .pm-row:hover { background: var(--surface-2); }
+.matchlist .pm-row:hover::before { transform: scaleX(1); }
 .pm-time { text-align: center; font-family: var(--font-mono); font-size: var(--fs-13); color: var(--text-2); line-height: 1.15; }
 .pm-time small { display: block; font-size: 10px; color: var(--faint); letter-spacing: .04em; }
 .pm-time.ft { color: var(--faint); }
 .pm-time.live { color: var(--live); font-weight: 600; display: inline-flex; flex-direction: column; align-items: center; gap: 3px; }
 .pm-time.live i { width: 6px; height: 6px; border-radius: 50%; background: var(--live); animation: pmblink 1.3s var(--ease) infinite; }
-.pm-body { min-width: 0; display: flex; flex-direction: column; gap: 7px; }
-.pm-line { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: var(--sp-3); }
-.pm-line .crest, .pm-line .crest-ph { width: 22px; height: 22px; font-size: 10px; }
-.pm-line .name { font-weight: 600; font-size: var(--fs-14); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pm-body { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.pm-line { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: var(--sp-3); }
+.pm-line .crest, .pm-line .crest-ph { width: 28px; height: 28px; font-size: 11px; }
+.pm-line .name { font-weight: 600; font-size: var(--fs-15); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pm-line .sc { font-family: var(--font-mono); font-weight: 700; font-size: var(--fs-15); color: var(--text); }
 .pm-line.lose .name { color: var(--text-2); }
 .pm-line.lose .sc { color: var(--muted); }
@@ -220,22 +268,16 @@ a.pm-status-link:hover .pm-time { color: var(--accent); }
 /* ============================================================
    BUSCAR
    ============================================================ */
-.search-box { position: sticky; top: 0; z-index: 5; padding: var(--sp-3) 0 var(--sp-2); background: linear-gradient(var(--bg) 70%, transparent); }
-.search-field { display: flex; align-items: center; gap: var(--sp-3); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill); padding: 10px var(--sp-4); }
-.search-field:focus-within { border-color: var(--accent-line); }
-.search-field svg { width: 20px; height: 20px; color: var(--muted); flex: none; }
+.search-box { position: sticky; top: 0; z-index: 5; padding: var(--sp-3) 0 var(--sp-3); background: linear-gradient(var(--bg) 72%, transparent); }
+.search-field { display: flex; align-items: center; gap: var(--sp-3); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 14px var(--sp-4); transition: border-color .16s var(--ease), box-shadow .16s var(--ease); }
+.search-field:focus-within { border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
+.search-field svg { width: 22px; height: 22px; color: var(--muted); flex: none; transition: color .16s var(--ease); }
+.search-field:focus-within svg { color: var(--accent); }
 .search-field input { flex: 1; background: none; border: none; outline: none; color: var(--text); font: inherit; font-size: var(--fs-16); }
 .search-field input::placeholder { color: var(--muted); }
 .search-clear { color: var(--muted); font-size: var(--fs-18); padding: 0 4px; }
 .search-clear:hover { color: var(--text); }
 .search-empty { text-align: center; color: var(--muted); padding: var(--sp-7) var(--sp-4); }
-.search-row { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--line-soft); transition: background .14s var(--ease); }
-.search-row:last-child { border-bottom: none; }
-.search-row:hover { background: var(--surface-2); }
-.search-row .lg-logo, .search-row .crest, .search-row .crest-ph { width: 26px; height: 26px; object-fit: contain; flex: none; }
-.search-row .r-name { font-weight: 600; color: var(--text); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.search-row .r-tag { font-family: var(--font-mono); font-size: var(--fs-11); color: var(--muted); }
-.search-row .r-arrow { color: var(--faint); }
 
 /* ============================================================
    AJUSTES
@@ -293,10 +335,13 @@ a.pm-status-link:hover .pm-time { color: var(--accent); }
   .navitem .badge { margin-left: auto; font-family: var(--font-mono); font-size: 10px; background: var(--surface-2); color: var(--muted); padding: 1px 7px; border-radius: var(--r-pill); }
   .sidenav__label { padding: var(--sp-5) var(--sp-3) var(--sp-2); }
   .sidenav__follows { display: flex; flex-direction: column; gap: 2px; }
-  .side-follow { display: flex; align-items: center; gap: var(--sp-3); padding: 7px var(--sp-3); border-radius: var(--r-md); color: var(--text-2); font-size: var(--fs-14); }
+  .side-follow { position: relative; display: flex; align-items: center; gap: var(--sp-3); padding: 9px var(--sp-3); border-radius: var(--r-md); color: var(--text-2); font-size: var(--fs-14); font-weight: 500; overflow: hidden; transition: background .14s var(--ease), color .14s var(--ease); }
+  .side-follow::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); transform: scaleY(0); transform-origin: center; transition: transform .16s var(--ease); }
   .side-follow:hover { background: var(--surface); color: var(--text); }
-  .side-follow .crest, .side-follow .crest-ph { width: 24px; height: 24px; font-size: 10px; }
-  .side-follow .star { margin-left: auto; color: var(--brand); font-size: var(--fs-13); }
+  .side-follow:hover::before { transform: scaleY(1); }
+  .side-follow span:not(.star):not(.crest-ph) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .side-follow .crest, .side-follow .crest-ph { width: 28px; height: 28px; font-size: 11px; }
+  .side-follow .star { margin-left: auto; color: var(--brand); font-size: var(--fs-13); flex: none; }
   .sidenav__spacer { flex: 1; }
   .sidenav__user { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-3); margin-top: var(--sp-3); border-top: 1px solid var(--line-soft); }
   .sidenav__me { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; flex: 1; color: inherit; }

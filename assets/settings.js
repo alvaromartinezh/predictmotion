@@ -60,19 +60,23 @@
     if (s.on) {
       var rows = '';
       (s.f.competitions || []).forEach(function (slug) {
-        var lg = L[slug] || { name: slug, logo: '' };
-        rows += '<div class="set-row">' + (lg.logo ? '<img class="lg-logo" src="' + esc(lg.logo) + '" alt="">' : '<span class="crest-ph"></span>')
-          + '<span class="s-main"><span class="s-label">' + esc(lg.name) + '</span></span>'
-          + '<button class="set-unfollow" data-unfollow-comp="' + esc(slug) + '" type="button">Dejar de seguir</button></div>';
+        var lg = L[slug] || { name: slug, logo: '', country: '' };
+        rows += '<div class="pm-item"><a class="pm-item__go" href="/' + esc(slug) + '">' + (lg.logo ? '<img class="lg-logo" src="' + esc(lg.logo) + '" alt="">' : '<span class="crest-ph"></span>')
+          + '<span class="pm-item__body"><span class="pm-item__title">' + esc(lg.name) + '</span>' + (lg.country ? '<span class="pm-item__sub">' + esc(lg.country) + '</span>' : '') + '</span></a>'
+          + '<span class="pm-item__end"><button class="set-unfollow" data-unfollow-comp="' + esc(slug) + '" type="button">Dejar de seguir</button></span></div>';
       });
       var favId = s.f.favorite_team && String(s.f.favorite_team.espn_team_id);
       (s.f.teams || []).forEach(function (tm) {
-        rows += '<div class="set-row">' + crest(tm.espn_team_id, tm.name)
-          + '<span class="s-main"><span class="s-label">' + (favId === String(tm.espn_team_id) ? '★ ' : '') + esc(tm.name || 'Equipo') + '</span></span>'
-          + '<button class="set-unfollow" data-unfollow-team="' + esc(tm.espn_team_id) + '" type="button">Dejar de seguir</button></div>';
+        var lg = L[tm.league_slug] || {};
+        rows += '<div class="pm-item pm-item--team"><a class="pm-item__go" href="/equipo?id=' + esc(tm.espn_team_id) + '&league=' + esc(tm.league_slug || '') + '&name=' + encodeURIComponent(tm.name || '') + '">' + crest(tm.espn_team_id, tm.name)
+          + '<span class="pm-item__body"><span class="pm-item__title">' + (favId === String(tm.espn_team_id) ? '<span class="fav">★</span> ' : '') + esc(tm.name || 'Equipo') + '</span><span class="pm-item__sub">' + esc(lg.name || tm.league_slug || '') + '</span></span></a>'
+          + '<span class="pm-item__end"><button class="set-unfollow" data-unfollow-team="' + esc(tm.espn_team_id) + '" type="button">Dejar de seguir</button></span></div>';
       });
-      if (!rows) rows = '<div class="set-row"><span class="s-main"><span class="s-hint">Aún no sigues nada. Usa la ☆ en las competiciones y equipos.</span></span></div>';
-      col.push(group('Tus seguidos', rows));
+      if (rows) {
+        col.push('<div class="feed-sec"><h2 class="feed-sec__title">Tus seguidos</h2></div><section class="pm-list">' + rows + '</section>');
+      } else {
+        col.push(group('Tus seguidos', '<div class="set-row"><span class="s-main"><span class="s-hint">Aún no sigues nada. Usa la ☆ en las competiciones y equipos.</span></span></div>'));
+      }
     }
 
     // Enlaces

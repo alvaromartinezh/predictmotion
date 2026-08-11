@@ -16,17 +16,17 @@
     return { avail: true, on: !!(a.isLoggedIn && a.isLoggedIn()), f: (a.follows && a.follows()) || { competitions: [], teams: [], favorite_team: null } };
   }
 
-  function group(title, rows) { return (title ? '<div class="feed-sec"><h2 class="feed-sec__title">' + esc(title) + '</h2></div>' : '') + '<section class="set-group">' + rows + '</section>'; }
+  function group(title, rows) { return (title ? '<div class="feed-sec"><h2 class="feed-sec__title">' + esc(title) + '</h2></div>' : '') + '<section class="pm-list">' + rows + '</section>'; }
   function compRow(slug) {
     var lg = L[slug] || { name: slug, logo: '' };
-    return '<div class="set-row"><a class="s-go" href="/' + slug + '">' + (lg.logo ? '<img class="lg-logo" src="' + esc(lg.logo) + '" alt="">' : '<span class="crest-ph"></span>')
-      + '<span class="s-main"><span class="s-label">' + esc(lg.name) + '</span><span class="s-hint">Clasificación y probabilidades</span></span></a>'
-      + '<button class="set-unfollow" data-unfollow-comp="' + esc(slug) + '" type="button">Dejar de seguir</button></div>';
+    return '<div class="pm-item"><a class="pm-item__go" href="/' + slug + '">' + (lg.logo ? '<img class="lg-logo" src="' + esc(lg.logo) + '" alt="">' : '<span class="crest-ph"></span>')
+      + '<span class="pm-item__body"><span class="pm-item__title">' + esc(lg.name) + '</span><span class="pm-item__sub">Clasificación y probabilidades</span></span></a>'
+      + '<span class="pm-item__end"><button class="set-unfollow" data-unfollow-comp="' + esc(slug) + '" type="button">Dejar de seguir</button></span></div>';
   }
   function teamRow(t, fav) {
-    return '<div class="set-row"><a class="s-go" href="/equipo?id=' + t.espn_team_id + '&league=' + (t.league_slug || '') + '&name=' + encodeURIComponent(t.name || '') + '">'
-      + teamCrest(t.espn_team_id, t.name) + '<span class="s-main"><span class="s-label">' + (fav ? '★ ' : '') + esc(t.name || 'Equipo') + '</span><span class="s-hint">' + esc(lname(t.league_slug)) + '</span></span></a>'
-      + '<button class="set-unfollow" data-unfollow-team="' + esc(t.espn_team_id) + '" type="button">Dejar de seguir</button></div>';
+    return '<div class="pm-item pm-item--team"><a class="pm-item__go" href="/equipo?id=' + t.espn_team_id + '&league=' + (t.league_slug || '') + '&name=' + encodeURIComponent(t.name || '') + '">'
+      + teamCrest(t.espn_team_id, t.name) + '<span class="pm-item__body"><span class="pm-item__title">' + (fav ? '<span class="fav">★</span> ' : '') + esc(t.name || 'Equipo') + '</span><span class="pm-item__sub">' + esc(lname(t.league_slug)) + '</span></span></a>'
+      + '<span class="pm-item__end"><button class="set-unfollow" data-unfollow-team="' + esc(t.espn_team_id) + '" type="button">Dejar de seguir</button></span></div>';
   }
 
   function mainHTML(s) {
