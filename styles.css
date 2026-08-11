@@ -75,9 +75,9 @@
      El color lo pone --bg-accent (nunca baked en el SVG); presets en
      html[data-bg-theme="…"] más abajo. bg-theme.js aplica el atributo. */
   --bg-accent: #7c5cff;
-  --bg-pattern-tile: url('/assets/bg-pattern.svg?v=20260811d');
+  --bg-pattern-tile: url('/assets/bg-pattern.svg?v=20260811e');
   --bg-pattern-size: 128px;
-  --bg-pattern-opacity: .05;
+  --bg-pattern-opacity: .17;
 
   /* Muestras fijas para el selector de Ajustes (independientes de cuál esté
      activo): mismos valores que los presets html[data-bg-theme] de abajo. */
