@@ -232,7 +232,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="table-scroll">
         <table class="table-clasif" aria-label="Clasificación con probabilidades">
           <thead id="thead"></thead>
-          <tbody id="tbody"></tbody>
+          <tbody id="tbody">{{if fileExists "/data/seriea/rows.html"}}{{readFile "/data/seriea/rows.html"}}{{end}}</tbody>
         </table>
       </div>
     </div>
@@ -661,7 +661,7 @@ async function triggerUpdate(silent = false) {
   isUpdating = true;
 
   try {
-    if (!silent) renderSkeleton();
+    if (!silent && !document.getElementById('tbody').children.length) renderSkeleton();
 
     const [standings, { matches: liveMatches, logo }, snapshot] = await Promise.all([
       fetchStandings(), fetchLiveScores(), fetchSnapshot(),
@@ -732,7 +732,7 @@ async function updateSeason() {
 
 // ─── Boot ─────────────────────────────────────────────────────────────────
 renderTableHeader();
-renderSkeleton();
+if (!document.getElementById('tbody').children.length) renderSkeleton();
 triggerUpdate();
 updateSeason();
 </script>

@@ -6,7 +6,10 @@ orgánica jornada a jornada; no se inventa nada del pasado.
 """
 
 import json
+import os
 from datetime import datetime, timezone
+from html import escape
+from urllib.parse import quote
 
 from .config import DATA_DIR, STRENGTH_SCALE, STRENGTH_FADE_FRACTION
 from .sim_table import zone_prob, resolve_strengths
@@ -110,7 +113,125 @@ def build_table_snapshot(league, rows, sim, sim_n, today, league_logo=None,
     if strengths is not None:
         snap["strength_scale"] = STRENGTH_SCALE
         snap["strength_fade_fraction"] = STRENGTH_FADE_FRACTION
+    # Filas de tabla servidas sin JS (Caddy inyecta rows.html en el tbody).
+    snap["rows_html"] = render_rows_html(league, snap)
     return snap
+
+
+# ── Filas de tabla servidas (SEO sin JavaScript) ─────────────────────────────
+# Replica el `render()` de los dashboards (mismo markup de <tr>, mismas clases
+# de píldora, mismo data-zone) para que la clasificación sea VÁLIDA para crawlers
+# SIN JS. El cron escribe las filas en `data/<slug>/rows.html` (gitignored) y
+# Caddy las inyecta en `<tbody id="tbody">` vía `templates` ({{readFile}}). Los
+# valores salen del snapshot, así que cuadran con el precálculo que lee el JS.
+
+# Paleta de fallback de escudo por plantilla (COLOR_PALETTE de cada dashboard).
+_PALETTES = {
+    "top1": ['#e11d48', '#7c3aed', '#2563eb', '#0891b2', '#059669', '#ca8a04', '#ea580c',
+             '#db2777', '#4f46e5', '#0284c7', '#16a34a', '#d97706', '#dc2626', '#9333ea',
+             '#0369a1', '#15803d', '#b45309', '#be185d', '#6d28d9', '#0e7490'],
+    "top2": ['#e11d48', '#7c3aed', '#2563eb', '#0891b2', '#059669', '#ca8a04', '#ea580c',
+             '#db2777', '#4f46e5', '#0284c7', '#16a34a', '#d97706', '#dc2626', '#9333ea',
+             '#0369a1', '#15803d', '#b45309', '#be185d', '#6d28d9', '#0e7490', '#166534', '#92400e'],
+}
+
+# Columnas de probabilidad por plantilla: (clave del prob del snapshot, clase de
+# la píldora, etiqueta). Mismo orden que los ${probPill(...)} del render() JS.
+_PILLS = {
+    "top1": [("first", "gold", "Título"),
+             ("champions", "up", "Champions"),
+             ("europa", "eu", "Europa"),
+             ("conference", "cf", "Conference"),
+             ("descenso", "down", "Descenso")],
+    "top2": [("ascenso", "up", "Ascenso"),
+             ("playoff", "po", "Play-off"),
+             ("descenso", "down", "Descenso")],
+    "tier2": [("ascenso", "up", "Ascenso"),
+              ("playoff", "po", "Play-off"),
+              ("descenso", "down", "Descenso")],
+    "uefa": [("octavos", "up", "Octavos"),
+             ("playoff", "po", "Play-off"),
+             ("eliminado", "down", "Eliminado")],
+}
+
+_ZONE_DATA = {"promo": "up", "playoff": "po", "europa": "eu", "conf": "cf", "relega": "down"}
+# Zona por índice de banda cuando la banda no trae `zone` (Hypermotion: zonas
+# fijas, sin notas de ESPN). Misma lógica que zoneOf() del dashboard.
+_BAND_ZONE_BY_INDEX = ("promo", "playoff", "relega")
+
+
+def _prob_pill(pct, kind, label):
+    """Réplica de probPill() del dashboard: misma marca para píldora vacía,
+    bloqueada (>=99.5) o con barra. Sin JS, sin animación (solo el HTML)."""
+    if not pct or pct <= 0:
+        return (f'<td class="col-prob"><span class="prob-label">{label}</span>'
+                f'<span class="prob {kind} is-null"><span class="prob__val">—</span></span></td>')
+    lock = pct >= 99.5
+    r = int(pct + 0.5)                       # Math.round() (positivos)
+    disp = '&lt;1' if (r == 0 and pct > 0) else str(r)
+    if lock:
+        return (f'<td class="col-prob"><span class="prob-label">{label}</span>'
+                f'<span class="prob {kind} is-lock"><span class="prob__val">{disp}'
+                f'<span class="pct">%</span></span></span></td>')
+    w = max(2, min(100, pct))
+    return (f'<td class="col-prob"><span class="prob-label">{label}</span>'
+            f'<span class="prob {kind}"><span class="prob__fill" style="width:{w}%"></span>'
+            f'<span class="prob__val">{disp}<span class="pct">%</span></span></span></td>')
+
+
+def render_rows_html(league, snap):
+    """HTML de las <tr> de la clasificación tal como las pintaría render() del
+    dashboard (sin badge de en vivo: el fragmento es el estado del precálculo).
+    Sin equipos (snapshot de offseason) devuelve '' → tbody vacío."""
+    template = league.get("dashboard_template", "top2")
+    pills = _PILLS.get(template)
+    palette = _PALETTES.get(template, _PALETTES["top2"])
+    slug = league["slug"]
+    teams = sorted(snap.get("teams", []), key=lambda t: t["rank"])
+    if not teams:
+        return ""
+    bands = sorted(snap.get("bands", []), key=lambda b: (b["lo"], b["hi"]))
+
+    def zone_of(rank):
+        for idx, b in enumerate(bands):
+            if b["lo"] <= rank <= b["hi"]:
+                return b.get("zone") or _BAND_ZONE_BY_INDEX[min(idx, len(_BAND_ZONE_BY_INDEX) - 1)]
+        return None
+
+    rows = []
+    for i, t in enumerate(teams):
+        rank = t["rank"]
+        z = zone_of(rank)
+        dz = f' data-zone="{_ZONE_DATA[z]}"' if z in _ZONE_DATA else ""
+        name_html = escape(str(t["name"]))
+        name_esc = str(t["name"]).replace("'", "\\'")
+        name_enc = quote(str(t["name"]), safe="")
+        color = palette[i % len(palette)]
+        logo = escape(t.get("logo") or "", quote=True)
+        prob = t.get("prob") or {}
+        pills_html = "".join(
+            "\n      " + _prob_pill(prob.get(key, 0) or 0, kind, label)
+            for key, kind, label in pills
+        )
+        rows.append(
+            f'<tr{dz}>\n'
+            f'      <td class="col-pos"><span class="pos-badge">{rank}</span></td>\n'
+            f'      <td class="col-team">\n'
+            f'        <span class="team">\n'
+            f'          <span class="team__crest-box" id="av{i}">\n'
+            f'            <img class="team__crest" src="{logo}" alt="{name_html}" loading="lazy"\n'
+            f'              onerror="fallbackAvatar({i},\'{name_esc}\',\'{color}\')" />\n'
+            f'          </span>\n'
+            f'          <a class="team__name team-link" href="/equipo?id={t["id"]}&name={name_enc}&league={slug}">{name_html}</a>\n'
+            f'          \n'
+            f'        </span>\n'
+            f'      </td>\n'
+            f'      <td class="col-pj col-dim"><span class="num">{t["gp"]}</span></td>\n'
+            f'      <td class="col-pts"><span class="num">{t["pts"]}</span></td>\n'
+            f'{pills_html}\n'
+            f'    </tr>'
+        )
+    return "\n".join(rows)
 
 
 # ── Persistencia ────────────────────────────────────────────────────────────
@@ -126,13 +247,22 @@ def _season_dir(slug, season):
     return d
 
 
+def _write_atomic(path, text):
+    """Escritura atómica (tmp + rename) para que lectores concurrentes (Caddy
+    templates, fetch de los dashboards) nunca vean el fichero a medias."""
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, path)
+
+
 def save_snapshot(snap):
     d = _season_dir(snap["league"], snap["season"])
     path = d / "snapshots" / f"{snap['date']}.json"
     payload = json.dumps(snap, ensure_ascii=False, indent=1)
-    path.write_text(payload, encoding="utf-8")
-    (d / "latest.json").write_text(payload, encoding="utf-8")          # latest de la temporada
-    (DATA_DIR / snap["league"] / "latest.json").write_text(payload, encoding="utf-8")  # latest vivo (dashboards)
+    _write_atomic(path, payload)
+    _write_atomic(d / "latest.json", payload)                # latest de la temporada
+    _write_atomic(DATA_DIR / snap["league"] / "latest.json", payload)  # latest vivo (dashboards)
+    _write_atomic(DATA_DIR / snap["league"] / "rows.html", snap.get("rows_html", ""))
     return path
 
 
@@ -144,7 +274,9 @@ def save_offseason_latest(slug, snap):
     anterior (Principio 1: una competición terminada no se congela)."""
     (DATA_DIR / slug).mkdir(parents=True, exist_ok=True)
     payload = json.dumps(snap, ensure_ascii=False, indent=1)
-    (DATA_DIR / slug / "latest.json").write_text(payload, encoding="utf-8")
+    _write_atomic(DATA_DIR / slug / "latest.json", payload)
+    # rows.html VACÍO (o el tbody serviría la tabla de la temporada acabada).
+    _write_atomic(DATA_DIR / slug / "rows.html", snap.get("rows_html", ""))
 
 
 def load_all(slug, season):

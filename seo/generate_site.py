@@ -98,6 +98,7 @@ def _process_offseason(league, meta, today, dry_run):
         "league_logo":  meta.get("logo"),
         "date":         today,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "rows_html":    "",   # sin tabla que servir (placeholder del dashboard)
     }
     if not dry_run:
         save_offseason_latest(league["slug"], snap)

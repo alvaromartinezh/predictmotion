@@ -215,7 +215,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
               <th class="col-prob" scope="col">Eliminado</th>
             </tr>
           </thead>
-          <tbody id="tbody"></tbody>
+          <tbody id="tbody">{{if fileExists "/data/europa/rows.html"}}{{readFile "/data/europa/rows.html"}}{{end}}</tbody>
         </table>
       </div>
     </div>
@@ -639,7 +639,7 @@ async function triggerUpdate(silent = false) {
   isUpdating = true;
 
   try {
-    if (!silent) renderSkeleton();
+    if (!silent && !document.getElementById('tbody').children.length) renderSkeleton();
 
     const [standings, liveMatches, snapshot] = await Promise.all([
       fetchStandings(), fetchLiveScores(), fetchSnapshot(),
@@ -714,7 +714,7 @@ async function updateSeason() {
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────
-renderSkeleton();
+if (!document.getElementById('tbody').children.length) renderSkeleton();
 triggerUpdate();
 updateSeason();
 </script>
