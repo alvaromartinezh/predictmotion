@@ -81,8 +81,9 @@
     var chips = '', t0 = (it.teams || [])[0];
     if (t0) chips += '<span class="chip chip--accent">' + esc(t0.name || t0.id) + '</span>';
     if (lslug) chips += '<span class="chip">' + esc(lname(lslug)) + '</span>';
+    var thumbBody = t0 ? crest(null, t0.name, t0.id, 'news__thumb-crest') : '';
     return '<a class="card card--link news" href="' + esc(it.link) + '" target="_blank" rel="noopener noreferrer nofollow">'
-      + '<div class="news__thumb" style="' + thumb + '"><span class="src">' + esc(it.source) + '</span></div>'
+      + '<div class="news__thumb' + (t0 ? ' has-team' : '') + '" style="' + thumb + '">' + thumbBody + '<span class="src">' + esc(it.source) + '</span></div>'
       + '<div class="news__body"><div class="news__title">' + esc(it.title) + '</div>'
       + '<div class="news__meta"><span class="time">' + (it.published ? ago(it.published) : '') + '</span></div>'
       + '<div class="news__chips">' + chips + '</div></div></a>';
