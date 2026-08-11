@@ -46,4 +46,30 @@
   // [data-theme-toggle]. Sigue habiendo UN solo sistema de tema (este). wire() es
   // idempotente (guard data-bound), así que re-llamarlo no duplica handlers.
   window.PMTheme = { wire: wire, toggle: toggle, current: current };
+
+  // ── Color de fondo del patrón (balón/banderín/copa/dado), independiente de
+  // claro/oscuro. Mismo patrón que arriba: aplica lo guardado ANTES de pintar
+  // (evita parpadeo), localStorage por defecto; ajustes.html + account.js pueden
+  // reconciliar con el valor de cuenta (cross-device) una vez cargue la sesión.
+  var BG_KEY = 'pm-bg-theme';
+  var BG_THEMES = ['purple', 'green', 'blue', 'orange', 'teal', 'rose'];
+
+  function currentBg() {
+    var v = root.getAttribute('data-bg-theme');
+    return BG_THEMES.indexOf(v) >= 0 ? v : 'purple';
+  }
+
+  try {
+    var savedBg = localStorage.getItem(BG_KEY);
+    root.setAttribute('data-bg-theme', BG_THEMES.indexOf(savedBg) >= 0 ? savedBg : 'purple');
+  } catch (e) { root.setAttribute('data-bg-theme', 'purple'); }
+
+  function setBg(t, opts) {
+    opts = opts || {};
+    if (BG_THEMES.indexOf(t) < 0) return;
+    root.setAttribute('data-bg-theme', t);
+    if (opts.persistLocal !== false) { try { localStorage.setItem(BG_KEY, t); } catch (e) {} }
+  }
+
+  window.PMBgTheme = { current: currentBg, set: setBg, THEMES: BG_THEMES.slice() };
 })();

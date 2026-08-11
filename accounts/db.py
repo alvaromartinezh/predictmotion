@@ -68,6 +68,13 @@ CREATE TABLE IF NOT EXISTS followed_competitions (
     PRIMARY KEY (user_id, league_slug)
 );
 CREATE INDEX IF NOT EXISTS idx_followed_comps_user ON followed_competitions(user_id);
+
+-- Preferencias sueltas del usuario (una fila por usuario, se amplía con columnas
+-- según haga falta). Por ahora solo el tema de color del patrón de fondo.
+CREATE TABLE IF NOT EXISTS user_prefs (
+    user_id  INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    bg_theme TEXT
+);
 """
 
 
@@ -223,6 +230,24 @@ def remove_followed_competition(user_id: int, league_slug: str) -> None:
         conn.execute(
             "DELETE FROM followed_competitions WHERE user_id=? AND league_slug=?",
             (user_id, league_slug),
+        )
+
+
+# ── Preferencias ───────────────────────────────────────────────────────────────
+def get_prefs(user_id: int) -> dict:
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT bg_theme FROM user_prefs WHERE user_id=?", (user_id,)
+        ).fetchone()
+    return {"bg_theme": row["bg_theme"] if row else None}
+
+
+def set_bg_theme(user_id: int, bg_theme: str) -> None:
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO user_prefs(user_id, bg_theme) VALUES(?,?)"
+            " ON CONFLICT(user_id) DO UPDATE SET bg_theme=excluded.bg_theme",
+            (user_id, bg_theme),
         )
 
 

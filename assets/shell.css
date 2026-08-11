@@ -254,6 +254,10 @@ a.pm-status-link:hover .pm-time { color: var(--accent); }
 .seg { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface-2); flex: none; }
 .seg button { padding: 6px 14px; border-radius: var(--r-pill); font-size: var(--fs-13); font-weight: 600; color: var(--muted); }
 .seg button.is-on { background: var(--accent); color: var(--accent-ink); }
+
+.bg-swatches { display: inline-flex; gap: var(--sp-2); flex: none; }
+.bg-swatch { width: 26px; height: 26px; border-radius: 50%; background: var(--sw); border: 2px solid transparent; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
+.bg-swatch.is-on { border-color: var(--text); }
 .set-unfollow { flex: none; font-size: var(--fs-12); font-weight: 600; color: var(--muted); border: 1px solid var(--line); border-radius: var(--r-pill); padding: 5px 12px; }
 .set-unfollow:hover { color: var(--down); border-color: var(--down); }
 

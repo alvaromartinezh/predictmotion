@@ -94,6 +94,11 @@ RATE_LIMIT_WINDOW = _int("ACCOUNTS_RATE_WINDOW", 300)   # ventana en segundos (5
 MAX_FOLLOWED_TEAMS = _int("ACCOUNTS_MAX_TEAMS", 100)
 MAX_FOLLOWED_COMPETITIONS = _int("ACCOUNTS_MAX_COMPETITIONS", 30)  # solo existen 15
 
+# ── Preferencias (tema de fondo del shell) ────────────────────────────────────
+# Mismo set que BG_THEMES en theme.js (front) — duplicado a propósito, mismo
+# patrón que LEAGUES en pm-leagues.js vs seo/config.py (ver CLAUDE.md).
+BG_THEMES = ("purple", "green", "blue", "orange", "teal", "rose")
+
 # ── CORS ──────────────────────────────────────────────────────────────────────
 # En producción el frontend y la API comparten origen (predictmotion.com, Caddy
 # proxya /api/*) → CORS irrelevante. Solo hace falta en dev cross-port

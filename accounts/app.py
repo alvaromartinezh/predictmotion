@@ -15,6 +15,8 @@ Endpoints:
   DELETE /api/follows/teams/{espnId}
   POST   /api/follows/competitions/{slug}
   DELETE /api/follows/competitions/{slug}
+  GET    /api/prefs                           — preferencias (tema de fondo)
+  PUT    /api/prefs                           — {bg_theme}
 
   DELETE /api/account                         — (CP4) borrado de cuenta
 
@@ -208,6 +210,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(401, {"ok": False, "reason": "unauthorized"})
             return self._follows_ok(user["id"])
 
+        if rest == ["prefs"]:
+            user = self._current_user()
+            if not user:
+                return self._send(401, {"ok": False, "reason": "unauthorized"})
+            return self._send(200, {"ok": True, **db.get_prefs(user["id"])})
+
         return self._send(404, {"ok": False, "reason": "not-found"})
 
     # ── rutas POST ────────────────────────────────────────────────────────────
@@ -285,6 +293,17 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(400, {"ok": False, "reason": "invalid-team"})
             db.set_favorite_team(user["id"], tid, slug, name)
             return self._follows_ok(user["id"])
+
+        if rest == ["prefs"]:
+            user = self._current_user()
+            if not user:
+                return self._send(401, {"ok": False, "reason": "unauthorized"})
+            data = self._read_json() or {}
+            bg_theme = str(data.get("bg_theme", "")).strip()
+            if bg_theme not in config.BG_THEMES:
+                return self._send(400, {"ok": False, "reason": "invalid-bg-theme"})
+            db.set_bg_theme(user["id"], bg_theme)
+            return self._send(200, {"ok": True, **db.get_prefs(user["id"])})
 
         return self._send(404, {"ok": False, "reason": "not-found"})
 

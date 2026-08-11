@@ -25,9 +25,20 @@
     });
   }
 
-  var state = { loaded: false, enabled: false, user: null, follows: null };
+  var state = { loaded: false, enabled: false, user: null, follows: null, prefs: null };
 
   function _emit(name) { document.dispatchEvent(new CustomEvent(name)); }
+
+  // Si la cuenta trae un bg_theme guardado (otro dispositivo), gana sobre el
+  // valor local: reconcilia DOM + localStorage vía PMBgTheme (theme.js, cargado
+  // antes que este script en todas las páginas). Aplica en CUALQUIER página, no
+  // solo en Ajustes, para que el tema de fondo sea consistente en todo el shell.
+  function _reconcileBgTheme() {
+    var t = state.prefs && state.prefs.bg_theme;
+    if (t && window.PMBgTheme && window.PMBgTheme.current() !== t) {
+      window.PMBgTheme.set(t);
+    }
+  }
 
   function loadState() {
     return api('/api/auth/config').then(function (cfg) {
@@ -35,11 +46,14 @@
       if (!state.enabled) { state.loaded = true; return state; }
       return api('/api/me').then(function (me) {
         state.user = (me && me.ok) ? me.user : null;
-        if (!state.user) { state.follows = null; state.loaded = true; return state; }
-        return api('/api/follows').then(function (f) {
+        if (!state.user) { state.follows = null; state.prefs = null; state.loaded = true; return state; }
+        return Promise.all([api('/api/follows'), api('/api/prefs')]).then(function (r) {
+          var f = r[0], p = r[1];
           state.follows = (f && f.ok)
             ? { favorite_team: f.favorite_team, teams: f.teams || [], competitions: f.competitions || [] }
             : { favorite_team: null, teams: [], competitions: [] };
+          state.prefs = (p && p.ok) ? { bg_theme: p.bg_theme } : { bg_theme: null };
+          _reconcileBgTheme();
           state.loaded = true;
           return state;
         });
@@ -149,6 +163,17 @@
     },
     clearFavorite: function () {
       return api('/api/follows/favorite-team', { method: 'DELETE' }).then(_reloadFollows);
+    },
+
+    bgTheme: function () { return state.prefs && state.prefs.bg_theme; },
+    setBgTheme: function (theme) {
+      return api('/api/prefs', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bg_theme: theme }),
+      }).then(function (p) {
+        if (p && p.ok) state.prefs = { bg_theme: p.bg_theme };
+        return state.prefs;
+      });
     },
   };
 
