@@ -26,3 +26,13 @@ seo/__pycache__/_grupo_preview.png
 
 # Ancla local de sync del deck con CLAUDE.md (gitignored como CLAUDE.md)
 _claudemd_synced.md
+
+# Infraestructura interna (NUNCA en el repo público; viven en /home/ubuntu/infra
+# en el servidor y copia local aquí). Ver "Seguridad del repositorio" en CLAUDE.md.
+infra/
+
+# Prevención: ficheros de despliegue interno por si alguien los re-crea.
+DEPLOYMENT.md
+**/deploy.sh
+**/*.service
+docs/
