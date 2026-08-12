@@ -76,6 +76,27 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <div class="news-grid" id="news-mount" aria-live="polite">
           <p class="news-empty">Cargando noticias…</p>
         </div>
+
+        <!-- Contenido estático para Googlebot: explica cómo funciona la agregación -->
+        <section aria-label="Cómo funcionan las noticias" style="margin-top:var(--sp-9)">
+          <p class="eyebrow">Cómo funciona</p>
+          <h2 style="font-family:var(--font-display);font-size:var(--fs-24);font-weight:700;color:var(--text);margin-top:var(--sp-2);margin-bottom:var(--sp-4)">Noticias agregadas automáticamente</h2>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--sp-4);margin-top:var(--sp-5)">
+            <div class="panel" style="padding:var(--sp-5)">
+              <h3 style="font-family:var(--font-display);font-size:var(--fs-15);font-weight:700;color:var(--text);margin-bottom:var(--sp-2)">Fuentes españolas</h3>
+              <p style="font-size:var(--fs-14);color:var(--text-2);line-height:1.6">Agregamos los feeds RSS de Marca, AS y Mundo Deportivo, tres de los medios deportivos más leídos de España. Cada noticia enlaza directamente al artículo original.</p>
+            </div>
+            <div class="panel" style="padding:var(--sp-5)">
+              <h3 style="font-family:var(--font-display);font-size:var(--fs-15);font-weight:700;color:var(--text);margin-bottom:var(--sp-2)">Etiquetado automático</h3>
+              <p style="font-size:var(--fs-14);color:var(--text-2);line-height:1.6">Cada noticia se analiza y se etiqueta automáticamente por liga y equipo. Si sigues un equipo, sus noticias aparecerán destacadas en tu portada.</p>
+            </div>
+            <div class="panel" style="padding:var(--sp-5)">
+              <h3 style="font-family:var(--font-display);font-size:var(--fs-15);font-weight:700;color:var(--text);margin-bottom:var(--sp-2)">Actualización continua</h3>
+              <p style="font-size:var(--fs-14);color:var(--text-2);line-height:1.6">El agregador se ejecuta cada 30 minutos para traer las últimas noticias. Los artículos más antiguos de 7 días se eliminan automáticamente.</p>
+            </div>
+          </div>
+        </section>
       </main>
 
       <footer class="footer">
