@@ -1043,6 +1043,26 @@ async function fetchStatsMap(rosterData) {
   return map;
 }
 
+// Recortes de TheSportsDB (PNG transparente) servidos por el cron en
+// data/player_cuts.json: {id_ESPN: url_cutout}. Es el fallback para jugadores
+// que ESPN no tiene con headshot. Si el fichero no existe (servidor sin cron
+// aún) o está vacío, devuelve {} y la plantilla queda como está.
+async function fetchCuts() {
+  try {
+    const res = await fetch('/data/player_cuts.json', { cache: 'no-store' });
+    if (!res.ok) return {};
+    const data = await res.json();
+    const out = {};
+    for (const k in data) {
+      const u = data[k] && data[k].u;
+      if (u) out[k] = u;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
 async function fetchAthleteStats(athleteId) {
   for (const s of [SEASON_PRIMARY, SEASON_FALLBACK]) {
     try {
@@ -1442,7 +1462,7 @@ function extractEmbeddedStats(athlete) {
   };
 }
 
-function renderSquad(rosterData, statsMap) {
+function renderSquad(rosterData, statsMap, cutsMap) {
   const container = document.getElementById('squad-groups');
   if (!rosterData || !rosterData.athletes || rosterData.athletes.length === 0) {
     container.innerHTML = '<div class="tl-empty">Plantilla no disponible</div>';
@@ -1469,13 +1489,17 @@ function renderSquad(rosterData, statsMap) {
   const addPlayer = (athlete, st) => {
     const pos = athlete.position && athlete.position.abbreviation ? athlete.position.abbreviation : '—';
     const g = groupOf(pos);
+    // Foto: primero el headshot de ESPN (si lo trae); si no, el cutout de
+    // TheSportsDB cacheado por el cron (cutsMap). El cutout es un PNG ya
+    // recortado → se usa directo, sin el combiner.
+    const head = headshotOf(athlete) || (cutsMap && cutsMap[athlete.id]) || null;
     cachedSquad.push({
       name: athlete.displayName || athlete.fullName || '—',
       group: g,
       posLabel: POS_LABEL[g] || 'JUG',
       jersey: athlete.jersey || '',
       flag: (athlete.flag && athlete.flag.href) || null,
-      headshot: headshotOf(athlete),
+      headshot: head,
       appearances: st.appearances || st.minutes || 0,
       goals: st.goals || 0,
       assists: st.assists || 0,
@@ -1594,12 +1618,13 @@ async function triggerUpdate() {
     setStatus('loading','Obteniendo clasificación…');
 
     const scheduleData = await fetchSchedule();
-    const [standings, rosterData, upcomingEvents, snapshot, liveMatches] = await Promise.all([
+    const [standings, rosterData, upcomingEvents, snapshot, liveMatches, cutsMap] = await Promise.all([
       fetchStandings(),
       fetchRoster(),
       fetchUpcoming(scheduleData),
       fetchSnapshot(),
       fetchLiveScores(),
+      fetchCuts(),
     ]);
 
     const teamData = standings.find(t => String(t.id) === String(TEAM_ID));
@@ -1629,7 +1654,7 @@ async function triggerUpdate() {
       }
       statsMap = await fetchAllAthleteStats(ids);
     }
-    renderSquad(rosterData, statsMap);
+    renderSquad(rosterData, statsMap, cutsMap);
 
     const now = new Date();
     document.getElementById('footer-update').textContent =

@@ -268,6 +268,16 @@ def _run(args):
     elif args.league:
         print("\n(sitemap-data.xml no reescrito: ejecución parcial con --league)")
 
+    # Fotos de jugador (TheSportsDB): mantenimiento incremental dentro del cron.
+    # Best-effort: si TheSportsDB falla o el backfill está en curso (lock), no
+    # debe tumbar la generación. Solo en la ejecución completa del cron.
+    if not args.dry_run and not args.league:
+        try:
+            from . import player_cuts
+            player_cuts.run(leagues, limit=player_cuts.DEFAULT_LIMIT)
+        except Exception as exc:
+            print(f"  [SKIP] player_cuts: {exc}", file=sys.stderr)
+
     print(f"\nFin — {ok}/{len(leagues)} ligas generadas.")
 
     # Alerta por email si NINGUNA liga se generó. Solo en la ejecución real del

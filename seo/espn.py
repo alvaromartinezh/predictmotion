@@ -122,6 +122,27 @@ def fetch_league_meta(espn_code):
     return out
 
 
+def fetch_roster(espn_code, team_id):
+    """Plantilla de un equipo. Port de la lógica del JS (soporta el formato
+    plano nuevo — atleta directo con displayName — y el agrupado antiguo).
+
+    Devuelve una lista plana de atletas (cada uno con id/displayName/jersey/…).
+    """
+    url = f"{_BASE_SITE}/{espn_code}/teams/{team_id}/roster"
+    data = _get_json(url)
+    athletes = data.get("athletes") or []
+    out = []
+    for a in athletes:
+        if not isinstance(a, dict):
+            continue
+        if a.get("displayName") is not None:
+            out.append(a)
+        else:
+            for item in (a.get("items") or []):
+                out.append(item)
+    return out
+
+
 def fetch_scoreboard_range(espn_code, start_yyyymmdd, end_yyyymmdd):
     """Eventos del scoreboard en un rango de fechas (YYYYMMDD-YYYYMMDD),
     normalizados. Best-effort → [] si falla. Usado por el registro de predicciones.
