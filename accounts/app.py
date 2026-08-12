@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import json
 import logging
+import urllib.parse
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -84,6 +85,44 @@ class Handler(BaseHTTPRequestHandler):
             return json.loads(raw)
         except (ValueError, json.JSONDecodeError):
             return None
+
+    def _read_form(self):
+        # Cuerpo application/x-www-form-urlencoded (POST de formulario top-level del
+        # login). parse_qs devuelve listas; colapsamos a valor único cuando haya uno.
+        raw = getattr(self, "_raw_body", b"")
+        if not raw:
+            return {}
+        try:
+            parsed = urllib.parse.parse_qs(raw.decode("utf-8", "replace"))
+        except Exception:  # noqa: BLE001 — formulario malformado → trátalo vacío
+            return {}
+        return {k: v[0] if len(v) == 1 else v for k, v in parsed.items()}
+
+    def _login_next(self, data):
+        # Destino post-login (campo `next` del formulario). SOLO orígenes propios
+        # (allowlist) o rutas relativas sin "//" (anti open-redirect). Default /cuenta.
+        nxt = (data or {}).get("next", "/cuenta")
+        if isinstance(nxt, (list, tuple)):
+            nxt = nxt[0] if nxt else "/cuenta"
+        nxt = str(nxt)
+        for origin in config.ALLOWED_ORIGINS:
+            if nxt == origin or nxt.startswith(origin + "/"):
+                return nxt
+        if nxt.startswith("/") and not nxt.startswith("//"):
+            return nxt
+        return "/cuenta"
+
+    def _redirect(self, location, code=303, extra_headers=None):
+        # Navegación top-level (login por formulario): sin body, con Location.
+        self.send_response(code)
+        self.send_header("Location", location)
+        self.send_header("Content-Length", "0")
+        self.send_header("Cache-Control", "no-store")
+        for k, v in self._cors_headers():
+            self.send_header(k, v)
+        for k, v in (extra_headers or []):
+            self.send_header(k, v)
+        self.end_headers()
 
     def _cookie(self, name):
         raw = self.headers.get("Cookie")
@@ -228,11 +267,24 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(429, {"ok": False, "reason": "rate-limited"})
 
         if rest == ["auth", "google"]:
-            data = self._read_json() or {}
+            # Dos modos: (1) form POST top-level (login del navegador) → 303 con
+            # Set-Cookie, para que la cookie de sesión se commitee SIEMPRE (móvil
+            # incluido; un fetch XHR la pierde a veces); (2) fetch JSON (dev/tests)
+            # → 200 con Set-Cookie. La verificación es idéntica.
+            ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+            form = ctype == "application/x-www-form-urlencoded"
+            data = self._read_form() if form else (self._read_json() or {})
             try:
                 claims = auth.verify_google_id_token(data.get("credential"))
             except auth.TokenError as e:
                 log.info("login rechazado: %s", e)
+                if form:
+                    loc = self._login_next(data)
+                    if "?" in loc:
+                        loc += "&login=error"
+                    else:
+                        loc += "?login=error"
+                    return self._redirect(loc)
                 return self._send(401, {"ok": False, "reason": "invalid-token"})
             user = db.upsert_user(
                 google_sub=claims["sub"],
@@ -242,6 +294,8 @@ class Handler(BaseHTTPRequestHandler):
             )
             token = sessions.create_session(user["id"], self.headers.get("User-Agent"))
             cookies = self._set_session_cookie(token, config.SESSION_TTL_DAYS * 86400)
+            if form:
+                return self._redirect(self._login_next(data), 303, cookies)
             return self._send(200, {"ok": True, "user": user}, extra_headers=cookies)
 
         if rest == ["auth", "logout"]:

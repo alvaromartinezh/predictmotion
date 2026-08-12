@@ -141,15 +141,15 @@
     });
   }
 
-  function showSignedOut(clientId) {
+  function showSignedOut(clientId, initialMsg) {
     $('signed-in').hidden = true;
     $('signed-out').hidden = false;
-    say('Cargando el botón de Google…');
+    say(initialMsg || 'Cargando el botón de Google…');
     gisReady().then(function (ready) {
       if (ready && clientId) {
         google.accounts.id.initialize({ client_id: clientId, callback: onCredential });
         google.accounts.id.renderButton($('g_btn'), { theme: 'filled_black', size: 'large', text: 'signin_with', shape: 'pill' });
-        say('');
+        say(initialMsg || '');
       } else {
         say('El inicio de sesión no está disponible ahora mismo.', true);
       }
@@ -157,20 +157,20 @@
   }
 
   function onCredential(resp) {
+    // Login como NAVEGACIÓN top-level (form POST), no fetch: la cookie de sesión
+    // del Set-Cookie se commitea de forma fiable en todos los navegadores (móvil
+    // incluido). El backend responde 303 → /cuenta (o ?login=error si falla).
     say('Verificando…');
-    api('/api/auth/google', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ credential: resp.credential }),
-    }).then(function (data) {
-      if (data && data.ok) {
-        showSignedIn(data.user);
-        // Sincroniza el estado compartido (shell/sidenav + follows) SIN recargar:
-        // sin esto la UI del shell seguiría mostrando "Entrar" hasta navegar.
-        if (window.PMAccount) PMAccount.refresh();
-      }
-      else { say('No se pudo iniciar sesión.', true); }
-    }).catch(function () { say('Error de red al iniciar sesión.', true); });
+    var f = document.createElement('form');
+    f.method = 'POST';
+    f.action = API + '/api/auth/google';
+    var c = document.createElement('input');
+    c.type = 'hidden'; c.name = 'credential'; c.value = resp.credential;
+    var n = document.createElement('input');
+    n.type = 'hidden'; n.name = 'next'; n.value = location.origin + '/cuenta';
+    f.appendChild(c); f.appendChild(n);
+    document.body.appendChild(f);
+    f.submit();
   }
 
   $('logout-btn').addEventListener('click', function () {
@@ -199,7 +199,13 @@
       var cfg = res[0] || {}, me = res[1] || {};
       if (!cfg.enabled) { say('Las cuentas no están disponibles.', true); $('signed-out').hidden = true; return; }
       if (me.ok) { showSignedIn(me.user); }
-      else { showSignedOut(cfg.client_id); }
+      else {
+        // El 303 de login fallido vuelve a /cuenta?login=error → aviso al usuario.
+        var err = (new URLSearchParams(location.search)).get('login') === 'error'
+          ? 'No se pudo iniciar sesión. Inténtalo de nuevo.'
+          : null;
+        showSignedOut(cfg.client_id, err);
+      }
     }).catch(function () { say('No se pudo contactar con el servidor.', true); });
   }
 
