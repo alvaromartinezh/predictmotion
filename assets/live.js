@@ -101,14 +101,19 @@
     return '<span class="sl-crest ph">' + esc(team.abbr || '') + '</span>';
   }
   // Cada equipo de la cabecera es un botón (escudo + nombre juntos) → página del
-  // equipo. Sin id ESPN no hay página que enlazar → se queda como <div>.
+  // equipo, con una etiqueta "Ver equipo →" que lo hace intuible. Sin id ESPN no
+  // hay página que enlazar → se queda como <div> sin etiqueta.
   function teamHref(t, league) {
     return '/equipo?id=' + encodeURIComponent(t.id || '') + '&name=' + encodeURIComponent(t.name || t.abbr || '') + '&league=' + encodeURIComponent(league || '');
   }
+  function slMeta(t, linked) {
+    return '<div class="sl-meta"><div class="sl-name">' + esc(t.name || t.abbr) + '</div>'
+      + (linked ? '<div class="sl-sub">Ver equipo →</div>' : '') + '</div>';
+  }
   function slTeam(t, side, league) {
-    var name = '<div class="sl-meta"><div class="sl-name">' + esc(t.name || t.abbr) + '</div></div>';
-    var inner = (side === 'home') ? name + crest(t) : crest(t) + name;
-    if (!t.id) return '<div class="sl-team ' + side + '">' + inner + '</div>';
+    var linked = !!t.id;
+    var inner = (side === 'home') ? slMeta(t, linked) + crest(t) : crest(t) + slMeta(t, linked);
+    if (!linked) return '<div class="sl-team ' + side + '">' + inner + '</div>';
     return '<a class="sl-team ' + side + '" href="' + esc(teamHref(t, league)) + '" title="Ver página de ' + esc(t.name || t.abbr) + '">' + inner + '</a>';
   }
   function renderHeader(m) {
