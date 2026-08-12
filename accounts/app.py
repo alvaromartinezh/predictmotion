@@ -18,6 +18,10 @@ Endpoints:
   GET    /api/prefs                           — preferencias (tema de fondo)
   PUT    /api/prefs                           — {bg_theme}
 
+  (requieren sesión; 401 si no hay)
+  GET    /api/votes?league=&event=            — voto del usuario + conteos 1/X/2
+  POST   /api/votes                           — {league, event, pick} registra/cambia voto
+
   DELETE /api/account                         — (CP4) borrado de cuenta
 
 Con ACCOUNTS_ENABLED=false todo (salvo /api/health y /api/auth/config) responde
@@ -31,6 +35,7 @@ from __future__ import annotations
 import json
 import logging
 import urllib.parse
+import urllib.request
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -220,6 +225,41 @@ class Handler(BaseHTTPRequestHandler):
     def _follows_ok(self, user_id, code=200):
         return self._send(code, {"ok": True, **db.get_follows(user_id)})
 
+    # ── votos 1X2 ─────────────────────────────────────────────────────────────
+    def _vote_ok(self, user_id, league, event_id, code=200):
+        mine = db.get_user_vote(user_id, league, event_id)
+        counts = db.get_match_votes(league, event_id)
+        return self._send(code, {"ok": True, "mine": mine, **counts})
+
+    def _valid_match(self, league, event_id):
+        return bool(league) and bool(event_id) and self._valid_slug(league)
+
+    def _match_votable(self, league, event_id):
+        """¿Se puede votar este partido? Best-effort contra el live_tracker.
+
+        La regla de producto es: votar SOLO mientras el partido está en 'pre'
+        (antes del pitido inicial). El frontend ya la aplica con el estado que le
+        llega; aquí se revalida server-side consultando al live_tracker (mismo
+        host, localhost). Si el live_tracker no responde o no conoce el partido,
+        se PERMITE votar (defensa en profundidad, no barrera única): no queremos
+        que una caída del tracker tumbe la votación de partidos sin empezar.
+        """
+        try:
+            url = ("http://127.0.0.1:%d/api/live/%s/match/%s" % (
+                config.LIVE_TRACKER_PORT,
+                urllib.parse.quote(league),
+                urllib.parse.quote(event_id),
+            ))
+            with urllib.request.urlopen(url, timeout=3) as r:
+                data = json.loads(r.read().decode("utf-8"))
+            if not data.get("ok"):
+                return True  # no lo conoce → sin información, se permite
+            state = ((data.get("match") or {}).get("status") or {}).get("state")
+            return state == "pre"
+        except Exception:  # noqa: BLE001 — best-effort: timeout/caída → permitir
+            log.info("live_tracker no respondió al validar el voto (%s/%s)", league, event_id)
+            return True
+
     # ── rutas GET ─────────────────────────────────────────────────────────────
     def _route_get(self, rest):
         if rest == ["health"]:
@@ -254,6 +294,17 @@ class Handler(BaseHTTPRequestHandler):
             if not user:
                 return self._send(401, {"ok": False, "reason": "unauthorized"})
             return self._send(200, {"ok": True, **db.get_prefs(user["id"])})
+
+        if rest == ["votes"]:
+            user = self._current_user()
+            if not user:
+                return self._send(401, {"ok": False, "reason": "unauthorized"})
+            query = urllib.parse.parse_qs(self.path.split("?", 1)[1]) if "?" in self.path else {}
+            league = (query.get("league") or [""])[0]
+            event = (query.get("event") or [""])[0]
+            if not self._valid_match(league, event):
+                return self._send(400, {"ok": False, "reason": "invalid-match"})
+            return self._vote_ok(user["id"], league, event)
 
         return self._send(404, {"ok": False, "reason": "not-found"})
 
@@ -327,6 +378,21 @@ class Handler(BaseHTTPRequestHandler):
             if not db.add_followed_competition(user["id"], slug, config.MAX_FOLLOWED_COMPETITIONS):
                 return self._send(409, {"ok": False, "reason": "limit-reached"})
             return self._follows_ok(user["id"])
+
+        # ── votos 1X2 (requieren sesión) ──
+        if rest == ["votes"]:
+            if not user:
+                return self._send(401, {"ok": False, "reason": "unauthorized"})
+            data = self._read_json() or {}
+            league = str(data.get("league", "")).strip()
+            event = str(data.get("event", "")).strip()
+            pick = str(data.get("pick", "")).strip().upper()
+            if not self._valid_match(league, event) or pick not in ("1", "X", "2"):
+                return self._send(400, {"ok": False, "reason": "invalid-vote"})
+            if not self._match_votable(league, event):
+                return self._send(409, {"ok": False, "reason": "match-started"})
+            db.upsert_vote(user["id"], league, event, pick)
+            return self._vote_ok(user["id"], league, event)
 
         return self._send(404, {"ok": False, "reason": "not-found"})
 

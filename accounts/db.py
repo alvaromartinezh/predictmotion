@@ -75,6 +75,20 @@ CREATE TABLE IF NOT EXISTS user_prefs (
     user_id  INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     bg_theme TEXT
 );
+
+-- Votos 1X2 de los partidos en vivo (uno por usuario y partido; el voto se puede
+-- cambiar mientras el partido esté en 'pre'). Clave = (league, event_id de ESPN),
+-- la misma que identifica un partido en /partido y en el live_tracker.
+CREATE TABLE IF NOT EXISTS match_votes (
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    league     TEXT NOT NULL,
+    event_id   TEXT NOT NULL,
+    pick       TEXT NOT NULL,           -- '1' | 'X' | '2'
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, league, event_id)
+);
+CREATE INDEX IF NOT EXISTS idx_match_votes_event ON match_votes(league, event_id);
 """
 
 
@@ -258,6 +272,46 @@ def delete_user(user_id: int) -> None:
     """
     with connect() as conn:
         conn.execute("DELETE FROM users WHERE id=?", (user_id,))
+
+
+# ── Votos 1X2 de partidos ─────────────────────────────────────────────────────
+def get_match_votes(league: str, event_id: str) -> dict:
+    """Conteos por voto (1/X/2) de un partido. Devuelve {votes, total}."""
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT pick, count(*) AS n FROM match_votes WHERE league=? AND event_id=? GROUP BY pick",
+            (league, event_id),
+        ).fetchall()
+    votes = {"1": 0, "X": 0, "2": 0}
+    for r in rows:
+        if r["pick"] in votes:
+            votes[r["pick"]] = r["n"]
+    return {"votes": votes, "total": int(sum(votes.values()))}
+
+
+def get_user_vote(user_id: int, league: str, event_id: str) -> str | None:
+    """Devuelve el voto ('1'|'X'|'2') del usuario en ese partido, o None."""
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT pick FROM match_votes WHERE user_id=? AND league=? AND event_id=?",
+            (user_id, league, event_id),
+        ).fetchone()
+    return row["pick"] if row else None
+
+
+def upsert_vote(user_id: int, league: str, event_id: str, pick: str) -> dict:
+    """Registra o CAMBIA el voto del usuario. Devuelve los conteos actualizados."""
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).isoformat()
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO match_votes(user_id, league, event_id, pick, created_at, updated_at)"
+            " VALUES(?,?,?,?,?,?)"
+            " ON CONFLICT(user_id, league, event_id) DO UPDATE SET"
+            "   pick=excluded.pick, updated_at=excluded.updated_at",
+            (user_id, league, event_id, pick, now, now),
+        )
+    return get_match_votes(league, event_id)
 
 
 def health() -> dict:

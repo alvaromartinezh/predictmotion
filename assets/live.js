@@ -57,6 +57,10 @@
     if (back && league) { back.href = '/' + league; back.textContent = '← Volver a ' + (leagueName(league) || 'la competición'); }
     if (!league || !eventId) { unavailable('Partido no especificado.'); return; }
 
+    d.addEventListener('pm-account-ready', function () {
+      if (lastMatch) renderVote(lastMatch);
+    });
+
     getJSON(API + '/health').then(function (h) {
       if (!h || !h.ok || !h.enabled) { unavailable('El seguimiento en vivo no está disponible ahora mismo.'); return; }
       load(true);
@@ -83,16 +87,19 @@
     if (u) { u.textContent = msg; u.style.display = ''; }
     var hdr = el('match-header'); if (hdr) hdr.innerHTML = '';
     var c = el('live-content'); if (c) c.style.display = 'none';
+    var vw = el('vote-widget'); if (vw) vw.style.display = 'none';
   }
 
   function render(m) {
     el('live-unavailable').style.display = 'none';
     el('live-content').style.display = '';
     resolveColors(m);
+    lastMatch = m;
     renderHeader(m);
     renderLineups(m);
     renderTimeline(m);
     renderStats(m);
+    renderVote(m);
   }
 
   // ── Cabecera: marcador, minuto y probabilidad estimada ────────────────────
@@ -323,6 +330,161 @@
         '</div><p class="poss__label">Posesión</p></div>';
     }
     el('lv-stats').innerHTML = '<div class="stats-card">' + legend + possHtml + others.map(statRow).join('') + '</div>';
+  }
+
+  // ── Voto 1X2 de la comunidad (solo /partido; requiere cuenta de Google) ───
+  // El voto solo se puede emitir mientras el partido está en 'pre'. Los
+  // porcentajes quedan ocultos hasta que el usuario vota (o el partido empieza).
+  var VOTE_PICKS = ['1', 'X', '2'];
+  var lastMatch = null;
+
+  function votesBase() {
+    var p = location.port;
+    if (p === '8765') return location.protocol + '//' + location.hostname + ':8771/api/votes';
+    return '/api/votes';
+  }
+  function votesApi(path, opts) {
+    opts = opts || {};
+    opts.credentials = 'include';
+    return fetch(votesBase() + path, opts).then(function (r) {
+      return r.json().catch(function () { return {}; });
+    });
+  }
+  function accountReady() { return !!(window.PMAccount && window.PMAccount.isReady()); }
+  function loggedIn() { return accountReady() && window.PMAccount.isLoggedIn(); }
+
+  function voteName(pick, m) {
+    if (pick === '1') return m.home.abbr || m.home.name;
+    if (pick === '2') return m.away.abbr || m.away.name;
+    return 'Empate';
+  }
+  function pctOf(votes, key) {
+    var t = (votes['1'] || 0) + (votes['X'] || 0) + (votes['2'] || 0);
+    return t ? Math.round((votes[key] || 0) / t * 100) : 0;
+  }
+
+  function renderVote(m) {
+    var host = el('vote-widget');
+    if (!host) return;
+    if (!accountReady()) { setTimeout(function () { renderVote(m); }, 150); return; }
+    if (!loggedIn()) {
+      if (m.status && m.status.state === 'pre') renderVoteLogin(host, m);
+      else renderVoteClosed(host, m);
+      return;
+    }
+    var q = '?league=' + encodeURIComponent(league) + '&event=' + encodeURIComponent(eventId);
+    votesApi(q).then(function (r) {
+      if (!r || !r.ok) {
+        if (m.status && m.status.state === 'pre') renderVoteError(host);
+        else renderVoteClosed(host, m);
+        return;
+      }
+      if (m.status && m.status.state === 'pre' && !r.mine) renderVotePick(host, m, r.total);
+      else renderVoteDone(host, m, r.votes, r.total, r.mine);
+    }).catch(function () {
+      if (m.status && m.status.state === 'pre') renderVoteError(host);
+      else renderVoteClosed(host, m);
+    });
+  }
+
+  function renderVoteLogin(host, m) {
+    host.style.display = '';
+    host.innerHTML =
+      '<div class="vote">' +
+        '<div class="vote__head">' +
+          '<span class="vote__title">¿Quién ganará?</span>' +
+          '<span class="vote__meta">Vota el resultado y desbloquea el porcentaje de la comunidad</span>' +
+        '</div>' +
+        '<a class="vote__login" href="' + esc(window.PMAccount.loginUrl) + '">Inicia sesión para votar</a>' +
+      '</div>';
+  }
+
+  function voteOption(pick, m) {
+    return '<button type="button" class="vote__opt" data-pick="' + pick + '">' +
+      '<span class="vote__opt-key">' + pick + '</span>' +
+      '<span class="vote__opt-name">' + esc(voteName(pick, m)) + '</span></button>';
+  }
+
+  function renderVotePick(host, m, total) {
+    host.style.display = '';
+    host.innerHTML =
+      '<div class="vote">' +
+        '<div class="vote__head">' +
+          '<span class="vote__title">¿Quién ganará?</span>' +
+          '<span class="vote__meta">Vota para ver los porcentajes' +
+            (total ? ' · ' + total + ' votos' : '') + '</span>' +
+        '</div>' +
+        '<div class="vote__options">' +
+          voteOption('1', m) + voteOption('X', m) + voteOption('2', m) +
+        '</div>' +
+      '</div>';
+    wireVoteOptions(host);
+  }
+
+  function wireVoteOptions(host) {
+    var opts = host.querySelectorAll('.vote__opt');
+    Array.prototype.forEach.call(opts, function (b) {
+      b.addEventListener('click', function () { submitVote(b.getAttribute('data-pick')); });
+    });
+  }
+
+  function submitVote(pick) {
+    var host = el('vote-widget');
+    votesApi('', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ league: league, event: eventId, pick: pick }),
+    }).then(function (r) {
+      if (r && r.ok) renderVoteDone(host, lastMatch, r.votes, r.total, r.mine);
+      else if (r && r.reason === 'match-started') renderVoteClosed(host, lastMatch);
+      else if (host) renderVoteError(host);
+    }).catch(function () { if (host) renderVoteError(host); });
+  }
+
+  function renderVoteDone(host, m, votes, total, mine) {
+    if (!host || !m) return;
+    host.style.display = '';
+    var rows = VOTE_PICKS.map(function (k) {
+      var p = pctOf(votes, k), sel = mine === k ? ' is-sel' : '';
+      var fill = k === '1' ? COL.home : k === '2' ? COL.away : 'var(--muted)';
+      return '<div class="vote__res' + sel + '">' +
+        '<span class="vote__res-name">' + esc(voteName(k, m)) + '</span>' +
+        '<span class="vote__res-track"><span class="vote__res-fill" style="width:' + p + '%;background:' + fill + '"></span></span>' +
+        '<span class="vote__res-pct">' + p + '%</span></div>';
+    }).join('');
+    var canChange = m.status && m.status.state === 'pre';
+    host.innerHTML =
+      '<div class="vote">' +
+        '<div class="vote__head">' +
+          '<span class="vote__title">¿Quién ganará? · Comunidad</span>' +
+          '<span class="vote__meta">Tu voto: ' + esc(mine) + ' · ' + (total || 0) + ' votos' +
+            (canChange ? ' · <button type="button" class="vote__change" data-change="1">Cambiar</button>' : '') +
+          '</span>' +
+        '</div>' +
+        '<div class="vote__results">' + rows + '</div>' +
+      '</div>';
+    var ch = host.querySelector('.vote__change');
+    if (ch) ch.addEventListener('click', function () { renderVotePick(host, m, total); });
+  }
+
+  function renderVoteClosed(host, m) {
+    if (!host) return;
+    host.style.display = '';
+    host.innerHTML =
+      '<div class="vote vote--locked">' +
+        '<div class="vote__head">' +
+          '<span class="vote__title">Votación cerrada</span>' +
+          '<span class="vote__meta">Los votos se cerraron al inicio del partido</span>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function renderVoteError(host) {
+    if (!host) return;
+    host.style.display = '';
+    host.innerHTML =
+      '<div class="vote vote--locked">' +
+        '<div class="vote__head"><span class="vote__title">Votación no disponible</span></div>' +
+      '</div>';
   }
 
   w.PMLive = { init: init };

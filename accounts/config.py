@@ -99,6 +99,12 @@ MAX_FOLLOWED_COMPETITIONS = _int("ACCOUNTS_MAX_COMPETITIONS", 30)  # solo existe
 # patrón que LEAGUES en pm-leagues.js vs seo/config.py (ver CLAUDE.md).
 BG_THEMES = ("purple", "green", "blue", "orange", "teal", "rose")
 
+# ── Live tracker (solo lectura) ───────────────────────────────────────────────
+# El servicio de votos consulta al live_tracker (mismo host, :8770) si un partido
+# ya empezó/terminó, para bloquear el voto server-side. Best-effort: si no responde,
+# se permite (el frontend ya gatea por estado).
+LIVE_TRACKER_PORT = _int("ACCOUNTS_LIVE_TRACKER_PORT", 8770)
+
 # ── CORS ──────────────────────────────────────────────────────────────────────
 # En producción el frontend y la API comparten origen (predictmotion.com, Caddy
 # proxya /api/*) → CORS irrelevante. Solo hace falta en dev cross-port
