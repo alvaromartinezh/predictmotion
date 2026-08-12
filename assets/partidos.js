@@ -1,10 +1,13 @@
-/* Partidos (CP-R5) — todos los partidos del día por competición, con datos REALES
- * de ESPN (scoreboard vía PMData). Selector de día, filtro por competición y sección
- * "En vivo". SIN 1X2 por partido (D3): solo marcador/estado. Shell, pestaña 'matches'. */
+/* Partidos (CP-R5) — TODOS los partidos del día, de las 15 competiciones, con datos
+ * REALES de ESPN (scoreboard vía PMData). Selector de día, filtro por competición y
+ * sección "En vivo". En 3 grupos: 1º tus equipos seguidos, 2º tus competiciones
+ * seguidas, 3º el resto de competiciones por importancia (PM_LEAGUES_ORDER).
+ * SIN 1X2 por partido (D3): solo marcador/estado. Shell, pestaña 'matches'. */
 (function () {
   'use strict';
-  var L = window.PM_LEAGUES || {}, ORDER = window.PM_LEAGUES_ORDER || Object.keys(L), D = window.PMData;
-  var DEFAULT = ['laliga', 'hypermotion', 'premier', 'seriea', 'bundesliga', 'ligue1'].filter(function (s) { return L[s]; });
+  var L = window.PM_LEAGUES || {}, D = window.PMData;
+  // Todas las competiciones en orden de importancia (PM_LEAGUES_ORDER).
+  var ALL = (window.PM_LEAGUES_ORDER || Object.keys(L)).filter(function (s) { return L[s]; });
   var DW = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
   // Ligas con página de partido en vivo propia (/partido lo sirve el live_tracker,
   // que SOLO cubre estas): solo en ellas la fila entera es enlace. El resto de
@@ -35,17 +38,45 @@
   var state = { ymd: initial, filter: 'all' };
   var byLeague = {};   // slug -> [matches] del día cargado
 
-  // ── qué ligas mostrar ──
-  function leagues() {
+  // ── follows → ids de equipo y slugs de competición seguidos ──
+  function followCtx() {
+    var team = {}, comp = {};
     var a = window.PMAccount;
     if (a && a.isEnabled && a.isEnabled() && a.isLoggedIn && a.isLoggedIn()) {
-      var f = (a.follows && a.follows()) || {}; var set = {};
-      (f.competitions || []).forEach(function (s) { if (L[s]) set[s] = 1; });
-      (f.teams || []).forEach(function (t) { if (L[t.league_slug]) set[t.league_slug] = 1; });
-      var ls = ORDER.filter(function (s) { return set[s]; });
-      if (ls.length) return ls;
+      var f = (a.follows && a.follows()) || {};
+      (f.teams || []).forEach(function (t) { team[String(t.espn_team_id)] = 1; });
+      if (f.favorite_team && f.favorite_team.espn_team_id != null) team[String(f.favorite_team.espn_team_id)] = 1;
+      (f.competitions || []).forEach(function (s) { if (L[s]) comp[s] = 1; });
     }
-    return DEFAULT;
+    return { team: team, comp: comp };
+  }
+
+  // Reparte los partidos del día en los 3 grupos SIN duplicar ninguno:
+  //  1º el partido de un equipo seguido;  2º el de una competición seguida;
+  //  3º el resto de competiciones, en su orden de ALL (importancia).
+  function partition(fw) {
+    function teamHit(m) { return !!(fw.team[String(m.home.id)] || fw.team[String(m.away.id)]); }
+    var teams = [], comps = [], rest = [];
+    ALL.forEach(function (s) {
+      var left = [];
+      (byLeague[s] || []).forEach(function (m) {
+        if (teamHit(m)) teams.push({ slug: s, m: m });
+        else left.push(m);
+      });
+      var bucket = fw.comp[s] ? comps : rest;
+      if (left.length) bucket.push({ slug: s, ms: left });
+    });
+    // Reagrupa los partidos de equipos seguidos POR LIGA (mismo orden de importancia).
+    var teamLeagues = [];
+    ALL.forEach(function (s) {
+      var ms = []; teams.forEach(function (e) { if (e.slug === s) ms.push(e.m); });
+      if (ms.length) teamLeagues.push({ slug: s, ms: ms });
+    });
+    return { teamLeagues: teamLeagues, compLeagues: comps, restLeagues: rest };
+  }
+
+  function secTitle(txt) {
+    return '<div class="feed-sec"><h2 class="feed-sec__title">' + esc(txt) + '</h2></div>';
   }
 
   // ── componentes ──
@@ -101,8 +132,7 @@
   }
 
   function renderMain() {
-    var ls = leagues();
-    var present = ls.filter(function (s) { return (byLeague[s] || []).length; });
+    var present = ALL.filter(function (s) { return (byLeague[s] || []).length; });
     var live = [];
     present.forEach(function (s) { (byLeague[s] || []).forEach(function (m) { if (m.state === 'in') live.push(m); }); });
 
@@ -113,24 +143,33 @@
       chips = '<div class="league-chips" id="pm-filter">' + chips + '</div>';
     }
 
-    var shown = present.filter(function (s) { return state.filter === 'all' || state.filter === s; });
-    var groups;
+    var feed;
     if (!present.length) {
       var when = state.ymd === ymd(today) ? 'hoy' : 'el ' + humanDate(state.ymd);
-      groups = '<article class="card"><div style="padding:var(--sp-7) var(--sp-5);text-align:center;color:var(--text-2)">No hay partidos ' + when + '. Prueba con otra fecha.</div></article>';
+      feed = '<article class="card"><div style="padding:var(--sp-7) var(--sp-5);text-align:center;color:var(--text-2)">No hay partidos ' + when + '. Prueba con otra fecha.</div></article>';
+    } else if (state.filter !== 'all') {
+      // Filtro por competición: solo esa liga, tal cual.
+      feed = '<section class="matchlist">' + (byLeague[state.filter] || []).map(matchRow).join('') + '</section>';
     } else {
-      var liveSec = live.length ? ('<div class="feed-sec"><h2 class="feed-sec__title">En vivo <span class="tag tag--live">' + live.length + '</span></h2></div><section class="matchlist">' + live.map(matchRow).join('') + '</section>') : '';
-      groups = liveSec + shown.map(function (s) { return leagueGroup(s, byLeague[s]); }).join('');
+      var fw = followCtx(), g = partition(fw);
+      var html = '';
+      if (g.teamLeagues.length) html += secTitle('Tus equipos') + g.teamLeagues.map(function (gg) { return leagueGroup(gg.slug, gg.ms); }).join('');
+      if (g.compLeagues.length) html += secTitle('Tus competiciones') + g.compLeagues.map(function (gg) { return leagueGroup(gg.slug, gg.ms); }).join('');
+      var restHtml = g.restLeagues.map(function (gg) { return leagueGroup(gg.slug, gg.ms); }).join('');
+      if (restHtml && (g.teamLeagues.length || g.compLeagues.length)) html += secTitle('Resto de competiciones');
+      html += restHtml;
+      feed = html;
     }
 
+    var liveSec = live.length ? '<div class="feed-sec"><h2 class="feed-sec__title">En vivo <span class="tag tag--live">' + live.length + '</span></h2></div><section class="matchlist">' + live.map(matchRow).join('') + '</section>' : '';
     var col = '<div class="feed-sec" style="margin-top:var(--sp-2)"><h2 class="feed-sec__title">Partidos</h2></div>'
-      + daystrip() + chips + groups;
+      + daystrip() + chips + liveSec + feed;
     window.PMShell.mount({ active: 'matches', main: '<div class="feed"><div class="feed__col">' + col + '</div><div class="feed__rail">' + liveRail(live) + '</div></div>', onRender: wire });
   }
 
   var loadTok = 0;
   function loadDay() {
-    var my = ++loadTok, ls = leagues();
+    var my = ++loadTok, ls = ALL;
     // esqueleto inmediato del día (sin datos) para que el cambio de día responda ya
     byLeague = {}; renderMain();
     Promise.all(ls.map(function (s) {
