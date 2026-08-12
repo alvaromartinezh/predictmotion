@@ -47,6 +47,15 @@ DETAIL_TTL_SECONDS      = _int("DETAIL_TTL_SECONDS", 300)      # TTL de detalle 
 FINAL_REFRESH_SECONDS   = _int("FINAL_REFRESH_SECONDS", 300)   # re-guardar el snapshot N s tras el final (stats consolidadas)
 HTTP_TIMEOUT_SECONDS    = _int("LIVE_HTTP_TIMEOUT", 12)
 
+# ── Proxy ESPN (fix 2026-08-12) ───────────────────────────────────────────────
+# ESPN devuelve 403 a los User-Agents de navegador (solo pasan curl/python-urllib).
+# El frontend reescribe sus fetch a la API de ESPN a /api/espn/<host>/<path>; este
+# backend los reenvía con el UA por defecto de urllib (sí pasa) y responde JSON con
+# Access-Control-Allow-Origin: *. Cache corto en memoria para absorber el polling.
+ESPN_PROXY_ENABLED   = _flag("ESPN_PROXY_ENABLED", True)
+ESPN_PROXY_CACHE_TTL = _int("ESPN_PROXY_CACHE_TTL", 30)
+ESPN_PROXY_TIMEOUT   = _int("ESPN_PROXY_TIMEOUT", 20)
+
 # Ligas seguidas (códigos ESPN). El provider es agnóstico de liga.
 LEAGUES = {
     "hypermotion": "esp.2",
