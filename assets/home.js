@@ -19,8 +19,9 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
   function initials(n) { var p = (n || '').trim().split(/\s+/).filter(Boolean); return ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); }
   function crest(logo, name, id, cls) {
-    cls = cls || ''; var ab = initials(name);
-    var src = logo || (id ? 'https://a.espncdn.com/i/teamlogos/soccer/500/' + id + '.png' : '');
+    cls = cls || ''; var ab = initials(name), sid = String(id || '');
+    var src = (window.PM_TEAM_LOGOS && window.PM_TEAM_LOGOS[sid])
+      || logo || (id ? 'https://a.espncdn.com/i/teamlogos/soccer/500/' + sid + '.png' : '');
     if (!src) return '<div class="crest-ph ' + cls + '">' + ab + '</div>';
     return '<img class="crest ' + cls + '" loading="lazy" alt="" src="' + esc(src) + '" data-ab="' + ab + '" onerror="PMHomeCrestFallback(this)">';
   }

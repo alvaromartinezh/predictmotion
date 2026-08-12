@@ -67,6 +67,7 @@ def fetch_table(espn_code, season=None):
     Con `season` (año de inicio, p. ej. 2025 → 2025-26) devuelve la tabla FINAL de
     esa temporada pasada (mismo endpoint + ?season=), usado por el prior de fuerza.
     """
+    from .config import TEAM_LOGOS
     url = f"{_BASE_V2}/{espn_code}/standings"
     if season is not None:
         url += f"?season={season}"
@@ -75,13 +76,14 @@ def fetch_table(espn_code, season=None):
     rows = []
     for i, e in enumerate(entries):
         team = e["team"]
+        tid = str(team["id"])
         logos = team.get("logos") or []
         rows.append({
             "rank":   i + 1,
-            "id":     str(team["id"]),
+            "id":     tid,
             "name":   team["displayName"],
             "abbr":   team.get("abbreviation", ""),
-            "logo":   logos[0]["href"] if logos else None,
+            "logo":   TEAM_LOGOS.get(tid) or (logos[0]["href"] if logos else None),
             "zone":   _note_to_zone((e.get("note") or {}).get("description")),
             "gp":     int(_stat(e, "gamesPlayed")),
             "pts":    int(_stat(e, "points")),

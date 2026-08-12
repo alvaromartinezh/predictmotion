@@ -27,9 +27,10 @@
     return ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
   }
   function teamCrest(t) {
-    var id = t.espn_team_id, ab = initials(t.name);
+    var id = String(t.espn_team_id || ''), ab = initials(t.name);
     if (!id) return '<div class="crest-ph">' + ab + '</div>';
-    return '<img class="crest" loading="lazy" alt="" src="https://a.espncdn.com/i/teamlogos/soccer/500/' + id + '.png"'
+    var src = (window.PM_TEAM_LOGOS && window.PM_TEAM_LOGOS[id]) || 'https://a.espncdn.com/i/teamlogos/soccer/500/' + id + '.png';
+    return '<img class="crest" loading="lazy" alt="" src="' + src + '"'
       + ' data-ab="' + ab + '" onerror="PMShellCrestFallback(this)">';
   }
   function svg(p) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">' + p + '</svg>'; }

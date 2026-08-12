@@ -23,6 +23,14 @@ SITE      = "https://predictmotion.com"
 # para que el cron termine rápido en la VM ARM.
 SIM_N_TABLE = 20000
 
+# TEAM_LOGOS: sobreescrituras de escudo por id de equipo ESPN (clave) cuando el
+# escudo oficial de ESPN es un 404 o no se sirve. Excepción puntual y curada a
+# mano (lo normal es "nada hardcodeado": logos en vivo). Futuro club B de Celta
+# usa el mismo escudo que el primer equipo (id 85).
+TEAM_LOGOS = {
+    "131858": "https://a.espncdn.com/i/teamlogos/soccer/500/85.png",  # Celta Fortuna → Celta Vigo
+}
+
 
 # ── Prior de fuerza por equipo (Elo sin estado desde la temporada anterior) ──
 # En pretemporada (0 partidos) el Monte Carlo, que solo usa p_home/p_draw

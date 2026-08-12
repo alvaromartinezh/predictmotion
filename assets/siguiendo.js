@@ -8,7 +8,7 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
   function initials(n) { var p = (n || '').trim().split(/\s+/).filter(Boolean); return ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); }
   window.PMSigCrestFallback = function (img) { var d = document.createElement('div'); d.className = 'crest-ph'; d.textContent = img.getAttribute('data-ab') || '?'; img.parentNode.replaceChild(d, img); };
-  function teamCrest(id, name) { var ab = initials(name); if (!id) return '<div class="crest-ph">' + ab + '</div>'; return '<img class="crest" loading="lazy" alt="" src="https://a.espncdn.com/i/teamlogos/soccer/500/' + id + '.png" data-ab="' + ab + '" onerror="PMSigCrestFallback(this)">'; }
+  function teamCrest(id, name) { var ab = initials(name); if (!id) return '<div class="crest-ph">' + ab + '</div>'; var sid = String(id); var src = (window.PM_TEAM_LOGOS && window.PM_TEAM_LOGOS[sid]) || 'https://a.espncdn.com/i/teamlogos/soccer/500/' + sid + '.png'; return '<img class="crest" loading="lazy" alt="" src="' + src + '" data-ab="' + ab + '" onerror="PMSigCrestFallback(this)">'; }
   function lname(s) { return (L[s] || {}).name || s; }
   function acct() {
     var a = window.PMAccount;

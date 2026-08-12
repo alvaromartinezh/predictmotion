@@ -17,10 +17,10 @@
   <link rel="dns-prefetch" href="https://site.api.espn.com" />
   <link rel="dns-prefetch" href="https://sports.core.api.espn.com" />
   <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
-  <link rel="stylesheet" href="/styles.css?v=20260811h" />
-  <link rel="stylesheet" href="/assets/shell.css?v=20260811h" />
-  <link rel="stylesheet" href="/assets/account.css?v=20260811h" />
-  <script src="/theme.js?v=20260811h"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260811i" />
+  <link rel="stylesheet" href="/assets/shell.css?v=20260811i" />
+  <link rel="stylesheet" href="/assets/account.css?v=20260811i" />
+  <script src="/theme.js?v=20260811i"></script>
   <title>Equipo · PredictMotion</title>
 
   <style>
@@ -1179,6 +1179,7 @@ function extractMatchData(ev) {
   const me = isHome ? home : away;
   const opp = isHome ? away : home;
   const logoOf = t => {
+    if (t.team && t.team.id && LOGO_OVERRIDES[t.team.id]) return LOGO_OVERRIDES[t.team.id];
     if (t.team && t.team.logos && t.team.logos[0]) return t.team.logos[0].href;
     // Los eventos 'pre' del scoreboard NO traen logos, pero sí el id ESPN del
     // equipo; el logo vive en el CDN con URL determinista por id → lo construimos
@@ -1723,9 +1724,9 @@ if (TEAM_ID) { triggerUpdate(); updateSeason(); }
   document.addEventListener('pm-follows-changed', render);
 })();
 </script>
-<script src="/assets/account.js?v=20260811h"></script>
-<script src="/assets/pm-leagues.js?v=20260811h"></script>
-<script src="/assets/shell.js?v=20260811h"></script>
+<script src="/assets/account.js?v=20260811i"></script>
+<script src="/assets/pm-leagues.js?v=20260811i"></script>
+<script src="/assets/shell.js?v=20260811i"></script>
 <script>PMShell.chrome({ active: null });</script>
 </body>
 </html>

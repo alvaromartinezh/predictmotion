@@ -36,7 +36,7 @@
       if (!r.ok) throw new Error('ESPN ' + r.status); return r.json();
     });
   }
-  function logo(t) { return (t && t.logo) || ((t && t.logos && t.logos[0] && t.logos[0].href)) || ''; }
+  function logo(t) { var tid = String((t && t.id) || ''); var over = (window.PM_TEAM_LOGOS && window.PM_TEAM_LOGOS[tid]); return over || (t && t.logo) || ((t && t.logos && t.logos[0] && t.logos[0].href)) || ''; }
 
   function matchCard(ev) {
     var c = (ev.competitions && ev.competitions[0]) || {};

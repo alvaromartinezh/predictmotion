@@ -18,7 +18,8 @@
   function initials(n) { var p = (n || '').trim().split(/\s+/).filter(Boolean); return ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); }
   window.PMPartCrestFallback = function (img) { var d = document.createElement('div'); d.className = 'crest-ph'; d.textContent = img.getAttribute('data-ab') || '?'; img.parentNode.replaceChild(d, img); };
   function crest(logo, name, id) {
-    var ab = initials(name), src = logo || (id ? 'https://a.espncdn.com/i/teamlogos/soccer/500/' + id + '.png' : '');
+    var ab = initials(name), sid = String(id || ''), src = (window.PM_TEAM_LOGOS && window.PM_TEAM_LOGOS[sid])
+      || logo || (id ? 'https://a.espncdn.com/i/teamlogos/soccer/500/' + sid + '.png' : '');
     if (!src) return '<div class="crest-ph">' + ab + '</div>';
     return '<img class="crest" loading="lazy" alt="" src="' + esc(src) + '" data-ab="' + ab + '" onerror="PMPartCrestFallback(this)">';
   }

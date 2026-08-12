@@ -65,9 +65,11 @@
     function winnerOf(c) { return c.winner === true || !!(c.score && typeof c.score === 'object' && c.score.winner === true); }
     function side(c) {
       var t = c.team || {};
+      var tId = String(t.id || '');
       return {
-        id: String(t.id || ''), name: t.displayName || t.shortDisplayName || '',
-        logo: (t.logos && t.logos[0] && t.logos[0].href) || t.logo || '',
+        id: tId, name: t.displayName || t.shortDisplayName || '',
+        logo: (window.PM_TEAM_LOGOS && window.PM_TEAM_LOGOS[tId])
+          || (t.logos && t.logos[0] && t.logos[0].href) || t.logo || '',
         score: scoreVal(c), winner: winnerOf(c)
       };
     }

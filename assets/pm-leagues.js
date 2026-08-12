@@ -22,4 +22,10 @@
     conference:   { name: 'Conference',      code: 'uefa.europa.conf', country: 'Europa',       logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/20296.png' }
   };
   window.PM_LEAGUES_ORDER = ['laliga','hypermotion','premier','seriea','bundesliga','ligue1','primeira','eredivisie','championship','serieb','bundesliga2','ligue2','champions','europa','conference'];
+  /* PM_TEAM_LOGOS — sobreescrituras de escudo por id de equipo ESPN (espejo
+   * cliente de seo/config.py → TEAM_LOGOS) para equipos cuyo escudo oficial de
+   * ESPN es 404/no se sirve. Clave = id ESPN, valor = URL válida del escudo. */
+  window.PM_TEAM_LOGOS = {
+    '131858': 'https://a.espncdn.com/i/teamlogos/soccer/500/85.png'   // Celta Fortuna → Celta Vigo
+  };
 })();
