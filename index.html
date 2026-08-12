@@ -74,7 +74,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="app" id="app">
       <!-- Contenido SEO/no-JS: el shell lo reemplaza al montar. Encapsula lo que
            antes era el selector de competiciones: enlaces internos a las 15 ligas. -->
-      <main class="wrap section" style="max-width:var(--maxw);margin-inline:auto;padding-inline:var(--sp-5)">
+      <main class="wrap" style="max-width:var(--maxw);margin-inline:auto;padding-inline:var(--sp-5);padding-block:var(--sp-8)">
+
         <h1 class="display" style="font-size:clamp(2rem,6vw,3rem)">Probabilidades de fútbol que se leen solas</h1>
         <p class="lede" style="margin-top:var(--sp-4);max-width:640px">Resultados, clasificación con probabilidades de ascenso, descenso y Europa, y noticias de tus equipos. 15 competiciones, recalculadas a diario con simulación Monte Carlo.</p>
         <nav aria-label="Competiciones" style="margin-top:var(--sp-6);display:flex;flex-wrap:wrap;gap:var(--sp-3)">
@@ -85,6 +86,90 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           <a href="/champions">Champions League</a> · <a href="/europa">Europa League</a> · <a href="/conference">Conference League</a> ·
           <a href="/noticias">Noticias</a> · <a href="/acerca">Cómo funciona</a>
         </nav>
+
+        <!-- Contenido estático para Googlebot y visitantes sin JS -->
+        <section aria-label="Cómo funcionan las probabilidades" style="margin-top:var(--sp-9)">
+          <p class="eyebrow">Metodología</p>
+          <h2 style="font-family:var(--font-display);font-size:var(--fs-28);font-weight:700;color:var(--text);margin-top:var(--sp-2);margin-bottom:var(--sp-4);max-width:600px;line-height:1.2">Cómo predecimos 40.000 temporadas posibles para cada jornada</h2>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--sp-4);margin-top:var(--sp-5)">
+            <div class="panel" style="padding:var(--sp-5)">
+              <div style="font-size:var(--fs-36);line-height:1;margin-bottom:var(--sp-3)">⚽</div>
+              <h3 style="font-family:var(--font-display);font-size:var(--fs-16);font-weight:700;color:var(--text);margin-bottom:var(--sp-2)">1. Simulamos 40.000 temporadas</h3>
+              <p style="font-size:var(--fs-14);color:var(--text-2);line-height:1.6">Para cada partido restante, la simulación sortea un resultado (victoria local, empate o visitante) según las probabilidades de cada liga — basadas en datos históricos de victorias en casa, empates y victorias visitantes.</p>
+            </div>
+            <div class="panel" style="padding:var(--sp-5)">
+              <div style="font-size:var(--fs-36);line-height:1;margin-bottom:var(--sp-3)">📊</div>
+              <h3 style="font-family:var(--font-display);font-size:var(--fs-16);font-weight:700;color:var(--text);margin-bottom:var(--sp-2)">2. Recalculamos tras cada jornada</h3>
+              <p style="font-size:var(--fs-14);color:var(--text-2);line-height:1.6">Con cada partido jugado, la tabla real actualiza puntos y diferencia de goles. La simulación parte de esa situación real y proyecta el resto de la temporada hasta el final.</p>
+            </div>
+            <div class="panel" style="padding:var(--sp-5)">
+              <div style="font-size:var(--fs-36);line-height:1;margin-bottom:var(--sp-3)">🎯</div>
+              <h3 style="font-family:var(--font-display);font-size:var(--fs-16);font-weight:700;color:var(--text);margin-bottom:var(--sp-2)">3. Los porcentajes son el resultado</h3>
+              <p style="font-size:var(--fs-14);color:var(--text-2);line-height:1.6">De las 40.000 clasificaciones finales simuladas, el porcentaje de veces que cada equipo acaba en cada posición es su probabilidad. Un 73% de subir significa: en 73 de cada 100 temporadas simuladas, ese equipo terminó en posiciones de ascenso.</p>
+            </div>
+            <div class="panel" style="padding:var(--sp-5)">
+              <div style="font-size:var(--fs-36);line-height:1;margin-bottom:var(--sp-3)">🔄</div>
+              <h3 style="font-family:var(--font-display);font-size:var(--fs-16);font-weight:700;color:var(--text);margin-bottom:var(--sp-2)">4. Ventaja de campo por liga</h3>
+              <p style="font-size:var(--fs-14);color:var(--text-2);line-height:1.6">Cada competición tiene su perfil: LaLiga tiene más victorias locales (46%) que la Premier (45%). La ventaja de campo se reduce a lo largo de la temporada según las jornadas disputadas, dando más peso a los resultados reales.</p>
+            </div>
+          </div>
+
+          <div class="panel" style="margin-top:var(--sp-6);padding:var(--sp-6)">
+            <h3 style="font-family:var(--font-display);font-size:var(--fs-16);font-weight:700;color:var(--text);margin-bottom:var(--sp-3)">Datos y fuentes</h3>
+            <p style="font-size:var(--fs-14);color:var(--text-2);line-height:1.7">Clasificaciones, resultados, calendarios y estadísticas proceden de la <strong>API pública de ESPN</strong> y se actualizan en tiempo real. Las probabilidades son propias de PredictMotion y se recalculan automáticamente tras cada jornada.</p>
+            <p style="margin-top:var(--sp-3);font-size:var(--fs-14);color:var(--text-2);line-height:1.7"><a href="/acerca" style="color:var(--accent)">Más sobre cómo funciona PredictMotion →</a></p>
+          </div>
+        </section>
+
+        <section aria-label="Competiciones y funciones" style="margin-top:var(--sp-9)">
+          <p class="eyebrow">Contenido</p>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--sp-4);margin-top:var(--sp-4)">
+            <div class="panel" style="padding:var(--sp-5)">
+              <h3 style="font-family:var(--font-display);font-size:var(--fs-16);font-weight:700;color:var(--text);margin-bottom:var(--sp-2)">15 competiciones</h3>
+              <p style="font-size:var(--fs-14);color:var(--text-2);line-height:1.6">LaLiga y Hypermotion (España), Premier League y Championship (Inglaterra), Serie A y Serie B (Italia), Bundesliga y 2. Bundesliga (Alemania), Ligue 1 y Ligue 2 (Francia), Primeira Liga (Portugal), Eredivisie (Países Bajos), Champions League, Europa League y Conference League.</p>
+            </div>
+            <div class="panel" style="padding:var(--sp-5)">
+              <h3 style="font-family:var(--font-display);font-size:var(--fs-16);font-weight:700;color:var(--text);margin-bottom:var(--sp-2)">Sigue equipos y ligas</h3>
+              <p style="font-size:var(--fs-14);color:var(--text-2);line-height:1.6">Crea una cuenta gratis y sigue tus equipos y competiciones favoritas. La portada mostrará resultados, mini-clasificaciones con probabilidades y noticias de lo que te importa.</p>
+            </div>
+            <div class="panel" style="padding:var(--sp-5)">
+              <h3 style="font-family:var(--font-display);font-size:var(--fs-16);font-weight:700;color:var(--text);margin-bottom:var(--sp-2)">Noticias agregadas</h3>
+              <p style="font-size:var(--fs-14);color:var(--text-2);line-height:1.6">Artículos de Marca, AS y Mundo Deportivo, filtrados automáticamente por competición y equipo. Etiquetado sin intervención manual, actualizado cada 30 minutos.</p>
+            </div>
+            <div class="panel" style="padding:var(--sp-5)">
+              <h3 style="font-family:var(--font-display);font-size:var(--fs-16);font-weight:700;color:var(--text);margin-bottom:var(--sp-2)">Tiempo real</h3>
+              <p style="font-size:var(--fs-14);color:var(--text-2);line-height:1.6">Resultados en vivo, clasificaciones actualizadas con puntos provisionales y probabilidades recalculadas tras cada partido. Sin necesidad de recargar la página.</p>
+            </div>
+          </div>
+        </section>
+
+        <section aria-label="Preguntas frecuentes" style="margin-top:var(--sp-9)">
+          <p class="eyebrow">Preguntas frecuentes</p>
+
+          <div style="margin-top:var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-3)">
+            <details class="panel" style="padding:var(--sp-5)">
+              <summary style="font-family:var(--font-display);font-weight:700;color:var(--text);cursor:pointer;font-size:var(--fs-15)">¿Cómo se calculan los porcentajes?</summary>
+              <p style="margin-top:var(--sp-3);font-size:var(--fs-14);color:var(--text-2);line-height:1.7">Con una simulación Monte Carlo de 40.000 iteraciones. Para cada partido pendiente se sortea un resultado según las probabilidades de cada liga, se actualiza la clasificación y se repite hasta el final de temporada. El porcentaje de cada posición es la proporción de simulaciones en que ese equipo acabó en ella.</p>
+            </details>
+            <details class="panel" style="padding:var(--sp-5)">
+              <summary style="font-family:var(--font-display);font-weight:700;color:var(--text);cursor:pointer;font-size:var(--fs-15)">¿Qué significan las zonas de color en la tabla?</summary>
+              <p style="margin-top:var(--sp-3);font-size:var(--fs-14);color:var(--text-2);line-height:1.7">Verde: plazas de ascenso directo o Champions League. Azul: playoff de ascenso o Europa League. Rojo: descenso a división inferior. El color corresponde a la zona de clasificación de cada competición según las notas oficiales de ESPN.</p>
+            </details>
+            <details class="panel" style="padding:var(--sp-5)">
+              <summary style="font-family:var(--font-display);font-weight:700;color:var(--text);cursor:pointer;font-size:var(--fs-15)">¿Con qué frecuencia se actualizan las probabilidades?</summary>
+              <p style="margin-top:var(--sp-3);font-size:var(--fs-14);color:var(--text-2);line-height:1.7">Las probabilidades se recalculan tras cada jornada disputada, cuando la clasificación real cambia. Entre jornadas, el cron del servidor actualiza los datos de ESPN cada 3 horas. Durante partidos en vivo, la tabla muestra puntos provisionales actualizados automáticamente.</p>
+            </details>
+            <details class="panel" style="padding:var(--sp-5)">
+              <summary style="font-family:var(--font-display);font-weight:700;color:var(--text);cursor:pointer;font-size:var(--fs-15)">¿Puedo seguir a un equipo o competición?</summary>
+              <p style="margin-top:var(--sp-3);font-size:var(--fs-14);color:var(--text-2);line-height:1.7">Sí. Regístrate con tu cuenta de Google (gratis) y marca como favoritos los equipos y ligas que quieras seguir. Tu portada se personalizará con sus resultados y noticias. <a href="/cuenta" style="color:var(--accent)">Crear cuenta →</a></p>
+            </details>
+          </div>
+
+          <p style="margin-top:var(--sp-6);font-size:var(--fs-14);color:var(--muted)">¿Tienes más preguntas? <a href="/acerca" style="color:var(--accent)">Consulta la página completa</a> o escríbenos a <a href="mailto:contact@predictmotion.com" style="color:var(--accent)">contact@predictmotion.com</a>.</p>
+        </section>
+
       </main>
     </div>
     <div id="shell-tabbar"></div>
