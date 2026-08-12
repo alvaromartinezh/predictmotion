@@ -99,30 +99,6 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(404, {"ok": False, "reason": "not-found"})
         rest = parts[2:]
 
-    def _espn_proxy(self, rest):
-        if not config.ESPN_PROXY_ENABLED:
-            return self._send(503, {"ok": False, "reason": "disabled"})
-        if len(rest) < 2:
-            return self._send(400, {"ok": False, "reason": "bad-path"})
-        host, sub = rest[0], "/" + "/".join(rest[1:])
-        prefix = _ESPN_PROXY_HOSTS.get(host)
-        if prefix is None:
-            return self._send(403, {"ok": False, "reason": "host-not-allowed"})
-        if not sub.startswith(prefix):
-            return self._send(403, {"ok": False, "reason": "path-not-allowed"})
-        query = self.path.split("?", 1)[1] if "?" in self.path else ""
-        url = "https://" + host + sub + (("?" + query) if query else "")
-        try:
-            status, ctype, body = _espn_fetch(url)
-        except urllib.error.HTTPError as e:
-            status = e.code
-            ctype = e.headers.get("Content-Type", "application/json; charset=utf-8")
-            body = e.read()
-        except Exception as e:
-            log.warning("proxy ESPN: falló %s: %s", url[:120], e)
-            return self._send(502, {"ok": False, "reason": "upstream-error"})
-        return self._send_raw(status, ctype, body)
-
         if rest == ["health"]:
             return self._send(200, {"ok": True, "enabled": config.LIVE_TRACKING_ENABLED,
                                     "leagues": list(config.LEAGUES.keys())})
@@ -149,6 +125,30 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"ok": True, "match": detail})
 
         return self._send(404, {"ok": False, "reason": "not-found"})
+
+    def _espn_proxy(self, rest):
+        if not config.ESPN_PROXY_ENABLED:
+            return self._send(503, {"ok": False, "reason": "disabled"})
+        if len(rest) < 2:
+            return self._send(400, {"ok": False, "reason": "bad-path"})
+        host, sub = rest[0], "/" + "/".join(rest[1:])
+        prefix = _ESPN_PROXY_HOSTS.get(host)
+        if prefix is None:
+            return self._send(403, {"ok": False, "reason": "host-not-allowed"})
+        if not sub.startswith(prefix):
+            return self._send(403, {"ok": False, "reason": "path-not-allowed"})
+        query = self.path.split("?", 1)[1] if "?" in self.path else ""
+        url = "https://" + host + sub + (("?" + query) if query else "")
+        try:
+            status, ctype, body = _espn_fetch(url)
+        except urllib.error.HTTPError as e:
+            status = e.code
+            ctype = e.headers.get("Content-Type", "application/json; charset=utf-8")
+            body = e.read()
+        except Exception as e:
+            log.warning("proxy ESPN: falló %s: %s", url[:120], e)
+            return self._send(502, {"ok": False, "reason": "upstream-error"})
+        return self._send_raw(status, ctype, body)
 
 
 def serve(store: LiveStore):
