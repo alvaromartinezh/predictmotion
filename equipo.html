@@ -139,6 +139,7 @@
       background:var(--surface2); padding:10px 16px; border-bottom:1px solid var(--border);
       font-family:var(--font-display);
       font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--muted);
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
     }
 
     /* ── Tabla ── */
@@ -227,20 +228,68 @@
     .tl-empty { margin:auto; padding:24px 0; color:var(--muted); font-size:.78rem; }
     .tl-meta { padding:2px 16px 13px; text-align:center; font-family:var(--font-mono); font-size:.62rem; color:var(--muted); letter-spacing:.06em; }
 
-    /* ── Plantilla agrupada por posición ── */
+    /* ── Plantilla: tarjetas por posición ── */
     .squad-group { border-bottom:1px solid var(--border); }
     .squad-group:last-child { border-bottom:none; }
     .squad-group-header {
-      display:flex; align-items:center; gap:8px; padding:10px 16px; background:var(--surface2);
-      font-family:var(--font-display); font-size:.68rem; font-weight:700;
+      display:flex; align-items:center; gap:10px; padding:12px 16px;
+      background:linear-gradient(180deg,var(--surface2),transparent);
+      font-family:var(--font-display); font-size:.72rem; font-weight:700;
       text-transform:uppercase; letter-spacing:.1em; color:var(--text);
     }
+    .squad-group-header::before {
+      content:''; width:3px; height:14px; border-radius:2px; background:var(--accent);
+    }
     .squad-count { margin-left:auto; font-family:var(--font-mono); font-size:.62rem; font-weight:500; color:var(--muted); }
+    .squad-grid {
+      display:grid; grid-template-columns:repeat(auto-fill,minmax(168px,1fr));
+      gap:10px; padding:14px 16px 18px;
+    }
+    .player-card {
+      display:flex; flex-direction:column; gap:9px;
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--radius); padding:12px;
+      transition:transform .15s, border-color .15s, box-shadow .15s;
+    }
+    .player-card:hover {
+      transform:translateY(-2px); border-color:var(--accent);
+      box-shadow:0 6px 18px rgba(0,0,0,.15);
+    }
+    .pc-top { display:flex; align-items:center; justify-content:space-between; gap:6px; }
+    .pc-number {
+      font-family:var(--font-display); font-size:.92rem; font-weight:800;
+      color:var(--accent); background:var(--surface2); border:1px solid var(--border);
+      min-width:30px; height:30px; padding:0 6px; border-radius:8px;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .pc-flag { width:24px; height:16px; object-fit:cover; border-radius:3px; border:1px solid var(--border); }
+    .pc-name {
+      font-family:var(--font-display); font-size:1.02rem; font-weight:700; color:var(--text);
+      line-height:1.15; overflow:hidden; text-overflow:ellipsis;
+      display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+      min-height:2.35em;
+    }
+    .pc-meta { display:flex; align-items:center; gap:8px; margin-top:auto; }
+    .pc-pos {
+      font-family:var(--font-display); font-size:.6rem; font-weight:700;
+      letter-spacing:.08em; padding:3px 8px; border-radius:4px;
+      background:var(--surface2); color:var(--muted);
+    }
+    .pc-stats {
+      display:flex; gap:10px; margin-left:auto; font-family:var(--font-mono);
+      font-size:.6rem; color:var(--muted); white-space:nowrap;
+    }
+    .pc-stats b { color:var(--text); font-weight:700; }
 
-    /* ── Sort ── */
-    thead th[data-col] { cursor:pointer; user-select:none; }
-    thead th[data-col]:hover { color:var(--text); }
-    .sort-icon { color:var(--muted); font-size:.6rem; margin-left:3px; }
+    /* ── Sort (plantilla) ── */
+    .squad-toolbar { display:flex; align-items:center; gap:8px; }
+    .squad-toolbar label { font-family:var(--font-mono); font-size:.58rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+    .squad-toolbar select {
+      background:var(--surface2); color:var(--text); border:1px solid var(--border);
+      border-radius:6px; font-family:var(--font-display); font-size:.68rem; font-weight:600;
+      padding:4px 8px; cursor:pointer;
+    }
+    .squad-toolbar select:focus { outline:none; border-color:var(--accent); }
 
     /* ── Skeleton ── */
     .skeleton { animation:shimmer 1.4s infinite; background:linear-gradient(90deg,var(--surface2) 25%,#1e3055 50%,var(--surface2) 75%); background-size:400% 100%; border-radius:4px; }
@@ -354,12 +403,26 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- VISTA: plantilla -->
 <section class="team-view" id="view-players" hidden>
 <div class="card" id="squad-card">
-  <div class="card-header">Plantilla · Estadísticas individuales</div>
+  <div class="card-header">
+    Plantilla · Estadísticas individuales
+    <span class="squad-toolbar">
+      <label for="squad-sort">Ordenar</label>
+      <select id="squad-sort">
+        <option value="name">Nombre</option>
+        <option value="appearances">Partidos</option>
+        <option value="goals">Goles</option>
+        <option value="assists">Asistencias</option>
+      </select>
+    </span>
+  </div>
   <div id="squad-groups">
     <div class="squad-group">
       <div class="squad-group-header">Cargando…<span class="squad-count"></span></div>
-      <div class="table-scroll">
-        <table><tbody><tr><td><div class="skeleton" style="height:13px;margin:10px 0"></div></td></tr></tbody></table>
+      <div class="squad-grid">
+        <div class="player-card"><div class="pc-top"><span class="pc-number">·</span></div><div class="skeleton" style="height:16px;width:85%"></div><div class="skeleton" style="height:12px;width:55%"></div></div>
+        <div class="player-card"><div class="pc-top"><span class="pc-number">·</span></div><div class="skeleton" style="height:16px;width:85%"></div><div class="skeleton" style="height:12px;width:55%"></div></div>
+        <div class="player-card"><div class="pc-top"><span class="pc-number">·</span></div><div class="skeleton" style="height:16px;width:85%"></div><div class="skeleton" style="height:12px;width:55%"></div></div>
+        <div class="player-card"><div class="pc-top"><span class="pc-number">·</span></div><div class="skeleton" style="height:16px;width:85%"></div><div class="skeleton" style="height:12px;width:55%"></div></div>
       </div>
     </div>
   </div>
@@ -1054,7 +1117,15 @@ function extractMatchData(ev) {
   const isHome = String(home.team.id) === String(TEAM_ID);
   const me = isHome ? home : away;
   const opp = isHome ? away : home;
-  const logoOf = t => ((t.team && t.team.logos && t.team.logos[0]) ? t.team.logos[0].href : null);
+  const logoOf = t => {
+    if (t.team && t.team.logos && t.team.logos[0]) return t.team.logos[0].href;
+    // Los eventos 'pre' del scoreboard NO traen logos, pero sí el id ESPN del
+    // equipo; el logo vive en el CDN con URL determinista por id → lo construimos
+    // (así los próximos partidos muestran escudo, no iniciales). Si el id no
+    // resuelve, crestHTML cae al avatar de iniciales (onerror).
+    if (t.team && t.team.id) return `https://a.espncdn.com/i/teamlogos/soccer/500/${t.team.id}.png`;
+    return null;
+  };
   // El scoreboard de partidos 'pre' NO trae `ev.league`; se deriva del slug de
   // la temporada ("2026-27-laliga" → "LALIGA"). En el schedule sí viene `ev.league`.
   const league = (ev.league && ev.league.slug)
@@ -1099,8 +1170,9 @@ function collectPlayed(scheduleData) {
 // Línea cronológica única: hasta 3 partidos jugados a la izquierda, el partido
 // más inmediato en el centro y hasta 3 próximos a la derecha (en móvil solo 3
 // tarjetas visibles: anterior · centro · siguiente). Los crests de los partidos
-// jugados vienen de ESPN; los próximos (estado 'pre') NO traen logo → avatar de
-// iniciales con color determinista.
+// jugados vienen de ESPN; los próximos (estado 'pre') NO traen logo en el payload
+// → logoOf construye la URL del CDN desde el team id (fallback de iniciales si no
+// resuelve).
 let tlAll = [];
 let tlCenter = 0;
 let tlRadius = 3;
@@ -1237,14 +1309,20 @@ let squadSortCol = 'name';
 let squadSortDir = 1;
 
 function squadRow(p) {
-  return `<tr>
-    <td>${p.name}</td>
-    <td class="right">${p.appearances > 0 ? p.appearances : '<span style="color:var(--muted)">0</span>'}</td>
-    <td class="right" style="color:${p.goals>0?'var(--green)':'var(--muted)'}">${p.goals > 0 ? '<strong>'+p.goals+'</strong>' : '0'}</td>
-    <td class="right" style="color:${p.assists>0?'var(--blue)':'var(--muted)'}">${p.assists > 0 ? '<strong>'+p.assists+'</strong>' : '0'}</td>
-    <td class="right" style="color:${p.yellowCards>0?'#ca8a04':'var(--muted)'}">${p.yellowCards > 0 ? p.yellowCards : '0'}</td>
-    <td class="right" style="color:${p.redCards>0?'var(--red)':'var(--muted)'}">${p.redCards > 0 ? p.redCards : '0'}</td>
-  </tr>`;
+  const stats = p.hasStats
+    ? `<span class="pc-stats"><span>PJ <b>${p.appearances}</b></span><span>G <b>${p.goals}</b></span><span>A <b>${p.assists}</b></span></span>`
+    : '';
+  const flag = p.flag ? `<img class="pc-flag" src="${p.flag}" alt="" loading="lazy" onerror="this.remove()">` : '';
+  const num = p.jersey ? `<span class="pc-number">${p.jersey}</span>` : '<span class="pc-number">—</span>';
+  return `
+    <div class="player-card">
+      <div class="pc-top">${num}${flag}</div>
+      <div class="pc-name" title="${p.name}">${p.name}</div>
+      <div class="pc-meta">
+        <span class="pc-pos">${p.posLabel}</span>
+        ${stats}
+      </div>
+    </div>`;
 }
 
 function sortPlayers(list) {
@@ -1264,55 +1342,30 @@ function renderSquadGroups() {
   container.innerHTML = POS_GROUPS.map(g => {
     const players = cachedSquad.filter(p => p.group === g.code);
     if (!players.length) return '';
+    // El roster plano de ESPN NO trae estadísticas → mostramos la fila de stats
+    // solo si algún jugador del grupo tiene datos (evita tarjetas con ceros).
+    const hasStats = players.some(p => p.appearances > 0 || p.goals > 0 || p.assists > 0);
+    players.forEach(p => { p.hasStats = hasStats; });
     return `
     <div class="squad-group">
       <div class="squad-group-header">${g.label}<span class="squad-count">${players.length}</span></div>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th data-col="name">Jugador<span class="sort-icon">⇅</span></th>
-              <th class="right" data-col="appearances">Part.<span class="sort-icon">⇅</span></th>
-              <th class="right" data-col="goals">Goles<span class="sort-icon">⇅</span></th>
-              <th class="right" data-col="assists">Asist.<span class="sort-icon">⇅</span></th>
-              <th class="right" data-col="yellowCards">Tarj. A<span class="sort-icon">⇅</span></th>
-              <th class="right" data-col="redCards">Tarj. R<span class="sort-icon">⇅</span></th>
-            </tr>
-          </thead>
-          <tbody>${sortPlayers(players).map(squadRow).join('')}</tbody>
-        </table>
-      </div>
+      <div class="squad-grid">${sortPlayers(players).map(squadRow).join('')}</div>
     </div>`;
   }).join('');
 }
 
-function updateSortIcons() {
-  document.querySelectorAll('#squad-groups th[data-col]').forEach(th => {
-    const icon = th.querySelector('.sort-icon');
-    if (!icon) return;
-    if (th.dataset.col === squadSortCol) {
-      icon.textContent = squadSortDir === 1 ? '↑' : '↓';
-      icon.style.color = 'var(--text)';
-    } else {
-      icon.textContent = '⇅';
-      icon.style.color = '';
-    }
-  });
-}
-
 function initSquadSort() {
-  document.getElementById('squad-groups').addEventListener('click', (ev) => {
-    const th = ev.target.closest('th[data-col]');
-    if (!th) return;
-    const col = th.dataset.col;
-    if (squadSortCol === col) {
+  const sel = document.getElementById('squad-sort');
+  sel.value = squadSortCol;
+  sel.addEventListener('change', () => {
+    const col = sel.value;
+    if (col === squadSortCol) {
       squadSortDir *= -1;
     } else {
       squadSortCol = col;
       squadSortDir = (col === 'name') ? 1 : -1;
     }
     renderSquadGroups();
-    updateSortIcons();
   });
 }
 
@@ -1349,11 +1402,16 @@ function renderSquad(rosterData, statsMap) {
   const isFlat = athletes[0] && athletes[0].displayName !== undefined;
 
   const groupOf = pos => (pos === 'G' || pos === 'D' || pos === 'M') ? pos : 'F';
+  const POS_LABEL = { G: 'POR', D: 'DEF', M: 'MED', F: 'DEL' };
   const addPlayer = (athlete, st) => {
     const pos = athlete.position && athlete.position.abbreviation ? athlete.position.abbreviation : '—';
+    const g = groupOf(pos);
     cachedSquad.push({
       name: athlete.displayName || athlete.fullName || '—',
-      group: groupOf(pos),
+      group: g,
+      posLabel: POS_LABEL[g] || 'JUG',
+      jersey: athlete.jersey || '',
+      flag: (athlete.flag && athlete.flag.href) || null,
       appearances: st.appearances || st.minutes || 0,
       goals: st.goals || 0,
       assists: st.assists || 0,
@@ -1373,7 +1431,6 @@ function renderSquad(rosterData, statsMap) {
   squadSortCol = 'name';
   squadSortDir = 1;
   renderSquadGroups();
-  updateSortIcons();
   initSquadSort();
 }
 
