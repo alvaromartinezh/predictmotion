@@ -107,22 +107,32 @@
       var el = document.querySelector(mountSelector);
       if (!el || el.dataset.loaded) return;
       el.dataset.loaded = '1';
-      el.innerHTML = '<div class="fx-loading">Cargando partidos…</div>';
 
-      getJSON(ESPN + code + '/scoreboard').then(function (sb) {
-        var cal = (((sb.leagues || [])[0] || {}).calendar || []).filter(function (x) { return typeof x === 'string'; });
-        if (!cal.length) {
-          render(buildRounds(sb.events || []));
-          return;
-        }
-        var start = ymd(new Date(cal[0]));
-        var end = ymd(new Date(cal[cal.length - 1]));
-        return getJSON(ESPN + code + '/scoreboard?dates=' + start + '-' + end + '&limit=700')
-          .then(function (d) { render(buildRounds(d.events || [])); });
-      }).catch(function () {
+      function fail() {
         el.dataset.loaded = '';
         el.innerHTML = '<div class="fx-empty">No se pudieron cargar los partidos.</div>';
-      });
+      }
+      function load(attempt) {
+        el.innerHTML = '<div class="fx-loading">Cargando partidos…</div>';
+        return getJSON(ESPN + code + '/scoreboard').then(function (sb) {
+          var cal = (((sb.leagues || [])[0] || {}).calendar || []).filter(function (x) { return typeof x === 'string'; });
+          if (!cal.length) {
+            render(buildRounds(sb.events || []));
+            return;
+          }
+          var start = ymd(new Date(cal[0]));
+          var end = ymd(new Date(cal[cal.length - 1]));
+          return getJSON(ESPN + code + '/scoreboard?dates=' + start + '-' + end + '&limit=700')
+            .then(function (d) { render(buildRounds(d.events || [])); });
+        }).catch(function () {
+          // Fallo transitorio (reinicio del proxy, 403/502 puntual del upstream):
+          // reintenta una vez antes de rendirse.
+          if (attempt < 1) return new Promise(function (res) { setTimeout(res, 1200); }).then(function () { return load(attempt + 1); });
+          fail();
+        });
+      }
+
+      load(0);
 
       function render(rounds) {
         if (!rounds.length) {
