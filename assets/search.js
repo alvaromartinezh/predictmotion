@@ -20,6 +20,7 @@
 
   var COMPS = ORDER.filter(function (s) { return L[s]; }).map(function (s) { return { slug: s, name: L[s].name, logo: L[s].logo, country: L[s].country, norm: norm(L[s].name + ' ' + s) }; });
   var TEAMS = [], teamsReady = false;
+  var PLAYERS = [], playersReady = false;
 
   function loadTeams() {
     if (!D) return Promise.resolve([]);
@@ -42,6 +43,18 @@
     });
   }
 
+  function loadPlayers() {
+    return fetch('/data/players/index.json', { cache: 'no-store' })
+      .then(function(r) { if (!r.ok) return []; return r.json(); })
+      .then(function(data) {
+        PLAYERS = (data || []).map(function(p) {
+          return { id: p.id, name: p.name, norm: norm(p.name), team: p.team, team_slug: p.team_slug, league: p.league, pos: p.pos, posLabel: p.posLabel, headshot: p.headshot };
+        });
+        playersReady = true; return PLAYERS;
+      })
+      .catch(function() { playersReady = true; return []; });
+  }
+
   function compRow(c) {
     return '<a class="pm-item" href="/' + c.slug + '"><img class="lg-logo" src="' + esc(c.logo) + '" alt="">'
       + '<span class="pm-item__body"><span class="pm-item__title">' + esc(c.name) + '</span>'
@@ -52,6 +65,14 @@
       + crest(t.logo, t.name, t.id) + '<span class="pm-item__body"><span class="pm-item__title">' + esc(t.name) + '</span>'
       + '<span class="pm-item__sub">' + esc((L[t.slug] || {}).name || t.slug) + '</span></span>' + ARROW + '</a>';
   }
+  function playerRow(p) {
+    var photo = p.headshot
+      ? '<img class="crest" loading="lazy" alt="" src="' + esc(p.headshot) + '">'
+      : '<div class="crest-ph">' + (p.name.charAt(0) || '?') + '</div>';
+    return '<a class="pm-item pm-item--player" href="/jugador?id=' + encodeURIComponent(p.id) + '">'
+      + photo + '<span class="pm-item__body"><span class="pm-item__title">' + esc(p.name) + '</span>'
+      + '<span class="pm-item__sub">' + esc((p.posLabel || p.pos) + ' · ' + p.team) + '</span></span>' + ARROW + '</a>';
+  }
   function section(title, rowsHTML) { return '<div class="feed-sec"><h2 class="feed-sec__title">' + title + '</h2></div><section class="pm-list">' + rowsHTML + '</section>'; }
 
   function results(q) {
@@ -60,10 +81,12 @@
     if (!nq) { out.innerHTML = section('Competiciones', COMPS.map(compRow).join('')); return; }
     var comps = COMPS.filter(function (c) { return c.norm.indexOf(nq) >= 0; });
     var teams = TEAMS.filter(function (t) { return t.norm.indexOf(nq) >= 0; }).slice(0, 30);
+    var players = PLAYERS.filter(function (p) { return p.norm.indexOf(nq) >= 0; }).slice(0, 20);
     var html = '';
     if (comps.length) html += section('Competiciones', comps.map(compRow).join(''));
     if (teams.length) html += section('Equipos', teams.map(teamRow).join(''));
-    if (!html) html = '<p class="search-empty">' + (teamsReady ? 'Sin resultados para “' + esc(q) + '”.' : 'Buscando…') + '</p>';
+    if (players.length) html += section('Jugadores', players.map(playerRow).join(''));
+    if (!html) html = '<p class="search-empty">' + ((teamsReady && playersReady) ? 'Sin resultados para "' + esc(q) + '".' : 'Buscando…') + '</p>';
     out.innerHTML = html;
   }
 
@@ -71,7 +94,7 @@
     return '<div class="feed"><div class="feed__col">'
       + '<div class="feed-sec" style="margin-top:var(--sp-2)"><h2 class="feed-sec__title">Buscar</h2></div>'
       + '<div class="search-box"><div class="search-field">' + ICSEARCH
-      + '<input id="search-input" type="search" placeholder="Equipo o competición…" autocomplete="off" aria-label="Buscar">'
+      + '<input id="search-input" type="search" placeholder="Equipo, competición o jugador…" autocomplete="off" aria-label="Buscar">'
       + '<button class="search-clear" id="search-clear" type="button" aria-label="Limpiar" hidden>✕</button></div></div>'
       + '<div id="search-results"></div>'
       + '</div><div class="feed__rail"></div></div>';
@@ -95,7 +118,7 @@
 
   function start() {
     render();
-    loadTeams().then(function () { if (qcur) results(qcur); });   // reevalúa si ya hay query
+    Promise.all([loadTeams(), loadPlayers()]).then(function () { if (qcur) results(qcur); });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
   document.addEventListener('pm-account-ready', render);

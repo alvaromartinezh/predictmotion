@@ -278,6 +278,16 @@ def _run(args):
         except Exception as exc:
             print(f"  [SKIP] player_cuts: {exc}", file=sys.stderr)
 
+    # Fichas de jugador: data/players/<id>.json + index.json.
+    # Se ejecuta en cada run completo (no con --league puntual) para mantener
+    # los datos de plantilla sincronizados.
+    if not args.dry_run and not args.league:
+        try:
+            from . import players
+            players.run()
+        except Exception as exc:
+            print(f"  [SKIP] players: {exc}", file=sys.stderr)
+
     print(f"\nFin — {ok}/{len(leagues)} ligas generadas.")
 
     # Alerta por email si NINGUNA liga se generó. Solo en la ejecución real del
