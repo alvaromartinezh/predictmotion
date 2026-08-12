@@ -9,91 +9,95 @@
   <link rel="apple-touch-icon" href="/media/twitter_profile.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="/styles.css?v=20260812b" />
-  <link rel="stylesheet" href="/assets/shell.css?v=20260812b" />
-  <link rel="stylesheet" href="/assets/jugador.css?v=20260812b" />
-  <link rel="canonical" href="/jugador" />
+  <link rel="stylesheet" href="/styles.css?v=20260812c" />
+  <link rel="stylesheet" href="/assets/shell.css?v=20260812c" />
+  <link rel="stylesheet" href="/assets/account.css?v=20260812c" />
+  <link rel="stylesheet" href="/assets/jugador.css?v=20260812c" />
   <meta name="robots" content="noindex, nofollow" />
   <script src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6406480140343995" crossorigin="anonymous"></script>
+  <script src="/theme.js?v=20260812c"></script>
 </head>
-<body class="pm-app">
-  <aside id="pm-sidenav"></aside>
+<body>
+
+  <!-- Shell del rediseño (modo chrome) alrededor del contenido de la página -->
+  <div class="pm-app app">
+  <aside class="sidenav" id="pm-sidenav"></aside>
   <div class="app__main">
-    <header id="pm-appbar"></header>
-    <main id="pm-main">
+  <header class="appbar" id="pm-appbar"></header>
 
-      <div class="wrap" id="player-content">
-        <!-- Hero -->
-        <section class="player-hero" id="p-hero">
-          <div class="ph-photo" id="p-photo">
-            <div class="ph-skeleton"></div>
-          </div>
-          <div class="ph-info">
-            <div class="ph-name-row">
-              <h1 class="ph-name" id="p-name">—</h1>
-              <span class="ph-jersey" id="p-jersey"></span>
-            </div>
-            <div class="ph-meta" id="p-meta">
-              <span class="ph-pos" id="p-pos">—</span>
-              <span class="ph-sep">·</span>
-              <a class="ph-team" id="p-team-link">—</a>
-              <span class="ph-sep">·</span>
-              <span class="ph-league" id="p-league">—</span>
-            </div>
-            <div class="ph-injury" id="p-injury"></div>
-          </div>
-        </section>
+  <main class="wrap" id="player-content">
 
-        <!-- Bio + Stats grid -->
-        <div class="player-grid">
-          <!-- Biographical -->
-          <section class="player-card" id="card-bio">
-            <h2 class="card-title">Datos personales</h2>
-            <div class="bio-table" id="p-bio"></div>
-          </section>
-
-          <!-- Season stats -->
-          <section class="player-card" id="card-stats">
-            <h2 class="card-title">Temporada <span id="p-season">—</span></h2>
-            <div class="stats-grid" id="p-stats"></div>
-          </section>
-        </div>
-
-        <!-- Navigation -->
-        <div class="player-nav">
-          <a class="pn-btn" id="pn-team" href="#">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-            Ver equipo
-          </a>
-          <a class="pn-btn" href="/buscar">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            Buscar jugadores
-          </a>
-        </div>
+    <!-- Hero -->
+    <section class="player-hero">
+      <div class="ph-photo" id="p-photo">
+        <div class="ph-skeleton"></div>
       </div>
+      <div class="ph-info">
+        <div class="ph-name-row">
+          <h1 class="ph-name" id="p-name">—</h1>
+          <span class="ph-jersey" id="p-jersey" hidden></span>
+        </div>
+        <div class="ph-meta">
+          <span class="ph-pos" id="p-pos"></span>
+          <a class="ph-team" id="p-team-link" href="#">
+            <img class="ph-crest" id="p-crest" alt="" hidden />
+            <span id="p-team-name"></span>
+          </a>
+          <span class="ph-league" id="p-league"></span>
+        </div>
+        <div class="ph-injury" id="p-injury" hidden></div>
+      </div>
+    </section>
 
-    </main>
-  </div>
+    <!-- Bio + Stats -->
+    <div class="player-grid">
+      <section class="player-card">
+        <h2 class="card-title">Datos personales</h2>
+        <div class="bio-table" id="p-bio"></div>
+      </section>
+
+      <section class="player-card">
+        <h2 class="card-title">Temporada <span id="p-season"></span></h2>
+        <div class="stats-grid" id="p-stats"></div>
+        <p class="stats-note">Estadísticas de la competición liguera en curso.</p>
+      </section>
+    </div>
+
+    <!-- Navegación -->
+    <div class="player-nav">
+      <a class="pn-btn" id="pn-team" href="#">
+        <img class="pn-crest" id="pn-crest" alt="" hidden />
+        <span>Ver equipo</span>
+      </a>
+      <a class="pn-btn" href="/buscar">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <span>Buscar jugadores</span>
+      </a>
+    </div>
+
+  </main>
+
+  </div><!-- /app__main -->
+  </div><!-- /pm-app -->
   <div id="shell-tabbar"></div>
 
-  <script src="/assets/pm-leagues.js?v=20260812b"></script>
-  <script src="/assets/shell.js?v=20260812b"></script>
+  <script src="/assets/account.js?v=20260812c"></script>
+  <script src="/assets/pm-leagues.js?v=20260812c"></script>
+  <script src="/assets/shell.js?v=20260812c"></script>
   <script>
   (function() {
-    PMShell.chrome({ active: 'jugador' });
+    PMShell.chrome({ active: null });
 
     var params = new URLSearchParams(location.search);
     var playerId = params.get('id');
+    var content = document.getElementById('player-content');
 
     if (!playerId) {
-      document.getElementById('player-content').innerHTML =
-        '<div class="wrap"><p class="err-msg">Jugador no especificado.</p></div>';
+      content.innerHTML = '<p class="err-msg">Jugador no especificado.</p>';
       return;
     }
 
-    document.title = 'Cargando… — PredictMotion';
-
-    fetch('/data/players/' + playerId + '.json', { cache: 'no-store' })
+    fetch('/data/players/' + encodeURIComponent(playerId) + '.json', { cache: 'no-store' })
       .then(function(r) {
         if (!r.ok) throw new Error('404');
         return r.json();
@@ -103,60 +107,77 @@
         render(p);
       })
       .catch(function() {
-        document.getElementById('player-content').innerHTML =
-          '<div class="wrap"><p class="err-msg">Datos del jugador no disponibles.</p></div>';
+        content.innerHTML = '<p class="err-msg">Datos del jugador no disponibles.</p>';
       });
 
+    function crestUrl(p) {
+      if (p.team_logo) return p.team_logo;
+      if (p.team_id) return 'https://a.espncdn.com/i/teamlogos/soccer/500/' + p.team_id + '.png';
+      return null;
+    }
+
     function render(p) {
-      // Photo
+      var teamHref = '/equipo?id=' + encodeURIComponent(p.team_id || '')
+        + '&league=' + encodeURIComponent(p.league_slug || '')
+        + '&name=' + encodeURIComponent(p.team || '');
+      var crest = crestUrl(p);
+
+      // Foto
       var photoEl = document.getElementById('p-photo');
       if (p.headshot) {
-        photoEl.innerHTML = '<img src="' + p.headshot + '" alt="' + p.name + '" class="ph-img" loading="lazy"/>';
+        photoEl.innerHTML = '<img src="' + p.headshot + '" alt="' + p.name + '" class="ph-img" loading="lazy" onerror="this.parentNode.innerHTML=fallbackAvatar()"/>';
       } else {
-        photoEl.innerHTML = '<div class="ph-avatar" style="background:' + avatarColor(p.name) + '">' +
-          p.name.charAt(0) + '</div>';
+        photoEl.innerHTML = fallbackAvatar();
+      }
+      function fallbackAvatar() {
+        return '<div class="ph-avatar" style="background:' + avatarColor(p.name) + '">' + p.name.charAt(0) + '</div>';
       }
 
-      // Name + jersey
+      // Nombre + dorsal
       document.getElementById('p-name').textContent = p.name;
-      var jerseyEl = document.getElementById('p-jersey');
       if (p.jersey) {
-        jerseyEl.textContent = '#' + p.jersey;
-        jerseyEl.style.display = 'inline-block';
+        var j = document.getElementById('p-jersey');
+        j.textContent = '#' + p.jersey;
+        j.hidden = false;
       }
 
-      // Meta row
-      document.getElementById('p-pos').textContent = p.posLabel || p.position;
+      // Meta: posición · equipo (con escudo) · liga
+      document.getElementById('p-pos').textContent = p.posLabel || p.position || '';
       var teamLink = document.getElementById('p-team-link');
-      teamLink.textContent = p.team;
-      teamLink.href = '/equipo?id=' + p.team_slug + '&name=' + encodeURIComponent(p.team);
+      teamLink.href = teamHref;
+      document.getElementById('p-team-name').textContent = p.team || '';
+      if (crest) {
+        var c = document.getElementById('p-crest');
+        c.src = crest; c.hidden = false;
+        c.onerror = function() { c.hidden = true; };
+      }
       document.getElementById('p-league').textContent = leagueName(p.league_slug);
 
-      // Injury
-      var injEl = document.getElementById('p-injury');
+      // Lesión
       if (p.injury) {
-        injEl.textContent = '� ' + p.injury;
-        injEl.style.display = 'block';
+        var inj = document.getElementById('p-injury');
+        inj.textContent = p.injury;
+        inj.hidden = false;
       }
 
-      // Bio table
-      var bio = document.getElementById('p-bio');
+      // Bio
       var rows = [];
-      if (p.age)         rows.push(['Edad',          p.age]);
-      if (p.dob)         rows.push(['Nacimiento',    p.dob]);
-      if (p.height_cm)  rows.push(['Altura',        p.height_cm + ' cm']);
-      if (p.weight_kg)  rows.push(['Peso',          p.weight_kg + ' kg']);
+      if (p.age)         rows.push(['Edad',         p.age + ' años']);
+      if (p.dob)         rows.push(['Nacimiento',   fmtDate(p.dob)]);
+      if (p.height_cm)   rows.push(['Altura',       p.height_cm + ' cm']);
+      if (p.weight_kg)   rows.push(['Peso',         p.weight_kg + ' kg']);
       if (p.nationality) rows.push(['Nacionalidad', p.nationality]);
-      if (p.flag)       rows.push(['Bandera',      '<img src="' + p.flag + '" alt="" class="bio-flag"/>']);
-      bio.innerHTML = rows.map(function(r) {
-        return '<div class="bio-row"><span class="bio-label">' + r[0] + '</span><span class="bio-val">' + r[1] + '</span></div>';
-      }).join('');
+      document.getElementById('p-bio').innerHTML = rows.length
+        ? rows.map(function(r) {
+            var flag = (r[0] === 'Nacionalidad' && p.flag)
+              ? ' <img src="' + p.flag + '" alt="" class="bio-flag"/>' : '';
+            return '<div class="bio-row"><span class="bio-label">' + r[0] + '</span>'
+              + '<span class="bio-val">' + r[1] + flag + '</span></div>';
+          }).join('')
+        : '<p class="bio-empty">Sin datos biográficos.</p>';
 
-      // Season
-      document.getElementById('p-season').textContent = p.season || '—';
-
-      // Stats
-      var stats = document.getElementById('p-stats');
+      // Stats de la temporada en curso
+      document.getElementById('p-season').textContent = p.season || '';
       var s = p.stats || {};
       var statItems = [
         ['PJ',  s.matches],
@@ -166,12 +187,25 @@
         ['TA',  s.yellow],
         ['TR',  s.red],
       ];
-      stats.innerHTML = statItems.map(function(it) {
-        return '<div class="st-item"><span class="st-val">' + (it[1] !== null && it[1] !== undefined ? it[1] : '—') + '</span><span class="st-label">' + it[0] + '</span></div>';
+      document.getElementById('p-stats').innerHTML = statItems.map(function(it) {
+        var v = (it[1] !== null && it[1] !== undefined && it[1] !== '') ? it[1] : '—';
+        return '<div class="st-item"><span class="st-val">' + v + '</span><span class="st-label">' + it[0] + '</span></div>';
       }).join('');
 
-      // Nav team link
-      document.getElementById('pn-team').href = '/equipo?id=' + p.team_slug + '&name=' + encodeURIComponent(p.team);
+      // Botón "Ver equipo" con escudo
+      var pn = document.getElementById('pn-team');
+      pn.href = teamHref;
+      if (crest) {
+        var pc = document.getElementById('pn-crest');
+        pc.src = crest; pc.hidden = false;
+        pc.onerror = function() { pc.hidden = true; };
+      }
+    }
+
+    function fmtDate(dob) {
+      var d = new Date(dob);
+      if (isNaN(d)) return dob;
+      return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
     }
 
     function avatarColor(name) {
@@ -182,14 +216,8 @@
     }
 
     function leagueName(slug) {
-      var map = {
-        'laliga':'LaLiga','hypermotion':'Hypermotion','premier':'Premier League',
-        'championship':'Championship','seriea':'Serie A','serieb':'Serie B',
-        'bundesliga':'Bundesliga','bundesliga2':'2. Bundesliga','ligue1':'Ligue 1',
-        'ligue2':'Ligue 2','primeira':'Primeira Liga','eredivisie':'Eredivisie',
-        'champions':'Champions League','europa':'Europa League','conference':'Conference League'
-      };
-      return map[slug] || slug;
+      var L = (window.PM_LEAGUES || {})[slug];
+      return L ? L.name : (slug || '');
     }
   }());
   </script>
