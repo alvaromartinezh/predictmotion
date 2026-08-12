@@ -66,6 +66,25 @@
     }
     .badge strong { color:var(--text); }
 
+    /* ── Sub-vistas del equipo ── */
+    .team-tabs {
+      max-width:940px; margin:0 auto 18px; display:flex; gap:4px;
+      border-bottom:1px solid var(--border); overflow-x:auto;
+    }
+    .team-tab {
+      position:relative; display:block; padding:10px 16px 13px;
+      font-family:var(--font-display); font-size:.72rem; font-weight:700;
+      text-transform:uppercase; letter-spacing:.08em; color:var(--muted);
+      text-decoration:none; white-space:nowrap; transition:color .15s;
+    }
+    .team-tab:hover { color:var(--text); }
+    .team-tab.is-active { color:var(--text); }
+    .team-tab.is-active::after {
+      content:""; position:absolute; left:10px; right:10px; bottom:-1px; height:2px;
+      background:var(--accent); border-radius:2px;
+    }
+    .team-view[hidden] { display:none !important; }
+
     /* ── Status ── */
     .status-bar { max-width:940px; margin:0 auto 14px; display:flex; align-items:center; gap:8px; font-size:.7rem; color:var(--muted); letter-spacing:.02em; }
     .status-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
@@ -74,8 +93,13 @@
     .status-dot.error   { background:var(--red); }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
-    /* ── Grid stats ── */
-    .stats-grid { max-width:940px; margin:0 auto 16px; display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:8px; }
+    /* ── Estadísticas por competición ── */
+    #stats-grid { max-width:940px; margin:0 auto 16px; display:flex; flex-direction:column; gap:16px; }
+    .comp-stats { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+    .comp-stats-header { display:flex; align-items:center; gap:8px; padding:10px 16px; background:var(--surface2); border-bottom:1px solid var(--border); }
+    .comp-stats-name { font-family:var(--font-display); font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); }
+    .comp-stats-tag { margin-left:auto; font-family:var(--font-mono); font-size:.6rem; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:var(--accent); border:1px solid var(--border); border-radius:999px; padding:2px 8px; }
+    .comp-stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:8px; padding:14px; }
     .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; }
     .stat-card .label {
       font-family:var(--font-display);
@@ -146,7 +170,72 @@
     .result-badge.W { background:rgba(0,201,122,.15); color:var(--green); }
     .result-badge.D { background:rgba(100,116,139,.15); color:var(--muted); }
     .result-badge.L { background:rgba(245,48,80,.15); color:var(--red); }
-    .fixture-home { color:var(--muted); font-size:.75rem; }
+
+    /* ── Timeline de partidos ── */
+    .timeline { display:flex; align-items:stretch; gap:8px; padding:14px 14px 6px; }
+    .tl-nav {
+      flex:0 0 34px; width:34px; height:34px; margin:auto 0;
+      border:1px solid var(--border); background:var(--surface2); color:var(--text);
+      border-radius:50%; font-size:1.15rem; line-height:1; cursor:pointer;
+      transition:background .12s, border-color .12s, color .12s, opacity .12s;
+    }
+    .tl-nav:hover:not(:disabled) { background:var(--accent); border-color:var(--accent); color:#fff; }
+    .tl-nav:disabled { opacity:.35; cursor:default; }
+    .tl-track { display:flex; gap:8px; flex:1; min-width:0; }
+    .tl-card, .tl-spacer { flex:0 0 calc((100% - 48px)/7); }
+    .tl-card {
+      min-width:0; display:flex; flex-direction:column; align-items:center; gap:5px;
+      background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+      padding:10px 6px 9px; text-align:center;
+      transition:transform .18s, border-color .18s, box-shadow .18s, opacity .18s;
+    }
+    .tl-spacer { visibility:hidden; }
+    a.tl-card { text-decoration:none; color:inherit; cursor:pointer; }
+    a.tl-card:hover { border-color:var(--accent); box-shadow:0 6px 18px rgba(0,0,0,.18); opacity:1; }
+    .tl-card.is-center {
+      border-color:var(--accent);
+      box-shadow:0 0 0 1px var(--accent), 0 6px 18px rgba(0,0,0,.18);
+    }
+    .tl-card.played.W { border-color:rgba(0,201,122,.45); background:rgba(0,201,122,.05); }
+    .tl-card.played.D { border-color:rgba(148,163,184,.35); background:rgba(148,163,184,.05); }
+    .tl-card.played.L { border-color:rgba(245,48,80,.45); background:rgba(245,48,80,.05); }
+    .tl-card.upcoming { opacity:.8; }
+    .tl-card.upcoming.is-center { opacity:1; }
+    .tl-card-top { display:flex; align-items:center; justify-content:space-between; gap:4px; width:100%; }
+    .tl-comp {
+      font-family:var(--font-mono); font-size:.55rem; color:var(--muted);
+      text-transform:uppercase; letter-spacing:.06em; overflow:hidden;
+      text-overflow:ellipsis; white-space:nowrap; max-width:70%;
+    }
+    .tl-venue { font-family:var(--font-display); font-size:.58rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+    .tl-crests { display:flex; align-items:center; gap:7px; width:100%; justify-content:center; }
+    .tl-crest { position:relative; width:32px; height:32px; flex-shrink:0; display:block; }
+    .tl-crest img { width:100%; height:100%; object-fit:contain; display:block; }
+    .tl-fb {
+      display:none; width:100%; height:100%; align-items:center; justify-content:center;
+      border-radius:50%; color:#fff; font-family:var(--font-display);
+      font-size:.6rem; font-weight:800; letter-spacing:.02em;
+    }
+    .tl-crest.tl-fb-active .tl-fb { display:flex; }
+    .tl-score { font-family:var(--font-display); font-size:.85rem; font-weight:800; color:var(--text); }
+    .tl-card.upcoming .tl-score { color:var(--muted); font-size:.7rem; font-weight:700; }
+    .tl-opp {
+      font-size:.68rem; font-weight:600; color:var(--text); line-height:1.2;
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%;
+    }
+    .tl-date { font-family:var(--font-mono); font-size:.58rem; color:var(--muted); white-space:nowrap; }
+    .tl-empty { margin:auto; padding:24px 0; color:var(--muted); font-size:.78rem; }
+    .tl-meta { padding:2px 16px 13px; text-align:center; font-family:var(--font-mono); font-size:.62rem; color:var(--muted); letter-spacing:.06em; }
+
+    /* ── Plantilla agrupada por posición ── */
+    .squad-group { border-bottom:1px solid var(--border); }
+    .squad-group:last-child { border-bottom:none; }
+    .squad-group-header {
+      display:flex; align-items:center; gap:8px; padding:10px 16px; background:var(--surface2);
+      font-family:var(--font-display); font-size:.68rem; font-weight:700;
+      text-transform:uppercase; letter-spacing:.1em; color:var(--text);
+    }
+    .squad-count { margin-left:auto; font-family:var(--font-mono); font-size:.62rem; font-weight:500; color:var(--muted); }
 
     /* ── Sort ── */
     thead th[data-col] { cursor:pointer; user-select:none; }
@@ -162,9 +251,12 @@
     /* ── Footer ── */
     .footer { max-width:940px; margin:18px auto 0; font-size:.7rem; color:var(--muted); display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px; }
 
+    @media (max-width:700px) {
+      .tl-card, .tl-spacer { flex:0 0 calc((100% - 16px)/3); }
+    }
     @media (max-width:600px) {
       .probs-row { grid-template-columns:1fr; }
-      .stats-grid { grid-template-columns:repeat(3,1fr); }
+      .comp-stats-grid { grid-template-columns:repeat(3,1fr); }
       .prob-card .p-pct { font-size:1.8rem; }
       .header-text h1 { font-size:1.45rem; }
       thead th,td { padding:7px 9px; }
@@ -203,21 +295,37 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <div class="pm-followbar" id="pm-followbar" hidden></div>
 </div>
 
+<nav class="team-tabs" id="team-tabs" aria-label="Vistas del equipo">
+  <a class="team-tab" data-view="stats" href="/equipo/stats">Estadísticas</a>
+  <a class="team-tab" data-view="matches" href="/equipo/matches">Partidos</a>
+  <a class="team-tab" data-view="players" href="/equipo/players">Plantilla</a>
+</nav>
+
 <div class="status-bar">
   <div class="status-dot loading" id="status-dot"></div>
   <span id="status-text">Conectando…</span>
 </div>
 
-<!-- Estadísticas actuales -->
-<div class="stats-grid" id="stats-grid">
-  <div class="stat-card"><div class="label">Puntos</div><div class="skeleton sk-stat"></div></div>
-  <div class="stat-card"><div class="label">Partidos</div><div class="skeleton sk-stat"></div></div>
-  <div class="stat-card"><div class="label">Victorias</div><div class="skeleton sk-stat"></div></div>
-  <div class="stat-card"><div class="label">Empates</div><div class="skeleton sk-stat"></div></div>
-  <div class="stat-card"><div class="label">Derrotas</div><div class="skeleton sk-stat"></div></div>
-  <div class="stat-card"><div class="label">Goles</div><div class="skeleton sk-stat"></div></div>
-  <div class="stat-card"><div class="label">GC</div><div class="skeleton sk-stat"></div></div>
-  <div class="stat-card"><div class="label">Diferencia</div><div class="skeleton sk-stat"></div></div>
+<!-- VISTA: estadísticas + probabilidades -->
+<section class="team-view" id="view-stats">
+<!-- Estadísticas por competición -->
+<div id="stats-grid">
+  <div class="comp-stats">
+    <div class="comp-stats-header">
+      <span class="comp-stats-name">Cargando…</span>
+      <span class="comp-stats-tag">Actual</span>
+    </div>
+    <div class="comp-stats-grid">
+      <div class="stat-card"><div class="label">Puntos</div><div class="skeleton sk-stat"></div></div>
+      <div class="stat-card"><div class="label">Partidos</div><div class="skeleton sk-stat"></div></div>
+      <div class="stat-card"><div class="label">Victorias</div><div class="skeleton sk-stat"></div></div>
+      <div class="stat-card"><div class="label">Empates</div><div class="skeleton sk-stat"></div></div>
+      <div class="stat-card"><div class="label">Derrotas</div><div class="skeleton sk-stat"></div></div>
+      <div class="stat-card"><div class="label">Goles a favor</div><div class="skeleton sk-stat"></div></div>
+      <div class="stat-card"><div class="label">Goles en contra</div><div class="skeleton sk-stat"></div></div>
+      <div class="stat-card"><div class="label">Diferencia</div><div class="skeleton sk-stat"></div></div>
+    </div>
+  </div>
 </div>
 
 <!-- Probabilidades Monte Carlo -->
@@ -226,45 +334,37 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <div class="prob-card blue"><div class="p-label" style="color:var(--blue)">Play-off</div><div class="p-pct skeleton" style="height:32px;width:80px;border-radius:6px"></div></div>
   <div class="prob-card red"><div class="p-label" style="color:var(--red)">Descenso</div><div class="p-pct skeleton" style="height:32px;width:80px;border-radius:6px"></div></div>
 </div>
+</section>
 
-<!-- Resultados recientes -->
-<div class="card" id="results-card">
-  <div class="card-header">Últimos partidos</div>
-  <div class="table-scroll">
-    <table><tbody id="results-tbody"><tr><td colspan="4"><div class="skeleton sk-row" style="height:13px;margin:10px 0"></div></td></tr></tbody></table>
+<!-- VISTA: calendario (timeline) -->
+<section class="team-view" id="view-matches" hidden>
+<div class="card" id="timeline-card">
+  <div class="card-header">Calendario · Partidos</div>
+  <div class="timeline">
+    <button class="tl-nav" id="tl-prev" onclick="tlNav(-1)" aria-label="Anterior">‹</button>
+    <div class="tl-track" id="tl-track">
+      <div class="tl-empty">Cargando calendario…</div>
+    </div>
+    <button class="tl-nav" id="tl-next" onclick="tlNav(1)" aria-label="Siguiente">›</button>
   </div>
+  <div class="tl-meta" id="tl-meta">—</div>
 </div>
+</section>
 
-<!-- Próximos partidos -->
-<div class="card" id="upcoming-card">
-  <div class="card-header">Próximos partidos</div>
-  <div class="table-scroll">
-    <table><tbody id="upcoming-tbody"><tr><td colspan="3"><div class="skeleton" style="height:13px;margin:10px 0"></div></td></tr></tbody></table>
-  </div>
-</div>
-
-<!-- Plantilla y estadísticas -->
+<!-- VISTA: plantilla -->
+<section class="team-view" id="view-players" hidden>
 <div class="card" id="squad-card">
   <div class="card-header">Plantilla · Estadísticas individuales</div>
-  <div class="table-scroll">
-    <table>
-      <thead id="squad-thead">
-        <tr>
-          <th data-col="name">Jugador<span class="sort-icon">⇅</span></th>
-          <th class="center" data-col="pos">Pos<span class="sort-icon">⇅</span></th>
-          <th class="right" data-col="appearances">Part.<span class="sort-icon">⇅</span></th>
-          <th class="right" data-col="goals">Goles<span class="sort-icon">⇅</span></th>
-          <th class="right" data-col="assists">Asist.<span class="sort-icon">⇅</span></th>
-          <th class="right" data-col="yellowCards">Tarj. A<span class="sort-icon">⇅</span></th>
-          <th class="right" data-col="redCards">Tarj. R<span class="sort-icon">⇅</span></th>
-        </tr>
-      </thead>
-      <tbody id="squad-tbody">
-        <tr><td colspan="7"><div class="skeleton" style="height:13px;margin:10px 0"></div></td></tr>
-      </tbody>
-    </table>
+  <div id="squad-groups">
+    <div class="squad-group">
+      <div class="squad-group-header">Cargando…<span class="squad-count"></span></div>
+      <div class="table-scroll">
+        <table><tbody><tr><td><div class="skeleton" style="height:13px;margin:10px 0"></div></td></tr></tbody></table>
+      </div>
+    </div>
   </div>
 </div>
+</section>
 
 <div class="footer">
   <span id="footer-update">—</span>
@@ -452,8 +552,37 @@ const LG = LEAGUES[params.get('league')] || LEAGUES.hypermotion;
 // Tema de color según la competición (gold / rojo)
 document.body.classList.add('theme-' + (params.get('league') === 'laliga' ? 'laliga' : 'hypermotion'));
 
+// ─── Sub-vistas del equipo: /equipo/stats · /equipo/matches · /equipo/players ──
+// El segmento del path manda (Caddy/start.py reescriben /equipo/* → equipo.html);
+// `?view=` es el fallback para hosts estáticos sin rewrite. /equipo (sin segmento)
+// cae a 'stats' por defecto.
+const TEAM_VIEWS = ['stats', 'matches', 'players'];
+let activeView = 'stats';
+
+function applyView(view) {
+  activeView = TEAM_VIEWS.indexOf(view) >= 0 ? view : 'stats';
+  document.querySelectorAll('#team-tabs .team-tab').forEach(a => {
+    a.classList.toggle('is-active', a.dataset.view === activeView);
+  });
+  TEAM_VIEWS.forEach(v => {
+    const el = document.getElementById('view-' + v);
+    if (el) el.hidden = (v !== activeView);
+  });
+}
+
+(function initTeamViews() {
+  const seg = (location.pathname.match(/^\/equipo\/(stats|matches|players)\/?$/) || [])[1];
+  const fromQuery = params.get('view') || 'stats';
+  applyView(seg || fromQuery);
+  const q = location.search;
+  document.querySelectorAll('#team-tabs .team-tab').forEach(a => {
+    a.href = `/equipo/${a.dataset.view}${q}`;
+  });
+})();
+
 // ─── Config derivada de la liga ─────────────────────────────────────────────
-const ESPN_BASE   = `https://site.api.espn.com/apis/site/v2/sports/soccer/${LG.code}`;
+const ESPN_SITE   = `https://site.api.espn.com/apis/site/v2/sports/soccer`;
+const ESPN_BASE   = `${ESPN_SITE}/${LG.code}`;
 const ESPN_CORE   = `https://sports.core.api.espn.com/v2/sports/soccer/leagues/${LG.code}`;
 const ESPN_STAND  = `https://site.api.espn.com/apis/v2/sports/soccer/${LG.code}/standings`;
 const ESPN_SCOREBOARD = `https://site.api.espn.com/apis/site/v2/sports/soccer/${LG.code}/scoreboard`;
@@ -712,38 +841,92 @@ function applyLiveScores(standings, liveMatches) {
   return adjusted;
 }
 
+// Competiciones en las que participa el equipo, descubiertas en vivo: el core
+// API (sports.core.api.espn.com) indexa TODOS los partidos del equipo sin filtrar
+// por liga; el slug de competición va en el propio $ref de cada item (sin resolver
+// cada evento). El site API `teams/{id}/schedule` es solo de la liga actual, así
+// que sin esto las copas/champions del equipo no aparecerían ni en estadísticas
+// ni en el timeline.
+async function fetchTeamComps(season) {
+  const url = `https://sports.core.api.espn.com/v2/sports/soccer/teams/${TEAM_ID}/events?season=${season}&limit=200`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Core events ${res.status}`);
+  const data = await res.json();
+  const comps = new Set();
+  for (const it of (data.items || [])) {
+    const m = (it.$ref || '').split('/soccer/leagues/')[1];
+    if (!m) continue;
+    const slug = m.split('/')[0];
+    if (slug && !slug.includes('friendly')) comps.add(slug);   // club.friendly, friendly.*, fifa.friendly…
+  }
+  return comps;
+}
+
+// Calendario COMPLETO del equipo (jugados): uno por competición descubierta, más
+// la liga actual si el descubrimiento falla. Devuelve {season, comps, events}.
 async function fetchSchedule() {
-  const seasons = [SEASON_PRIMARY, SEASON_FALLBACK, ''];
+  const seasons = [SEASON_PRIMARY, SEASON_FALLBACK];
   for (const s of seasons) {
     try {
-      const url = s
-        ? `${ESPN_BASE}/teams/${TEAM_ID}/schedule?season=${s}`
-        : `${ESPN_BASE}/teams/${TEAM_ID}/schedule`;
-      const res = await fetch(url);
-      if (!res.ok) continue;
-      const data = await res.json();
-      if (data.events && data.events.length > 0) return data;
+      let comps;
+      try { comps = await fetchTeamComps(s); }
+      catch { comps = new Set(); }
+      if (!comps.size) comps.add(LG.code);          // discovery caído → solo la liga
+
+      const jobs = [...comps].map(async slug => {
+        try {
+          const url = `${ESPN_SITE}/${slug}/teams/${TEAM_ID}/schedule?season=${s}`;
+          const res = await fetch(url);
+          if (!res.ok) return [];
+          const data = await res.json();
+          return data.events || [];
+        } catch { return []; }
+      });
+      const lists = await Promise.all(jobs);
+      const events = [], seen = new Set();
+      for (const list of lists) for (const ev of list)
+        if (ev && ev.id && !seen.has(ev.id)) { seen.add(ev.id); events.push(ev); }
+      if (events.length) return { season: s, comps, events };
     } catch {}
   }
+  // Último recurso: schedule de la liga actual sin season (comportamiento antiguo).
+  try {
+    const res = await fetch(`${ESPN_BASE}/teams/${TEAM_ID}/schedule`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.events && data.events.length)
+        return { season: null, comps: new Set([LG.code]), events: data.events };
+    }
+  } catch {}
   return null;
 }
 
-async function fetchUpcoming() {
-  try {
-    const today = new Date();
-    const fmt = d => d.toISOString().slice(0,10).replace(/-/g,'');
-    const end = new Date(today); end.setMonth(end.getMonth() + 3);
-    const url = `${ESPN_BASE}/scoreboard?dates=${fmt(today)}-${fmt(end)}&limit=200`;
-    const res = await fetch(url);
-    if (!res.ok) return [];
-    const data = await res.json();
-    const events = data.events || [];
-    return events.filter(ev => {
-      const comp = ev.competitions && ev.competitions[0];
-      if (!comp) return false;
-      return comp.competitors.some(c => String(c.team.id) === String(TEAM_ID));
-    });
-  } catch { return []; }
+// Próximos partidos por competición (scoreboard a +3 meses, filtrado por equipo).
+// Antes solo se consultaba el scoreboard de la liga actual: los cruces de copas/
+// champions de otras competiciones no aparecían en el timeline.
+async function fetchUpcoming(sched) {
+  const comps = (sched && sched.comps && sched.comps.size) ? [...sched.comps] : [LG.code];
+  const today = new Date();
+  const fmt = d => d.toISOString().slice(0,10).replace(/-/g,'');
+  const end = new Date(today); end.setMonth(end.getMonth() + 3);
+  const jobs = comps.map(async slug => {
+    try {
+      const url = `${ESPN_SITE}/${slug}/scoreboard?dates=${fmt(today)}-${fmt(end)}&limit=200`;
+      const res = await fetch(url);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.events || []).filter(ev => {
+        const comp = ev.competitions && ev.competitions[0];
+        if (!comp) return false;
+        return comp.competitors.some(c => String(c.team.id) === String(TEAM_ID));
+      });
+    } catch { return []; }
+  });
+  const lists = await Promise.all(jobs);
+  const out = [], seen = new Set();
+  for (const list of lists) for (const ev of list)
+    if (ev && ev.id && !seen.has(ev.id)) { seen.add(ev.id); out.push(ev); }
+  return out;
 }
 
 async function fetchRoster() {
@@ -776,18 +959,64 @@ function setStatus(type, text) {
 }
 
 // ─── Render: stats grid ───────────────────────────────────────────────────
-function renderStatsGrid(t) {
-  const gd = t.gf - t.gc;
-  document.getElementById('stats-grid').innerHTML = `
-    <div class="stat-card"><div class="label">Puntos</div><div class="value">${t.pts}</div></div>
-    <div class="stat-card"><div class="label">Partidos</div><div class="value">${t.gp}</div></div>
-    <div class="stat-card"><div class="label">Victorias</div><div class="value" style="color:var(--green)">${t.wins}</div></div>
-    <div class="stat-card"><div class="label">Empates</div><div class="value" style="color:var(--muted)">${t.draws}</div></div>
-    <div class="stat-card"><div class="label">Derrotas</div><div class="value" style="color:var(--red)">${t.losses}</div></div>
-    <div class="stat-card"><div class="label">Goles a favor</div><div class="value">${t.gf}</div></div>
-    <div class="stat-card"><div class="label">Goles en contra</div><div class="value">${t.gc}</div></div>
-    <div class="stat-card"><div class="label">Diferencia</div><div class="value" style="color:${gd>=0?'var(--green)':'var(--red)'}">${gd>=0?'+':''}${gd}</div></div>
-  `;
+function statCell(label, value, color) {
+  return `<div class="stat-card"><div class="label">${label}</div><div class="value"${color ? ` style="color:${color}"` : ''}>${value}</div></div>`;
+}
+
+// Estadísticas por competición: un bloque con la clasificación oficial (tabla
+// de ESPN) + un bloque por cada competición adicional detectada en el calendario.
+function renderStatsGrid(t, played) {
+  const blocks = [{
+    name: LG.name,
+    tag: true,
+    stats: {
+      pts: t.pts, gp: t.gp, wins: t.wins, draws: t.draws, losses: t.losses,
+      gf: t.gf, gc: t.gc, gd: t.gf - t.gc,
+    },
+  }];
+
+  const byComp = new Map();
+  for (const m of played) {
+    if (!m.league || m.league.slug === LG.code) continue;
+    if (!byComp.has(m.league.slug)) {
+      byComp.set(m.league.slug, { name: m.league.name, gp:0, w:0, d:0, l:0, gf:0, gc:0 });
+    }
+    const g = byComp.get(m.league.slug);
+    g.gp++;
+    if (m.outcome === 'W') g.w++;
+    else if (m.outcome === 'D') g.d++;
+    else g.l++;
+    g.gf += m.myScore;
+    g.gc += m.oppScore;
+  }
+  for (const g of byComp.values()) {
+    blocks.push({ name: g.name, tag: false, stats: {
+      pts: 3*g.w + g.d, gp: g.gp, wins: g.w, draws: g.d, losses: g.l,
+      gf: g.gf, gc: g.gc, gd: g.gf - g.gc,
+    }});
+  }
+
+  document.getElementById('stats-grid').innerHTML = blocks.map(b => {
+    const s = b.stats;
+    const gd = (s.gd >= 0 ? '+' : '') + s.gd;
+    return `
+    <div class="comp-stats">
+      <div class="comp-stats-header">
+        <span class="comp-stats-name">${b.name}</span>
+        ${b.tag ? '<span class="comp-stats-tag">Actual</span>' : ''}
+      </div>
+      <div class="comp-stats-grid">
+        ${statCell('Puntos', s.pts)}
+        ${statCell('Partidos', s.gp)}
+        ${statCell('Victorias', s.wins, 'var(--green)')}
+        ${statCell('Empates', s.draws)}
+        ${statCell('Derrotas', s.losses, 'var(--red)')}
+        ${statCell('Goles a favor', s.gf)}
+        ${statCell('Goles en contra', s.gc)}
+        ${statCell('Diferencia', gd, s.gd >= 0 ? 'var(--green)' : 'var(--red)')}
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ─── Render: probabilities ────────────────────────────────────────────────
@@ -823,55 +1052,36 @@ function extractMatchData(ev) {
   const away = comp.competitors.find(c=>c.homeAway==='away');
   if (!home || !away) return null;
   const isHome = String(home.team.id) === String(TEAM_ID);
+  const me = isHome ? home : away;
+  const opp = isHome ? away : home;
+  const logoOf = t => ((t.team && t.team.logos && t.team.logos[0]) ? t.team.logos[0].href : null);
+  // El scoreboard de partidos 'pre' NO trae `ev.league`; se deriva del slug de
+  // la temporada ("2026-27-laliga" → "LALIGA"). En el schedule sí viene `ev.league`.
+  const league = (ev.league && ev.league.slug)
+    ? { slug: ev.league.slug, name: ev.league.shortName || ev.league.name }
+    : (ev.season && ev.season.slug
+        ? { slug: ev.season.slug, name: ev.season.slug.replace(/^\d{4}-\d{2}-/, '').toUpperCase() }
+        : null);
   return {
+    eventId: ev.id,
     date: new Date(comp.date),
     isHome,
-    opponent: isHome ? away.team.displayName : home.team.displayName,
-    myScore:  isHome ? parseScore(home.score) : parseScore(away.score),
-    oppScore: isHome ? parseScore(away.score) : parseScore(home.score),
+    opponent: opp.team.displayName,
+    myName: me.team.displayName,
+    myLogo: logoOf(me),
+    opponentLogo: logoOf(opp),
+    myScore:  parseScore(me.score),
+    oppScore: parseScore(opp.score),
     completed: !!(comp.status && comp.status.type && comp.status.type.completed),
+    league,
   };
 }
 
-function renderResults(played) {
-  // Sort ascending by date to assign sequential jornada numbers, then take last 8
-  const byDate = [...played].sort((a,b) => a.date - b.date);
-  byDate.forEach((m, i) => { m.round = `J${i + 1}`; });
-  const last8 = byDate.slice(-8).reverse();
-
-  if (!last8.length) {
-    document.getElementById('results-tbody').innerHTML =
-      '<tr><td colspan="4" style="color:var(--muted);padding:14px">Sin resultados disponibles</td></tr>';
-    return;
-  }
-  document.getElementById('results-tbody').innerHTML = last8.map(m => `
-    <tr>
-      <td style="color:var(--muted);font-size:.75rem">${m.round}</td>
-      <td>${m.isHome ? '' : '<span class="fixture-home">A · </span>'}${m.opponent}</td>
-      <td class="center"><strong>${m.myScore}–${m.oppScore}</strong></td>
-      <td class="center"><span class="result-badge ${m.outcome}">${m.outcome==='W'?'V':m.outcome==='L'?'D':'E'}</span></td>
-    </tr>`).join('');
-}
-
-function renderUpcoming(upcomingEvents, gp) {
-  const sorted = [...upcomingEvents].sort((a,b) => a.date - b.date).slice(0, 5);
-  if (!sorted.length) {
-    document.getElementById('upcoming-tbody').innerHTML =
-      '<tr><td colspan="3" style="color:var(--muted);padding:14px">Sin próximos partidos disponibles</td></tr>';
-    return;
-  }
-  sorted.forEach((m, i) => { m.round = `J${gp + i + 1}`; });
-  document.getElementById('upcoming-tbody').innerHTML = sorted.map(m => `
-    <tr>
-      <td style="color:var(--muted);font-size:.75rem">${m.round}</td>
-      <td>${m.isHome ? '' : '<span class="fixture-home">A · </span>'}${m.opponent}</td>
-      <td style="color:var(--muted);font-size:.75rem">${m.date.toLocaleTimeString('es-ES',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
-    </tr>`).join('');
-}
-
-function renderSchedule(scheduleData, upcomingEvents, gp) {
+// Partidos ya jugados extraídos del schedule, con resultado V/D/E. Se usa para
+// el timeline (partidos a la izquierda del centro) y para las estadísticas por
+// competición (bloques de copas/competiciones fuera de la liga actual).
+function collectPlayed(scheduleData) {
   const played = [];
-
   if (scheduleData && scheduleData.events) {
     for (const ev of scheduleData.events) {
       const m = extractMatchData(ev);
@@ -882,29 +1092,153 @@ function renderSchedule(scheduleData, upcomingEvents, gp) {
       played.push({ ...m, outcome });
     }
   }
-
-  const upcoming = upcomingEvents.map(ev => extractMatchData(ev)).filter(m => m && !m.completed);
-
-  if (!played.length) {
-    document.getElementById('results-tbody').innerHTML =
-      '<tr><td colspan="4" style="color:var(--muted);padding:14px">Sin resultados disponibles</td></tr>';
-  } else {
-    renderResults(played);
-  }
-
-  renderUpcoming(upcoming, gp);
+  return played;
 }
 
-// ─── Render: squad ────────────────────────────────────────────────────────
-const POS_LABELS = { G:'POR', D:'DEF', M:'MED', F:'DEL' };
+// ─── Render: timeline de partidos ──────────────────────────────────────────
+// Línea cronológica única: hasta 3 partidos jugados a la izquierda, el partido
+// más inmediato en el centro y hasta 3 próximos a la derecha (en móvil solo 3
+// tarjetas visibles: anterior · centro · siguiente). Los crests de los partidos
+// jugados vienen de ESPN; los próximos (estado 'pre') NO traen logo → avatar de
+// iniciales con color determinista.
+let tlAll = [];
+let tlCenter = 0;
+let tlRadius = 3;
+let tlMyLogo = null;
+let tlMyName = '';
+
+function crestInitials(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '?';
+  return parts.slice(0, 2).map(w => w[0]).join('').toUpperCase();
+}
+
+function colorFor(name) {
+  const s = String(name || '');
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return INITIALS_COLORS[h % INITIALS_COLORS.length];
+}
+
+function crestHTML(logo, name) {
+  const fb = `<span class="tl-fb" style="background:${colorFor(name)}">${crestInitials(name)}</span>`;
+  if (!logo) return `<span class="tl-crest tl-fb-active">${fb}</span>`;
+  return `<span class="tl-crest"><img src="${logo}" alt="" loading="lazy" onerror="this.remove();this.parentElement.classList.add('tl-fb-active');">${fb}</span>`;
+}
+
+// Solo las ligas que el backend de /partido (live_tracker) puede servir son
+// clicables, igual que en los dashboards (fixtures.js). El resto de competiciones
+// (copas, Champions…) no tienen seguimiento en vivo → tarjeta sin enlace.
+const LIVE_SLUG_BY_CODE = { 'esp.1': 'laliga', 'esp.2': 'hypermotion', laliga: 'laliga', hypermotion: 'hypermotion' };
+function partidoSlugFor(m) {
+  if (!m || !m.league) return null;
+  let s = String(m.league.slug || '');
+  const m2 = s.match(/^20\d\d-\d\d-(.+)$/);   // season.slug "2026-27-laliga" → "laliga"
+  if (m2) s = m2[1];
+  return LIVE_SLUG_BY_CODE[s] || null;
+}
+
+function tlCard(m, isCenter) {
+  const venue = m.isHome ? 'Local' : 'Visitante';
+  const badge = m.completed
+    ? `<span class="result-badge ${m.outcome}">${m.outcome==='W'?'V':m.outcome==='L'?'D':'E'}</span>`
+    : `<span class="tl-venue">${venue}</span>`;
+  const comp = m.league ? m.league.name : LG.name;
+  const date = m.date.toLocaleDateString('es-ES',{day:'2-digit',month:'short'}) +
+    ' · ' + m.date.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+  const cls = `${m.completed ? 'played ' + m.outcome : 'upcoming'}${isCenter ? ' is-center' : ''}`;
+  const inner = `
+    <div class="tl-card-top">
+      <span class="tl-comp" title="${comp}">${comp}</span>
+      ${badge}
+    </div>
+    <div class="tl-crests">
+      ${crestHTML(tlMyLogo, tlMyName)}
+      <span class="tl-score">${m.completed ? m.myScore + '–' + m.oppScore : 'vs'}</span>
+      ${crestHTML(m.opponentLogo, m.opponent)}
+    </div>
+    <div class="tl-opp" title="${m.opponent}">${m.opponent}</div>
+    <div class="tl-date">${date}</div>`;
+  const href = (m.eventId && partidoSlugFor(m))
+    ? `/partido?league=${partidoSlugFor(m)}&id=${encodeURIComponent(m.eventId)}`
+    : null;
+  return href
+    ? `<a class="tl-card ${cls}" href="${href}">${inner}</a>`
+    : `<div class="tl-card ${cls}">${inner}</div>`;
+}
+
+function renderTimelineWindow() {
+  const track = document.getElementById('tl-track');
+  const n = tlAll.length;
+  const from = Math.max(0, tlCenter - tlRadius);
+  const to = Math.min(n, tlCenter + tlRadius + 1);
+  const leftSpacers = Math.max(0, tlRadius - (tlCenter - from));
+  const rightSpacers = Math.max(0, tlRadius - (to - 1 - tlCenter));
+
+  const cards = [];
+  for (let i = 0; i < leftSpacers; i++) cards.push('<div class="tl-card tl-spacer"></div>');
+  for (let i = from; i < to; i++) cards.push(tlCard(tlAll[i], i === tlCenter));
+  for (let i = 0; i < rightSpacers; i++) cards.push('<div class="tl-card tl-spacer"></div>');
+  track.innerHTML = cards.join('');
+
+  const prev = document.getElementById('tl-prev');
+  const next = document.getElementById('tl-next');
+  if (prev) prev.disabled = tlCenter <= 0;
+  if (next) next.disabled = tlCenter >= n - 1;
+  document.getElementById('tl-meta').textContent = `Partido ${tlCenter + 1} de ${n}`;
+}
+
+function tlNav(dir) {
+  const n = tlAll.length;
+  if (!n) return;
+  tlCenter = Math.min(n - 1, Math.max(0, tlCenter + dir));
+  renderTimelineWindow();
+}
+
+function renderTimeline(scheduleData, upcomingEvents, teamData) {
+  tlRadius = (typeof window.matchMedia === 'function' && window.matchMedia('(max-width:700px)').matches) ? 1 : 3;
+  tlMyLogo = (teamData && teamData.logo) || null;
+  tlMyName = (teamData && teamData.name) || '';
+
+  const played = collectPlayed(scheduleData);
+  const upcoming = upcomingEvents
+    .map(ev => extractMatchData(ev))
+    .filter(m => m && !m.completed);
+
+  tlAll = [
+    ...played.sort((a,b) => a.date - b.date),
+    ...upcoming.sort((a,b) => a.date - b.date),
+  ];
+
+  const track = document.getElementById('tl-track');
+  if (!tlAll.length) {
+    track.innerHTML = '<div class="tl-empty">Sin partidos disponibles</div>';
+    document.getElementById('tl-prev').disabled = true;
+    document.getElementById('tl-next').disabled = true;
+    document.getElementById('tl-meta').textContent = '—';
+    return;
+  }
+
+  // Centro = primer partido sin jugar (el más inmediato); si no quedan, el último jugado.
+  const firstUpcoming = tlAll.findIndex(m => !m.completed);
+  tlCenter = firstUpcoming >= 0 ? firstUpcoming : tlAll.length - 1;
+  renderTimelineWindow();
+}
+
+// ─── Render: squad (agrupado por posición) ────────────────────────────────
+const POS_GROUPS = [
+  { code:'G', label:'Porteros' },
+  { code:'D', label:'Defensas' },
+  { code:'M', label:'Centrocampistas' },
+  { code:'F', label:'Delanteros' },
+];
 let cachedSquad = [];
-let squadSortCol = 'posSort';
+let squadSortCol = 'name';
 let squadSortDir = 1;
 
 function squadRow(p) {
   return `<tr>
     <td>${p.name}</td>
-    <td class="center"><span class="player-pos">${p.pos}</span></td>
     <td class="right">${p.appearances > 0 ? p.appearances : '<span style="color:var(--muted)">0</span>'}</td>
     <td class="right" style="color:${p.goals>0?'var(--green)':'var(--muted)'}">${p.goals > 0 ? '<strong>'+p.goals+'</strong>' : '0'}</td>
     <td class="right" style="color:${p.assists>0?'var(--blue)':'var(--muted)'}">${p.assists > 0 ? '<strong>'+p.assists+'</strong>' : '0'}</td>
@@ -913,17 +1247,47 @@ function squadRow(p) {
   </tr>`;
 }
 
-function renderSquadRows() {
-  const sorted = [...cachedSquad].sort((a, b) => {
+function sortPlayers(list) {
+  return [...list].sort((a, b) => {
     const av = a[squadSortCol], bv = b[squadSortCol];
     if (typeof av === 'number') return (av - bv) * squadSortDir;
     return String(av).localeCompare(String(bv)) * squadSortDir;
   });
-  document.getElementById('squad-tbody').innerHTML = sorted.map(squadRow).join('');
+}
+
+function renderSquadGroups() {
+  const container = document.getElementById('squad-groups');
+  if (!cachedSquad.length) {
+    container.innerHTML = '<div class="tl-empty">Plantilla no disponible</div>';
+    return;
+  }
+  container.innerHTML = POS_GROUPS.map(g => {
+    const players = cachedSquad.filter(p => p.group === g.code);
+    if (!players.length) return '';
+    return `
+    <div class="squad-group">
+      <div class="squad-group-header">${g.label}<span class="squad-count">${players.length}</span></div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th data-col="name">Jugador<span class="sort-icon">⇅</span></th>
+              <th class="right" data-col="appearances">Part.<span class="sort-icon">⇅</span></th>
+              <th class="right" data-col="goals">Goles<span class="sort-icon">⇅</span></th>
+              <th class="right" data-col="assists">Asist.<span class="sort-icon">⇅</span></th>
+              <th class="right" data-col="yellowCards">Tarj. A<span class="sort-icon">⇅</span></th>
+              <th class="right" data-col="redCards">Tarj. R<span class="sort-icon">⇅</span></th>
+            </tr>
+          </thead>
+          <tbody>${sortPlayers(players).map(squadRow).join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function updateSortIcons() {
-  document.querySelectorAll('#squad-thead th[data-col]').forEach(th => {
+  document.querySelectorAll('#squad-groups th[data-col]').forEach(th => {
     const icon = th.querySelector('.sort-icon');
     if (!icon) return;
     if (th.dataset.col === squadSortCol) {
@@ -937,18 +1301,18 @@ function updateSortIcons() {
 }
 
 function initSquadSort() {
-  document.querySelectorAll('#squad-thead th[data-col]').forEach(th => {
-    th.addEventListener('click', () => {
-      const col = th.dataset.col;
-      if (squadSortCol === col) {
-        squadSortDir *= -1;
-      } else {
-        squadSortCol = col;
-        squadSortDir = (col === 'name' || col === 'pos') ? 1 : -1;
-      }
-      renderSquadRows();
-      updateSortIcons();
-    });
+  document.getElementById('squad-groups').addEventListener('click', (ev) => {
+    const th = ev.target.closest('th[data-col]');
+    if (!th) return;
+    const col = th.dataset.col;
+    if (squadSortCol === col) {
+      squadSortDir *= -1;
+    } else {
+      squadSortCol = col;
+      squadSortDir = (col === 'name') ? 1 : -1;
+    }
+    renderSquadGroups();
+    updateSortIcons();
   });
 }
 
@@ -972,8 +1336,9 @@ function extractEmbeddedStats(athlete) {
 }
 
 function renderSquad(rosterData, statsMap) {
+  const container = document.getElementById('squad-groups');
   if (!rosterData || !rosterData.athletes || rosterData.athletes.length === 0) {
-    document.getElementById('squad-tbody').innerHTML = '<tr><td colspan="7" style="color:var(--muted);padding:14px">Plantilla no disponible</td></tr>';
+    container.innerHTML = '<div class="tl-empty">Plantilla no disponible</div>';
     return;
   }
 
@@ -983,43 +1348,31 @@ function renderSquad(rosterData, statsMap) {
   // Old format: array of position groups, each with .items array
   const isFlat = athletes[0] && athletes[0].displayName !== undefined;
 
+  const groupOf = pos => (pos === 'G' || pos === 'D' || pos === 'M') ? pos : 'F';
+  const addPlayer = (athlete, st) => {
+    const pos = athlete.position && athlete.position.abbreviation ? athlete.position.abbreviation : '—';
+    cachedSquad.push({
+      name: athlete.displayName || athlete.fullName || '—',
+      group: groupOf(pos),
+      appearances: st.appearances || st.minutes || 0,
+      goals: st.goals || 0,
+      assists: st.assists || 0,
+      yellowCards: st.yellowCards || 0,
+      redCards: st.redCards || 0,
+    });
+  };
+
   if (isFlat) {
-    for (const athlete of athletes) {
-      const pos = athlete.position && athlete.position.abbreviation ? athlete.position.abbreviation : '—';
-      const st = extractEmbeddedStats(athlete);
-      cachedSquad.push({
-        name: athlete.displayName || athlete.fullName || '—',
-        pos: POS_LABELS[pos] || pos,
-        posSort: pos === 'G' ? 0 : pos === 'D' ? 1 : pos === 'M' ? 2 : 3,
-        appearances: st.appearances,
-        goals: st.goals,
-        assists: st.assists,
-        yellowCards: st.yellowCards,
-        redCards: st.redCards,
-      });
-    }
+    for (const athlete of athletes) addPlayer(athlete, extractEmbeddedStats(athlete));
   } else {
     for (const group of athletes) {
-      for (const athlete of (group.items || [])) {
-        const pos = athlete.position && athlete.position.abbreviation ? athlete.position.abbreviation : '—';
-        const st = statsMap[athlete.id] || {};
-        cachedSquad.push({
-          name: athlete.displayName || athlete.fullName || '—',
-          pos: POS_LABELS[pos] || pos,
-          posSort: pos === 'G' ? 0 : pos === 'D' ? 1 : pos === 'M' ? 2 : 3,
-          appearances: st.minutes || 0,
-          goals: st.goals || 0,
-          assists: st.assists || 0,
-          yellowCards: st.yellowCards || 0,
-          redCards: st.redCards || 0,
-        });
-      }
+      for (const athlete of (group.items || [])) addPlayer(athlete, statsMap[athlete.id] || {});
     }
   }
 
-  squadSortCol = 'posSort';
+  squadSortCol = 'name';
   squadSortDir = 1;
-  renderSquadRows();
+  renderSquadGroups();
   updateSortIcons();
   initSquadSort();
 }
@@ -1119,11 +1472,11 @@ async function triggerUpdate() {
   try {
     setStatus('loading','Obteniendo clasificación…');
 
-    const [standings, scheduleData, rosterData, upcomingEvents, snapshot, liveMatches] = await Promise.all([
+    const scheduleData = await fetchSchedule();
+    const [standings, rosterData, upcomingEvents, snapshot, liveMatches] = await Promise.all([
       fetchStandings(),
-      fetchSchedule(),
       fetchRoster(),
-      fetchUpcoming(),
+      fetchUpcoming(scheduleData),
       fetchSnapshot(),
       fetchLiveScores(),
     ]);
@@ -1133,8 +1486,8 @@ async function triggerUpdate() {
 
     setSeason(snapshot && snapshot.season);
     renderTeamHeader(teamData);
-    renderStatsGrid(teamData);
-    renderSchedule(scheduleData, upcomingEvents, teamData.gp);
+    renderStatsGrid(teamData, collectPlayed(scheduleData));
+    renderTimeline(scheduleData, upcomingEvents, teamData);
 
     computeProbs(standings, snapshot, liveMatches);
     clearTimeout(liveTimer);
