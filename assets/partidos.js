@@ -7,7 +7,8 @@
   var DEFAULT = ['laliga', 'hypermotion', 'premier', 'seriea', 'bundesliga', 'ligue1'].filter(function (s) { return L[s]; });
   var DW = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
   // Ligas con página de partido en vivo propia (/partido lo sirve el live_tracker,
-  // que SOLO cubre estas). En el resto la fila enlaza solo a las páginas de equipo.
+  // que SOLO cubre estas): solo en ellas la fila entera es enlace. El resto de
+  // ligas queda sin enlace (la fila es un <div>).
   var MATCH_LEAGUES = { hypermotion: 1, laliga: 1 };
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
@@ -22,7 +23,6 @@
   function ymdToInput(y) { return y.slice(0, 4) + '-' + y.slice(4, 6) + '-' + y.slice(6, 8); }   // YYYYMMDD → YYYY-MM-DD (input date)
   function humanDate(y) { try { return new Date(+y.slice(0, 4), +y.slice(4, 6) - 1, +y.slice(6, 8)).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }); } catch (e) { return 'este día'; } }
   function kick(iso) { try { return new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
-  function teamHref(slug, t) { return '/equipo?id=' + encodeURIComponent(t.id) + '&name=' + encodeURIComponent(t.name || '') + '&league=' + encodeURIComponent(slug); }
   function lname(s) { return (L[s] || {}).name || s; }
   function llogo(s) { return (L[s] || {}).logo || ''; }
 
@@ -68,20 +68,26 @@
     if (m.state === 'in') inner = '<span class="pm-time live"><i></i>' + esc(m.clock || m.detail || '') + '</span>';
     else if (m.state === 'post') inner = '<span class="pm-time ft">Final</span>';
     else inner = '<span class="pm-time">' + esc(kick(m.date)) + '</span>';
-    // Estado → página de partido en vivo (solo ligas con /partido propio).
-    var status = (MATCH_LEAGUES[m.slug] && m.id)
-      ? '<a class="pm-status-link" href="/partido?league=' + encodeURIComponent(m.slug) + '&id=' + encodeURIComponent(m.id) + '" title="Ver partido">' + inner + '</a>'
-      : inner;
-    // Cada equipo → su página de equipo (todas las ligas).
+    // Los nombres de equipo NO enlazan (sin página de equipo desde aquí): la fila
+    // entera es el botón que abre el partido en vivo (solo ligas con /partido
+    // propio; el resto de ligas se queda sin enlace).
     function line(t, win) {
-      return '<a class="pm-line ' + (m.state !== 'pre' && !win ? 'lose' : '') + '" href="' + esc(teamHref(m.slug, t)) + '">' + crest(t.logo, t.name, t.id)
-        + '<span class="name">' + esc(t.name) + '</span>' + (m.state === 'pre' ? '' : '<span class="sc">' + (t.score == null ? '-' : t.score) + '</span>') + '</a>';
+      return '<div class="pm-line ' + (m.state !== 'pre' && !win ? 'lose' : '') + '">' + crest(t.logo, t.name, t.id)
+        + '<span class="name">' + esc(t.name) + '</span>' + (m.state === 'pre' ? '' : '<span class="sc">' + (t.score == null ? '-' : t.score) + '</span>') + '</div>';
     }
-    return '<div class="pm-row">' + status + '<div class="pm-body">' + line(m.home, m.home.winner) + line(m.away, m.away.winner) + '</div></div>';
+    var body = '<div class="pm-body">' + line(m.home, m.home.winner) + line(m.away, m.away.winner) + '</div>';
+    var href = (MATCH_LEAGUES[m.slug] && m.id)
+      ? '/partido?league=' + encodeURIComponent(m.slug) + '&id=' + encodeURIComponent(m.id) : '';
+    return href
+      ? '<a class="pm-row pm-row--link" href="' + href + '" title="Ver partido">' + inner + body + '</a>'
+      : '<div class="pm-row">' + inner + body + '</div>';
   }
   function leagueGroup(slug, ms) {
-    return '<div class="feed-sec"><h2 class="feed-sec__title"><img class="lg-logo" src="' + esc(llogo(slug)) + '" alt="" style="width:20px;height:20px"> ' + esc(lname(slug))
-      + '</h2><a class="feed-sec__more" href="/' + slug + '">Clasificación</a></div>'
+    // El nombre de la liga es el botón que lleva a la clasificación de la liga.
+    return '<div class="feed-sec"><h2 class="feed-sec__title"><a class="btn-league" href="/' + slug + '" title="Ver clasificación de ' + esc(lname(slug)) + '">'
+      + '<img class="lg-logo" src="' + esc(llogo(slug)) + '" alt="" style="width:20px;height:20px"> ' + esc(lname(slug))
+      + '<span class="btn-league__cta">Ver clasificación →</span>'
+      + '</a></h2></div>'
       + '<section class="matchlist">' + ms.map(matchRow).join('') + '</section>';
   }
 

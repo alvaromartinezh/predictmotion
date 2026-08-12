@@ -239,6 +239,29 @@ a.pm-item:hover::before, .pm-item:hover::before { transform: scaleY(1); }
 .pm-row::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform .16s var(--ease); }
 .matchlist .pm-row:hover { background: var(--surface-2); }
 .matchlist .pm-row:hover::before { transform: scaleX(1); }
+/* Fila-entera = botón del partido: quita el subrayado y mantiene el color. */
+a.pm-row--link { text-decoration: none; color: inherit; cursor: pointer; }
+a.pm-row--link:hover .pm-time { color: var(--accent); }
+/* Nombre de liga como botón hacia su clasificación. */
+.feed-sec__title a.btn-league {
+  display: inline-flex; align-items: center; gap: var(--sp-3);
+  color: inherit; text-decoration: none;
+  padding: 9px 18px; border: 1px solid var(--line-soft); border-radius: var(--r-pill);
+  background: var(--surface-2);
+  transition: color .14s var(--ease), border-color .14s var(--ease);
+}
+.feed-sec__title a.btn-league:hover { color: var(--accent); border-color: var(--accent-line); }
+/* CTA "Ver clasificación →" dentro del botón: pequeño y secundario. */
+.feed-sec__title .btn-league__cta {
+  font-family: var(--font-mono); font-size: var(--fs-11); font-weight: 500;
+  letter-spacing: .08em; color: var(--muted);
+  margin-left: var(--sp-1); padding-left: var(--sp-3);
+  border-left: 1px solid var(--line-soft);
+  transition: color .14s var(--ease), border-color .14s var(--ease);
+}
+.feed-sec__title a.btn-league:hover .btn-league__cta { color: var(--accent); border-color: var(--accent-line); }
+/* En móvil estrecho el CTA sobra (la píldora entera sigue siendo el enlace). */
+@media (max-width: 560px) { .feed-sec__title .btn-league__cta { display: none; } }
 .pm-time { text-align: center; font-family: var(--font-mono); font-size: var(--fs-13); color: var(--text-2); line-height: 1.15; }
 .pm-time small { display: block; font-size: 10px; color: var(--faint); letter-spacing: .04em; }
 .pm-time.ft { color: var(--faint); }
@@ -251,11 +274,6 @@ a.pm-item:hover::before, .pm-item:hover::before { transform: scaleY(1); }
 .pm-line .sc { font-family: var(--font-mono); font-weight: 700; font-size: var(--fs-15); color: var(--text); }
 .pm-line.lose .name { color: var(--text-2); }
 .pm-line.lose .sc { color: var(--muted); }
-/* Filas de partido clicables: equipo → su página; estado → /partido (donde exista) */
-a.pm-line { color: inherit; text-decoration: none; }
-a.pm-line:hover .name { color: var(--accent); }
-a.pm-status-link { display: block; text-decoration: none; color: inherit; }
-a.pm-status-link:hover .pm-time { color: var(--accent); }
 
 /* Franja de días + selector de fecha (saltar más allá de hoy-1…hoy+6) */
 .daystrip-row { display: flex; align-items: stretch; gap: var(--sp-2); }
