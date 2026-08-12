@@ -29,6 +29,9 @@ body { padding-bottom: var(--sp-9); }
 .sl-team { display: flex; align-items: center; gap: var(--sp-4); min-width: 0; }
 .sl-team.home { justify-content: flex-end; text-align: right; }
 .sl-team.away { justify-content: flex-start; }
+/* El equipo entero (escudo + nombre) es el enlace a su página. */
+a.sl-team { text-decoration: none; color: inherit; }
+a.sl-team:hover .sl-name { color: var(--accent); transition: color .14s var(--ease); }
 .sl-crest {
   width: 56px; height: 56px; flex: none; display: grid; place-items: center;
   background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-md); padding: 8px;

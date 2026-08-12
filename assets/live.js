@@ -100,6 +100,17 @@
     if (team.logo) return '<span class="sl-crest"><img src="' + esc(team.logo) + '" alt="" loading="lazy"></span>';
     return '<span class="sl-crest ph">' + esc(team.abbr || '') + '</span>';
   }
+  // Cada equipo de la cabecera es un botón (escudo + nombre juntos) → página del
+  // equipo. Sin id ESPN no hay página que enlazar → se queda como <div>.
+  function teamHref(t, league) {
+    return '/equipo?id=' + encodeURIComponent(t.id || '') + '&name=' + encodeURIComponent(t.name || t.abbr || '') + '&league=' + encodeURIComponent(league || '');
+  }
+  function slTeam(t, side, league) {
+    var name = '<div class="sl-meta"><div class="sl-name">' + esc(t.name || t.abbr) + '</div></div>';
+    var inner = (side === 'home') ? name + crest(t) : crest(t) + name;
+    if (!t.id) return '<div class="sl-team ' + side + '">' + inner + '</div>';
+    return '<a class="sl-team ' + side + '" href="' + esc(teamHref(t, league)) + '" title="Ver página de ' + esc(t.name || t.abbr) + '">' + inner + '</a>';
+  }
   function renderHeader(m) {
     var st = m.status || {};
     var pill;
@@ -116,9 +127,9 @@
 
     var scoreline =
       '<div class="scoreline">' +
-        '<div class="sl-team home"><div class="sl-meta"><div class="sl-name">' + esc(m.home.name || m.home.abbr) + '</div></div>' + crest(m.home) + '</div>' +
+        slTeam(m.home, 'home', m.league) +
         '<div class="sl-center"><div class="sl-score"><span>' + esc(m.home.score) + '</span><span class="sep">·</span><span>' + esc(m.away.score) + '</span></div>' + clock + '</div>' +
-        '<div class="sl-team away">' + crest(m.away) + '<div class="sl-meta"><div class="sl-name">' + esc(m.away.name || m.away.abbr) + '</div></div></div>' +
+        slTeam(m.away, 'away', m.league) +
       '</div>';
 
     var winbar = '';
