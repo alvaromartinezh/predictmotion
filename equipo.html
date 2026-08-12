@@ -1374,11 +1374,11 @@ function squadRow(p) {
   // Goles/asistencias/tarjetas de la temporada EN CURSO (roster actual de ESPN;
   // sin partidos jugados salen a 0, atenuados). La tarjeta enlaza a /jugador.
   const z = v => (v ? '' : ' z');
-  const stats = `<span class="pc-stats" title="Goles · Asistencias · Tarjetas amarillas · Rojas">
-    <span class="s-g${z(p.goals)}">G <b>${p.goals}</b></span>
-    <span class="s-a${z(p.assists)}">A <b>${p.assists}</b></span>
-    <span class="s-y${z(p.yellowCards)}">TA <b>${p.yellowCards}</b></span>
-    <span class="s-r${z(p.redCards)}">TR <b>${p.redCards}</b></span>
+  const stats = `<span class="pc-stats">
+    <span class="s-g${z(p.goals)}" title="Goles">⚽ <b>${p.goals}</b></span>
+    <span class="s-a${z(p.assists)}" title="Asistencias">🥾 <b>${p.assists}</b></span>
+    <span class="s-y${z(p.yellowCards)}" title="Tarjetas amarillas">🟨 <b>${p.yellowCards}</b></span>
+    <span class="s-r${z(p.redCards)}" title="Tarjetas rojas">🟥 <b>${p.redCards}</b></span>
   </span>`;
   return `
     <a class="player-card" href="/jugador?id=${encodeURIComponent(p.id)}" title="Ver perfil de ${p.name}">

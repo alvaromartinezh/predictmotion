@@ -180,16 +180,16 @@
       document.getElementById('p-season').textContent = p.season || '';
       var s = p.stats || {};
       var statItems = [
-        ['PJ',  s.matches],
-        ['MIN', s.minutes],
-        ['G',   s.goals],
-        ['A',   s.assists],
-        ['TA',  s.yellow],
-        ['TR',  s.red],
+        ['PJ',  s.matches,  'Partidos jugados'],
+        ['MIN', s.minutes,  'Minutos jugados'],
+        ['⚽',  s.goals,    'Goles'],
+        ['🥾',  s.assists,  'Asistencias'],
+        ['🟨',  s.yellow,   'Tarjetas amarillas'],
+        ['🟥',  s.red,      'Tarjetas rojas'],
       ];
       document.getElementById('p-stats').innerHTML = statItems.map(function(it) {
         var v = (it[1] !== null && it[1] !== undefined && it[1] !== '') ? it[1] : '—';
-        return '<div class="st-item"><span class="st-val">' + v + '</span><span class="st-label">' + it[0] + '</span></div>';
+        return '<div class="st-item" title="' + it[2] + '"><span class="st-val">' + v + '</span><span class="st-label">' + it[0] + '</span></div>';
       }).join('');
 
       // Botón "Ver equipo" con escudo
