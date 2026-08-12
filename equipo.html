@@ -246,6 +246,7 @@
       gap:10px; padding:14px 16px 18px;
     }
     .player-card {
+      position:relative; overflow:hidden;
       display:flex; flex-direction:column; gap:9px;
       background:var(--surface); border:1px solid var(--border);
       border-radius:var(--radius); padding:12px;
@@ -255,7 +256,13 @@
       transform:translateY(-2px); border-color:var(--accent);
       box-shadow:0 6px 18px rgba(0,0,0,.15);
     }
-    .pc-top { display:flex; align-items:center; justify-content:space-between; gap:6px; }
+    .pc-top { position:relative; z-index:1; display:flex; align-items:center; justify-content:space-between; gap:6px; }
+    .pc-id { display:flex; align-items:center; }
+    .pc-photo {
+      position:absolute; inset:0; width:100%; height:100%;
+      object-fit:cover; object-position:center 18%;
+      opacity:.18; z-index:0; pointer-events:none;
+    }
     .pc-number {
       font-family:var(--font-display); font-size:.92rem; font-weight:800;
       color:var(--accent); background:var(--surface2); border:1px solid var(--border);
@@ -264,22 +271,28 @@
     }
     .pc-flag { width:24px; height:16px; object-fit:cover; border-radius:3px; border:1px solid var(--border); }
     .pc-name {
+      position:relative; z-index:1;
       font-family:var(--font-display); font-size:1.02rem; font-weight:700; color:var(--text);
       line-height:1.15; overflow:hidden; text-overflow:ellipsis;
       display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
       min-height:2.35em;
     }
-    .pc-meta { display:flex; align-items:center; gap:8px; margin-top:auto; }
+    .pc-meta { position:relative; z-index:1; display:flex; flex-direction:column; align-items:flex-start; gap:7px; margin-top:auto; }
     .pc-pos {
       font-family:var(--font-display); font-size:.6rem; font-weight:700;
       letter-spacing:.08em; padding:3px 8px; border-radius:4px;
       background:var(--surface2); color:var(--muted);
     }
     .pc-stats {
-      display:flex; gap:10px; margin-left:auto; font-family:var(--font-mono);
-      font-size:.6rem; color:var(--muted); white-space:nowrap;
+      display:flex; justify-content:space-between; gap:6px; width:100%;
+      font-family:var(--font-mono); font-size:.6rem; color:var(--muted);
     }
-    .pc-stats b { color:var(--text); font-weight:700; }
+    .pc-stats b { font-weight:700; }
+    .s-g b { color:var(--green); }
+    .s-a b { color:var(--blue); }
+    .s-y b { color:#ca8a04; }
+    .s-r b { color:var(--red); }
+    .pc-stats .z b { color:var(--muted); }
 
     /* ── Sort (plantilla) ── */
     .squad-toolbar { display:flex; align-items:center; gap:8px; }
@@ -1002,6 +1015,34 @@ async function fetchRoster() {
   return null;
 }
 
+// Stats por jugador para la plantilla. El roster de la temporada actual (sin
+// `?season=`) trae la plantilla pero SIN stats mientras la temporada no tenga
+// partidos jugados; las de la temporada pasada vienen embebidas en su roster
+// (`?season=`) con ids ESTABLES → las reutilizamos como fallback (los fichajes
+// nuevos, no presentes, salen a 0). Si la temporada actual ya tiene stats, se
+// usan las suyas (prioridad).
+async function fetchStatsMap(rosterData) {
+  const map = {};
+  const add = a => {
+    if (!a || !a.id) return;
+    const st = extractEmbeddedStats(a);
+    if (st.appearances || st.goals || st.assists || st.yellowCards || st.redCards) {
+      map[a.id] = st;
+    }
+  };
+  for (const a of (rosterData && rosterData.athletes || [])) add(a);
+  if (Object.keys(map).length === 0 && SEASON_FALLBACK) {
+    try {
+      const res = await fetch(`${ESPN_BASE}/teams/${TEAM_ID}/roster?season=${SEASON_FALLBACK}`);
+      if (res.ok) {
+        const data = await res.json();
+        for (const a of (data.athletes || [])) add(a);
+      }
+    } catch {}
+  }
+  return map;
+}
+
 async function fetchAthleteStats(athleteId) {
   for (const s of [SEASON_PRIMARY, SEASON_FALLBACK]) {
     try {
@@ -1309,14 +1350,31 @@ let squadSortCol = 'name';
 let squadSortDir = 1;
 
 function squadRow(p) {
-  const stats = p.hasStats
-    ? `<span class="pc-stats"><span>PJ <b>${p.appearances}</b></span><span>G <b>${p.goals}</b></span><span>A <b>${p.assists}</b></span></span>`
-    : '';
   const flag = p.flag ? `<img class="pc-flag" src="${p.flag}" alt="" loading="lazy" onerror="this.remove()">` : '';
-  const num = p.jersey ? `<span class="pc-number">${p.jersey}</span>` : '<span class="pc-number">—</span>';
+  const num = `<span class="pc-number">${p.jersey || '—'}</span>`;
+  // Foto como FONDO de la tarjeta: ocupa todo el cuadrado detrás de nombre,
+  // dorsal y stats (capa con opacidad baja para que el texto siga legible).
+  // ESPN las sirve como JPG con fondo (no PNG transparente), así que se difumina
+  // al color de la tarjeta. Si no existe o falla, onerror la quita.
+  const head = p.headshot
+    ? `<img class="pc-photo" src="${p.headshot}" alt="" loading="lazy" onerror="this.remove()">`
+    : '';
+  // Goles/asistencias/tarjetas de la temporada (si la actual no tiene partidos,
+  // las de la pasada vía fetchStatsMap). Los 0 salen atenuados.
+  const z = v => (v ? '' : ' z');
+  const stats = `<span class="pc-stats" title="Goles · Asistencias · Tarjetas amarillas · Rojas">
+    <span class="s-g${z(p.goals)}">G <b>${p.goals}</b></span>
+    <span class="s-a${z(p.assists)}">A <b>${p.assists}</b></span>
+    <span class="s-y${z(p.yellowCards)}">TA <b>${p.yellowCards}</b></span>
+    <span class="s-r${z(p.redCards)}">TR <b>${p.redCards}</b></span>
+  </span>`;
   return `
     <div class="player-card">
-      <div class="pc-top">${num}${flag}</div>
+      ${head}
+      <div class="pc-top">
+        <span class="pc-id">${num}</span>
+        ${flag}
+      </div>
       <div class="pc-name" title="${p.name}">${p.name}</div>
       <div class="pc-meta">
         <span class="pc-pos">${p.posLabel}</span>
@@ -1342,10 +1400,6 @@ function renderSquadGroups() {
   container.innerHTML = POS_GROUPS.map(g => {
     const players = cachedSquad.filter(p => p.group === g.code);
     if (!players.length) return '';
-    // El roster plano de ESPN NO trae estadísticas → mostramos la fila de stats
-    // solo si algún jugador del grupo tiene datos (evita tarjetas con ceros).
-    const hasStats = players.some(p => p.appearances > 0 || p.goals > 0 || p.assists > 0);
-    players.forEach(p => { p.hasStats = hasStats; });
     return `
     <div class="squad-group">
       <div class="squad-group-header">${g.label}<span class="squad-count">${players.length}</span></div>
@@ -1403,6 +1457,15 @@ function renderSquad(rosterData, statsMap) {
 
   const groupOf = pos => (pos === 'G' || pos === 'D' || pos === 'M') ? pos : 'F';
   const POS_LABEL = { G: 'POR', D: 'DEF', M: 'MED', F: 'DEL' };
+  // Headshot de ESPN: el `full` del CDN es pesado (~300KB) para una foto que va
+  // como fondo de tarjeta; se sirve redimensionada por el combiner (a 320px, y el
+  // navegador la encaja con object-fit:cover).
+  const headshotOf = a => {
+    const h = (a.headshot && a.headshot.href) || null;
+    if (!h) return null;
+    const m = h.match(/^https?:\/\/[^/]+\/(.*)$/);
+    return m ? `https://a.espncdn.com/combiner/i?img=${encodeURIComponent('/' + m[1])}&w=320&h=320` : h;
+  };
   const addPlayer = (athlete, st) => {
     const pos = athlete.position && athlete.position.abbreviation ? athlete.position.abbreviation : '—';
     const g = groupOf(pos);
@@ -1412,6 +1475,7 @@ function renderSquad(rosterData, statsMap) {
       posLabel: POS_LABEL[g] || 'JUG',
       jersey: athlete.jersey || '',
       flag: (athlete.flag && athlete.flag.href) || null,
+      headshot: headshotOf(athlete),
       appearances: st.appearances || st.minutes || 0,
       goals: st.goals || 0,
       assists: st.assists || 0,
@@ -1421,7 +1485,7 @@ function renderSquad(rosterData, statsMap) {
   };
 
   if (isFlat) {
-    for (const athlete of athletes) addPlayer(athlete, extractEmbeddedStats(athlete));
+    for (const athlete of athletes) addPlayer(athlete, statsMap[athlete.id] || extractEmbeddedStats(athlete));
   } else {
     for (const group of athletes) {
       for (const athlete of (group.items || [])) addPlayer(athlete, statsMap[athlete.id] || {});
@@ -1550,11 +1614,14 @@ async function triggerUpdate() {
     clearTimeout(liveTimer);
     if (liveMatches.length > 0) liveTimer = setTimeout(refreshProbs, 60_000);
 
-    // Player stats: if roster uses flat format (new ESPN API), stats are embedded.
-    // Otherwise fall back to fetching stats per-athlete.
+    // Player stats: si el roster es plano (nuevo formato ESPN), las stats se
+    // extraen del propio roster (o de la temporada pasada, ids estables); si es
+    // el formato agrupado antiguo, se descargan por atleta en paralelo.
     let statsMap = {};
     const isFlat = rosterData && rosterData.athletes && rosterData.athletes[0] && rosterData.athletes[0].displayName !== undefined;
-    if (!isFlat && rosterData && rosterData.athletes) {
+    if (isFlat) {
+      statsMap = await fetchStatsMap(rosterData);
+    } else if (rosterData && rosterData.athletes) {
       setStatus('loading','Cargando estadísticas de jugadores…');
       const ids = [];
       for (const group of rosterData.athletes) {
