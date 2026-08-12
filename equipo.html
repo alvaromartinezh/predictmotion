@@ -17,10 +17,10 @@
   <link rel="dns-prefetch" href="https://site.api.espn.com" />
   <link rel="dns-prefetch" href="https://sports.core.api.espn.com" />
   <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
-  <link rel="stylesheet" href="/styles.css?v=20260812a" />
-  <link rel="stylesheet" href="/assets/shell.css?v=20260812a" />
-  <link rel="stylesheet" href="/assets/account.css?v=20260812a" />
-  <script src="/theme.js?v=20260812a"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260812b" />
+  <link rel="stylesheet" href="/assets/shell.css?v=20260812b" />
+  <link rel="stylesheet" href="/assets/account.css?v=20260812b" />
+  <script src="/theme.js?v=20260812b"></script>
   <title>Equipo · PredictMotion</title>
 
   <style>
@@ -251,6 +251,7 @@
       background:var(--surface); border:1px solid var(--border);
       border-radius:var(--radius); padding:12px;
       transition:transform .15s, border-color .15s, box-shadow .15s;
+      text-decoration:none; color:inherit; cursor:pointer;
     }
     .player-card:hover {
       transform:translateY(-2px); border-color:var(--accent);
@@ -1015,12 +1016,10 @@ async function fetchRoster() {
   return null;
 }
 
-// Stats por jugador para la plantilla. El roster de la temporada actual (sin
-// `?season=`) trae la plantilla pero SIN stats mientras la temporada no tenga
-// partidos jugados; las de la temporada pasada vienen embebidas en su roster
-// (`?season=`) con ids ESTABLES → las reutilizamos como fallback (los fichajes
-// nuevos, no presentes, salen a 0). Si la temporada actual ya tiene stats, se
-// usan las suyas (prioridad).
+// Stats por jugador para la plantilla: SOLO las de la temporada en curso, que
+// ESPN embebe en el roster actual (sin `?season=`). Mientras la temporada no
+// tenga partidos jugados los contadores salen a 0 (atenuados) — NO se usa la
+// temporada pasada como fallback porque esos números no son de esta temporada.
 async function fetchStatsMap(rosterData) {
   const map = {};
   const add = a => {
@@ -1031,15 +1030,6 @@ async function fetchStatsMap(rosterData) {
     }
   };
   for (const a of (rosterData && rosterData.athletes || [])) add(a);
-  if (Object.keys(map).length === 0 && SEASON_FALLBACK) {
-    try {
-      const res = await fetch(`${ESPN_BASE}/teams/${TEAM_ID}/roster?season=${SEASON_FALLBACK}`);
-      if (res.ok) {
-        const data = await res.json();
-        for (const a of (data.athletes || [])) add(a);
-      }
-    } catch {}
-  }
   return map;
 }
 
@@ -1064,7 +1054,8 @@ async function fetchCuts() {
 }
 
 async function fetchAthleteStats(athleteId) {
-  for (const s of [SEASON_PRIMARY, SEASON_FALLBACK]) {
+  // Solo la temporada en curso: las stats mostradas deben ser de esta temporada.
+  for (const s of [SEASON_PRIMARY]) {
     try {
       const res = await fetch(`${ESPN_CORE}/seasons/${s}/types/2/athletes/${athleteId}/statistics/0`);
       if (!res.ok) continue;
@@ -1380,8 +1371,8 @@ function squadRow(p) {
   const head = p.headshot
     ? `<img class="pc-photo" src="${p.headshot}" alt="" loading="lazy" onerror="this.remove()">`
     : '';
-  // Goles/asistencias/tarjetas de la temporada (si la actual no tiene partidos,
-  // las de la pasada vía fetchStatsMap). Los 0 salen atenuados.
+  // Goles/asistencias/tarjetas de la temporada EN CURSO (roster actual de ESPN;
+  // sin partidos jugados salen a 0, atenuados). La tarjeta enlaza a /jugador.
   const z = v => (v ? '' : ' z');
   const stats = `<span class="pc-stats" title="Goles · Asistencias · Tarjetas amarillas · Rojas">
     <span class="s-g${z(p.goals)}">G <b>${p.goals}</b></span>
@@ -1390,7 +1381,7 @@ function squadRow(p) {
     <span class="s-r${z(p.redCards)}">TR <b>${p.redCards}</b></span>
   </span>`;
   return `
-    <div class="player-card">
+    <a class="player-card" href="/jugador?id=${encodeURIComponent(p.id)}" title="Ver perfil de ${p.name}">
       ${head}
       <div class="pc-top">
         <span class="pc-id">${num}</span>
@@ -1401,7 +1392,7 @@ function squadRow(p) {
         <span class="pc-pos">${p.posLabel}</span>
         ${stats}
       </div>
-    </div>`;
+    </a>`;
 }
 
 function sortPlayers(list) {
@@ -1495,6 +1486,7 @@ function renderSquad(rosterData, statsMap, cutsMap) {
     // recortado → se usa directo, sin el combiner.
     const head = headshotOf(athlete) || (cutsMap && cutsMap[athlete.id]) || null;
     cachedSquad.push({
+      id: athlete.id,
       name: athlete.displayName || athlete.fullName || '—',
       group: g,
       posLabel: POS_LABEL[g] || 'JUG',
@@ -1724,9 +1716,9 @@ if (TEAM_ID) { triggerUpdate(); updateSeason(); }
   document.addEventListener('pm-follows-changed', render);
 })();
 </script>
-<script src="/assets/account.js?v=20260812a"></script>
-<script src="/assets/pm-leagues.js?v=20260812a"></script>
-<script src="/assets/shell.js?v=20260812a"></script>
+<script src="/assets/account.js?v=20260812b"></script>
+<script src="/assets/pm-leagues.js?v=20260812b"></script>
+<script src="/assets/shell.js?v=20260812b"></script>
 <script>PMShell.chrome({ active: null });</script>
 </body>
 </html>

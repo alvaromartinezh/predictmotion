@@ -55,6 +55,9 @@ def _player_data(athlete: dict, team_slug: str, league_slug: str, season: str) -
             name = s.get("name", "")
             val = s.get("value")
             if name and val is not None:
+                # ESPN sirve los contadores como float (2.0) — normalizar a int.
+                if isinstance(val, float) and val.is_integer():
+                    val = int(val)
                 stat_map[name] = val
     def _g(k): return stat_map.get(k) if k in stat_map else '--'
     href = head.get("href") if isinstance(head, dict) else None
