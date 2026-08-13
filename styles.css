@@ -579,27 +579,4 @@ html[data-theme="light"] .prob.is-lock.down { color: #fff; }
 .live-badge-link { text-decoration: none; color: inherit; cursor: pointer; }
 .live-badge-link:hover .live-badge { filter: brightness(1.15); }
 
-/* ── Navegación sin recargo aparente (View Transitions) ────────────────────────
-   El sitio es multipágina estático: cada enlace interno recarga el documento.
-   Para que no se vea "feo", las navegaciones del mismo origen se animan con
-   View Transitions CROSS-DOCUMENT (Chrome/Edge 126+, Safari 18+). Sin JS: solo
-   CSS. En navegadores sin soporte (p.ej. Firefox) se degrada a carga normal. */
-@view-transition { navigation: auto; }
 
-/* Salida rápida y sutil de la página actual; entrada con fundido y leve subida. */
-::view-transition-old(root) { animation: pm-vt-old .18s ease both; }
-::view-transition-new(root) { animation: pm-vt-new .26s ease both; }
-@keyframes pm-vt-old { to { opacity: 0; transform: translateX(-10px); } }
-@keyframes pm-vt-new { from { opacity: 0; transform: translateY(10px); } }
-
-/* Navegadores sin VT cross-document (Firefox, navegadores viejos): fundido de
-   entrada. La clase `pm-fade` la pone un snippet inline del <head> (assets/nav.js)
-   antes del primer paint, SOLO si el navegador no soporta startViewTransition. */
-html.pm-fade { animation: pm-fade-in .35s ease both; }
-@keyframes pm-fade-in { from { opacity: 0; } }
-
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(root),
-  ::view-transition-new(root),
-  html.pm-fade { animation: none; }
-}

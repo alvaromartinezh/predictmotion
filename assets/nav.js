@@ -1,11 +1,6 @@
 /* PMNav — polish de navegación (multipágina estático): PRECARGA de enlaces
    internos al pasar el puntero por encima, para que el click (que siempre es un
-   recargo del documento) se sienta casi instantáneo. Sin dependencias.
-
-   El fade de entrada / View Transitions no viven aquí: la animación la hace CSS
-   (styles.css) y la clase `pm-fade` la pone un snippet inline en el <head> de
-   cada página (tiene que ir ANTES del primer paint). Este fichero solo se ocupa
-   del prefetch. */
+   recargo del documento) se sienta casi instantáneo. Sin dependencias. */
 (function () {
   'use strict';
 
