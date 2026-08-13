@@ -27,6 +27,12 @@
 
   var state = { loaded: false, enabled: false, user: null, follows: null, prefs: null };
 
+  // Cookie "hint" (pm_auth=1, legible por JS; la de sesión real es HttpOnly). La pone
+  // el backend junto a la sesión. Solo sirve para saber ANTES de /api/me que el usuario
+  // parece tener sesión (no es fuente de verdad; una sesión revocada la deja obsoleta
+  // hasta que /api/me la corrige). No lleva secreto.
+  function sessionHint() { return /(?:^|;\s*)pm_auth=1(?:\s*;|\s*$)/.test(document.cookie); }
+
   function _emit(name) { document.dispatchEvent(new CustomEvent(name)); }
 
   // Si la cuenta trae un bg_theme guardado (otro dispositivo), gana sobre el
@@ -128,6 +134,11 @@
     user: function () { return state.user; },
     follows: function () { return state.follows; },
     loginUrl: '/cuenta',
+    // "Pendiente": el estado real (/api/me) aún no ha resuelto, pero la cookie hint
+    // dice que hay sesión. Las vistas NO deben pintar el estado anónimo en ese
+    // momento (flash "Sigue a los tuyos"): deben mostrar un estado de carga hasta
+    // que llegue 'pm-account-ready'. Anónimo real (sin hint) → false, se pinta ya.
+    pending: function () { return !state.loaded && sessionHint(); },
 
     followsCompetition: function (slug) {
       return !!(state.follows && state.follows.competitions.indexOf(slug) >= 0);

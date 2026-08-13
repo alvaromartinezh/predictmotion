@@ -16,9 +16,16 @@
   }
 
   function acct() {
-    var a = window.PMAccount;
-    if (!a || (a.isEnabled && !a.isEnabled())) return { avail: false, on: false, user: null, f: { competitions: [], teams: [], favorite_team: null } };
-    return { avail: true, on: !!(a.isLoggedIn && a.isLoggedIn()), user: (a.user && a.user()) || null, f: (a.follows && a.follows()) || { competitions: [], teams: [], favorite_team: null } };
+    var a = window.PMAccount, empty = { competitions: [], teams: [], favorite_team: null };
+    if (!a) return { avail: false, on: false, pending: false, user: null, f: empty };
+    if (a.isReady && !a.isReady()) {
+      // Estado aún por resolver (/api/me): con sesión probable (cookie hint) no pintar
+      // "Inicia sesión"/seguidos vacíos (flash); anónimo probable → estado final ya.
+      if (a.pending && a.pending()) return { avail: true, on: false, pending: true, user: null, f: empty };
+      return { avail: true, on: false, pending: false, user: null, f: empty };
+    }
+    if (a.isEnabled && !a.isEnabled()) return { avail: false, on: false, pending: false, user: null, f: empty };
+    return { avail: true, on: !!(a.isLoggedIn && a.isLoggedIn()), pending: false, user: (a.user && a.user()) || null, f: (a.follows && a.follows()) || empty };
   }
   function curTheme() { return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'; }
   var BG_LABELS = { purple: 'Morado', green: 'Verde', blue: 'Azul', orange: 'Naranja', teal: 'Turquesa', rose: 'Rosa' };
@@ -49,8 +56,10 @@
     col.push(group('', '<div class="set-row"><span class="s-main"><span class="s-label">Color de fondo</span><span class="s-hint">Patrón del shell</span></span>'
       + '<span class="bg-swatches" id="set-bg-theme">' + swatches + '</span></div>'));
 
-    // Cuenta
-    if (s.on) {
+    // Cuenta (pendiente: no pintar "Inicia sesión" para un usuario con sesión)
+    if (s.pending) {
+      col.push(group('Cuenta', '<div class="set-row"><span class="s-main"><span class="s-hint">Cargando tu cuenta…</span></span></div>'));
+    } else if (s.on) {
       col.push(group('Cuenta', '<a class="set-row" href="/cuenta"><span class="avatar">' + initials(s.user && s.user.name) + '</span>'
         + '<span class="s-main"><span class="s-label">' + esc((s.user && s.user.name) || 'Mi cuenta') + '</span><span class="s-hint">Gestionar cuenta</span></span><span class="s-arrow">›</span></a>'));
     } else {
@@ -58,7 +67,7 @@
     }
 
     // Seguidos (solo con sesión)
-    if (s.on) {
+    if (!s.pending && s.on) {
       var rows = '';
       (s.f.competitions || []).forEach(function (slug) {
         var lg = L[slug] || { name: slug, logo: '', country: '' };

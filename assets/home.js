@@ -215,9 +215,16 @@
 
   // ── estado + montaje ──
   function acct() {
-    var a = window.PMAccount;
-    if (!a || (a.isEnabled && !a.isEnabled())) return { on: false, f: { competitions: [], teams: [], favorite_team: null } };
-    return { on: !!(a.isLoggedIn && a.isLoggedIn()), f: (a.follows && a.follows()) || { competitions: [], teams: [], favorite_team: null } };
+    var a = window.PMAccount, empty = { competitions: [], teams: [], favorite_team: null };
+    if (!a) return { on: false, pending: false, f: empty };
+    if (a.isReady && !a.isReady()) {
+      // Estado aún por resolver (/api/me): con sesión probable (cookie hint) mantener el
+      // skeleton (no montar el feed anónimo un instante); anónimo probable → feed ya.
+      if (a.pending && a.pending()) return { on: false, pending: true, f: empty };
+      return { on: false, pending: false, f: empty };
+    }
+    if (a.isEnabled && !a.isEnabled()) return { on: false, pending: false, f: empty };
+    return { on: !!(a.isLoggedIn && a.isLoggedIn()), pending: false, f: (a.follows && a.follows()) || empty };
   }
   function skeleton() { return shellMain('<div class="card" style="height:180px"></div><div class="card" style="height:240px"></div>', ''); }
   function shellMain(colHTML, railHTML) { return '<div class="feed"><div class="feed__col">' + colHTML + '</div><div class="feed__rail">' + railHTML + '</div></div>'; }
@@ -227,6 +234,10 @@
   var token = 0;
   function refresh() {
     var my = ++token, s = acct();
+    // Sesión probable (cookie hint) pero /api/me sin resolver: mantener el skeleton;
+    // 'pm-account-ready' re-dispara refresh con el estado real (nunca montar el feed
+    // anónimo un instante para un usuario que sí sigue a alguien).
+    if (s.pending) return;
     if (!s.on) { buildAnon().then(function (o) { if (my === token) mount(o); }).catch(fail); return; }
 
     var f = s.f, slugs = uniqLeagues(f);

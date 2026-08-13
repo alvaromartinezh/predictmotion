@@ -11,9 +11,17 @@
   function teamCrest(id, name) { var ab = initials(name); if (!id) return '<div class="crest-ph">' + ab + '</div>'; var sid = String(id); var src = (window.PM_TEAM_LOGOS && window.PM_TEAM_LOGOS[sid]) || 'https://a.espncdn.com/i/teamlogos/soccer/500/' + sid + '.png'; return '<img class="crest" loading="lazy" alt="" src="' + src + '" data-ab="' + ab + '" onerror="PMSigCrestFallback(this)">'; }
   function lname(s) { return (L[s] || {}).name || s; }
   function acct() {
-    var a = window.PMAccount;
-    if (!a || (a.isEnabled && !a.isEnabled())) return { avail: false, on: false, f: { competitions: [], teams: [], favorite_team: null } };
-    return { avail: true, on: !!(a.isLoggedIn && a.isLoggedIn()), f: (a.follows && a.follows()) || { competitions: [], teams: [], favorite_team: null } };
+    var a = window.PMAccount, empty = { competitions: [], teams: [], favorite_team: null };
+    if (!a) return { avail: false, on: false, pending: false, f: empty };
+    if (a.isReady && !a.isReady()) {
+      // Estado aún por resolver (/api/me). Con sesión probable (cookie hint) NO pintar
+      // el estado anónimo (flash "Sigue a los tuyos"): cargando. Anónimo probable → se
+      // pinta ya (es su estado final), asumiendo cuentas activas.
+      if (a.pending && a.pending()) return { avail: true, on: false, pending: true, f: empty };
+      return { avail: true, on: false, pending: false, f: empty };
+    }
+    if (a.isEnabled && !a.isEnabled()) return { avail: false, on: false, pending: false, f: empty };
+    return { avail: true, on: !!(a.isLoggedIn && a.isLoggedIn()), pending: false, f: (a.follows && a.follows()) || empty };
   }
 
   function group(title, rows) { return (title ? '<div class="feed-sec"><h2 class="feed-sec__title">' + esc(title) + '</h2></div>' : '') + '<section class="pm-list">' + rows + '</section>'; }
@@ -31,6 +39,12 @@
 
   function mainHTML(s) {
     var col = ['<div class="feed-sec" style="margin-top:var(--sp-2)"><h2 class="feed-sec__title">Siguiendo</h2></div>'];
+    // Mientras PMAccount no resuelve /api/me pero la cookie hint dice que hay
+    // sesión, NO pintar el CTA anónimo (flash "Sigue a los tuyos"): carga breve.
+    if (s.pending) {
+      col.push('<section class="cta-card"><h3>Cargando tus seguidos…</h3><p>Un momento mientras cargamos tu lista.</p></section>');
+      return '<div class="feed"><div class="feed__col">' + col.join('') + '</div><div class="feed__rail"></div></div>';
+    }
     if (!s.on) {
       col.push('<section class="cta-card"><h3>Sigue a los tuyos</h3><p>' + (s.avail ? 'Inicia sesión para seguir equipos y competiciones y verlos aquí y en tu portada.' : 'Las cuentas no están disponibles ahora mismo.') + '</p>'
         + (s.avail ? '<div class="btns"><a class="btn btn--primary" href="/cuenta">Entrar</a><a class="btn btn--ghost" href="/buscar">Explorar</a></div>' : '') + '</section>');

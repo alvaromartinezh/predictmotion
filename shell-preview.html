@@ -8,12 +8,12 @@
   <!-- Assets de PRODUCCIÓN reales -->
   <!-- Navegación: fade de entrada si no hay View Transitions cross-document (ver styles.css + assets/nav.js) -->
   <script>try{if(!document.startViewTransition&&!matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.classList.add('pm-fade')}catch(e){}</script>
-  <link rel="stylesheet" href="/styles.css?v=20260813a" />
-  <link rel="stylesheet" href="/assets/shell.css?v=20260813a" />
+  <link rel="stylesheet" href="/styles.css?v=20260813b" />
+  <link rel="stylesheet" href="/assets/shell.css?v=20260813b" />
   <!-- preview-only: permite ?theme=light escribiendo la MISMA clave que theme.js (pm-theme) -->
   <script>try{var t=new URLSearchParams(location.search).get('theme');if(t)localStorage.setItem('pm-theme',t);}catch(e){}</script>
-  <script src="/theme.js?v=20260813a"></script>
-  <script src="/assets/pm-leagues.js?v=20260813a"></script>
+  <script src="/theme.js?v=20260813b"></script>
+  <script src="/assets/pm-leagues.js?v=20260813b"></script>
 </head>
 <body>
   <!-- .pm-app = capa de acento esmeralda; envuelve #app y la barra inferior fixed -->
@@ -67,14 +67,14 @@
           };
         }
       };
-      loadScript('/assets/shell.js?v=20260813a', boot);
+      loadScript('/assets/shell.js?v=20260813b', boot);
     } else {
       // Ruta real: PMAccount de producción (anónimo en local si el backend está apagado)
-      loadScript('/assets/account.js?v=20260813a', function () {
-        loadScript('/assets/shell.js?v=20260813a', boot);
+      loadScript('/assets/account.js?v=20260813b', function () {
+        loadScript('/assets/shell.js?v=20260813b', boot);
       });
     }
   </script>
-  <script src="/assets/nav.js?v=20260813a"></script>
+  <script src="/assets/nav.js?v=20260813b"></script>
 </body>
 </html>
