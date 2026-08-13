@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="/styles.css?v=20260813e" />
   <link rel="stylesheet" href="/assets/shell.css?v=20260813e" />
   <link rel="stylesheet" href="/assets/account.css?v=20260813e" />
+  <link rel="stylesheet" href="/assets/news.css?v=20260813e" />
   <script src="/assets/espn-proxy.js?v=20260813e"></script>
   <script src="/theme.js?v=20260813e"></script>
   <title>Equipo · PredictMotion</title>
@@ -360,6 +361,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 </div>
 
 <nav class="team-tabs" id="team-tabs" aria-label="Vistas del equipo">
+  <a class="team-tab" data-view="news" href="/equipo/news">Noticias</a>
   <a class="team-tab" data-view="stats" href="/equipo/stats">Estadísticas</a>
   <a class="team-tab" data-view="matches" href="/equipo/matches">Partidos</a>
   <a class="team-tab" data-view="players" href="/equipo/players">Plantilla</a>
@@ -369,6 +371,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <div class="status-dot loading" id="status-dot"></div>
   <span id="status-text">Conectando…</span>
 </div>
+
+<!-- VISTA: noticias del equipo (filtradas del agregador por etiqueta del equipo) -->
+<section class="team-view" id="view-news">
+<div class="card" id="team-news-card">
+  <div class="card-header">Noticias · <span id="team-news-title">—</span></div>
+  <div class="news-grid" id="team-news-mount"><p class="news-empty">Cargando noticias…</p></div>
+</div>
+</section>
 
 <!-- VISTA: estadísticas + probabilidades -->
 <section class="team-view" id="view-stats">
@@ -655,15 +665,15 @@ const LG = LEAGUES[params.get('league')] || LEAGUES.hypermotion;
 // Tema de color según la competición (gold / rojo)
 document.body.classList.add('theme-' + (params.get('league') === 'laliga' ? 'laliga' : 'hypermotion'));
 
-// ─── Sub-vistas del equipo: /equipo/stats · /equipo/matches · /equipo/players ──
+// ─── Sub-vistas del equipo: /equipo/news · /equipo/stats · /equipo/matches · /equipo/players ──
 // El segmento del path manda (Caddy/start.py reescriben /equipo/* → equipo.html);
 // `?view=` es el fallback para hosts estáticos sin rewrite. /equipo (sin segmento)
-// cae a 'stats' por defecto.
-const TEAM_VIEWS = ['stats', 'matches', 'players'];
-let activeView = 'stats';
+// cae a 'news' por defecto.
+const TEAM_VIEWS = ['news', 'stats', 'matches', 'players'];
+let activeView = 'news';
 
 function applyView(view) {
-  activeView = TEAM_VIEWS.indexOf(view) >= 0 ? view : 'stats';
+  activeView = TEAM_VIEWS.indexOf(view) >= 0 ? view : 'news';
   document.querySelectorAll('#team-tabs .team-tab').forEach(a => {
     a.classList.toggle('is-active', a.dataset.view === activeView);
   });
@@ -674,8 +684,8 @@ function applyView(view) {
 }
 
 (function initTeamViews() {
-  const seg = (location.pathname.match(/^\/equipo\/(stats|matches|players)\/?$/) || [])[1];
-  const fromQuery = params.get('view') || 'stats';
+  const seg = (location.pathname.match(/^\/equipo\/(news|stats|matches|players)\/?$/) || [])[1];
+  const fromQuery = params.get('view') || 'news';
   applyView(seg || fromQuery);
   const q = location.search;
   document.querySelectorAll('#team-tabs .team-tab').forEach(a => {
@@ -719,6 +729,59 @@ if (!TEAM_ID) {
   document.getElementById('team-title').textContent = 'Equipo no encontrado';
   document.getElementById('status-text').textContent = 'Falta el parámetro ?id=';
 }
+
+// ─── Noticias del equipo (pestaña /equipo/news) ────────────────────────────
+// Lee el agregador /data/news/latest.json (cron news.aggregate) y se queda solo
+// con los ítems etiquetados con este equipo (teams[].id). Mismo patrón visual que
+// /noticias (news.css). Degrada limpio si el JSON no está o sin noticias.
+const NEWS_MAX = 12;
+function teamNewsEscape(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+function teamNewsTimeAgo(ts) {
+  if (!ts) return '';
+  const diff = Math.floor(Date.now() / 1000) - ts;
+  if (diff < 60) return 'ahora';
+  if (diff < 3600) return 'hace ' + Math.floor(diff / 60) + ' min';
+  if (diff < 86400) return 'hace ' + Math.floor(diff / 3600) + ' h';
+  const d = Math.floor(diff / 86400);
+  return 'hace ' + d + (d === 1 ? ' día' : ' días');
+}
+function loadTeamNews() {
+  const mount = document.getElementById('team-news-mount');
+  const title = document.getElementById('team-news-title');
+  if (!mount) return;
+  if (!TEAM_ID) { mount.innerHTML = '<p class="news-empty">No hay noticias disponibles.</p>'; return; }
+  const tname = (document.getElementById('team-title').textContent || '').trim();
+  if (title && tname && tname !== 'Cargando…') title.textContent = tname;
+  fetch('/data/news/latest.json', { cache: 'no-store' })
+    .then(r => r.ok ? r.json() : null)
+    .then(d => {
+      if (!d || !Array.isArray(d.items)) throw new Error('no-news');
+      const mine = d.items
+        .filter(it => (it.teams || []).some(t => String(t.id) === String(TEAM_ID)))
+        .slice(0, NEWS_MAX);
+      if (title && tname && tname !== 'Cargando…') title.textContent = tname;
+      if (!mine.length) { mount.innerHTML = '<p class="news-empty">Todavía no hay noticias etiquetadas con este equipo.</p>'; return; }
+      mount.innerHTML = mine.map(it => {
+        const ago = teamNewsTimeAgo(it.ts);
+        return '<article class="news-card">'
+          + '<div class="news-card__meta"><span class="news-card__src">' + teamNewsEscape(it.source)
+          + '</span>' + (ago ? '<span class="news-card__time">' + teamNewsEscape(ago) + '</span>' : '') + '</div>'
+          + '<h3 class="news-card__title"><a href="' + teamNewsEscape(it.link)
+          + '" target="_blank" rel="noopener noreferrer nofollow">' + teamNewsEscape(it.title) + '</a></h3>'
+          + (it.summary ? '<p class="news-card__summary">' + teamNewsEscape(it.summary) + '</p>' : '')
+          + '<a class="news-card__link" href="' + teamNewsEscape(it.link)
+          + '" target="_blank" rel="noopener noreferrer nofollow">Leer en ' + teamNewsEscape(it.source)
+          + ' <span aria-hidden="true">↗</span></a>'
+          + '</article>';
+      }).join('');
+    })
+    .catch(() => { mount.innerHTML = '<p class="news-empty">No se han podido cargar las noticias.</p>'; });
+}
+loadTeamNews();
 
 // ─── Seeded PRNG (mulberry32) ─────────────────────────────────────────────
 function mulberry32(seed) {

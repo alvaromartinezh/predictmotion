@@ -30,11 +30,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         # Reescribe /equipo/<view> → /equipo.html (espejo del `rewrite` de Caddy en
         # producción, ver CLAUDE.md → URLs limpias) para poder probar las sub-vistas
-        # /equipo/stats · /equipo/matches · /equipo/players en local.
+        # /equipo/news · /equipo/stats · /equipo/matches · /equipo/players en local.
         path, _, query = self.path.partition('?')
         if path.startswith('/equipo/') and not path.startswith('/equipos/'):
             seg = path.rstrip('/').rsplit('/', 1)[-1]
-            if seg in ('stats', 'matches', 'players'):
+            if seg in ('news', 'stats', 'matches', 'players'):
                 self.path = '/equipo.html' + ('?' + query if query else '')
         super().do_GET()
 
