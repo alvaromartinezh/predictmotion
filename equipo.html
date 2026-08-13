@@ -87,6 +87,15 @@
     }
     .team-view[hidden] { display:none !important; }
 
+    /* ── Noticias del equipo: la tarjeta entera es el enlace ── */
+    #team-news-mount .news-card {
+      text-decoration:none; color:inherit; cursor:pointer;
+      transition:border-color .18s var(--ease), box-shadow .18s var(--ease), transform .12s var(--ease);
+    }
+    #team-news-mount .news-card:hover { transform:translateY(-1px); }
+    #team-news-mount .news-card__title { color:var(--text); }
+    #team-news-mount .news-card__link { display:block; margin-top:auto; }
+
     /* ── Status ── */
     .status-bar { max-width:940px; margin:0 auto 14px; display:flex; align-items:center; gap:8px; font-size:.7rem; color:var(--muted); letter-spacing:.02em; }
     .status-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
@@ -734,7 +743,7 @@ if (!TEAM_ID) {
 // Lee el agregador /data/news/latest.json (cron news.aggregate) y se queda solo
 // con los ítems etiquetados con este equipo (teams[].id). Mismo patrón visual que
 // /noticias (news.css). Degrada limpio si el JSON no está o sin noticias.
-const NEWS_MAX = 12;
+const NEWS_MAX = 3;
 function teamNewsEscape(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -767,16 +776,15 @@ function loadTeamNews() {
       if (!mine.length) { mount.innerHTML = '<p class="news-empty">Todavía no hay noticias etiquetadas con este equipo.</p>'; return; }
       mount.innerHTML = mine.map(it => {
         const ago = teamNewsTimeAgo(it.ts);
-        return '<article class="news-card">'
+        return '<a class="news-card" href="' + teamNewsEscape(it.link)
+          + '" target="_blank" rel="noopener noreferrer nofollow">'
           + '<div class="news-card__meta"><span class="news-card__src">' + teamNewsEscape(it.source)
           + '</span>' + (ago ? '<span class="news-card__time">' + teamNewsEscape(ago) + '</span>' : '') + '</div>'
-          + '<h3 class="news-card__title"><a href="' + teamNewsEscape(it.link)
-          + '" target="_blank" rel="noopener noreferrer nofollow">' + teamNewsEscape(it.title) + '</a></h3>'
+          + '<h3 class="news-card__title">' + teamNewsEscape(it.title) + '</h3>'
           + (it.summary ? '<p class="news-card__summary">' + teamNewsEscape(it.summary) + '</p>' : '')
-          + '<a class="news-card__link" href="' + teamNewsEscape(it.link)
-          + '" target="_blank" rel="noopener noreferrer nofollow">Leer en ' + teamNewsEscape(it.source)
-          + ' <span aria-hidden="true">↗</span></a>'
-          + '</article>';
+          + '<span class="news-card__link">Leer en ' + teamNewsEscape(it.source)
+          + ' <span aria-hidden="true">↗</span></span>'
+          + '</a>';
       }).join('');
     })
     .catch(() => { mount.innerHTML = '<p class="news-empty">No se han podido cargar las noticias.</p>'; });
