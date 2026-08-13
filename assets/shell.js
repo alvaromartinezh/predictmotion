@@ -99,6 +99,31 @@
     return '<span class="avatar">' + initials(user.name) + '</span>';
   }
 
+  // ── Caché del sidebar (sessionStorage): la barra no se "recarga" al navegar ──
+  // En una sesión, el sidebar logueado es DETERMINISTA dado los follows: guardamos
+  // su HTML renderizado para que la SIGUIENTE página de la pestaña lo pinte al
+  // instante (sin pasar por el pending de /api/me), y se revalida en background.
+  // Solo para estado logueado; anónimo pinta directo y no necesita caché. Como es
+  // sessionStorage, se descarta al cerrar la pestaña (nada persistente).
+  var SIDEBAR_CACHE_KEY = 'pm-shell-sidebar-cache';
+  function readSidebarCache() {
+    try {
+      var raw = sessionStorage.getItem(SIDEBAR_CACHE_KEY);
+      if (!raw) return null;
+      var c = JSON.parse(raw);
+      if (!c || !c.on || !c.follows) return null;
+      return c;
+    } catch (e) { return null; }
+  }
+  function writeSidebarCache(followsHtml, userHtml) {
+    try {
+      sessionStorage.setItem(SIDEBAR_CACHE_KEY, JSON.stringify({ on: 1, follows: followsHtml, user: userHtml || '' }));
+    } catch (e) {}
+  }
+  function clearSidebarCache() {
+    try { sessionStorage.removeItem(SIDEBAR_CACHE_KEY); } catch (e) {}
+  }
+
   function tabbar(active) {
     return '<nav class="tabbar" aria-label="Navegación">' + navItems().map(function (n) {
       return '<a class="tabbar__item ' + (n.id === active ? 'is-active' : '') + '" href="' + n.href + '">' + svg(n.icon) + '<span>' + n.label + '</span></a>';
@@ -120,37 +145,53 @@
       return '<a class="navitem ' + (n.id === active ? 'is-active' : '') + '" href="' + n.href + '">' + svg(n.icon) + '<span>' + n.label + '</span></a>';
     }).join('');
 
-    var follows;
-    if (s.on) {
-      var favId = s.f.favorite_team && String(s.f.favorite_team.espn_team_id);
-      var comps = (s.f.competitions || []).map(function (slug) {
-        var L = LEAGUES[slug] || { name: slug, logo: '' };
-        return '<a class="side-follow" href="/' + slug + '">' + (L.logo ? '<img class="crest" src="' + L.logo + '" alt="" style="background:transparent;border:none">' : '<span class="crest-ph"></span>') + '<span>' + L.name + '</span></a>';
-      }).join('');
-      var teams = (s.f.teams || []).map(function (t) {
-        return '<a class="side-follow" href="/equipo?id=' + t.espn_team_id + '&league=' + (t.league_slug || '') + '&name=' + encodeURIComponent(t.name || '') + '">'
-          + teamCrest(t) + '<span>' + (t.name || 'Equipo') + '</span>'
-          + (favId === String(t.espn_team_id) ? '<span class="star">★</span>' : '') + '</a>';
-      }).join('');
-      follows = (comps ? '<div class="sidenav__label eyebrow">Tus competiciones</div><div class="sidenav__follows">' + comps + '</div>' : '')
-        + (teams ? '<div class="sidenav__label eyebrow">Tus equipos</div><div class="sidenav__follows">' + teams + '</div>' : '');
-    } else {
-      // Orden EXPLÍCITO de prioridad (PM_LEAGUES_ORDER: ligas top primero), no el
-      // orden de iteración del objeto. Visible para visitantes anónimos (la mayoría).
-      var order = (window.PM_LEAGUES_ORDER || Object.keys(LEAGUES)).filter(function (s) { return LEAGUES[s]; });
-      follows = '<div class="sidenav__label eyebrow">Competiciones</div><div class="sidenav__follows">'
-        + order.slice(0, 8).map(function (slug) {
-          var L = LEAGUES[slug];
-          return '<a class="side-follow" href="/' + slug + '"><img class="crest" src="' + L.logo + '" alt="" style="background:transparent;border:none"><span>' + L.name + '</span></a>';
-        }).join('') + '</div>';
+    var cache = null, follows, user;
+    if (s.pending) {
+      // Pending (hint pm_auth=1) pero /api/me aún no resuelve: si hay snapshot de
+      // esta sesión, pinta los follows REALES de golpe en vez de vacíos (la barra
+      // no se ve "recargar"). La revalidación de /api/me los corrige si cambiaron.
+      cache = readSidebarCache();
+      if (cache) { follows = cache.follows; user = cache.user; }
+    }
+    if (!follows) {
+      if (s.on) {
+        var favId = s.f.favorite_team && String(s.f.favorite_team.espn_team_id);
+        var comps = (s.f.competitions || []).map(function (slug) {
+          var L = LEAGUES[slug] || { name: slug, logo: '' };
+          return '<a class="side-follow" href="/' + slug + '">' + (L.logo ? '<img class="crest" src="' + L.logo + '" alt="" style="background:transparent;border:none">' : '<span class="crest-ph"></span>') + '<span>' + L.name + '</span></a>';
+        }).join('');
+        var teams = (s.f.teams || []).map(function (t) {
+          return '<a class="side-follow" href="/equipo?id=' + t.espn_team_id + '&league=' + (t.league_slug || '') + '&name=' + encodeURIComponent(t.name || '') + '">'
+            + teamCrest(t) + '<span>' + (t.name || 'Equipo') + '</span>'
+            + (favId === String(t.espn_team_id) ? '<span class="star">★</span>' : '') + '</a>';
+        }).join('');
+        follows = (comps ? '<div class="sidenav__label eyebrow">Tus competiciones</div><div class="sidenav__follows">' + comps + '</div>' : '')
+          + (teams ? '<div class="sidenav__label eyebrow">Tus equipos</div><div class="sidenav__follows">' + teams + '</div>' : '');
+      } else {
+        // Orden EXPLÍCITO de prioridad (PM_LEAGUES_ORDER: ligas top primero), no el
+        // orden de iteración del objeto. Visible para visitantes anónimos (la mayoría).
+        var order = (window.PM_LEAGUES_ORDER || Object.keys(LEAGUES)).filter(function (s) { return LEAGUES[s]; });
+        follows = '<div class="sidenav__label eyebrow">Competiciones</div><div class="sidenav__follows">'
+          + order.slice(0, 8).map(function (slug) {
+            var L = LEAGUES[slug];
+            return '<a class="side-follow" href="/' + slug + '"><img class="crest" src="' + L.logo + '" alt="" style="background:transparent;border:none"><span>' + L.name + '</span></a>';
+          }).join('') + '</div>';
+      }
     }
 
     // El botón de tema NO va dentro del <a> de cuenta (interactivo dentro de
     // interactivo). Va como hermano dentro del contenedor flex.
-    var user = s.on
-      ? '<div class="sidenav__user"><a class="sidenav__me" href="' + LOGIN + '">' + avatar(s.user)
-        + '<span class="who"><span class="n">' + ((s.user && s.user.name) || 'Mi cuenta') + '</span><span class="e">Ver cuenta</span></span></a>' + themeToggle() + '</div>'
-      : '<div class="sidenav__user" style="justify-content:space-between"><a class="btn btn--primary" href="' + LOGIN + '" style="flex:1">Crear cuenta</a>' + themeToggle() + '</div>';
+    if (!user) {
+      user = s.on
+        ? '<div class="sidenav__user"><a class="sidenav__me" href="' + LOGIN + '">' + avatar(s.user)
+          + '<span class="who"><span class="n">' + ((s.user && s.user.name) || 'Mi cuenta') + '</span><span class="e">Ver cuenta</span></span></a>' + themeToggle() + '</div>'
+        : '<div class="sidenav__user" style="justify-content:space-between"><a class="btn btn--primary" href="' + LOGIN + '" style="flex:1">Crear cuenta</a>' + themeToggle() + '</div>';
+    }
+
+    // Snapshot para la próxima navegación de esta pestaña: solo estado logueado ya
+    // resuelto (follows y usuario REALES). Anónimo pinta directo, no se cachea.
+    if (s.on && !s.pending) writeSidebarCache(follows, user);
+    else if (!s.on && !s.pending) clearSidebarCache();
 
     return '<a class="sidenav__brand" href="/"><span class="dot"></span>Predict<b>Motion</b></a>'
       + items + follows + '<div class="sidenav__spacer"></div>' + user;
