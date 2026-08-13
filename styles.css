@@ -114,10 +114,13 @@ html[data-bg-theme="rose"]   { --bg-accent: #ff4f8b; }
    contenido: z-index:-1 dentro del stacking context propio de .pm-app, así que
    ningún descendiente necesita position/z-index para pintar por encima). Las
    cards/paneles siguen con su propio fondo sólido (var(--surface)), así que el
-   patrón nunca compite con ellos, solo se ve en los huecos entre ellos. */
+   patrón nunca compite con ellos, solo se ve en los huecos entre ellos.
+   position:FIXED (viewport-anchored): el patrón + mask-image de WebKit se
+   cortaban al scrollear con position:absolute (solo cubría el primer viewport);
+   fixed lo ancla al viewport y no se corta nunca. */
 .pm-app::before {
   content: "";
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
@@ -160,7 +163,6 @@ body {
   background-image:
     radial-gradient(60% 38% at 2% -4%, rgba(240,169,42,.05), transparent 60%),
     radial-gradient(48% 40% at 100% 102%, rgba(74,144,255,.045), transparent 60%);
-  background-attachment: fixed;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;

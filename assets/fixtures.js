@@ -4,7 +4,16 @@
   'use strict';
   var ESPN = 'https://site.api.espn.com/apis/site/v2/sports/soccer/';
   // Código ESPN -> slug de liga, para enlazar a la vista de partido (/partido).
-  var SLUG_BY_CODE = { 'esp.2': 'hypermotion', 'esp.1': 'laliga' };
+  // Las 15 competiciones con dashboard + seguimiento en vivo (backend live_tracker).
+  var SLUG_BY_CODE = {
+    'esp.1':'laliga', 'esp.2':'hypermotion',
+    'eng.1':'premier', 'eng.2':'championship',
+    'ita.1':'seriea', 'ita.2':'serieb',
+    'ger.1':'bundesliga', 'ger.2':'bundesliga2',
+    'fra.1':'ligue1', 'fra.2':'ligue2',
+    'por.1':'primeira', 'ned.1':'eredivisie',
+    'uefa.champions':'champions', 'uefa.europa':'europa', 'uefa.europa.conf':'conference'
+  };
   var currentSlug = '';
 
   // ── Pestañas (mostrar/ocultar secciones) ──────────────────────────────────

@@ -12,7 +12,13 @@
   // Ligas con página de partido en vivo propia (/partido lo sirve el live_tracker,
   // que SOLO cubre estas): solo en ellas la fila entera es enlace. El resto de
   // ligas queda sin enlace (la fila es un <div>).
-  var MATCH_LEAGUES = { hypermotion: 1, laliga: 1 };
+  // Slugs con seguimiento en vivo (/partido, backend live_tracker): las 15
+  // competiciones con dashboard. El resto de filas no son botones.
+  var MATCH_LEAGUES = {
+    hypermotion:1, laliga:1, premier:1, championship:1, seriea:1, serieb:1,
+    bundesliga:1, bundesliga2:1, ligue1:1, ligue2:1, primeira:1, eredivisie:1,
+    champions:1, europa:1, conference:1
+  };
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
   function initials(n) { var p = (n || '').trim().split(/\s+/).filter(Boolean); return ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); }

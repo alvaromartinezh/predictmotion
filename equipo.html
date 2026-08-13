@@ -17,12 +17,12 @@
   <link rel="dns-prefetch" href="https://site.api.espn.com" />
   <link rel="dns-prefetch" href="https://sports.core.api.espn.com" />
   <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
-  <link rel="stylesheet" href="/styles.css?v=20260813e" />
-  <link rel="stylesheet" href="/assets/shell.css?v=20260813e" />
-  <link rel="stylesheet" href="/assets/account.css?v=20260813e" />
-  <link rel="stylesheet" href="/assets/news.css?v=20260813e" />
-  <script src="/assets/espn-proxy.js?v=20260813e"></script>
-  <script src="/theme.js?v=20260813e"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260813f" />
+  <link rel="stylesheet" href="/assets/shell.css?v=20260813f" />
+  <link rel="stylesheet" href="/assets/account.css?v=20260813f" />
+  <link rel="stylesheet" href="/assets/news.css?v=20260813f" />
+  <script src="/assets/espn-proxy.js?v=20260813f"></script>
+  <script src="/theme.js?v=20260813f"></script>
   <title>Equipo · PredictMotion</title>
 
   <style>
@@ -327,6 +327,28 @@
 
     @media (max-width:700px) {
       .tl-card, .tl-spacer { flex:0 0 calc((100% - 16px)/3); }
+      /* Móvil: 3 tarjetas pequeñas por pantalla → encoger los elementos INTERNOS
+         (crests, fuentes, gaps) para que no se monten unos sobre otros; NUNCA
+         agrandar las tarjetas. En un teléfono de 360px cada tarjeta mide ~77px:
+         crests de 32px + gaps desbordaban y solapaban a la vecina. */
+      .timeline { padding:12px 10px 6px; gap:6px; }
+      .tl-nav { flex:0 0 30px; width:30px; height:30px; font-size:1rem; }
+      .tl-track { gap:6px; }
+      .tl-card { gap:3px; padding:8px 4px 7px; }
+      .tl-crests { gap:4px; }
+      .tl-crest { width:22px; height:22px; }
+      .tl-fb { font-size:.48rem; }
+      .tl-comp { font-size:.46rem; max-width:100%; }
+      .tl-venue { font-size:.5rem; }
+      .tl-score { font-size:.72rem; }
+      .tl-card.upcoming .tl-score { font-size:.6rem; }
+      .tl-opp { font-size:.58rem; }
+      .tl-date { font-size:.48rem; }
+    }
+    @media (max-width:360px) {
+      .tl-crest { width:20px; height:20px; }
+      .tl-crests { gap:3px; }
+      .tl-opp { font-size:.54rem; }
     }
     @media (max-width:600px) {
       .probs-row { grid-template-columns:1fr; }
@@ -1053,7 +1075,11 @@ async function fetchSchedule() {
           const res = await fetch(url);
           if (!res.ok) return [];
           const data = await res.json();
-          return data.events || [];
+          // _comp = competición con la que se consultó (código ESPN: "esp.1",
+          // "uefa.champions", "esp.copa"…). Es la fuente FIABLE de liga: los
+          // eventos 'pre' del scoreboard no traen ev.league y su season.slug no
+          // siempre identifica la liga ("regular-season").
+          return (data.events || []).map(ev => { ev._comp = slug; return ev; });
         } catch { return []; }
       });
       const lists = await Promise.all(jobs);
@@ -1093,7 +1119,7 @@ async function fetchUpcoming(sched) {
         const comp = ev.competitions && ev.competitions[0];
         if (!comp) return false;
         return comp.competitors.some(c => String(c.team.id) === String(TEAM_ID));
-      });
+      }).map(ev => { ev._comp = slug; return ev; });
     } catch { return []; }
   });
   const lists = await Promise.all(jobs);
@@ -1276,13 +1302,17 @@ function extractMatchData(ev) {
     if (t.team && t.team.id) return `https://a.espncdn.com/i/teamlogos/soccer/500/${t.team.id}.png`;
     return null;
   };
-  // El scoreboard de partidos 'pre' NO trae `ev.league`; se deriva del slug de
-  // la temporada ("2026-27-laliga" → "LALIGA"). En el schedule sí viene `ev.league`.
+  // Liga del partido. Prioridad: 1) ev._comp (inyectada al fetchear; cubre los
+  // 'pre' del scoreboard, que NO traen ev.league, y evita el season.slug poco
+  // fiable → "regular-season"), 2) ev.league del schedule (nombre completo rico,
+  // p. ej. "UEFA Champions League"), 3) derivación del season.slug (fallback).
   const league = (ev.league && ev.league.slug)
     ? { slug: ev.league.slug, name: ev.league.shortName || ev.league.name }
-    : (ev.season && ev.season.slug
-        ? { slug: ev.season.slug, name: ev.season.slug.replace(/^\d{4}-\d{2}-/, '').toUpperCase() }
-        : null);
+    : (ev._comp
+        ? { slug: ev._comp, name: compName(ev._comp) }
+        : (ev.season && ev.season.slug
+            ? { slug: ev.season.slug, name: ev.season.slug.replace(/^\d{4}-\d{2}-/, '').toUpperCase() }
+            : null));
   return {
     eventId: ev.id,
     date: new Date(comp.date),
@@ -1348,16 +1378,37 @@ function crestHTML(logo, name) {
   return `<span class="tl-crest"><img src="${logo}" alt="" loading="lazy" onerror="this.remove();this.parentElement.classList.add('tl-fb-active');">${fb}</span>`;
 }
 
-// Solo las ligas que el backend de /partido (live_tracker) puede servir son
-// clicables, igual que en los dashboards (fixtures.js). El resto de competiciones
-// (copas, Champions…) no tienen seguimiento en vivo → tarjeta sin enlace.
-const LIVE_SLUG_BY_CODE = { 'esp.1': 'laliga', 'esp.2': 'hypermotion', laliga: 'laliga', hypermotion: 'hypermotion' };
+// Las 15 competiciones con dashboard + seguimiento en vivo (/partido, backend
+// live_tracker) son clicables. Fuera de aquí (copas, amistosos, supercopas…) no
+// hay seguimiento en vivo → tarjeta sin enlace.
+const LIVE_SLUG_BY_CODE = {
+  'esp.1':'laliga', 'esp.2':'hypermotion',
+  'eng.1':'premier', 'eng.2':'championship',
+  'ita.1':'seriea', 'ita.2':'serieb',
+  'ger.1':'bundesliga', 'ger.2':'bundesliga2',
+  'fra.1':'ligue1', 'fra.2':'ligue2',
+  'por.1':'primeira', 'ned.1':'eredivisie',
+  'uefa.champions':'champions', 'uefa.europa':'europa', 'uefa.europa.conf':'conference',
+  // Slugs cortos ya normalizados (backwards-compat con season.slug de la liga).
+  laliga:'laliga', hypermotion:'hypermotion', premier:'premier', championship:'championship',
+  seriea:'seriea', serieb:'serieb', bundesliga:'bundesliga', bundesliga2:'bundesliga2',
+  ligue1:'ligue1', ligue2:'ligue2', primeira:'primeira', eredivisie:'eredivisie',
+  champions:'champions', europa:'europa', conference:'conference',
+};
 function partidoSlugFor(m) {
   if (!m || !m.league) return null;
   let s = String(m.league.slug || '');
   const m2 = s.match(/^20\d\d-\d\d-(.+)$/);   // season.slug "2026-27-laliga" → "laliga"
   if (m2) s = m2[1];
   return LIVE_SLUG_BY_CODE[s] || null;
+}
+// Etiqueta legible para el chip de competición cuando solo tenemos el código
+// (ev._comp): resuelve el slug corto y su nombre desde PM_LEAGUES; si la
+// competición no está en el catálogo (copas…), muestra el código en mayúsculas.
+function compName(code) {
+  const slug = LIVE_SLUG_BY_CODE[code];
+  if (slug && window.PM_LEAGUES && window.PM_LEAGUES[slug]) return window.PM_LEAGUES[slug].name;
+  return String(code).toUpperCase();
 }
 
 function tlCard(m, isCenter) {
@@ -1813,10 +1864,10 @@ if (TEAM_ID) { triggerUpdate(); updateSeason(); }
   document.addEventListener('pm-follows-changed', render);
 })();
 </script>
-<script src="/assets/account.js?v=20260813e"></script>
-<script src="/assets/pm-leagues.js?v=20260813e"></script>
-<script src="/assets/shell.js?v=20260813e"></script>
+<script src="/assets/account.js?v=20260813f"></script>
+<script src="/assets/pm-leagues.js?v=20260813f"></script>
+<script src="/assets/shell.js?v=20260813f"></script>
 <script>PMShell.chrome({ active: null });</script>
-  <script src="/assets/nav.js?v=20260813e"></script>
+  <script src="/assets/nav.js?v=20260813f"></script>
 </body>
 </html>

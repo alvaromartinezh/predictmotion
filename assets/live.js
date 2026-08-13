@@ -20,7 +20,15 @@
   var POLL_MS = 20000;
   var league = '', eventId = '', timer = null;
 
-  var LEAGUE_NAMES = { hypermotion: 'Liga Hypermotion', laliga: 'LaLiga' };
+  var LEAGUE_NAMES = {
+    hypermotion: 'Liga Hypermotion', laliga: 'LaLiga',
+    premier: 'Premier League', championship: 'Championship',
+    seriea: 'Serie A', serieb: 'Serie B',
+    bundesliga: 'Bundesliga', bundesliga2: '2. Bundesliga',
+    ligue1: 'Ligue 1', ligue2: 'Ligue 2',
+    primeira: 'Primeira Liga', eredivisie: 'Eredivisie',
+    champions: 'Champions League', europa: 'Europa League', conference: 'Conference League'
+  };
   function leagueName(slug) { return LEAGUE_NAMES[slug] || ''; }
 
   function qs(n) { return new URLSearchParams(location.search).get(n); }

@@ -56,19 +56,49 @@ ESPN_PROXY_ENABLED   = _flag("ESPN_PROXY_ENABLED", True)
 ESPN_PROXY_CACHE_TTL = _int("ESPN_PROXY_CACHE_TTL", 30)
 ESPN_PROXY_TIMEOUT   = _int("ESPN_PROXY_TIMEOUT", 20)
 
-# Ligas seguidas (códigos ESPN). El provider es agnóstico de liga.
+# Ligas seguidas (códigos ESPN). El provider es agnóstico de liga. Las 15
+# competiciones con dashboard (12 ligas + fase de liga UEFA); las copas no
+# entran (sin seguimiento).
 LEAGUES = {
     "hypermotion": "esp.2",
     "laliga":      "esp.1",
+    "premier":     "eng.1",
+    "championship":"eng.2",
+    "seriea":      "ita.1",
+    "serieb":      "ita.2",
+    "bundesliga":  "ger.1",
+    "bundesliga2": "ger.2",
+    "ligue1":      "fra.1",
+    "ligue2":      "fra.2",
+    "primeira":    "por.1",
+    "eredivisie":  "ned.1",
+    "champions":   "uefa.champions",
+    "europa":      "uefa.europa",
+    "conference":  "uefa.europa.conf",
 }
 
 # ── Probabilidad pre-partido por liga (base de calibración) ───────────────────
 # Mismas constantes que el Monte Carlo del sitio, para coherencia. En el minuto 0
 # la probabilidad estimada cae exactamente a estos valores.
 #   (p_home, p_draw)  → p_away = 1 - p_home - p_draw
+# Valores de seo/config.py → LEAGUES (fuente única; si cambian allá, actualizar
+# aquí).
 LEAGUE_BASE_PROBS = {
     "hypermotion": (0.42, 0.27),
     "laliga":      (0.46, 0.26),
+    "premier":     (0.45, 0.24),
+    "championship":(0.45, 0.26),
+    "seriea":      (0.45, 0.27),
+    "serieb":      (0.45, 0.28),
+    "bundesliga":  (0.44, 0.24),
+    "bundesliga2": (0.44, 0.26),
+    "ligue1":      (0.45, 0.27),
+    "ligue2":      (0.45, 0.28),
+    "primeira":    (0.46, 0.27),
+    "eredivisie":  (0.46, 0.24),
+    "champions":   (0.45, 0.25),
+    "europa":      (0.45, 0.25),
+    "conference":  (0.45, 0.25),
 }
 DEFAULT_BASE_PROBS = (0.42, 0.27)
 
