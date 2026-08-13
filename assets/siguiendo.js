@@ -40,11 +40,9 @@
   function mainHTML(s) {
     var col = ['<div class="feed-sec" style="margin-top:var(--sp-2)"><h2 class="feed-sec__title">Siguiendo</h2></div>'];
     // Mientras PMAccount no resuelve /api/me pero la cookie hint dice que hay
-    // sesión, NO pintar el CTA anónimo (flash "Sigue a los tuyos"): carga breve.
-    if (s.pending) {
-      col.push('<section class="cta-card"><h3>Cargando tus seguidos…</h3><p>Un momento mientras cargamos tu lista.</p></section>');
-      return '<div class="feed"><div class="feed__col">' + col.join('') + '</div><div class="feed__rail"></div></div>';
-    }
+    // sesión, NO pintar NADA en el main (ni siquiera "Cargando…"): solo se ve el
+    // shell. Al resolver (pm-account-ready) se re-renderiza con los follows.
+    if (s.pending) return '';
     if (!s.on) {
       col.push('<section class="cta-card"><h3>Sigue a los tuyos</h3><p>' + (s.avail ? 'Inicia sesión para seguir equipos y competiciones y verlos aquí y en tu portada.' : 'Las cuentas no están disponibles ahora mismo.') + '</p>'
         + (s.avail ? '<div class="btns"><a class="btn btn--primary" href="/cuenta">Entrar</a><a class="btn btn--ghost" href="/buscar">Explorar</a></div>' : '') + '</section>');

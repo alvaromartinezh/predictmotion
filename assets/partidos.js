@@ -36,7 +36,7 @@
   for (var i = -1; i <= 6; i++) { var d = new Date(today); d.setDate(today.getDate() + i); DAYS.push({ ymd: ymd(d), dw: (i === 0 ? 'Hoy' : DW[d.getDay()]), dn: d.getDate() }); }
   var initial = (location.search.match(/[?&]date=(\d{8})/) || [])[1] || ymd(today);
 
-  var state = { ymd: initial, filter: 'all' };
+  var state = { ymd: initial, filter: 'all', loading: false };
   var byLeague = {};   // slug -> [matches] del día cargado
 
   // ── follows → ids de equipo y slugs de competición seguidos ──
@@ -123,12 +123,12 @@
       + '<section class="matchlist">' + ms.map(matchRow).join('') + '</section>';
   }
 
-  function liveRail(live) {
+  function liveRail(live, loading) {
     var rows = live.length ? live.map(function (m) {
       return '<div class="trend"><span class="rank" style="color:var(--live)">●</span>' + crest(m.home.logo, m.home.name, m.home.id)
         + '<span class="name">' + esc(initials(m.home.name)) + ' ' + (m.home.score == null ? 0 : m.home.score) + '-' + (m.away.score == null ? 0 : m.away.score) + ' ' + esc(initials(m.away.name)) + '</span>'
         + '<span class="val" style="color:var(--live)">' + esc(m.clock || '') + '</span></div>';
-    }).join('') : '<p class="time">Sin partidos en vivo</p>';
+    }).join('') : (loading ? '<p class="time">Cargando…</p>' : '<p class="time">Sin partidos en vivo</p>');
     return '<div class="rail-card"><h4>En directo ahora</h4>' + rows + '</div>';
   }
 
@@ -145,7 +145,9 @@
     }
 
     var feed;
-    if (!present.length) {
+    if (state.loading) {
+      feed = '<article class="card"><div style="padding:var(--sp-7) var(--sp-5);text-align:center;color:var(--text-2)">Cargando partidos…</div></article>';
+    } else if (!present.length) {
       var when = state.ymd === ymd(today) ? 'hoy' : 'el ' + humanDate(state.ymd);
       feed = '<article class="card"><div style="padding:var(--sp-7) var(--sp-5);text-align:center;color:var(--text-2)">No hay partidos ' + when + '. Prueba con otra fecha.</div></article>';
     } else if (state.filter !== 'all') {
@@ -165,19 +167,19 @@
     var liveSec = live.length ? '<div class="feed-sec"><h2 class="feed-sec__title">En vivo <span class="tag tag--live">' + live.length + '</span></h2></div><section class="matchlist">' + live.map(matchRow).join('') + '</section>' : '';
     var col = '<div class="feed-sec" style="margin-top:var(--sp-2)"><h2 class="feed-sec__title">Partidos</h2></div>'
       + daystrip() + chips + liveSec + feed;
-    window.PMShell.mount({ active: 'matches', main: '<div class="feed"><div class="feed__col">' + col + '</div><div class="feed__rail">' + liveRail(live) + '</div></div>', onRender: wire });
+    window.PMShell.mount({ active: 'matches', main: '<div class="feed"><div class="feed__col">' + col + '</div><div class="feed__rail">' + liveRail(live, state.loading) + '</div></div>', onRender: wire });
   }
 
   var loadTok = 0;
   function loadDay() {
     var my = ++loadTok, ls = ALL;
     // esqueleto inmediato del día (sin datos) para que el cambio de día responda ya
-    byLeague = {}; renderMain();
+    state.loading = true; byLeague = {}; renderMain();
     Promise.all(ls.map(function (s) {
       return D.scoreboard(s, state.ymd).then(function (evs) { return { s: s, ms: (evs || []).map(function (e) { return D.parseEvent(e, s); }).filter(Boolean) }; });
     })).then(function (res) {
       if (my !== loadTok) return;
-      byLeague = {}; res.forEach(function (r) { byLeague[r.s] = r.ms; });
+      state.loading = false; byLeague = {}; res.forEach(function (r) { byLeague[r.s] = r.ms; });
       renderMain();
     });
   }

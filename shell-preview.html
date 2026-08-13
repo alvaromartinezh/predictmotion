@@ -6,12 +6,12 @@
   <title>Shell CP-R1 (preview interno) · PredictMotion</title>
   <meta name="robots" content="noindex, nofollow" />
   <!-- Assets de PRODUCCIÓN reales -->
-  <link rel="stylesheet" href="/styles.css?v=20260813c" />
-  <link rel="stylesheet" href="/assets/shell.css?v=20260813c" />
+  <link rel="stylesheet" href="/styles.css?v=20260813d" />
+  <link rel="stylesheet" href="/assets/shell.css?v=20260813d" />
   <!-- preview-only: permite ?theme=light escribiendo la MISMA clave que theme.js (pm-theme) -->
   <script>try{var t=new URLSearchParams(location.search).get('theme');if(t)localStorage.setItem('pm-theme',t);}catch(e){}</script>
-  <script src="/theme.js?v=20260813c"></script>
-  <script src="/assets/pm-leagues.js?v=20260813c"></script>
+  <script src="/theme.js?v=20260813d"></script>
+  <script src="/assets/pm-leagues.js?v=20260813d"></script>
 </head>
 <body>
   <!-- .pm-app = capa de acento esmeralda; envuelve #app y la barra inferior fixed -->
@@ -65,14 +65,14 @@
           };
         }
       };
-      loadScript('/assets/shell.js?v=20260813c', boot);
+      loadScript('/assets/shell.js?v=20260813d', boot);
     } else {
       // Ruta real: PMAccount de producción (anónimo en local si el backend está apagado)
-      loadScript('/assets/account.js?v=20260813c', function () {
-        loadScript('/assets/shell.js?v=20260813c', boot);
+      loadScript('/assets/account.js?v=20260813d', function () {
+        loadScript('/assets/shell.js?v=20260813d', boot);
       });
     }
   </script>
-  <script src="/assets/nav.js?v=20260813c"></script>
+  <script src="/assets/nav.js?v=20260813d"></script>
 </body>
 </html>
