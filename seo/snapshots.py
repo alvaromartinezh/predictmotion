@@ -11,7 +11,9 @@ from datetime import datetime, timezone
 from html import escape
 from urllib.parse import quote
 
-from .config import DATA_DIR, STRENGTH_SCALE, STRENGTH_FADE_FRACTION
+from .config import (DATA_DIR, STRENGTH_SCALE, STRENGTH_FADE_FRACTION,
+                     USE_ABSOLUTE_RATING, STRENGTH_SCALE_ABS, DRAW_SHRINK_KAPPA,
+                     PROJECTION_HORIZON_FADE)
 from .sim_table import zone_prob, resolve_strengths
 from .textutil import slugify
 
@@ -110,9 +112,19 @@ def build_table_snapshot(league, rows, sim, sim_n, today, league_logo=None,
     }
     # Parámetros del prior de fuerza para que el fallback JS aplique la MISMA
     # fórmula (solo si hay fuerzas; si no, el fallback usa el modelo uniforme).
+    # `strength_model` dice QUÉ fórmula publican estos parámetros: el motor JS
+    # solo simula si conoce ese modelo (si no, deja las probabilidades del
+    # snapshot en vez de inventar otras con una fórmula distinta). Publicar
+    # `strength` sin decir con qué modelo se usa fue justo el fallo de 2026-08-14:
+    # el cron pasó a v2 (rating absoluto) y el JS siguió aplicando la escala v1.
     if strengths is not None:
+        snap["strength_model"] = "v2" if USE_ABSOLUTE_RATING else "v1"
         snap["strength_scale"] = STRENGTH_SCALE
         snap["strength_fade_fraction"] = STRENGTH_FADE_FRACTION
+        if USE_ABSOLUTE_RATING:
+            snap["strength_scale_abs"] = STRENGTH_SCALE_ABS
+            snap["draw_shrink_kappa"] = DRAW_SHRINK_KAPPA
+            snap["projection_horizon_fade"] = PROJECTION_HORIZON_FADE
     # Filas de tabla servidas sin JS (Caddy inyecta rows.html en el tbody).
     snap["rows_html"] = render_rows_html(league, snap)
     return snap

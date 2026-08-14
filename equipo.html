@@ -17,12 +17,13 @@
   <link rel="dns-prefetch" href="https://site.api.espn.com" />
   <link rel="dns-prefetch" href="https://sports.core.api.espn.com" />
   <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
-  <link rel="stylesheet" href="/styles.css?v=20260814c" />
-  <link rel="stylesheet" href="/assets/shell.css?v=20260814c" />
-  <link rel="stylesheet" href="/assets/account.css?v=20260814c" />
-  <link rel="stylesheet" href="/assets/news.css?v=20260814c" />
-  <script src="/assets/espn-proxy.js?v=20260814c"></script>
-  <script src="/theme.js?v=20260814c"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260815a" />
+  <link rel="stylesheet" href="/assets/shell.css?v=20260815a" />
+  <link rel="stylesheet" href="/assets/account.css?v=20260815a" />
+  <link rel="stylesheet" href="/assets/news.css?v=20260815a" />
+  <script src="/assets/espn-proxy.js?v=20260815a"></script>
+  <script src="/theme.js?v=20260815a"></script>
+  <script src="/assets/league-engine.js?v=20260815a"></script>
   <title>Equipo · PredictMotion</title>
 
   <style>
@@ -813,22 +814,7 @@ function loadTeamNews() {
 }
 loadTeamNews();
 
-// ─── Seeded PRNG (mulberry32) ─────────────────────────────────────────────
-function mulberry32(seed) {
-  return function() {
-    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
-    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}
-function standingsSeed(standings) {
-  const str = standings.map(t => `${t.name}:${t.pts}:${t.gp}`).join('|');
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = Math.imul(31, h) + str.charCodeAt(i) | 0;
-  return h >>> 0;
-}
-let rng = Math.random;
+// PRNG, seed y emparejamiento viven en assets/league-engine.js (PMEngine).
 
 const LOCAL_LOGOS = {
   'racing santander':'logos/racing.png','almería':'logos/almeria.png',
@@ -858,13 +844,6 @@ function initials(name) {
   return name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
 }
 
-// ─── Fixtures restantes (emparejamiento aleatorio, sin hardcode) ──────────
-function shuffle(arr) {
-  for (let i=arr.length-1;i>0;i--){const j=rng()*(i+1)|0;[arr[i],arr[j]]=[arr[j],arr[i]];}
-  return arr;
-}
-function randomMatchday(names){const t=shuffle([...names]);const md=[];for(let i=0;i<t.length-1;i+=2)md.push([t[i],t[i+1]]);return md;}
-function buildFixtures(names, gp, totalMd){const mds=[];for(let md=gp+1;md<=totalMd;md++)mds.push(randomMatchday(names));return mds;}
 
 // Devuelve un objeto { zoneKey: porcentaje } para el equipo dado. Ruta SECUNDARIA:
 // solo corre en el fallback (partido en vivo o snapshot no disponible). El camino
@@ -889,40 +868,20 @@ function simulate(standings, teamName, zones, sc) {
     return out;
   }
 
-  rng = mulberry32(standingsSeed(standings));
-  const names  = standings.map(t => t.name);
-  const teamGp = Object.fromEntries(standings.map(t => [t.name, t.gp]));
-  const counts = blank();
-
-  for (let i=0;i<SIM_N;i++) {
-    const pts = Object.fromEntries(standings.map(t=>[t.name,t.pts]));
-    const gd  = Object.fromEntries(standings.map(t=>[t.name,t.gf-t.gc]));
-    const gf  = Object.fromEntries(standings.map(t=>[t.name,t.gf]));
-    let mdNum = minGp;
-    for (const md of buildFixtures(names, minGp, totalMd)) {
-      mdNum++;
-      for (const [h,a] of md) {
-        if (teamGp[h] >= mdNum || teamGp[a] >= mdNum) continue;
-        // Prior de fuerza (fallback): sesga la cuota local por el rating con
-        // desvanecimiento. Sin contexto → P_HOME/P_DRAW de siempre.
-        let ph = P_HOME;
-        if (sc) {
-          const s = 1 / (1 + Math.exp(-(sc.logitS0 + sc.w * sc.scale * (sc.str[h] - sc.str[a]))));
-          ph = sc.M * s;
-        }
-        const r=rng(); let hp,ap,hg,ag;
-        if(r<ph){hp=3;ap=0;hg=(rng()*2|0)+1+(rng()*2|0);ag=rng()*2|0;}
-        else if(r<ph+P_DRAW){hp=ap=1;hg=ag=rng()*2|0;}
-        else{hp=0;ap=3;hg=rng()*2|0;ag=(rng()*2|0)+1+(rng()*2|0);}
-        pts[h]+=hp;pts[a]+=ap;gd[h]+=hg-ag;gd[a]+=ag-hg;gf[h]+=hg;gf[a]+=ag;
-      }
-    }
-    const sorted=[...names].sort((a,b)=>pts[b]!==pts[a]?pts[b]-pts[a]:gd[b]!==gd[a]?gd[b]-gd[a]:gf[b]-gf[a]);
-    const p=sorted.indexOf(teamName)+1;
-    for (const z of zones) if (z.test(p, numTeams)) counts[z.key]++;
-  }
+  // El Monte Carlo es el del motor compartido (mismo modelo de partido y mismo
+  // prior de fuerza que el cron); aquí solo se cuentan las zonas de ESTE equipo
+  // sobre su histograma de posición.
+  const res = PMEngine.simulate(standings, {
+    pHome: P_HOME, pDraw: P_DRAW, simN: SIM_N, playoffTop: null, sc: sc,
+    totalMd: LG.matchesPerTeam || null,
+  });
+  const hist = res.posHist[teamName] || [];
   const out = blank();
-  for (const z of zones) out[z.key] = +(counts[z.key]/SIM_N*100).toFixed(1);
+  for (const z of zones) {
+    let c = 0;
+    for (let p = 1; p <= numTeams; p++) if (z.test(p, numTeams)) c += hist[p - 1] || 0;
+    out[z.key] = +(c / res.simN * 100).toFixed(1);
+  }
   return out;
 }
 
@@ -939,14 +898,7 @@ async function fetchSnapshot() {
 // pts y PJ por equipo). Si hay partido en vivo o un resultado que el cron aún no ha
 // recogido, no coincidirá → se re-simula en cliente.
 function snapshotMatches(snap, standings) {
-  if (!snap || !Array.isArray(snap.teams)) return false;
-  if (snap.teams.length !== standings.length) return false;
-  const byId = new Map(snap.teams.map(t => [String(t.id), t]));
-  for (const s of standings) {
-    const t = byId.get(String(s.id));
-    if (!t || t.pts !== s.pts || t.gp !== s.gp) return false;
-  }
-  return true;
+  return PMEngine.snapshotMatches(snap, standings);
 }
 // Zonas de DISPLAY/fallback a partir del `bands` del snapshot (mismos cortes que la
 // tabla). `key` = clave del bloque `prob`. Sub-etiqueta derivada de lo/hi.
@@ -964,21 +916,7 @@ function zonesFromBands(bands, numTeams) {
 // snapshot (fuente única; el Python la deriva de la temporada anterior) — NO se
 // re-deriva aquí. Igual que en hypermotion.html/laliga.html. null si no aplica.
 function buildStrengthCtx(snapshot, standings) {
-  if (!snapshot || typeof snapshot.strength_scale !== 'number' || !Array.isArray(snapshot.teams)) return null;
-  const byId = {}, vals = [];
-  snapshot.teams.forEach(t => { if (typeof t.strength === 'number') { byId[String(t.id)] = t.strength; vals.push(t.strength); } });
-  if (!vals.length) return null;
-  const def = Math.min(...vals);                       // sin histórico → fondo de tabla
-  const str = {};
-  standings.forEach(t => { str[t.name] = (String(t.id) in byId) ? byId[String(t.id)] : def; });
-  const n = standings.length, totalMd = 2 * (n - 1);
-  const jornada = Math.max(...standings.map(t => t.gp));
-  const span = snapshot.strength_fade_fraction * totalMd;
-  const w = span > 0 ? Math.max(0, Math.min(1, 1 - jornada / span)) : 0;
-  if (w <= 0) return null;
-  const pAway = 1 - P_HOME - P_DRAW, M = P_HOME + pAway;
-  const s0 = Math.min(1 - 1e-9, Math.max(1e-9, M > 0 ? P_HOME / M : 0.5));
-  return { scale: snapshot.strength_scale, w, str, M, logitS0: Math.log(s0 / (1 - s0)) };
+  return PMEngine.buildStrengthCtx(snapshot, standings, P_HOME, P_DRAW);
 }
 
 // ─── Fetch helpers ────────────────────────────────────────────────────────
@@ -1729,7 +1667,10 @@ function computeProbs(standings, snapshot, liveMatches) {
     ? zonesFromBands(snapshot.bands, standings.length)
     : LG.zones;
   let probs;
-  if (liveMatches.length === 0 && snapshotMatches(snapshot, standings)) {
+  // Igual que los dashboards: se lee el precálculo salvo que la tabla no cuadre,
+  // y NUNCA se simula si el snapshot declara un modelo de fuerza desconocido.
+  if ((liveMatches.length === 0 && snapshotMatches(snapshot, standings))
+      || !PMEngine.canSimulate(snapshot)) {
     const ts = snapshot.teams.find(t => String(t.id) === String(TEAM_ID));
     probs = (ts && ts.prob) ? ts.prob : {};   // claves de `prob` == claves de banda
   } else {
@@ -1864,10 +1805,10 @@ if (TEAM_ID) { triggerUpdate(); updateSeason(); }
   document.addEventListener('pm-follows-changed', render);
 })();
 </script>
-<script src="/assets/account.js?v=20260814c"></script>
-<script src="/assets/pm-leagues.js?v=20260814c"></script>
-<script src="/assets/shell.js?v=20260814c"></script>
+<script src="/assets/account.js?v=20260815a"></script>
+<script src="/assets/pm-leagues.js?v=20260815a"></script>
+<script src="/assets/shell.js?v=20260815a"></script>
 <script>PMShell.chrome({ active: null });</script>
-  <script src="/assets/nav.js?v=20260814c"></script>
+  <script src="/assets/nav.js?v=20260815a"></script>
 </body>
 </html>

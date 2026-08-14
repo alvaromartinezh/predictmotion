@@ -124,23 +124,32 @@
       var fixtures = buildFixtures(names, minGp, totalMd);
       for (var fi = 0; fi < fixtures.length; fi++) {
         mdNum++;
+        // Peso del prior en esta jornada proyectada (port de sim_table.simulate):
+        // v2 con horizonte → el prior decae dentro de la temporada proyectada;
+        // v1 (o sin horizonte) → constante sc.w.
+        var wMd = sc ? (sc.horizon ? sc.w * Math.max(0, 1 - fi / (sc.horizon * totalMd)) : sc.w) : 0;
         var md = fixtures[fi];
         for (var mi = 0; mi < md.length; mi++) {
           var hh = md[mi][0], aa = md[mi][1];
           if (teamGp[hh] >= mdNum || teamGp[aa] >= mdNum) continue;
           // Prior de fuerza (fallback): sesga la cuota local por el rating con
           // desvanecimiento. Sin contexto → pHome/pDraw de siempre.
-          var ph = pHome;
+          var ph = pHome, pd = pDraw;
           if (sc) {
-            var s = 1 / (1 + Math.exp(-(sc.logitS0 + sc.w * sc.scale * (sc.str[hh] - sc.str[aa]))));
-            ph = sc.M * s;
+            if (sc.absolute) {                       // v2: rating absoluto + encogido del empate
+              var d = wMd * sc.scale * (sc.str[hh] - sc.str[aa]);
+              pd = pDraw * Math.exp(-sc.kappa * Math.abs(d));
+              ph = (1 - pd) / (1 + Math.exp(-(sc.logitS0 + d)));
+            } else {                                 // v1: diferencia escalada, empate fijo
+              ph = sc.M / (1 + Math.exp(-(sc.logitS0 + wMd * sc.scale * (sc.str[hh] - sc.str[aa]))));
+            }
           }
           var r = rng(), hp, ap, hg, ag;
           if (r < ph) {
             hp = 3; ap = 0;
             hg = (rng() * 2 | 0) + 1 + (rng() * 2 | 0);
             ag = rng() * 2 | 0;
-          } else if (r < ph + pDraw) {
+          } else if (r < ph + pd) {
             hp = ap = 1;
             hg = ag = rng() * 2 | 0;
           } else {
@@ -205,9 +214,25 @@
     }
     return true;
   }
+  // Modelos de fuerza que este motor sabe reproducir. Si el snapshot declara uno
+  // que no está aquí, el dashboard NO debe simular (ver canSimulate): simular con
+  // otra fórmula da porcentajes que no son ni los del cron ni los correctos.
+  var KNOWN_MODELS = { v1: 1, v2: 1 };
+
+  // ¿Puede el cliente re-simular coherentemente con este snapshot? Sin snapshot, o
+  // con uno sin prior de fuerza, sí: la sim uniforme es la correcta ahí. Con prior
+  // pero un modelo que este motor no implementa (o que el snapshot ni declara, como
+  // los generados antes de publicar `strength_model`), NO: mejor las probabilidades
+  // del cron, aunque sean de hace un rato, que unas calculadas con otra fórmula.
+  function canSimulate(snapshot) {
+    if (!snapshot || typeof snapshot.strength_scale !== 'number') return true;
+    return !!KNOWN_MODELS[snapshot.strength_model];
+  }
+
   // Contexto de prior de fuerza para el fallback en cliente. Lee la `strength` ya
-  // calculada en el snapshot (fuente única; el Python la deriva de la temporada
-  // anterior). Devuelve null si no hay fuerzas o si el prior ya se desvaneció.
+  // calculada en el snapshot y los parámetros del modelo que el cron declara
+  // (fuente única: la fórmula la fija `strength_model`, no una constante local).
+  // Devuelve null si no hay fuerzas o si el prior ya se desvaneció → sim uniforme.
   function buildStrengthCtx(snapshot, standings, pHome, pDraw) {
     if (!snapshot || typeof snapshot.strength_scale !== 'number' || !Array.isArray(snapshot.teams)) return null;
     var byId = {}, vals = [];
@@ -216,20 +241,32 @@
     var def = Math.min.apply(null, vals);                 // sin histórico → fondo de tabla
     var str = {};
     standings.forEach(function (t) { str[t.name] = (String(t.id) in byId) ? byId[String(t.id)] : def; });
-    var n = standings.length, totalMd = 2 * (n - 1);
+    var n = standings.length, totalMd = snapshot.total_md || 2 * (n - 1);
     var jornada = Math.max.apply(null, standings.map(function (t) { return t.gp; }));
     var span = snapshot.strength_fade_fraction * totalMd;
     var w = span > 0 ? Math.max(0, Math.min(1, 1 - jornada / span)) : 0;
     if (w <= 0) return null;
     var pAway = 1 - pHome - pDraw, M = pHome + pAway;
     var s0 = Math.min(1 - 1e-9, Math.max(1e-9, M > 0 ? pHome / M : 0.5));
-    return { scale: snapshot.strength_scale, w: w, str: str, M: M, logitS0: Math.log(s0 / (1 - s0)) };
+    var abs = snapshot.strength_model === 'v2';
+    return {
+      absolute: abs,
+      scale: abs ? snapshot.strength_scale_abs : snapshot.strength_scale,
+      kappa: abs ? (snapshot.draw_shrink_kappa || 0) : 0,
+      horizon: abs ? (snapshot.projection_horizon_fade || 0) : 0,
+      w: w, str: str, M: M, logitS0: Math.log(s0 / (1 - s0)),
+    };
   }
 
-  window.PMEngine = {
+  var API = {
     COLOR_PALETTE: COLOR_PALETTE,
     mulberry32: mulberry32, standingsSeed: standingsSeed, initials: initials,
     simulate: simulate, zoneProb: zoneProb,
     snapshotMatches: snapshotMatches, buildStrengthCtx: buildStrengthCtx,
+    canSimulate: canSimulate,
   };
+  if (typeof window !== 'undefined') window.PMEngine = API;
+  // Guard inofensivo en el navegador: permite comparar el motor contra
+  // seo/sim_table.py desde Node (mismo snapshot → mismos porcentajes).
+  if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })();

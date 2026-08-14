@@ -27,14 +27,14 @@
   <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
   <link rel="dns-prefetch" href="https://site.api.espn.com" />
   <link rel="dns-prefetch" href="https://a.espncdn.com" />
-  <link rel="stylesheet" href="/styles.css?v=20260814c" />
-<link rel="stylesheet" href="/assets/shell.css?v=20260814c" />
-  <link rel="stylesheet" href="/assets/account.css?v=20260814c" />
-  <link rel="stylesheet" href="/assets/fixtures.css?v=20260814c" />
-  <script src="/assets/espn-proxy.js?v=20260814c"></script>
-  <script src="/theme.js?v=20260814c"></script>
-  <script src="/assets/league-engine.js?v=20260814c"></script>
-  <script src="/assets/fixtures.js?v=20260814c"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260815a" />
+<link rel="stylesheet" href="/assets/shell.css?v=20260815a" />
+  <link rel="stylesheet" href="/assets/account.css?v=20260815a" />
+  <link rel="stylesheet" href="/assets/fixtures.css?v=20260815a" />
+  <script src="/assets/espn-proxy.js?v=20260815a"></script>
+  <script src="/theme.js?v=20260815a"></script>
+  <script src="/assets/league-engine.js?v=20260815a"></script>
+  <script src="/assets/fixtures.js?v=20260815a"></script>
 
   <title>{{NAME}} 2025-26 · Probabilidades de Ascenso y Descenso</title>
   <style>
@@ -736,7 +736,12 @@ async function triggerUpdate(silent = false) {
 
     // Camino común: leer el precálculo. Solo se simula en cliente si hay partido
     // en vivo o si el snapshot no cuadra con la tabla actual (o no está disponible).
-    const results = (liveMatches.length === 0 && snapshotMatches(snapshot, standings))
+    // Se lee el precálculo salvo que la tabla no cuadre con él (partido en vivo o
+    // resultado que el cron aún no recogió). Y NUNCA se simula si el snapshot
+    // declara un modelo de fuerza que este motor no implementa: unos porcentajes
+    // de hace un rato son mejores que unos calculados con otra fórmula.
+    const results = ((liveMatches.length === 0 && snapshotMatches(snapshot, standings))
+                     || !PMEngine.canSimulate(snapshot))
       ? resultsFromSnapshot(snapshot)
       : simulate(adjusted, buildStrengthCtx(snapshot, adjusted));
     render(adjusted, results);
@@ -784,10 +789,10 @@ updateSeason();
     if (e.detail === 'partidos') PMFixtures.init('{{ESPN_CODE}}', '#fx-mount');
   });
 </script>
-<script src="/assets/account.js?v=20260814c"></script>
-  <script src="/assets/pm-leagues.js?v=20260814c"></script>
-  <script src="/assets/shell.js?v=20260814c"></script>
+<script src="/assets/account.js?v=20260815a"></script>
+  <script src="/assets/pm-leagues.js?v=20260815a"></script>
+  <script src="/assets/shell.js?v=20260815a"></script>
   <script>PMShell.chrome({ active: null });</script>
-  <script src="/assets/nav.js?v=20260814c"></script>
+  <script src="/assets/nav.js?v=20260815a"></script>
 </body>
 </html>
