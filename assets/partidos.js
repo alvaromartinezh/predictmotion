@@ -144,8 +144,9 @@
     present.forEach(function (s) { (byLeague[s] || []).forEach(function (m) { if (m.state === 'in') live.push(m); }); });
     // Arriba del todo van SOLO los partidos en vivo de tus equipos seguidos: la
     // tira con todos los directos de las 15 competiciones enterraba lo tuyo. El
-    // resto de partidos en vivo siguen en su grupo de liga (con su minuto) y en
-    // el rail "En directo ahora".
+    // resto de directos siguen en su grupo de liga, con su minuto (y en escritorio
+    // también en el rail "En directo ahora", que en móvil no se pinta). Sin equipos
+    // seguidos jugando —o sin cuenta— no hay sección: los directos se ven en su liga.
     var fw = followCtx();
     var liveMine = live.filter(function (m) {
       return !!(fw.team[String(m.home.id)] || fw.team[String(m.away.id)]);

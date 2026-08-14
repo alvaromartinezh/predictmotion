@@ -58,50 +58,51 @@
   // Devuelve null si ESPN falla → quien llama se queda con el snapshot.
   function liveTable(slug) {
     var code = codeOf(slug); if (!code) return Promise.resolve(null);
-    var d = new Date();
-    var ymd = d.getFullYear() + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2);
-    return memo('table:' + code + ':' + ymd, function () {
-      return Promise.all([
-        getJSON(ESPN_V2 + code + '/standings'),
-        scoreboard(slug, ymd),
-      ]).then(function (r) {
-        var entries = r[0] && r[0].children && r[0].children[0]
-          && r[0].children[0].standings && r[0].children[0].standings.entries;
-        if (!entries || !entries.length) return null;
-        var rows = entries.map(function (e, i) {
-          function stat(n) { return ((e.stats || []).filter(function (s) { return s.name === n; })[0] || {}).value || 0; }
-          var t = e.team || {}, tId = String(t.id || '');
-          return {
-            rank: i + 1, id: tId, name: t.displayName || t.shortDisplayName || '',
-            logo: (window.PM_TEAM_LOGOS && window.PM_TEAM_LOGOS[tId])
-              || (t.logos && t.logos[0] && t.logos[0].href) || t.logo || '',
-            gp: stat('gamesPlayed'), pts: stat('points'),
-            gf: stat('pointsFor'), gc: stat('pointsAgainst'), live: null,
-          };
-        });
-        var byId = {}; rows.forEach(function (t) { byId[t.id] = t; });
-        var any = false;
-        (r[1] || []).forEach(function (ev) {
-          var m = parseEvent(ev, slug);
-          if (!m || m.state !== 'in' || m.home.score == null || m.away.score == null) return;
-          var h = byId[m.home.id], a = byId[m.away.id]; if (!h || !a) return;
-          var hp = m.home.score > m.away.score ? 3 : m.home.score === m.away.score ? 1 : 0;
-          var ap = m.away.score > m.home.score ? 3 : (hp === 1 ? 1 : 0);
-          h.pts += hp; h.gp += 1; h.gf += m.home.score; h.gc += m.away.score;
-          a.pts += ap; a.gp += 1; a.gf += m.away.score; a.gc += m.home.score;
-          h.live = { eventId: m.id, res: hp === 3 ? 'win' : hp === 1 ? 'draw' : 'loss' };
-          a.live = { eventId: m.id, res: ap === 3 ? 'win' : ap === 1 ? 'draw' : 'loss' };
-          any = true;
-        });
-        if (any) {
-          rows.sort(function (x, y) {
-            return y.pts !== x.pts ? y.pts - x.pts
-              : (y.gf - y.gc) !== (x.gf - x.gc) ? (y.gf - y.gc) - (x.gf - x.gc) : y.gf - x.gf;
-          });
-          rows.forEach(function (t, i) { t.rank = i + 1; });
-        }
-        return rows;
+    // Scoreboard SIN fecha: el "hoy" lo decide ESPN, como en los dashboards. Con la
+    // fecha del reloj del visitante, quien va por delante del huso de la jornada (o
+    // mira pasada su medianoche) pedía el día equivocado y no veía ningún directo.
+    // Sin memo: la home no hace polling, pero así un re-render (cambio de follows)
+    // trae el marcador de ese momento y no el de la carga.
+    return Promise.all([
+      getJSON(ESPN_V2 + code + '/standings'),
+      scoreboard(slug),
+    ]).then(function (r) {
+      var entries = r[0] && r[0].children && r[0].children[0]
+        && r[0].children[0].standings && r[0].children[0].standings.entries;
+      if (!entries || !entries.length) return null;
+      var rows = entries.map(function (e, i) {
+        function stat(n) { return ((e.stats || []).filter(function (s) { return s.name === n; })[0] || {}).value || 0; }
+        var t = e.team || {}, tId = String(t.id || '');
+        return {
+          rank: i + 1, id: tId, name: t.displayName || t.shortDisplayName || '',
+          logo: (window.PM_TEAM_LOGOS && window.PM_TEAM_LOGOS[tId])
+            || (t.logos && t.logos[0] && t.logos[0].href) || t.logo || '',
+          gp: stat('gamesPlayed'), pts: stat('points'),
+          gf: stat('pointsFor'), gc: stat('pointsAgainst'), live: null,
+        };
       });
+      var byId = {}; rows.forEach(function (t) { byId[t.id] = t; });
+      var any = false;
+      (r[1] || []).forEach(function (ev) {
+        var m = parseEvent(ev, slug);
+        if (!m || m.state !== 'in' || m.home.score == null || m.away.score == null) return;
+        var h = byId[m.home.id], a = byId[m.away.id]; if (!h || !a) return;
+        var hp = m.home.score > m.away.score ? 3 : m.home.score === m.away.score ? 1 : 0;
+        var ap = m.away.score > m.home.score ? 3 : (hp === 1 ? 1 : 0);
+        h.pts += hp; h.gp += 1; h.gf += m.home.score; h.gc += m.away.score;
+        a.pts += ap; a.gp += 1; a.gf += m.away.score; a.gc += m.home.score;
+        h.live = { eventId: m.id, res: hp === 3 ? 'win' : hp === 1 ? 'draw' : 'loss' };
+        a.live = { eventId: m.id, res: ap === 3 ? 'win' : ap === 1 ? 'draw' : 'loss' };
+        any = true;
+      });
+      if (any) {
+        rows.sort(function (x, y) {
+          return y.pts !== x.pts ? y.pts - x.pts
+            : (y.gf - y.gc) !== (x.gf - x.gc) ? (y.gf - y.gc) - (x.gf - x.gc) : y.gf - x.gf;
+        });
+        rows.forEach(function (t, i) { t.rank = i + 1; });
+      }
+      return rows;
     });
   }
 

@@ -30,7 +30,7 @@
   function kick(iso) { try { return new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
   function lname(slug) { return (L[slug] || {}).name || slug; }
   function llogo(slug) { return (L[slug] || {}).logo || ''; }
-  function bandForRank(snap, rank) { return (snap.bands || []).filter(function (b) { return rank >= b.lo && rank <= b.hi; })[0] || null; }
+  function bandForRank(snap, rank) { return (((snap && snap.bands) || [])).filter(function (b) { return rank >= b.lo && rank <= b.hi; })[0] || null; }
   function zoneClass(band) { if (!band) return ''; return band.color === 'green' ? 'up' : band.color === 'red' ? 'down' : 'po'; }
   function zoneVar(band) { return band && band.color === 'green' ? '--up' : band && band.color === 'red' ? '--down' : '--po'; }
   function uniqLeagues(f) { var s = {}; (f.teams || []).forEach(function (t) { s[t.league_slug] = 1; }); (f.competitions || []).forEach(function (c) { s[c] = 1; }); return Object.keys(s); }
@@ -66,6 +66,14 @@
     var teams = ((snap && snap.teams) || []).slice().sort(function (a, b) { return a.rank - b.rank; });
     if (!table || !table.length) return teams;
     var prob = {}; teams.forEach(function (t) { prob[String(t.id)] = t.prob || {}; });
+    // Cambio de temporada: ESPN ya trae la nueva y el snapshot sigue siendo el de la
+    // acabada. Los ascendidos no casarían por id y saldrían con prob vacía (un rail de
+    // "favoritos" todo a 0%). Si apenas coinciden los equipos, manda el snapshot.
+    if (teams.length) {
+      var hit = 0;
+      table.forEach(function (t) { if (String(t.id) in prob) hit++; });
+      if (hit < table.length * 0.8) return teams;
+    }
     return table.map(function (t) {
       return { id: t.id, name: t.name, logo: t.logo, rank: t.rank, gp: t.gp, pts: t.pts,
                prob: prob[String(t.id)] || {}, live: t.live };
@@ -76,7 +84,7 @@
     return '<span class="pts num"' + (t.live ? ' style="color:var(--live)"' : '') + '>' + t.pts + '</span>';
   }
 
-  function miniTable(snap, teamId, teamName, table) {
+  function miniTable(snap, teamId, teamName, table, slug) {
     var teams = rowsOf(snap, table);
     if (!teams.length) return '';
     var idx = teams.findIndex(function (t) { return String(t.id) === String(teamId); });
@@ -90,7 +98,7 @@
     }).join('');
     var me = teams[idx], mb = bandForRank(snap, me.rank), pill = '';
     if (mb) { var p = pct(me.prob && me.prob[mb.key]); if (p != null) pill = '<span class="prob-pill" style="color:var(' + zoneVar(mb) + ');background:transparent;border-color:currentColor">' + p + '% ' + esc(mb.label) + '</span>'; }
-    return '<article class="card">' + leagueHead(snap.league, '<span style="color:var(--faint);font-family:var(--font-mono);font-size:var(--fs-11)">Clasificación</span>')
+    return '<article class="card">' + leagueHead(slug || (snap && snap.league), '<span style="color:var(--faint);font-family:var(--font-mono);font-size:var(--fs-11)">Clasificación</span>')
       + '<div class="mini">' + rows + '</div>'
       + '<div class="mini__foot"><span>' + esc(teamName || me.name) + ' · ' + me.rank + 'º</span>' + pill + '</div></article>';
   }
@@ -194,7 +202,7 @@
     // Equipos seguidos: resultado + mini-tabla (±3) + noticia del equipo
     teams.slice(0, 3).forEach(function (t, i) {
       var m = matches[t.espn_team_id]; if (m) col.push(resultCard(m, true));
-      var mt = miniTable(snaps[t.league_slug], t.espn_team_id, t.name, tables[t.league_slug]); if (mt) col.push(mt);
+      var mt = miniTable(snaps[t.league_slug], t.espn_team_id, t.name, tables[t.league_slug], t.league_slug); if (mt) col.push(mt);
       col.push(nextNews(function (it) { return (it.teams || []).some(function (x) { return String(x.id) === String(t.espn_team_id); }) || (it.leagues || []).indexOf(t.league_slug) >= 0; }));
     });
     // Competiciones seguidas (que no cubra ya un equipo): clasificación + noticia
@@ -277,7 +285,7 @@
           var ms = r[0], matches = {}; teams.forEach(function (t, i) { matches[t.espn_team_id] = ms[i]; });
           var tables = {}; slugs.forEach(function (sl, i) { if (r[1][i]) tables[sl] = r[1][i]; });
           mount(buildUserHTML(f, matches, snaps, news, tables));
-        });
+        }).catch(fail);
     }).catch(fail);
   }
 
