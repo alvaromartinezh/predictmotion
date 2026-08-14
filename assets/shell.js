@@ -199,12 +199,27 @@
   function sidebar(s, active) { return '<aside class="sidenav">' + sidebarInner(s, active) + '</aside>'; }
 
   var last = null;
+  // Bloque estático de SEO (#pm-static): vive FUERA de #app en el HTML para que el
+  // feed no lo destruya al montar, pero entonces queda fuera del grid del shell →
+  // desalineado con el feed y, al llegar a él, la barra lateral (sticky dentro de
+  // #app) deja de acompañar. Se mueve dentro de .app__main en cada render; el nodo
+  // se guarda aparte para que el innerHTML de #app no se lo lleve por delante.
+  var staticEl = null;
   function render() {
     if (!last) return;
     var s = acct();
     var appEl = document.getElementById('app');
     if (!appEl) return;
+    if (!staticEl) staticEl = document.getElementById('pm-static');
+    if (staticEl && staticEl.parentNode) staticEl.parentNode.removeChild(staticEl);
     appEl.innerHTML = sidebar(s, last.active) + '<div class="app__main">' + appbar(s) + last.main + '</div>';
+    if (staticEl) {
+      // Dentro de .feed__col queda alineado con las tarjetas del feed: el ancho y
+      // el padding que trae para el fallback sin JS ya los pone .feed.
+      staticEl.style.maxWidth = 'none';
+      staticEl.style.paddingInline = '0';
+      (appEl.querySelector('.feed__col') || appEl.querySelector('.app__main')).appendChild(staticEl);
+    }
     var tb = document.getElementById('shell-tabbar');
     if (tb) tb.innerHTML = tabbar(last.active);
     if (window.PMTheme && window.PMTheme.wire) window.PMTheme.wire();

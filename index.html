@@ -56,10 +56,10 @@
 
   <script>document.documentElement.classList.add('js');</script>
   <style>html.js #app > main { display:none }</style>
-  <link rel="stylesheet" href="/styles.css?v=20260814b" />
-  <link rel="stylesheet" href="/assets/shell.css?v=20260814b" />
-  <script src="/assets/espn-proxy.js?v=20260814b"></script>
-  <script src="/theme.js?v=20260814b"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260814c" />
+  <link rel="stylesheet" href="/assets/shell.css?v=20260814c" />
+  <script src="/assets/espn-proxy.js?v=20260814c"></script>
+  <script src="/theme.js?v=20260814c"></script>
 
   <!-- Google AdSense -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3055585323326983" crossorigin="anonymous"></script>
@@ -94,8 +94,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
   <!-- Contenido estático sustancioso: FUERA de #app para que home.js no lo destruya.
        Googlebot (sin JS) lo ve; usuarios con JS lo ven al final de la página, tras el feed.
-       padding-bottom incluye el espacio del tabbar fijo para no quedar tapado en móvil. -->
-  <div class="wrap" style="max-width:var(--maxw);margin-inline:auto;padding-inline:var(--sp-5);padding-block:var(--sp-8);padding-bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + var(--sp-8))">
+       Con JS, shell.js lo mueve DENTRO de .app__main (por su id) para que quede en la
+       columna del feed y la barra lateral siga acompañando hasta el final. El hueco del
+       tabbar fijo lo pone .app__main; sin JS no hay tabbar que tapar. -->
+  <div class="wrap" id="pm-static" style="max-width:var(--maxw);margin-inline:auto;padding-inline:var(--sp-5);padding-block:var(--sp-8)">
 
     <section aria-label="Cómo funcionan las probabilidades" style="margin-top:var(--sp-6)">
       <p class="eyebrow">Metodología</p>
@@ -181,11 +183,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
   </div>
 
-  <script src="/assets/pm-leagues.js?v=20260814b"></script>
-  <script src="/assets/account.js?v=20260814b"></script>
-  <script src="/assets/shell.js?v=20260814b"></script>
-  <script src="/assets/pm-data.js?v=20260814b"></script>
-  <script src="/assets/home.js?v=20260814b"></script>
-  <script src="/assets/nav.js?v=20260814b"></script>
+  <script src="/assets/pm-leagues.js?v=20260814c"></script>
+  <script src="/assets/account.js?v=20260814c"></script>
+  <script src="/assets/shell.js?v=20260814c"></script>
+  <script src="/assets/pm-data.js?v=20260814c"></script>
+  <script src="/assets/home.js?v=20260814c"></script>
+  <script src="/assets/nav.js?v=20260814c"></script>
 </body>
 </html>
