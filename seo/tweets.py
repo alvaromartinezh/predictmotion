@@ -436,6 +436,13 @@ def _process_league(slug, *, force=False, chat_id=None, dry_run=False):
             print(f"[tweets] {slug}: sin jornada inminente (≤{UPCOMING_DAYS} días)")
             return 0
 
+    if not dry_run and chat_id is None:
+        chat_id = os.environ.get("TELEGRAM_CHAT_ID") or _load_state().get("telegram_chat")
+        if not chat_id:
+            print("[tweets] sin chat_id de Telegram (TELEGRAM_CHAT_ID o --poll)",
+                  file=sys.stderr)
+            return 0
+
     url = SITE + league["dashboard"]
     sent = 0
     for zone, zlabel in ZONES.get(slug, []):
