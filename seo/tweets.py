@@ -5,9 +5,12 @@ probabilidad + teaser + enlace al dashboard), acompañado de una "captura" PNG d
 los datos, y lo manda al Telegram del dueño — que es quien lo sube a X/Twitter
 manualmente (la API de X no se puede permitir: 0,20 €/tweet con enlace).
 
-Ligas y zonas:
-  - hypermotion (Liga Hypermotion): ascenso directo, play-off de ascenso, descenso.
-  - laliga (LaLiga): título, Champions, Europa League, Conference League, descenso.
+Ligas y zonas (las 12 de clubes del sitio; las 3 UEFA quedan fuera por decisión
+del dueño — el perfil es de fútbol de clubes):
+  - 1as divisiones (laliga, premier, seriea, bundesliga, ligue1, primeira,
+    eredivisie): título, Champions, Europa League, Conference League, descenso.
+  - 2as divisiones (hypermotion, championship, serieb, bundesliga2, ligue2):
+    ascenso directo, play-off de ascenso, descenso.
 
 Datos: lee el precálculo del cron SEO `data/<slug>/latest.json` (NO simula).
 Estado anti-duplicado (una vez por jornada y liga) en `data/tweets_state.json`.
@@ -50,29 +53,45 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 from . import espn, notify
-from .config import DATA_DIR, SITE, league_by_slug
+from .config import DATA_DIR, SITE, LEAGUES, league_by_slug
 
-# Ligas sobre las que se tuitea. Las 15 del sitio quedan fuera por decisión del
-# dueño: el perfil es de fútbol español (LaLiga + Hypermotion).
-TWEET_LEAGUES = ["hypermotion", "laliga"]
+# Las 12 ligas de clubes del sitio (todo menos las 3 UEFA, fuera por decisión del
+# dueño: el perfil es de fútbol de clubes). Derivado de la plantilla del dashboard
+# para no duplicar el registro: cualquier liga nueva top1/tier2 entra sola.
+TWEET_LEAGUES = [lg["slug"] for lg in LEAGUES
+                 if lg.get("dashboard_template") != "uefa"]
 
-# Zonas por liga: (clave en prob del snapshot, etiqueta corta del tweet).
-ZONES = {
-    "hypermotion": [
-        ("ascenso", "Ascenso directo"),
-        ("playoff", "Play-off de ascenso"),
-        ("descenso", "Descenso"),
-    ],
-    "laliga": [
-        ("first", "Título"),
-        ("champions", "Champions"),
-        ("europa", "Europa League"),
-        ("conference", "Conference League"),
-        ("descenso", "Descenso"),
-    ],
-}
+# Zonas por tipo de liga (claves de `prob` del snapshot, etiqueta corta del tweet):
+#   top1 (1as europeas) → 5 tuits, igual que LaLiga.
+#   top2/tier2 (2as)    → 3 tuits, igual que Hypermotion.
+ZONES_TOP1 = [
+    ("first", "Título"),
+    ("champions", "Champions"),
+    ("europa", "Europa League"),
+    ("conference", "Conference League"),
+    ("descenso", "Descenso"),
+]
+ZONES_TIER2 = [
+    ("ascenso", "Ascenso directo"),
+    ("playoff", "Play-off de ascenso"),
+    ("descenso", "Descenso"),
+]
 
-# Acento de marca por liga (mismo que styles.css → .theme-*).
+
+def _zones(slug):
+    """Zonas a tuitear de una liga, según su plantilla de dashboard."""
+    lg = league_by_slug(slug)
+    if not lg:
+        return []
+    t = lg.get("dashboard_template")
+    if t == "top1":
+        return ZONES_TOP1
+    if t in ("top2", "tier2"):
+        return ZONES_TIER2
+    return []                     # uefa y otras: sin tuits
+
+# Acento de marca por liga (mismo que styles.css → .theme-*). Las ligas sin tema
+# propio usan el oro global --brand (= mismo fallback del dashboard).
 ACCENTS = {
     "hypermotion": (240, 169, 42),   # oro
     "laliga":      (255, 74, 90),    # rojo
@@ -87,6 +106,16 @@ _NUM = ["1\ufe0f\u20e3", "2\ufe0f\u20e3", "3\ufe0f\u20e3",
 HASHTAGS = {
     "hypermotion": ["#hypermotion", "#futbol", "#predicciones"],
     "laliga":      ["#LaLiga", "#futbol", "#predicciones"],
+    "premier":     ["#PremierLeague", "#futbol", "#predicciones"],
+    "seriea":      ["#SerieA", "#futbol", "#predicciones"],
+    "bundesliga":  ["#Bundesliga", "#futbol", "#predicciones"],
+    "ligue1":      ["#Ligue1", "#futbol", "#predicciones"],
+    "primeira":    ["#LigaPortugal", "#futbol", "#predicciones"],
+    "eredivisie":  ["#Eredivisie", "#futbol", "#predicciones"],
+    "championship": ["#Championship", "#futbol", "#predicciones"],
+    "serieb":      ["#SerieB", "#futbol", "#predicciones"],
+    "bundesliga2": ["#2Bundesliga", "#futbol", "#predicciones"],
+    "ligue2":      ["#Ligue2", "#futbol", "#predicciones"],
 }
 
 STATE_FILE = DATA_DIR / "tweets_state.json"
@@ -598,7 +627,7 @@ def _process_league(slug, *, force=False, chat_id=None, dry_run=False):
     by_name = {t.get("name"): handles.get(str(t.get("id")))
                for t in snap.get("teams", []) if t.get("name")}
     sent = 0
-    for zone, zlabel in ZONES.get(slug, []):
+    for zone, zlabel in _zones(slug):
         top = _top_teams(snap, zone)
         if not top or top[0][2] <= 0:
             print(f"[tweets] {slug}/{zone}: sin datos (todas 0%), se omite")
@@ -667,12 +696,12 @@ def _poll_once():
         try:
             if text.startswith("/tweet"):
                 arg = text[len("/tweet"):].strip()
-                if arg and arg not in ZONES:
+                if arg and arg not in TWEET_LEAGUES:
                     _tg_send_message(chat_id, f"Liga desconocida: {arg}. "
-                                              f"Válidas: {', '.join(ZONES)}")
+                                              f"Válidas: {', '.join(TWEET_LEAGUES)}")
                     continue
                 _tg_send_message(chat_id, "Generando tuits…")
-                for s in ([arg] if arg else list(ZONES)):
+                for s in ([arg] if arg else TWEET_LEAGUES):
                     _process_league(s, force=True, chat_id=chat_id)
             elif text.startswith(("/start", "/help")):
                 _tg_send_message(chat_id, "PredictMotion: /tweet para los tuits "
