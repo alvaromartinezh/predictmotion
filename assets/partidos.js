@@ -142,6 +142,14 @@
     var present = ALL.filter(function (s) { return (byLeague[s] || []).length; });
     var live = [];
     present.forEach(function (s) { (byLeague[s] || []).forEach(function (m) { if (m.state === 'in') live.push(m); }); });
+    // Arriba del todo van SOLO los partidos en vivo de tus equipos seguidos: la
+    // tira con todos los directos de las 15 competiciones enterraba lo tuyo. El
+    // resto de partidos en vivo siguen en su grupo de liga (con su minuto) y en
+    // el rail "En directo ahora".
+    var fw = followCtx();
+    var liveMine = live.filter(function (m) {
+      return !!(fw.team[String(m.home.id)] || fw.team[String(m.away.id)]);
+    });
 
     var chips = '';
     if (present.length) {
@@ -160,7 +168,7 @@
       // Filtro por competición: solo esa liga, tal cual.
       feed = '<section class="matchlist">' + (byLeague[state.filter] || []).map(matchRow).join('') + '</section>';
     } else {
-      var fw = followCtx(), g = partition(fw);
+      var g = partition(fw);
       var html = '';
       if (g.teamLeagues.length) html += secTitle('Tus equipos') + g.teamLeagues.map(function (gg) { return leagueGroup(gg.slug, gg.ms); }).join('');
       if (g.compLeagues.length) html += secTitle('Tus competiciones') + g.compLeagues.map(function (gg) { return leagueGroup(gg.slug, gg.ms); }).join('');
@@ -170,7 +178,7 @@
       feed = html;
     }
 
-    var liveSec = live.length ? '<div class="feed-sec"><h2 class="feed-sec__title">En vivo <span class="tag tag--live">' + live.length + '</span></h2></div><section class="matchlist">' + live.map(matchRow).join('') + '</section>' : '';
+    var liveSec = liveMine.length ? '<div class="feed-sec"><h2 class="feed-sec__title">Tus equipos en vivo <span class="tag tag--live">' + liveMine.length + '</span></h2></div><section class="matchlist">' + liveMine.map(matchRow).join('') + '</section>' : '';
     var col = '<div class="feed-sec" style="margin-top:var(--sp-2)"><h2 class="feed-sec__title">Partidos</h2></div>'
       + daystrip() + chips + liveSec + feed;
     window.PMShell.mount({ active: 'matches', main: '<div class="feed"><div class="feed__col">' + col + '</div><div class="feed__rail">' + liveRail(live, state.loading) + '</div></div>', onRender: wire });

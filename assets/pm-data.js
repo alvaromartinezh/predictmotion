@@ -9,6 +9,7 @@
 (function () {
   'use strict';
   var ESPN = 'https://site.api.espn.com/apis/site/v2/sports/soccer/';
+  var ESPN_V2 = 'https://site.api.espn.com/apis/v2/sports/soccer/';   // clasificación
   var L = window.PM_LEAGUES || {};
   var cache = {};
 
@@ -47,6 +48,61 @@
     var code = codeOf(slug); if (!code) return Promise.resolve([]);
     var u = ESPN + code + '/scoreboard' + (yyyymmdd ? '?dates=' + yyyymmdd : '');
     return memo('sb:' + u, function () { return getJSON(u).then(function (j) { return (j && j.events) || []; }); });
+  }
+
+  // ── ESPN: clasificación REAL de una liga, con los partidos en juego aplicados ──
+  // El snapshot del cron se queda congelado durante un partido (y hasta 3 h después
+  // de acabar), así que las tablas del home enseñaban posiciones viejas mientras la
+  // página de liga ya mostraba las provisionales. Mismo cálculo que los dashboards:
+  // clasificación de ESPN + puntos provisionales de los partidos `in` + reordenar.
+  // Devuelve null si ESPN falla → quien llama se queda con el snapshot.
+  function liveTable(slug) {
+    var code = codeOf(slug); if (!code) return Promise.resolve(null);
+    var d = new Date();
+    var ymd = d.getFullYear() + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2);
+    return memo('table:' + code + ':' + ymd, function () {
+      return Promise.all([
+        getJSON(ESPN_V2 + code + '/standings'),
+        scoreboard(slug, ymd),
+      ]).then(function (r) {
+        var entries = r[0] && r[0].children && r[0].children[0]
+          && r[0].children[0].standings && r[0].children[0].standings.entries;
+        if (!entries || !entries.length) return null;
+        var rows = entries.map(function (e, i) {
+          function stat(n) { return ((e.stats || []).filter(function (s) { return s.name === n; })[0] || {}).value || 0; }
+          var t = e.team || {}, tId = String(t.id || '');
+          return {
+            rank: i + 1, id: tId, name: t.displayName || t.shortDisplayName || '',
+            logo: (window.PM_TEAM_LOGOS && window.PM_TEAM_LOGOS[tId])
+              || (t.logos && t.logos[0] && t.logos[0].href) || t.logo || '',
+            gp: stat('gamesPlayed'), pts: stat('points'),
+            gf: stat('pointsFor'), gc: stat('pointsAgainst'), live: null,
+          };
+        });
+        var byId = {}; rows.forEach(function (t) { byId[t.id] = t; });
+        var any = false;
+        (r[1] || []).forEach(function (ev) {
+          var m = parseEvent(ev, slug);
+          if (!m || m.state !== 'in' || m.home.score == null || m.away.score == null) return;
+          var h = byId[m.home.id], a = byId[m.away.id]; if (!h || !a) return;
+          var hp = m.home.score > m.away.score ? 3 : m.home.score === m.away.score ? 1 : 0;
+          var ap = m.away.score > m.home.score ? 3 : (hp === 1 ? 1 : 0);
+          h.pts += hp; h.gp += 1; h.gf += m.home.score; h.gc += m.away.score;
+          a.pts += ap; a.gp += 1; a.gf += m.away.score; a.gc += m.home.score;
+          h.live = { eventId: m.id, res: hp === 3 ? 'win' : hp === 1 ? 'draw' : 'loss' };
+          a.live = { eventId: m.id, res: ap === 3 ? 'win' : ap === 1 ? 'draw' : 'loss' };
+          any = true;
+        });
+        if (any) {
+          rows.sort(function (x, y) {
+            return y.pts !== x.pts ? y.pts - x.pts
+              : (y.gf - y.gc) !== (x.gf - x.gc) ? (y.gf - y.gc) - (x.gf - x.gc) : y.gf - x.gf;
+          });
+          rows.forEach(function (t, i) { t.rank = i + 1; });
+        }
+        return rows;
+      });
+    });
   }
 
   // Normaliza un event de ESPN (schedule o scoreboard) a nuestro modelo mínimo.
@@ -102,6 +158,7 @@
   window.PMData = {
     L: L, codeOf: codeOf,
     snapshot: snapshot, news: news, schedule: schedule, scoreboard: scoreboard,
+    liveTable: liveTable,
     parseEvent: parseEvent, pickTeamMatch: pickTeamMatch
   };
 })();
