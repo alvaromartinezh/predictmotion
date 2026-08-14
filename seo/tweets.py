@@ -37,9 +37,12 @@ import argparse
 import io
 import json
 import os
+import re
 import sys
 import time
 import traceback
+import unicodedata
+import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
@@ -88,6 +91,30 @@ HASHTAGS = {
 
 STATE_FILE = DATA_DIR / "tweets_state.json"
 PREVIEW_DIR = DATA_DIR / "tweets_preview"
+HANDLES_FILE = DATA_DIR / "tweets_handles.json"
+
+# TheSportsDB (misma API gratuita que seo/player_cuts.py): los equipos de ESPN no
+# traen su @ de X, así que se resuelve por nombre aquí y se cachea por id ESPN.
+_TSDB = "https://www.thesportsdb.com/api/v1/json/123/searchteams.php"
+
+# Overrides de @ oficiales (datos de marca, como TEAM_LOGOS): TheSportsDB no los
+# tiene, los tiene mal (p. ej. "Celta Vigo" → @rcceltaen, un fan) o el nombre no
+# casa por exacto. Clave = nombre ESPN normalizado (_norm_team). Gana al match TSD.
+HANDLE_OVERRIDES = {
+    "athleticclub":     "@AthleticClub",
+    "celtavigo":        "@RCCelta",
+    "rcceltafortuna":   "@RCCelta",
+    "deportivo":        "@RCDeportivo",
+    "racingsantander":  "@RealRacing",
+    "alaves":           "@Alaves",
+    "realsociedadii":   "@RealSociedad",
+    "cdsabadell":       "@CESabadell",
+    "sportinggijon":    "@RealSporting",
+    "tenerife":         "@CDTOficial",
+    "albacete":         "@AlbaceteBPSAD",
+    "ceuta":            "@ADCeutaFC",
+    "cordoba":          "@cordobacfsad",
+}
 
 # Ventana para considerar que una jornada está a punto de arrancar (partidos pre).
 UPCOMING_DAYS = 3
@@ -156,6 +183,89 @@ def _top_teams(snap, zone, k=6):
         rows.append((t["name"], t.get("logo"), p))
     rows.sort(key=lambda r: r[2], reverse=True)
     return rows[:k]
+
+
+# ------------------------------------------------------- handles de X (@) -----
+
+def _extract_handle(url_text):
+    """'www.twitter.com/realmadrid' → '@realmadrid'. None si no es válido."""
+    s = (url_text or "").strip().split("/")[-1].lstrip("@").strip()
+    if not re.fullmatch(r"[A-Za-z0-9_]{1,15}", s):
+        return None
+    return "@" + s
+
+
+def _norm_team(name):
+    """Normaliza un nombre para match conservador (sin acentos/mayús/signos)."""
+    n = unicodedata.normalize("NFD", name or "").encode("ascii", "ignore").decode()
+    return "".join(ch for ch in n.lower() if ch.isalnum())
+
+
+def _fetch_handles(slug, teams):
+    """{id_espm: '@handle' | None} por liga, cacheado en data/tweets_handles.json.
+
+    Solo consulta a TheSportsDB los ids que faltan en la caché; best-effort: si un
+    equipo no tiene @ o falla la consulta, se queda sin handle (se usa el nombre)."""
+    cache = {}
+    if HANDLES_FILE.exists():
+        try:
+            cache = json.loads(HANDLES_FILE.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            cache = {}
+    sl = cache.setdefault(slug, {})
+    for t in teams:                            # los overrides mandan siempre
+        ov = HANDLE_OVERRIDES.get(_norm_team(t.get("name") or ""))
+        if ov:
+            sl[str(t.get("id"))] = ov
+    missing = [t for t in teams if str(t.get("id")) not in sl]
+    if missing:
+        print(f"[tweets] {slug}: resolviendo @ de {len(missing)} equipos en TheSportsDB…")
+    for t in missing:
+        tid, name = str(t.get("id")), t.get("name")
+        try:
+            q = urllib.parse.quote(name or "")
+            data = None
+            for attempt in range(2):           # 1 reintento con backoff si hay 429
+                try:
+                    with urllib.request.urlopen(
+                            urllib.request.Request(f"{_TSDB}?t={q}"), timeout=15) as r:
+                        data = json.loads(r.read().decode())
+                    break
+                except urllib.error.HTTPError as e:
+                    if e.code == 429 and attempt == 0:
+                        print(f"[tweets] {slug}: 429 de TheSportsDB, reintento en 10 s…")
+                        time.sleep(10)
+                        continue
+                    raise
+            results = (data or {}).get("teams") or []
+            declared = [x for x in results if (x.get("strSport") or "").strip()]
+            soccer = [x for x in results
+                      if (x.get("strSport") or "").lower() == "soccer"]
+            if soccer:
+                candidates = soccer
+            elif not declared:
+                candidates = results          # sin deporte declarado → asumimos fútbol
+            else:
+                candidates = []               # hay deporte, pero no es fútbol
+            want = _norm_team(name)
+            hit = next((x for x in candidates
+                        if _norm_team(x.get("strTeam") or "") == want), None)
+            sl[tid] = HANDLE_OVERRIDES.get(want) or \
+                (_extract_handle(hit.get("strTwitter")) if hit else None)
+            print(f"[tweets] {slug}: {name} → {sl[tid] or 'sin @'}")
+        except Exception as e:
+            print(f"[tweets] {slug}: no se pudo resolver @ de {name}: {e}",
+                  file=sys.stderr)
+        time.sleep(0.8)
+    if missing:
+        try:
+            tmp = HANDLES_FILE.with_suffix(".tmp")
+            tmp.write_text(json.dumps(cache, ensure_ascii=False, indent=1),
+                           encoding="utf-8")
+            tmp.rename(HANDLES_FILE)
+        except OSError as e:
+            print(f"[tweets] no se pudo guardar la caché de @: {e}", file=sys.stderr)
+    return sl
 
 
 def _tweet_text(league_name, label, zone_label, top, url, tags=None):
@@ -271,7 +381,7 @@ def _crest_image(name, logo_url, r=30):
     return im
 
 
-def _card_image(slug, snap, label, zone_label, top):
+def _card_image(slug, snap, label, zone_label, top, handles=None):
     """Tarjeta PNG 1080×1350 con la 'captura' del top-6. None si no hay PIL/fuentes."""
     try:
         from PIL import Image, ImageDraw
@@ -335,8 +445,8 @@ def _card_image(slug, snap, label, zone_label, top):
         d.ellipse((200 - 30, cy - 30, 200 + 30, cy + 30),
                   outline=(40, 46, 62), width=2)
 
-        d.text((250, cy), _clip(name, 24), font=f_name_sm,
-               fill=(245, 246, 250), anchor="lm")
+        d.text((250, cy), (handles or {}).get(name) or _clip(name, 24),
+               font=f_name_sm, fill=(245, 246, 250), anchor="lm")
         d.text((1020, cy), _fmt_pct(p), font=f_pct, fill=accent, anchor="rm")
 
         ybar = cy + 46
@@ -484,17 +594,20 @@ def _process_league(slug, *, force=False, chat_id=None, dry_run=False):
             return 0
 
     url = SITE + league["dashboard"]
+    handles = _fetch_handles(slug, snap.get("teams", []))
+    by_name = {t.get("name"): handles.get(str(t.get("id")))
+               for t in snap.get("teams", []) if t.get("name")}
     sent = 0
     for zone, zlabel in ZONES.get(slug, []):
         top = _top_teams(snap, zone)
         if not top or top[0][2] <= 0:
             print(f"[tweets] {slug}/{zone}: sin datos (todas 0%), se omite")
             continue
-        text = _tweet_text(snap.get("name") or slug, label, zlabel,
-                           [(n, _fmt_pct(p)) for n, _, p in top], url,
+        rows = [(by_name.get(n) or _clip(n), _fmt_pct(p)) for n, _, p in top]
+        text = _tweet_text(snap.get("name") or slug, label, zlabel, rows, url,
                            tags=HASHTAGS.get(slug))
         caption = _caption(text)
-        png = _card_image(slug, snap, label, zlabel, top)
+        png = _card_image(slug, snap, label, zlabel, top, handles=by_name)
         if _send_tweet(chat_id, caption, png, dry_run=dry_run,
                        slug=slug, zone_label=zlabel):
             sent += 1
@@ -587,7 +700,7 @@ def main(argv=None):
             return _poll_once()
         if args.league:
             notify._load_env()
-            return _process_league(args.league, force=True)
+            return _process_league(args.league, force=True, dry_run=args.dry_run)
         return _run_scheduled(dry_run=args.dry_run)
     except Exception:
         notify.send_alert("[tweets] error no capturado",
