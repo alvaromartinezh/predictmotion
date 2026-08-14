@@ -16,6 +16,7 @@ from dataclasses import dataclass
 
 from . import config
 from .models import WinProbability
+from .strength import pre_match_probs
 
 
 @dataclass
@@ -31,6 +32,8 @@ class MatchState:
     stats: dict                # {statKey: (home_val, away_val)} numéricos
     home_abbr: str = ""        # para el ajuste por ranking FIFA (sedes neutrales)
     away_abbr: str = ""
+    home_id: str = ""          # id ESPN del local (prior de fuerza pre-partido)
+    away_id: str = ""
 
 
 class WinProbabilityModel(ABC):
@@ -130,7 +133,15 @@ class InPlayStatsModel(WinProbabilityModel):
                 return WinProbability(0.0, 0.0, 100.0, src, note)
             return WinProbability(0.0, 100.0, 0.0, src, note)
 
-        p_home, p_draw = config.LEAGUE_BASE_PROBS.get(state.league, config.DEFAULT_BASE_PROBS)
+        # Base pre-partido con el MISMO modelo de fuerza que las ligas (prior por
+        # equipo del snapshot que leen los dashboards, _match_ph_pd). Si no hay
+        # fuerza aplicable (sin snapshot, ids fuera, prior desvanecido) → medias
+        # planas de la liga de siempre (LEAGUE_BASE_PROBS).
+        base = pre_match_probs(state.league, state.home_id, state.away_id)
+        if base:
+            p_home, p_draw = base[0], base[1]
+        else:
+            p_home, p_draw = config.LEAGUE_BASE_PROBS.get(state.league, config.DEFAULT_BASE_PROBS)
         neutral = state.league in config.NEUTRAL_VENUE_LEAGUES
         if neutral:
             # Sin localía: victorias simétricas (mismo lambda base para ambos).

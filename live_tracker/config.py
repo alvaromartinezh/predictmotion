@@ -78,8 +78,11 @@ LEAGUES = {
 }
 
 # ── Probabilidad pre-partido por liga (base de calibración) ───────────────────
-# Mismas constantes que el Monte Carlo del sitio, para coherencia. En el minuto 0
-# la probabilidad estimada cae exactamente a estos valores.
+# FALLBACK cuando no hay prior de fuerza aplicable. La base REAL pre-partido de
+# /partido sale ahora del MISMO modelo que las ligas: lee la fuerza por equipo del
+# snapshot data/<slug>/latest.json (cron SEO) y aplica seo.sim_table._match_ph_pd
+# (ver live_tracker/strength.py). Solo si ese prior no está disponible (sin
+# snapshot, ids fuera, prior desvanecido a media temporada) se cae aquí.
 #   (p_home, p_draw)  → p_away = 1 - p_home - p_draw
 # Valores de seo/config.py → LEAGUES (fuente única; si cambian allá, actualizar
 # aquí).
@@ -147,4 +150,8 @@ WINPROB_FULL_TIME = 90
 
 # Nota visible en la UI: deja claro que es una estimación heurística, no una cuota.
 WINPROB_UI_NOTE = "Probabilidad estimada (modelo heurístico, no validado)"
-WINPROB_SOURCE = "inplay-stats-v1"
+WINPROB_SOURCE = "inplay-stats-v2"
+
+# TTL del snapshot de fuerza por liga (data/<slug>/latest.json) en el modelo en
+# vivo: lectura en disco + re-derivación del 1X2, amortizada en el polling.
+WINPROB_SNAPSHOT_TTL = _int("WINPROB_SNAPSHOT_TTL", 300)

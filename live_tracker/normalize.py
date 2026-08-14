@@ -68,4 +68,6 @@ def build_match_state(league: str, status: MatchStatus, home: Team, away: Team,
         stats=numeric_stats,
         home_abbr=home.abbr,
         away_abbr=away.abbr,
+        home_id=home.id,
+        away_id=away.id,
     )
