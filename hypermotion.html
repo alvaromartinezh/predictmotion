@@ -434,9 +434,13 @@ function applyLiveScores(standings, liveMatches) {
     const apts = m.awayScore > m.homeScore ? 3 : m.homeScore === m.awayScore ? 1 : 0;
     home.pts += hpts; home.gp += 1; home.gf += m.homeScore; home.gc += m.awayScore;
     away.pts += apts; away.gp += 1; away.gf += m.awayScore; away.gc += m.homeScore;
+    // El punto de la fila comunica el resultado por COLOR: el texto va en
+    // title/aria-label (el color solo no basta — daltonismo, y title no existe
+    // en táctil para lectores de pantalla).
     const res = p => p === 3 ? 'win' : p === 1 ? 'draw' : 'loss';
-    home.live = { score: `${m.homeScore}–${m.awayScore}`, res: res(hpts), eventId: m.eventId };
-    away.live = { score: `${m.awayScore}–${m.homeScore}`, res: res(apts), eventId: m.eventId };
+    const txt = p => p === 3 ? 'ganando' : p === 1 ? 'empatando' : 'perdiendo';
+    home.live = { score: `${m.homeScore}–${m.awayScore}`, res: res(hpts), label: `En directo · ${m.homeScore}–${m.awayScore} · ${txt(hpts)}`, eventId: m.eventId };
+    away.live = { score: `${m.awayScore}–${m.homeScore}`, res: res(apts), label: `En directo · ${m.awayScore}–${m.homeScore} · ${txt(apts)}`, eventId: m.eventId };
   }
   return adjusted;
 }
@@ -512,7 +516,7 @@ function render(standings, results) {
               onerror="fallbackAvatar(${i},'${nameEsc}','${color}')" />
           </span>
           <a class="team__name team-link" href="/equipo?id=${t.id}&name=${encodeURIComponent(t.name)}&league=hypermotion">${t.name}</a>
-          ${t.live ? `<a class="live-dot-link" href="/partido?league=hypermotion&id=${t.live.eventId}" title="En directo · ${t.live.score}"><span class="live-dot ${t.live.res}"></span></a>` : ''}
+          ${t.live ? `<a class="live-dot-link" href="/partido?league=hypermotion&id=${t.live.eventId}" title="${t.live.label}" aria-label="${t.live.label}"><span class="live-dot ${t.live.res}"></span></a>` : ''}
         </span>
       </td>
       <td class="col-pj col-dim"><span class="num">${t.gp}</span></td>
@@ -713,7 +717,9 @@ async function triggerUpdate(silent = false) {
     ]);
     cachedNumTeams = standings.length;
     const adjusted = applyLiveScores(standings, liveMatches);
-    PMLiveStrip.render('#live-strip', liveMatches, 'hypermotion');
+    // Guard: si fixtures.js no cargó, un ReferenceError aquí lo tragaría el
+    // catch de triggerUpdate() y la clasificación no se pintaría nunca.
+    if (window.PMLiveStrip) PMLiveStrip.render('#live-strip', liveMatches, 'hypermotion');
 
     if (liveMatches.length > 0) {
       adjusted.sort((a, b) =>
