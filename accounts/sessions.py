@@ -71,7 +71,8 @@ def user_for_token(token: str | None) -> dict | None:
             return None
         # Expiración deslizante: si queda menos de medio TTL, extiende.
         half = timedelta(days=config.SESSION_TTL_DAYS / 2)
-        if expires - now < half:
+        renewed = expires - now < half
+        if renewed:
             conn.execute(
                 "UPDATE sessions SET expires_at = ? WHERE token_hash = ?",
                 (_iso(now + timedelta(days=config.SESSION_TTL_DAYS)), th),
@@ -81,6 +82,10 @@ def user_for_token(token: str | None) -> dict | None:
         "email": row["email"],
         "name": row["name"],
         "picture": row["picture_url"],
+        # Extender la fila no bastaba: sin reemitir la cookie, el navegador la tira
+        # igual al cumplirse su Max-Age. Quien llama (app._current_user) la reemite
+        # y quita esta marca antes de serializar el usuario.
+        "renewed": renewed,
     }
 
 

@@ -93,6 +93,7 @@ RATE_LIMIT_WINDOW = _int("ACCOUNTS_RATE_WINDOW", 300)   # ventana en segundos (5
 # Topes por usuario para que nadie pueda inflar la DB. Holgados para uso normal.
 MAX_FOLLOWED_TEAMS = _int("ACCOUNTS_MAX_TEAMS", 100)
 MAX_FOLLOWED_COMPETITIONS = _int("ACCOUNTS_MAX_COMPETITIONS", 30)  # solo existen 15
+MAX_VOTES = _int("ACCOUNTS_MAX_VOTES", 2000)   # ~ una temporada entera de votos
 
 # ── Preferencias (tema de fondo del shell) ────────────────────────────────────
 # Mismo set que BG_THEMES en theme.js (front) — duplicado a propósito, mismo

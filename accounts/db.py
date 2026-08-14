@@ -232,8 +232,12 @@ def add_followed_competition(user_id: int, league_slug: str, cap: int) -> bool:
             ).fetchone()[0]
             if n >= cap:
                 return False
+            # ON CONFLICT como en add_followed_team: dos peticiones a la vez (doble
+            # clic) veían ambas `exists = None` y la segunda rompía la PK con un
+            # IntegrityError que salía como error interno.
             conn.execute(
-                "INSERT INTO followed_competitions(user_id, league_slug) VALUES(?,?)",
+                "INSERT INTO followed_competitions(user_id, league_slug) VALUES(?,?)"
+                " ON CONFLICT(user_id, league_slug) DO NOTHING",
                 (user_id, league_slug),
             )
     return True
@@ -299,11 +303,25 @@ def get_user_vote(user_id: int, league: str, event_id: str) -> str | None:
     return row["pick"] if row else None
 
 
-def upsert_vote(user_id: int, league: str, event_id: str, pick: str) -> dict:
-    """Registra o CAMBIA el voto del usuario. Devuelve los conteos actualizados."""
+def upsert_vote(user_id: int, league: str, event_id: str, pick: str,
+                cap: int | None = None) -> bool:
+    """Registra o CAMBIA el voto del usuario. False si el voto es NUEVO y se
+    alcanzó el tope por usuario (igual que equipos y competiciones; era la única
+    tabla escribible sin tope, así que una cuenta podía inflar la DB sola)."""
     from datetime import datetime, timezone
     now = datetime.now(timezone.utc).isoformat()
     with connect() as conn:
+        if cap is not None:
+            exists = conn.execute(
+                "SELECT 1 FROM match_votes WHERE user_id=? AND league=? AND event_id=?",
+                (user_id, league, event_id),
+            ).fetchone()
+            if not exists:
+                n = conn.execute(
+                    "SELECT count(*) FROM match_votes WHERE user_id=?", (user_id,)
+                ).fetchone()[0]
+                if n >= cap:
+                    return False
         conn.execute(
             "INSERT INTO match_votes(user_id, league, event_id, pick, created_at, updated_at)"
             " VALUES(?,?,?,?,?,?)"
@@ -311,7 +329,7 @@ def upsert_vote(user_id: int, league: str, event_id: str, pick: str) -> dict:
             "   pick=excluded.pick, updated_at=excluded.updated_at",
             (user_id, league, event_id, pick, now, now),
         )
-    return get_match_votes(league, event_id)
+    return True
 
 
 def health() -> dict:

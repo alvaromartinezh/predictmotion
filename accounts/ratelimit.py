@@ -31,9 +31,12 @@ class RateLimiter:
             if len(dq) >= self.max:
                 return False
             dq.append(now)
-            # GC ocasional de claves sin eventos (evita crecer sin fin).
+            # GC ocasional. Se borra por ANTIGÜEDAD, no solo las deques vacías: una
+            # deque solo se poda dentro de allow() de esa misma clave, así que una IP
+            # que entra una vez y no vuelve dejaba su entrada para siempre y el dict
+            # crecía una por cliente durante toda la vida del servicio.
             if now - self._last_gc > 60:
                 self._last_gc = now
-                for k in [k for k, d in self._events.items() if not d]:
+                for k in [k for k, d in self._events.items() if not d or d[-1] < cutoff]:
                     del self._events[k]
             return True

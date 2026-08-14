@@ -17,6 +17,7 @@ futura; email_verified == true.
 from __future__ import annotations
 
 import base64
+import binascii
 import hashlib
 import hmac
 import json
@@ -41,6 +42,12 @@ class TokenError(Exception):
 _jwks_lock = threading.Lock()
 _jwks_by_kid: dict[str, dict] = {}
 _jwks_expiry: float = 0.0
+_jwks_last_try: float = 0.0
+# Espera mínima entre descargas de JWKS. Sin esto, un `kid` desconocido (o el ""
+# por defecto de un token basura) forzaba una descarga a Google POR PETICIÓN, y
+# encima dentro del lock global: unas pocas IPs mandando tokens con kid aleatorio
+# serializaban todos los logins y martilleaban googleapis.com desde el origen.
+_JWKS_MIN_REFETCH = 60.0
 
 
 def _b64url_decode(s: str) -> bytes:
@@ -72,11 +79,14 @@ def _fetch_jwks() -> tuple[dict[str, dict], float]:
 
 def _get_jwk(kid: str) -> dict | None:
     """Devuelve la JWK del `kid`, refrescando la caché si hace falta."""
-    global _jwks_by_kid, _jwks_expiry
+    global _jwks_by_kid, _jwks_expiry, _jwks_last_try
     now = time.time()
     with _jwks_lock:
         fresh = now < _jwks_expiry and kid in _jwks_by_kid
-        if not fresh:
+        # Un kid que no conocemos solo justifica UNA descarga por ventana: si Google
+        # rotó claves, en 60 s las tenemos; si el kid es inventado, no hay descarga.
+        if not fresh and now - _jwks_last_try >= _JWKS_MIN_REFETCH:
+            _jwks_last_try = now
             try:
                 _jwks_by_kid, _jwks_expiry = _fetch_jwks()
             except Exception as e:  # noqa: BLE001
@@ -124,7 +134,14 @@ def verify_google_id_token(credential: str) -> dict:
         raise TokenError("kid desconocido")
 
     signing_input = f"{header_b64}.{payload_b64}".encode("ascii")
-    if not _rsa_pkcs1v15_verify_sha256(jwk, signing_input, _b64url_decode(sig_b64)):
+    try:
+        # Único base64 sin guarda: una firma malformada lanzaba binascii.Error, que
+        # no es TokenError, así que se escapaba del handler y el usuario recibía un
+        # error interno (con traceback en el log) en vez del redirect ?login=error.
+        sig = _b64url_decode(sig_b64)
+    except (ValueError, binascii.Error):
+        raise TokenError("firma ilegible")
+    if not _rsa_pkcs1v15_verify_sha256(jwk, signing_input, sig):
         raise TokenError("firma inválida")
 
     try:

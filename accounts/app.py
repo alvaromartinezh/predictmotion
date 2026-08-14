@@ -74,6 +74,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
+        for k, v in getattr(self, "_renew_cookie", []):
+            self.send_header(k, v)
         for k, v in self._cors_headers():
             self.send_header(k, v)
         for k, v in (extra_headers or []):
@@ -87,9 +89,12 @@ class Handler(BaseHTTPRequestHandler):
         if not raw:
             return None
         try:
-            return json.loads(raw)
+            data = json.loads(raw)
         except (ValueError, json.JSONDecodeError):
             return None
+        # Solo objetos: `json.loads("[1]")` es truthy, así que el `or {}` de los
+        # llamadores no saltaba y el .get() siguiente lanzaba AttributeError.
+        return data if isinstance(data, dict) else None
 
     def _read_form(self):
         # Cuerpo application/x-www-form-urlencoded (POST de formulario top-level del
@@ -104,16 +109,31 @@ class Handler(BaseHTTPRequestHandler):
         return {k: v[0] if len(v) == 1 else v for k, v in parsed.items()}
 
     def _login_next(self, data):
-        # Destino post-login (campo `next` del formulario). SOLO orígenes propios
-        # (allowlist) o rutas relativas sin "//" (anti open-redirect). Default /cuenta.
+        """Destino post-login (campo `next` del formulario), SIEMPRE como ruta relativa.
+
+        Este valor va a una cabecera `Location`, así que es entrada hostil:
+        - `send_header` de CPython NO sanea CRLF, así que un `next` con %0d%0a
+          inyectaba cabeceras enteras en la respuesta (p. ej. un `Set-Cookie` con
+          la sesión que quisiera el atacante). Y era alcanzable SIN credencial
+          válida, porque la rama de token inválido también redirige aquí.
+        - `/\\evil.com` se colaba por la guarda anti open-redirect: el navegador
+          normaliza `\\` a `/` y acaba en http://evil.com.
+        Por eso: se rechaza cualquier carácter de control, de un origen propio se
+        conserva SOLO la ruta (así `http://localhost:8765/x`, que está en la
+        allowlist por el dev cross-port, no sirve como destino externo en
+        producción) y lo que se devuelve es siempre una ruta relativa.
+        """
         nxt = (data or {}).get("next", "/cuenta")
         if isinstance(nxt, (list, tuple)):
             nxt = nxt[0] if nxt else "/cuenta"
         nxt = str(nxt)
+        if any(c < " " or c == "\x7f" for c in nxt):
+            return "/cuenta"
         for origin in config.ALLOWED_ORIGINS:
             if nxt == origin or nxt.startswith(origin + "/"):
-                return nxt
-        if nxt.startswith("/") and not nxt.startswith("//"):
+                nxt = nxt[len(origin):] or "/"
+                break
+        if nxt.startswith("/") and not nxt.startswith("//") and "\\" not in nxt:
             return nxt
         return "/cuenta"
 
@@ -123,6 +143,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Location", location)
         self.send_header("Content-Length", "0")
         self.send_header("Cache-Control", "no-store")
+        for k, v in getattr(self, "_renew_cookie", []):
+            self.send_header(k, v)
         for k, v in self._cors_headers():
             self.send_header(k, v)
         for k, v in (extra_headers or []):
@@ -153,7 +175,18 @@ class Handler(BaseHTTPRequestHandler):
         return [("Set-Cookie", "; ".join(session)), ("Set-Cookie", "; ".join(hint))]
 
     def _current_user(self):
-        return sessions.user_for_token(self._cookie(config.SESSION_COOKIE))
+        # La expiración deslizante extendía la fila de `sessions` pero NO reemitía
+        # la cookie, así que el navegador la tiraba a los 30 días igual y el usuario
+        # activo acababa deslogueado (y quedaba una fila viva que nadie podía
+        # presentar). Cuando la sesión se renueva, se reemite aquí; _send/_redirect
+        # las ponen ANTES de sus propias cabeceras, para que un login/logout
+        # explícito siga mandando.
+        token = self._cookie(config.SESSION_COOKIE)
+        user = sessions.user_for_token(token)
+        if user and user.pop("renewed", False):
+            self._renew_cookie = self._set_session_cookie(
+                token, config.SESSION_TTL_DAYS * 86400)
+        return user
 
     def _client_ip(self):
         # Detrás de Cloudflare + Caddy: la IP real llega en cabeceras. (Ojo: el
@@ -164,7 +197,34 @@ class Handler(BaseHTTPRequestHandler):
                 or self.client_address[0])
 
     # ── verbos ────────────────────────────────────────────────────────────────
+    def _drain_body(self):
+        """Consume el cuerpo entero. Devuelve una respuesta de error o None.
+
+        En keep-alive (Caddy reusa la conexión upstream a :8771) los bytes de
+        cuerpo sin leer se parsean como la SIGUIENTE petición de esa conexión, así
+        que una petición puede corromper la de otro usuario. El drenaje por
+        Content-Length dejaba dos huecos: un cuerpo `chunked` (Content-Length
+        ausente → se leía 0) y `do_OPTIONS`, que respondía sin pasar por aquí.
+        Un cuerpo chunked no lo manda ningún cliente nuestro, así que se rechaza y
+        se cierra la conexión en vez de implementar el desencuadrado.
+        """
+        if (self.headers.get("Transfer-Encoding") or "").strip():
+            self.close_connection = True
+            return self._send(400, {"ok": False, "reason": "bad-request"})
+        try:
+            n = int(self.headers.get("Content-Length", 0) or 0)
+        except (TypeError, ValueError):
+            self.close_connection = True
+            return self._send(400, {"ok": False, "reason": "bad-request"})
+        if n > _MAX_BODY:
+            self.close_connection = True  # no drenamos cuerpos enormes (DoS)
+            return self._send(413, {"ok": False, "reason": "payload-too-large"})
+        self._raw_body = self.rfile.read(n) if n > 0 else b""
+        return None
+
     def do_OPTIONS(self):
+        if self._drain_body() is not None:
+            return
         extra = [
             ("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS"),
             ("Access-Control-Allow-Headers", "Content-Type"),
@@ -192,18 +252,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def _guard(self, fn):
         try:
-            # Consume SIEMPRE el cuerpo, aunque la ruta no lo lea. En keep-alive
-            # (Caddy reusa la conexión upstream a :8771) los bytes de cuerpo sin
-            # leer corromperían la SIGUIENTE petición de esa conexión.
-            try:
-                n = int(self.headers.get("Content-Length", 0) or 0)
-            except (TypeError, ValueError):
-                self.close_connection = True
-                return self._send(400, {"ok": False, "reason": "bad-request"})
-            if n > _MAX_BODY:
-                self.close_connection = True  # no drenamos cuerpos enormes (DoS)
-                return self._send(413, {"ok": False, "reason": "payload-too-large"})
-            self._raw_body = self.rfile.read(n) if n > 0 else b""
+            if self._drain_body() is not None:   # cuerpo consumido SIEMPRE
+                return
 
             path = self.path.split("?", 1)[0].rstrip("/")
             parts = [p for p in path.split("/") if p]
@@ -211,16 +261,23 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(404, {"ok": False, "reason": "not-found"})
             fn(parts[1:])
         except Exception:
+            # 500, no 200: con 200 un endpoint que fallara siempre (DB bloqueada,
+            # disco lleno) no aparecía como error en NINGÚN log — el mismo patrón
+            # de fallo silencioso contra el que este proyecto monta alertas. El
+            # cliente no se entera del cambio: assets/account.js solo mira `ok`.
             log.exception("error sirviendo %s", self.path)
-            self._send(200, {"ok": False, "reason": "internal-error"})
+            self._send(500, {"ok": False, "reason": "internal-error"})
 
     # ── validación de follows ─────────────────────────────────────────────────
     def _valid_slug(self, slug):
         return bool(slug) and slug in catalog.valid_league_slugs()
 
     def _valid_team(self, tid, slug):
-        # Los ids de equipo de ESPN son numéricos; validamos formato + catálogo de liga.
-        return bool(tid) and tid.isdigit() and self._valid_slug(slug)
+        # Los ids de equipo de ESPN son numéricos ASCII; validamos formato + catálogo.
+        # `isdigit()` a secas acepta dígitos Unicode ('٣', '²'), que se guardaban como
+        # equipo seguido y luego no resolvían contra ninguna URL de ESPN.
+        return bool(tid) and len(tid) <= 12 and tid.isascii() and tid.isdigit() \
+            and self._valid_slug(slug)
 
     def _follows_ok(self, user_id, code=200):
         return self._send(code, {"ok": True, **db.get_follows(user_id)})
@@ -232,7 +289,12 @@ class Handler(BaseHTTPRequestHandler):
         return self._send(code, {"ok": True, "mine": mine, **counts})
 
     def _valid_match(self, league, event_id):
-        return bool(league) and bool(event_id) and self._valid_slug(league)
+        # El id de evento de ESPN es numérico. Antes valía cualquier cadena no
+        # vacía (hasta el tope de 64 KB del cuerpo), y como la PK es
+        # (user_id, league, event_id) se podían insertar filas sin fin.
+        return (bool(league) and self._valid_slug(league)
+                and bool(event_id) and len(event_id) <= 20
+                and event_id.isascii() and event_id.isdigit())
 
     def _match_votable(self, league, event_id):
         """¿Se puede votar este partido? Best-effort contra el live_tracker.
@@ -247,8 +309,8 @@ class Handler(BaseHTTPRequestHandler):
         try:
             url = ("http://127.0.0.1:%d/api/live/%s/match/%s" % (
                 config.LIVE_TRACKER_PORT,
-                urllib.parse.quote(league),
-                urllib.parse.quote(event_id),
+                urllib.parse.quote(league, safe=""),
+                urllib.parse.quote(event_id, safe=""),
             ))
             with urllib.request.urlopen(url, timeout=3) as r:
                 data = json.loads(r.read().decode("utf-8"))
@@ -322,6 +384,18 @@ class Handler(BaseHTTPRequestHandler):
             # Set-Cookie, para que la cookie de sesión se commitee SIEMPRE (móvil
             # incluido; un fetch XHR la pierde a veces); (2) fetch JSON (dev/tests)
             # → 200 con Set-Cookie. La verificación es idéntica.
+            # El formulario de login lo construye NUESTRA página (cuenta.html), así
+            # que su Origin es propio. Una página atacante que auto-envíe el mismo
+            # formulario con SU credential logueaba a la víctima en la cuenta del
+            # atacante, y a partir de ahí sus follows, prefs y votos se escribían
+            # ahí. Se rechaza cuando el Origin viene y NO es nuestro; si no viene
+            # (navegadores que lo omiten en same-origin) no se bloquea, porque un
+            # POST cross-site sí lo lleva siempre.
+            origin = self.headers.get("Origin")
+            if origin and origin not in config.ALLOWED_ORIGINS:
+                log.info("login rechazado: Origin ajeno %s", origin)
+                return self._send(403, {"ok": False, "reason": "forbidden-origin"})
+
             ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
             form = ctype == "application/x-www-form-urlencoded"
             data = self._read_form() if form else (self._read_json() or {})
@@ -391,7 +465,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(400, {"ok": False, "reason": "invalid-vote"})
             if not self._match_votable(league, event):
                 return self._send(409, {"ok": False, "reason": "match-started"})
-            db.upsert_vote(user["id"], league, event, pick)
+            if not db.upsert_vote(user["id"], league, event, pick,
+                                  config.MAX_VOTES):
+                return self._send(409, {"ok": False, "reason": "limit-reached"})
             return self._vote_ok(user["id"], league, event)
 
         return self._send(404, {"ok": False, "reason": "not-found"})
