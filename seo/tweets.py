@@ -160,6 +160,25 @@ def _tweet_text(league_name, label, zone_label, top, url):
     return "\n".join(lines)
 
 
+def _intent_url(text):
+    """Enlace directo al compositor de X con el texto del tuit precargado."""
+    return "https://twitter.com/intent/tweet?text=" + urllib.parse.quote(text, safe="")
+
+
+def _caption(text):
+    """Mensaje de Telegram: el tuit + un enlace que lleva a X para publicarlo.
+
+    Telegram limita el caption a 1024 chars; si el enlace se pasara de largo se
+    manda el texto a secas (el enlace de la web sigue dentro del propio tuit)."""
+    link = "👉 " + _intent_url(text)
+    caption = text + "\n\n" + link
+    if len(caption) > 1024:
+        print(f"[tweets] caption con enlace demasiado largo ({len(caption)}); "
+              f"se manda solo el texto", file=sys.stderr)
+        return text
+    return caption
+
+
 # ---------------------------------------------------------------- imagen -----
 
 def _font(size, bold=False):
@@ -452,8 +471,9 @@ def _process_league(slug, *, force=False, chat_id=None, dry_run=False):
             continue
         text = _tweet_text(snap.get("name") or slug, label, zlabel,
                            [(n, _fmt_pct(p)) for n, _, p in top], url)
+        caption = _caption(text)
         png = _card_image(slug, snap, label, zlabel, top)
-        if _send_tweet(chat_id, text, png, dry_run=dry_run,
+        if _send_tweet(chat_id, caption, png, dry_run=dry_run,
                        slug=slug, zone_label=zlabel):
             sent += 1
         time.sleep(1)
