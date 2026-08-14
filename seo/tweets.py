@@ -700,7 +700,8 @@ def main(argv=None):
             return _poll_once()
         if args.league:
             notify._load_env()
-            return _process_league(args.league, force=True, dry_run=args.dry_run)
+            _process_league(args.league, force=True, dry_run=args.dry_run)
+            return 0
         return _run_scheduled(dry_run=args.dry_run)
     except Exception:
         notify.send_alert("[tweets] error no capturado",
