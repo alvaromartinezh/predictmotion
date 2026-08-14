@@ -400,17 +400,22 @@ function simulate(standings, slots, sc) {
   const totalMd  = 2 * (numTeams - 1);
   const minGp    = Math.min(...standings.map(t => t.gp));
 
-  // Temporada terminada: usar la clasificación oficial de ESPN (zonas por nota),
-  // que ya aplica el desempate por enfrentamiento directo. Reordenar por DG aquí
-  // colocaba mal a equipos empatados a puntos (p. ej. Levante marcado como descenso).
+  // Temporada terminada: usar el PUESTO oficial de ESPN (ya aplica el desempate
+  // por enfrentamiento directo; reordenar por DG aquí colocaba mal a equipos
+  // empatados a puntos) y derivar la zona del puesto, igual que el resto del
+  // dashboard. NO de t.zone: ESPN marca plazas no contiguas (la Europa League del
+  // ganador de la Copa del Rey, a media tabla) que el modelo no representa.
   if (minGp >= totalMd) {
-    return Object.fromEntries(standings.map(t => [t.name, {
-      first:  t.rank === 1        ? 100 : 0,
-      champ:  t.zone === 'promo'  ? 100 : 0,
-      europa: t.zone === 'europa' ? 100 : 0,
-      conf:   t.zone === 'conf'   ? 100 : 0,
-      relega: t.zone === 'relega' ? 100 : 0,
-    }]));
+    return Object.fromEntries(standings.map(t => {
+      const z = zoneOf(t.rank, slots, numTeams);
+      return [t.name, {
+        first:  t.rank === 1  ? 100 : 0,
+        champ:  z === 'promo' ? 100 : 0,
+        europa: z === 'europa' ? 100 : 0,
+        conf:   z === 'conf'  ? 100 : 0,
+        relega: z === 'relega' ? 100 : 0,
+      }];
+    }));
   }
 
   const res = PMEngine.simulate(standings, {
@@ -533,16 +538,16 @@ function initials(name) {
 function render(standings, results, slots) {
   const numTeams = standings.length;
   const tbody = document.getElementById('tbody');
-  // El color de zona de cada fila se toma de la zona REAL del equipo (nota de
-  // ESPN), no de un rango contiguo por puesto: los puestos europeos no siempre
-  // son consecutivos (p. ej. Europa por Copa del Rey), así que equipos como Rayo
-  // o Valencia no se pintan como europeos. Si no hay notas (inicio de temporada)
-  // se cae al cálculo por slots.
-  const useNotes = standings.some(s => s.zone && s.zone !== 'none');
+  // El color de zona sale del PUESTO (slots ya derivados de las notas de ESPN),
+  // no de la nota de cada equipo: ESPN marca plazas NO contiguas —la Europa League
+  // del ganador de la Copa del Rey, que cae a media tabla— y el modelo no las
+  // representa (las bandas del snapshot son rangos contiguos), así que pintarlas
+  // dejaba una fila "europea" con la columna Europa a "—", y en desacuerdo con las
+  // filas que sirve el cron sin JS (render_rows_html usa las bandas).
   let html = '';
 
   standings.forEach((t, i) => {
-    const z     = useNotes ? (t.zone || 'none') : zoneOf(t.rank, slots, numTeams);
+    const z     = zoneOf(t.rank, slots, numTeams);
     const res   = results[t.name] || { first: 0, champ: 0, europa: 0, conf: 0, relega: 0 };
     const dz    = ZONE_DATA[z] ? ` data-zone="${ZONE_DATA[z]}"` : '';
     const color = COLOR_PALETTE[i % COLOR_PALETTE.length];
