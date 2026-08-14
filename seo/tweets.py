@@ -705,8 +705,8 @@ def _poll_once():
                     _process_league(s, force=True, chat_id=chat_id)
             elif text.startswith(("/start", "/help")):
                 _tg_send_message(chat_id, "PredictMotion: /tweet para los tuits "
-                                          "de la jornada (o /tweet laliga, "
-                                          "/tweet hypermotion).")
+                                          "de la jornada (o /tweet <liga>). "
+                                          "Ligas: " + ", ".join(TWEET_LEAGUES))
         except Exception as e:
             print(f"[tweets] error procesando comando: {e}", file=sys.stderr)
     if updates:
