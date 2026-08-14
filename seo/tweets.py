@@ -78,6 +78,14 @@ ACCENTS = {
 _NUM = ["1\ufe0f\u20e3", "2\ufe0f\u20e3", "3\ufe0f\u20e3",
         "4\ufe0f\u20e3", "5\ufe0f\u20e3", "6\ufe0f\u20e3"]
 
+# Hashtags al final de cada tuit: el de la liga + 2 genéricos (X limita a 280
+# chars; si el tuit se pasara, _tweet_text recorta hasta quedarse solo con el de
+# la liga o sin hashtags).
+HASHTAGS = {
+    "hypermotion": ["#hypermotion", "#futbol", "#predicciones"],
+    "laliga":      ["#LaLiga", "#futbol", "#predicciones"],
+}
+
 STATE_FILE = DATA_DIR / "tweets_state.json"
 PREVIEW_DIR = DATA_DIR / "tweets_preview"
 
@@ -125,7 +133,7 @@ def _load_snapshot(slug):
 
 # ---------------------------------------------------------------- texto -----
 
-def _clip(name, limit=24):
+def _clip(name, limit=20):
     return name if len(name) <= limit else name[: limit - 1] + "…"
 
 
@@ -150,14 +158,27 @@ def _top_teams(snap, zone, k=6):
     return rows[:k]
 
 
-def _tweet_text(league_name, label, zone_label, top, url):
+def _tweet_text(league_name, label, zone_label, top, url, tags=None):
     lines = [f"📊 {league_name} · Jornada {label}",
              f"{zone_label} según PredictMotion ⚽"]
     for i, (name, pct) in enumerate(top[:6]):
         lines.append(f"{_NUM[i]} {_clip(name)} {pct}")
     lines.append("El resto, en la web 👇")
     lines.append(url)
-    return "\n".join(lines)
+    if tags:
+        lines.append("")
+        lines.append(" ".join(tags))
+    text = "\n".join(lines)
+    if len(text) > 280 and tags:
+        lines[-1] = tags[0]                 # solo el hashtag de la liga
+        text = "\n".join(lines)
+    if len(text) > 280:
+        lines = lines[:-2]                  # sin hashtags (caso límite)
+        text = "\n".join(lines)
+    if len(text) > 280:
+        lines = [l for l in lines if not l.startswith("El resto")]
+        text = "\n".join(lines)
+    return text
 
 
 def _intent_url(text):
@@ -470,7 +491,8 @@ def _process_league(slug, *, force=False, chat_id=None, dry_run=False):
             print(f"[tweets] {slug}/{zone}: sin datos (todas 0%), se omite")
             continue
         text = _tweet_text(snap.get("name") or slug, label, zlabel,
-                           [(n, _fmt_pct(p)) for n, _, p in top], url)
+                           [(n, _fmt_pct(p)) for n, _, p in top], url,
+                           tags=HASHTAGS.get(slug))
         caption = _caption(text)
         png = _card_image(slug, snap, label, zlabel, top)
         if _send_tweet(chat_id, caption, png, dry_run=dry_run,
