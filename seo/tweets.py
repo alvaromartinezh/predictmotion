@@ -5,12 +5,14 @@ probabilidad + teaser + enlace al dashboard), acompañado de una "captura" PNG d
 los datos, y lo manda al Telegram del dueño — que es quien lo sube a X/Twitter
 manualmente (la API de X no se puede permitir: 0,20 €/tweet con enlace).
 
-Ligas y zonas (las 12 de clubes del sitio; las 3 UEFA quedan fuera por decisión
-del dueño — el perfil es de fútbol de clubes):
-  - 1as divisiones (laliga, premier, seriea, bundesliga, ligue1, primeira,
-    eredivisie): título, Champions, Europa League, Conference League, descenso.
-  - 2as divisiones (hypermotion, championship, serieb, bundesliga2, ligue2):
-    ascenso directo, play-off de ascenso, descenso.
+Ligas y zonas (de momento SOLO LaLiga y Hypermotion por decisión del dueño;
+el resto de ligas del sitio está desactivado pero la infraestructura genérica
+—zonas por plantilla, hashtags por liga, @ por equipo— queda lista para
+reactivarlo en TWEET_LEAGUES):
+  - laliga (LaLiga, 1ª): título, Champions, Europa League, Conference League,
+    descenso.
+  - hypermotion (Liga Hypermotion, 2ª): ascenso directo, play-off de ascenso,
+    descenso.
 
 Datos: lee el precálculo del cron SEO `data/<slug>/latest.json` (NO simula).
 Estado anti-duplicado (una vez por jornada y liga) en `data/tweets_state.json`.
@@ -53,13 +55,14 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 from . import espn, notify
-from .config import DATA_DIR, SITE, LEAGUES, league_by_slug
+from .config import DATA_DIR, SITE, league_by_slug
 
-# Las 12 ligas de clubes del sitio (todo menos las 3 UEFA, fuera por decisión del
-# dueño: el perfil es de fútbol de clubes). Derivado de la plantilla del dashboard
-# para no duplicar el registro: cualquier liga nueva top1/tier2 entra sola.
-TWEET_LEAGUES = [lg["slug"] for lg in LEAGUES
-                 if lg.get("dashboard_template") != "uefa"]
+# Ligas sobre las que se tuitea. **Por decisión del dueño (2026-08-14) SOLO
+# LaLiga y Hypermotion**: el resto de ligas del sitio quedan DESACTIVADAS de
+# momento (la infraestructura genérica —zonas por plantilla, hashtags por liga,
+# @ por equipo— ya está lista en este fichero para reactivarlas cuando se
+# quiera: basta con volver a listarlas aquí).
+TWEET_LEAGUES = ["hypermotion", "laliga"]
 
 # Zonas por tipo de liga (claves de `prob` del snapshot, etiqueta corta del tweet):
 #   top1 (1as europeas) → 5 tuits, igual que LaLiga.
