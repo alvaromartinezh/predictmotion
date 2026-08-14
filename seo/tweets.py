@@ -1,0 +1,551 @@
+"""Tweets de inicio de jornada estilo solofichajes, vía Telegram.
+
+Genera, al inicio de cada jornada, un tweet por zona de cada liga (top-6 con su
+probabilidad + teaser + enlace al dashboard), acompañado de una "captura" PNG de
+los datos, y lo manda al Telegram del dueño — que es quien lo sube a X/Twitter
+manualmente (la API de X no se puede permitir: 0,20 €/tweet con enlace).
+
+Ligas y zonas:
+  - hypermotion (Liga Hypermotion): ascenso directo, play-off de ascenso, descenso.
+  - laliga (LaLiga): título, Champions, Europa League, Conference League, descenso.
+
+Datos: lee el precálculo del cron SEO `data/<slug>/latest.json` (NO simula).
+Estado anti-duplicado (una vez por jornada y liga) en `data/tweets_state.json`.
+
+Disparadores (todo dentro del cron, ver CLAUDE.md Principio 2):
+  - Programado: lunes y jueves a las 23:59 (hora de España). Tuitea solo si la
+    jornada está a punto de arrancar (hay partidos `pre` en los próximos 3 días)
+    y esa (season, jornada) no se ha tuiteado ya.
+  - Manual: comando `/tweet` (y `/tweet <liga>`) vía Telegram para jornadas
+    partidas o reenvíos. `--poll` es el cron de comandos (getUpdates breve).
+
+Robustez: best-effort. Sin credenciales de Telegram → no hace nada. Si algo
+lanza, alerta por email (seo.notify) y no rompe el cron. Pillow es OPCIONAL
+(solo para la imagen): sin él se manda el texto sin captura.
+
+Credenciales (.env del servidor, gitignored): TELEGRAM_BOT_TOKEN,
+TELEGRAM_CHAT_ID (el chat también se aprende solo en el primer /tweet).
+
+Uso:
+    python3 -m seo.tweets              # cron programado (lunes/jueves)
+    python3 -m seo.tweets --poll       # cron de comandos (cada ~2 min)
+    python3 -m seo.tweets --dry-run    # texto + imagen a data/tweets_preview/
+    python3 -m seo.tweets --league laliga   # forzar una liga (manual)
+"""
+
+import argparse
+import io
+import json
+import os
+import sys
+import time
+import traceback
+import urllib.parse
+import urllib.request
+import uuid
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
+
+from . import espn, notify
+from .config import DATA_DIR, SITE, league_by_slug
+
+# Ligas sobre las que se tuitea. Las 15 del sitio quedan fuera por decisión del
+# dueño: el perfil es de fútbol español (LaLiga + Hypermotion).
+TWEET_LEAGUES = ["hypermotion", "laliga"]
+
+# Zonas por liga: (clave en prob del snapshot, etiqueta corta del tweet).
+ZONES = {
+    "hypermotion": [
+        ("ascenso", "Ascenso directo"),
+        ("playoff", "Play-off de ascenso"),
+        ("descenso", "Descenso"),
+    ],
+    "laliga": [
+        ("first", "Título"),
+        ("champions", "Champions"),
+        ("europa", "Europa League"),
+        ("conference", "Conference League"),
+        ("descenso", "Descenso"),
+    ],
+}
+
+# Acento de marca por liga (mismo que styles.css → .theme-*).
+ACCENTS = {
+    "hypermotion": (240, 169, 42),   # oro
+    "laliga":      (255, 74, 90),    # rojo
+}
+
+_NUM = ["1\ufe0f\u20e3", "2\ufe0f\u20e3", "3\ufe0f\u20e3",
+        "4\ufe0f\u20e3", "5\ufe0f\u20e3", "6\ufe0f\u20e3"]
+
+STATE_FILE = DATA_DIR / "tweets_state.json"
+PREVIEW_DIR = DATA_DIR / "tweets_preview"
+
+# Ventana para considerar que una jornada está a punto de arrancar (partidos pre).
+UPCOMING_DAYS = 3
+
+# Candidatos de fuentes DejaVu (Fedora: /usr/share/fonts/TTF · Ubuntu: truetype/dejavu).
+_FONT_DIRS = [
+    Path("/usr/share/fonts/TTF"),
+    Path("/usr/share/fonts/truetype/dejavu"),
+]
+
+_PALETTE = [
+    (240, 169, 42), (255, 74, 90), (36, 208, 138), (61, 142, 245),
+    (155, 92, 255), (255, 122, 69), (79, 214, 200), (224, 123, 214),
+]
+
+
+# ---------------------------------------------------------------- estado ----
+
+def _load_state():
+    try:
+        return json.loads(STATE_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def _save_state(state):
+    try:
+        STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2),
+                              encoding="utf-8")
+    except OSError as e:
+        print(f"[tweets] no se pudo guardar el estado: {e}", file=sys.stderr)
+
+
+def _load_snapshot(slug):
+    path = DATA_DIR / slug / "latest.json"
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        print(f"[tweets] snapshot {path} no disponible: {e}", file=sys.stderr)
+        return None
+
+
+# ---------------------------------------------------------------- texto -----
+
+def _clip(name, limit=24):
+    return name if len(name) <= limit else name[: limit - 1] + "…"
+
+
+def _fmt_pct(p):
+    if p <= 0:
+        return "0%"
+    if p < 1:
+        return f"{p:.1f}".replace(".", ",") + "%"
+    if p >= 100:
+        return "100%"
+    return f"{round(p)}%"
+
+
+def _top_teams(snap, zone, k=6):
+    rows = []
+    for t in snap.get("teams", []):
+        p = (t.get("prob") or {}).get(zone)
+        if p is None:
+            continue
+        rows.append((t["name"], t.get("logo"), p))
+    rows.sort(key=lambda r: r[2], reverse=True)
+    return rows[:k]
+
+
+def _tweet_text(league_name, label, zone_label, top, url):
+    lines = [f"📊 {league_name} · Jornada {label}",
+             f"{zone_label} según PredictMotion ⚽"]
+    for i, (name, pct) in enumerate(top[:6]):
+        lines.append(f"{_NUM[i]} {_clip(name)} {pct}")
+    lines.append("El resto, en la web 👇")
+    lines.append(url)
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------- imagen -----
+
+def _font(size, bold=False):
+    try:
+        from PIL import ImageFont
+    except ImportError:
+        return None
+    name = "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf"
+    for d in _FONT_DIRS:
+        f = d / name
+        if f.exists():
+            return ImageFont.truetype(str(f), size)
+    return None
+
+
+def _initials(name):
+    parts = [w for w in name.replace(".", " ").split() if w and w[0].isalnum()]
+    if not parts:
+        return "?"
+    if len(parts) == 1:
+        return parts[0][:2].upper()
+    return (parts[0][0] + parts[-1][0]).upper()
+
+
+def _palette(name):
+    return _PALETTE[abs(hash(name)) % len(_PALETTE)]
+
+
+_IMG_CACHE = {}
+
+
+def _fetch_image(url, timeout=6):
+    if not url:
+        return None
+    if url in _IMG_CACHE:
+        return _IMG_CACHE[url]
+    try:
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            data = r.read()
+    except Exception:
+        data = None
+    _IMG_CACHE[url] = data
+    return data
+
+
+def _crest_image(name, logo_url, r=30):
+    """Escudo circular (PIL RGBA) con el logo de ESPN o avatar de iniciales."""
+    from PIL import Image, ImageDraw
+    bytes_ = _fetch_image(logo_url)
+    im = None
+    if bytes_:
+        try:
+            im = Image.open(io.BytesIO(bytes_)).convert("RGBA")
+            im = im.resize((2 * r, 2 * r), Image.LANCZOS)
+        except Exception:
+            im = None
+    if im is None:
+        im = Image.new("RGBA", (2 * r, 2 * r), (0, 0, 0, 0))
+        d = ImageDraw.Draw(im)
+        d.ellipse((0, 0, 2 * r - 1, 2 * r - 1), fill=_palette(name))
+        font = _font(int(r * 1.0), bold=True)
+        if font:
+            d.text((r, r), _initials(name), font=font,
+                   fill=(255, 255, 255), anchor="mm")
+    mask = Image.new("L", (2 * r, 2 * r), 0)
+    ImageDraw.Draw(mask).ellipse((0, 0, 2 * r - 1, 2 * r - 1), fill=255)
+    im.putalpha(mask)
+    return im
+
+
+def _card_image(slug, snap, label, zone_label, top):
+    """Tarjeta PNG 1080×1350 con la 'captura' del top-6. None si no hay PIL/fuentes."""
+    try:
+        from PIL import Image, ImageDraw
+    except ImportError:
+        return None
+
+    W, H = 1080, 1350
+    accent = ACCENTS.get(slug, (240, 169, 42))
+    bg = (11, 14, 20)
+    card = Image.new("RGB", (W, H), bg)
+    d = ImageDraw.Draw(card)
+
+    f_name = _font(46, bold=True)
+    f_name_sm = _font(38, bold=True)
+    f_sub = _font(28)
+    f_sub_sm = _font(26)
+    f_zone = _font(46, bold=True)
+    f_rank = _font(34, bold=True)
+    f_pct = _font(52, bold=True)
+    f_foot = _font(36, bold=True)
+    if not f_name:
+        return None
+
+    # Barra de acento superior.
+    d.rectangle((0, 0, W, 14), fill=accent)
+
+    # Marca arriba a la derecha.
+    d.text((W - 60, 58), "PREDICTMOTION", font=_font(24, bold=True),
+           fill=(140, 148, 165), anchor="ra")
+
+    # Cabecera: escudo de la competición + nombre + jornada.
+    crest = _crest_image(snap.get("name") or slug, snap.get("league_logo"), r=55)
+    card.paste(crest, (110 - 55, 150 - 55), crest)
+    d.ellipse((110 - 55, 150 - 55, 110 + 55, 150 + 55), outline=(40, 46, 62), width=3)
+
+    league_name = snap.get("name") or slug
+    d.text((200, 118), league_name, font=f_name, fill=(245, 246, 250), anchor="lm")
+    season = snap.get("season", "")
+    d.text((200, 176), f"Jornada {label} · {season}", font=f_sub,
+           fill=(140, 148, 165), anchor="lm")
+
+    # Tarjeta de la zona.
+    d.rounded_rectangle((60, 250, 1020, 470), radius=28,
+                        fill=(20, 25, 36), outline=accent, width=2)
+    d.text((540, 330), zone_label, font=f_zone, fill=accent, anchor="mm")
+    d.text((540, 392), "según el método PredictMotion", font=f_sub,
+           fill=(160, 168, 185), anchor="mm")
+
+    # Filas del top-6.
+    row_h, gap, start_y = 104, 18, 540
+    bar_max = 730
+    max_pct = max((p for _, _, p in top), default=0.0) or 1.0
+    for i, (name, logo_url, p) in enumerate(top[:6]):
+        cy = start_y + i * (row_h + gap)
+        d.ellipse((120 - 32, cy - 32, 120 + 32, cy + 32),
+                  fill=(24, 30, 44), outline=(40, 46, 62), width=2)
+        d.text((120, cy), str(i + 1), font=f_rank, fill=accent, anchor="mm")
+
+        c = _crest_image(name, logo_url, r=30)
+        card.paste(c, (200 - 30, cy - 30), c)
+        d.ellipse((200 - 30, cy - 30, 200 + 30, cy + 30),
+                  outline=(40, 46, 62), width=2)
+
+        d.text((250, cy), _clip(name, 24), font=f_name_sm,
+               fill=(245, 246, 250), anchor="lm")
+        d.text((1020, cy), _fmt_pct(p), font=f_pct, fill=accent, anchor="rm")
+
+        ybar = cy + 46
+        d.rounded_rectangle((250, ybar, 250 + bar_max, ybar + 8), radius=4,
+                            fill=(32, 38, 54))
+        w = max(int(bar_max * min(p, max_pct) / max_pct), 8)
+        d.rounded_rectangle((250, ybar, 250 + w, ybar + 8), radius=4, fill=accent)
+
+    # Pie: enlace + atribución.
+    url = SITE + (league_by_slug(slug) or {}).get("dashboard", f"/{slug}")
+    d.text((540, 1245), url, font=f_foot, fill=(245, 246, 250), anchor="mm")
+    d.text((540, 1300), "Pronóstico por Monte Carlo · 20 000 simulaciones",
+           font=f_sub_sm, fill=(110, 118, 138), anchor="mm")
+
+    buf = io.BytesIO()
+    card.save(buf, "PNG")
+    return buf.getvalue()
+
+
+# ---------------------------------------------------------------- telegram ---
+
+def _tg_url(method):
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    return f"https://api.telegram.org/bot{token}/{method}"
+
+
+def _tg_send_message(chat_id, text):
+    try:
+        data = urllib.parse.urlencode({"chat_id": chat_id, "text": text}).encode()
+        req = urllib.request.Request(_tg_url("sendMessage"), data=data)
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return bool((json.loads(r.read().decode()) or {}).get("ok"))
+    except Exception as e:
+        print(f"[tweets] sendMessage falló: {e}", file=sys.stderr)
+        return False
+
+
+def _tg_send_photo(chat_id, caption, png_bytes):
+    try:
+        boundary = "----PM" + uuid.uuid4().hex
+        parts = []
+        for name, value in (("chat_id", str(chat_id)), ("caption", caption)):
+            parts.append(f'--{boundary}\r\nContent-Disposition: form-data; '
+                         f'name="{name}"\r\n\r\n{value}\r\n'.encode())
+        parts.append(f'--{boundary}\r\nContent-Disposition: form-data; '
+                     f'name="photo"; filename="captura.png"\r\n'
+                     f'Content-Type: image/png\r\n\r\n'.encode())
+        parts.append(png_bytes)
+        parts.append(b"\r\n")
+        parts.append(f"--{boundary}--\r\n".encode())
+        body = b"".join(parts)
+        req = urllib.request.Request(
+            _tg_url("sendPhoto"), data=body,
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return bool((json.loads(r.read().decode()) or {}).get("ok"))
+    except Exception as e:
+        print(f"[tweets] sendPhoto falló: {e}", file=sys.stderr)
+        return False
+
+
+def _tg_get_updates(token, offset):
+    try:
+        q = urllib.parse.urlencode({"timeout": 0, "offset": offset or ""})
+        req = urllib.request.Request(
+            f"https://api.telegram.org/bot{token}/getUpdates?{q}")
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return (json.loads(r.read().decode()) or {}).get("result", [])
+    except Exception as e:
+        print(f"[tweets] getUpdates falló: {e}", file=sys.stderr)
+        return []
+
+
+# ---------------------------------------------------------------- lógica -----
+
+def _imminent_round(espn_code):
+    """True si hay algún partido `pre` en los próximos UPCOMING_DAYS días.
+
+    Es la puerta de "la jornada está a punto de arrancar". Best-effort: si ESPN
+    falla ([]), devuelve False y la pasada programada se salta (se puede pedir
+    a mano con /tweet)."""
+    today = datetime.now(timezone.utc).date()
+    fmt = lambda dt: dt.strftime("%Y%m%d")
+    events = espn.fetch_scoreboard_range(
+        espn_code, fmt(today), fmt(today + timedelta(days=UPCOMING_DAYS)))
+    return any(ev.get("state") == "pre" for ev in events)
+
+
+def _send_tweet(chat_id, text, png, dry_run=False, slug=None, zone_label=None):
+    """Manda (o guarda en preview) un tweet. Devuelve True si se consideró enviado."""
+    if dry_run:
+        print("\n" + "=" * 60)
+        print(text)
+        print("=" * 60)
+        try:
+            PREVIEW_DIR.mkdir(parents=True, exist_ok=True)
+            if png:
+                safe = (slug or "x") + "-" + (zone_label or "x") \
+                    .replace(" ", "-").replace("/", "-")
+                (PREVIEW_DIR / f"{safe}.png").write_bytes(png)
+                print(f"[tweets] imagen → data/tweets_preview/{safe}.png")
+        except OSError as e:
+            print(f"[tweets] no se pudo escribir preview: {e}", file=sys.stderr)
+        return True
+    if png:
+        return _tg_send_photo(chat_id, text, png)
+    return _tg_send_message(chat_id, text)
+
+
+def _process_league(slug, *, force=False, chat_id=None, dry_run=False):
+    """Genera y manda los tweets de una liga para la jornada que va a empezar.
+
+    Sin `force` (cron programado): salta si la (season, jornada) ya se tuiteó o
+    si no hay jornada inminente. Con `force` (manual /tweet): manda siempre.
+    """
+    league = league_by_slug(slug)
+    if not league:
+        print(f"[tweets] liga desconocida: {slug}", file=sys.stderr)
+        return 0
+    snap = _load_snapshot(slug)
+    if not snap:
+        return 0
+    if snap.get("finished"):
+        print(f"[tweets] {slug}: temporada acabada, sin tuits")
+        return 0
+
+    season = snap.get("season", "")
+    label = int(snap.get("jornada", 0) or 0) + 1
+    state = _load_state()
+    cur = state.get(slug) or {}
+
+    if not force:
+        if cur.get("season") == season and cur.get("label") == label:
+            print(f"[tweets] {slug}: jornada {label} ({season}) ya tuiteada")
+            return 0
+        if not _imminent_round(league["espn_code"]):
+            print(f"[tweets] {slug}: sin jornada inminente (≤{UPCOMING_DAYS} días)")
+            return 0
+
+    url = SITE + league["dashboard"]
+    sent = 0
+    for zone, zlabel in ZONES.get(slug, []):
+        top = _top_teams(snap, zone)
+        if not top or top[0][2] <= 0:
+            print(f"[tweets] {slug}/{zone}: sin datos (todas 0%), se omite")
+            continue
+        text = _tweet_text(snap.get("name") or slug, label, zlabel,
+                           [(n, _fmt_pct(p)) for n, _, p in top], url)
+        png = _card_image(slug, snap, label, zlabel, top)
+        if _send_tweet(chat_id, text, png, dry_run=dry_run,
+                       slug=slug, zone_label=zlabel):
+            sent += 1
+        time.sleep(1)
+
+    if not dry_run:
+        if sent == 0:
+            notify.send_alert(
+                f"[tweets] no se envió ningún tuit de {slug}",
+                f"slug={slug} jornada={label} ({season})", dedup_key=f"tweets_send_{slug}")
+        else:
+            state[slug] = {"season": season, "label": label}
+            _save_state(state)
+    return sent
+
+
+def _run_scheduled(dry_run=False):
+    """Cron programado (lunes/jueves): todas las ligas, con detección de jornada."""
+    notify._load_env()
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    chat = os.environ.get("TELEGRAM_CHAT_ID") or _load_state().get("telegram_chat")
+    if not dry_run and not (token and chat):
+        notify.send_alert(
+            "[tweets] sin configuración de Telegram",
+            "Faltan TELEGRAM_BOT_TOKEN o TELEGRAM_CHAT_ID en .env",
+            dedup_key="tweets_no_config")
+        print("[tweets] sin TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID; nada que hacer",
+              file=sys.stderr)
+        return 0
+    for slug in TWEET_LEAGUES:
+        try:
+            _process_league(slug, chat_id=chat, dry_run=dry_run)
+        except Exception as e:
+            print(f"[tweets] error en {slug}: {e}", file=sys.stderr)
+    return 0
+
+
+def _poll_once():
+    """Una pasada de getUpdates para comandos manuales (/tweet)."""
+    notify._load_env()
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    if not token:
+        print("[tweets] sin TELEGRAM_BOT_TOKEN; --poll no hace nada", file=sys.stderr)
+        return 0
+    state = _load_state()
+    updates = _tg_get_updates(token, state.get("offset") or 0)
+    last = state.get("offset") or 0
+    for u in updates:
+        last = max(last, u.get("update_id", 0))
+        msg = u.get("message") or {}
+        text = (msg.get("text") or "").strip()
+        chat_id = (msg.get("chat") or {}).get("id")
+        if chat_id:
+            state["telegram_chat"] = chat_id
+        if not text:
+            continue
+        try:
+            if text.startswith("/tweet"):
+                arg = text[len("/tweet"):].strip()
+                if arg and arg not in ZONES:
+                    _tg_send_message(chat_id, f"Liga desconocida: {arg}. "
+                                              f"Válidas: {', '.join(ZONES)}")
+                    continue
+                _tg_send_message(chat_id, "Generando tuits…")
+                for s in ([arg] if arg else list(ZONES)):
+                    _process_league(s, force=True, chat_id=chat_id)
+            elif text.startswith(("/start", "/help")):
+                _tg_send_message(chat_id, "PredictMotion: /tweet para los tuits "
+                                          "de la jornada (o /tweet laliga, "
+                                          "/tweet hypermotion).")
+        except Exception as e:
+            print(f"[tweets] error procesando comando: {e}", file=sys.stderr)
+    if updates:
+        state["offset"] = last + 1
+        _save_state(state)
+    return 0
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description="Tweets de jornada vía Telegram")
+    ap.add_argument("--poll", action="store_true",
+                    help="cron de comandos: getUpdates breve para /tweet")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="no envía: imprime texto y guarda la imagen en preview")
+    ap.add_argument("--league", help="fuerza una liga (manual)")
+    args = ap.parse_args(argv)
+
+    try:
+        if args.poll:
+            return _poll_once()
+        if args.league:
+            notify._load_env()
+            return _process_league(args.league, force=True)
+        return _run_scheduled(dry_run=args.dry_run)
+    except Exception:
+        notify.send_alert("[tweets] error no capturado",
+                          traceback.format_exc(), dedup_key="tweets_crash")
+        print(traceback.format_exc(), file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
