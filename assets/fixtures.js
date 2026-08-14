@@ -87,8 +87,14 @@
   function evTime(ev) { return new Date(ev.date).getTime(); }
 
   // Agrupa los partidos de toda la temporada en jornadas. ESPN no expone el
-  // número de jornada, así que ordenamos por fecha y troceamos en bloques de
-  // (nº de equipos / 2) partidos = una jornada.
+  // número de jornada, así que agrupamos por fecha con la restricción de que
+  // ningún equipo juegue DOS partidos en la misma jornada. Con bloques fijos
+  // de (nº equipos / 2) un partido APLAZADO (rejugado días después) descuadraba
+  // todas las jornadas siguientes: un equipo salía 2 veces en la misma jornada
+  // y los "próximos partidos" quedaban cortados en los primeros 10. Esta
+  // agrupación encaja cada partido en la jornada más antigua donde sus dos
+  // equipos estén libres: el aplazado vuelve a su jornada original y el resto
+  // no se desplaza.
   function buildRounds(events) {
     events = (events || []).filter(function (ev) {
       var c = (ev.competitions && ev.competitions[0]) || {};
@@ -97,16 +103,25 @@
     if (!events.length) return [];
     events.sort(function (a, b) { return evTime(a) - evTime(b); });
 
-    var teams = {};
-    events.forEach(function (ev) {
-      (ev.competitions[0].competitors || []).forEach(function (c) {
-        if (c.team && c.team.id != null) teams[c.team.id] = 1;
-      });
-    });
-    var perRound = Math.max(1, Math.floor(Object.keys(teams).length / 2));
+    function teamIds(ev) {
+      return (ev.competitions[0].competitors || [])
+        .map(function (c) { return c.team && c.team.id; })
+        .filter(function (id) { return id != null; })
+        .map(String);
+    }
 
     var rounds = [];
-    for (var i = 0; i < events.length; i += perRound) rounds.push(events.slice(i, i + perRound));
+    events.forEach(function (ev) {
+      var ids = teamIds(ev);
+      for (var r = 0; r < rounds.length; r++) {
+        var busy = {};
+        rounds[r].forEach(function (other) {
+          teamIds(other).forEach(function (id) { busy[id] = 1; });
+        });
+        if (ids.every(function (id) { return !busy[id]; })) { rounds[r].push(ev); return; }
+      }
+      rounds.push([ev]);
+    });
     return rounds;
   }
 
