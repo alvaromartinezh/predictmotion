@@ -36,3 +36,7 @@ DEPLOYMENT.md
 **/deploy.sh
 **/*.service
 docs/
+
+# Scratch local: exploración de diseño y baseline de paridad (no van al repo).
+_design_exploration/
+_pm_baseline.json

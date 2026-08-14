@@ -125,6 +125,32 @@
     return rounds;
   }
 
+  // ── "En directo": partidos en juego, encima de la clasificación ───────────
+  // `matches` = lo que devuelve fetchLiveScores() de los dashboards.
+  window.PMLiveStrip = {
+    render: function (mountSelector, matches, slug) {
+      var el = document.querySelector(mountSelector);
+      if (!el) return;
+      if (!matches || !matches.length) { el.innerHTML = ''; el.hidden = true; return; }
+      function side(nm, lg, cls) {
+        return '<span class="lm__side ' + cls + '">' +
+          (lg ? '<img src="' + lg + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
+          '<span class="lm__nm">' + nm + '</span></span>';
+      }
+      el.innerHTML =
+        '<div class="live-strip__head"><span class="live-dot loss"></span>En directo</div>' +
+        '<div class="live-strip__list">' + matches.map(function (m) {
+          return '<a class="lm" href="/partido?league=' + slug + '&id=' + encodeURIComponent(m.eventId) + '">' +
+            side(m.homeName, m.homeLogo, 'home') +
+            '<span class="lm__mid"><span class="lm__score">' + m.homeScore + '–' + m.awayScore + '</span>' +
+            '<span class="lm__clock">' + (m.clock || '') + '</span></span>' +
+            side(m.awayName, m.awayLogo, 'away') +
+            '</a>';
+        }).join('') + '</div>';
+      el.hidden = false;
+    }
+  };
+
   window.PMFixtures = {
     init: function (code, mountSelector) {
       currentSlug = SLUG_BY_CODE[code] || '';

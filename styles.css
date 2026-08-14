@@ -577,8 +577,7 @@ html[data-theme="light"] .prob.is-lock.down { color: #fff; }
 /* Conmutador de tema en PÍLDORA (.theme-toggle) RETIRADO en CP-R7. El shell usa
    .pm-theme-toggle (assets/shell.css); el único sistema de tema sigue siendo theme.js. */
 
-/* Chapa "en vivo" enlazable a la vista de partido (/partido). */
-.live-badge-link { text-decoration: none; color: inherit; cursor: pointer; }
-.live-badge-link:hover .live-badge { filter: brightness(1.15); }
+/* La chapa "en vivo" en la fila (.live-badge) se retiró: los marcadores van en la
+   tira #live-strip encima de la tabla y en la fila queda .live-dot (fixtures.css). */
 
 

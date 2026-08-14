@@ -81,3 +81,39 @@
   .fx-match { padding: var(--sp-3); gap: var(--sp-2); }
   .fx-mid { min-width: 64px; }
 }
+
+/* ── "En directo": partidos en juego, encima de la clasificación ──────────
+   El marcador ya NO va al lado del equipo en la tabla (estorbaba la lectura
+   de las estadísticas): aquí van los marcadores, y en la fila solo queda un
+   punto de color con el resultado en vivo (.live-dot). */
+.live-strip { margin: var(--sp-4) 0 0; }
+.live-strip__head {
+  display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-2);
+  font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  font-size: var(--fs-14); color: var(--down);
+}
+.live-strip__list { display: grid; gap: var(--sp-2); grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+.lm {
+  display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2);
+  text-decoration: none; color: inherit; transition: border-color .16s var(--ease);
+}
+.lm:hover { border-color: var(--accent-line); }
+.lm__side { display: flex; align-items: center; gap: var(--sp-2); flex: 1; min-width: 0; }
+.lm__side.away { flex-direction: row-reverse; }
+.lm__side img { width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; }
+.lm__nm { font-size: var(--fs-13); font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lm__mid { text-align: center; flex-shrink: 0; }
+.lm__score { font-family: var(--font-mono); font-size: var(--fs-15); font-weight: 700; color: var(--text); white-space: nowrap; }
+.lm__clock { display: block; font-family: var(--font-mono); font-size: var(--fs-11); color: var(--muted); }
+
+/* Punto de resultado en vivo dentro de la clasificación */
+.live-dot {
+  display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+  animation: pm-pulse 1.2s ease-in-out infinite;
+}
+.live-dot.win  { background: var(--up); }
+.live-dot.draw { background: var(--brand); }
+.live-dot.loss { background: var(--down); }
+.live-dot-link { display: inline-flex; align-items: center; margin-left: var(--sp-2); }
+@keyframes pm-pulse { 0%,100% { opacity: 1 } 50% { opacity: .3 } }

@@ -26,13 +26,14 @@
   <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
   <link rel="dns-prefetch" href="https://site.api.espn.com" />
   <link rel="dns-prefetch" href="https://a.espncdn.com" />
-  <link rel="stylesheet" href="/styles.css?v=20260814a" />
-<link rel="stylesheet" href="/assets/shell.css?v=20260814a" />
-  <link rel="stylesheet" href="/assets/account.css?v=20260814a" />
-  <link rel="stylesheet" href="/assets/fixtures.css?v=20260814a" />
-  <script src="/assets/espn-proxy.js?v=20260814a"></script>
-  <script src="/theme.js?v=20260814a"></script>
-  <script src="/assets/league-engine.js?v=20260814a"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260814b" />
+<link rel="stylesheet" href="/assets/shell.css?v=20260814b" />
+  <link rel="stylesheet" href="/assets/account.css?v=20260814b" />
+  <link rel="stylesheet" href="/assets/fixtures.css?v=20260814b" />
+  <script src="/assets/espn-proxy.js?v=20260814b"></script>
+  <script src="/theme.js?v=20260814b"></script>
+  <script src="/assets/league-engine.js?v=20260814b"></script>
+  <script src="/assets/fixtures.js?v=20260814b"></script>
 
   <title>Serie A 2025-26 · Probabilidades Champions, Europa y Descenso</title>
   <style>
@@ -64,17 +65,6 @@
   .team-link { transition: color .15s; }
   .team-link:hover { color: var(--accent); }
   .col-pts.pts-live .num { color: var(--accent); }
-
-  /* Badge de partido en vivo */
-  .live-badge {
-    display: inline-flex; align-items: center; gap: 4px; margin-left: 6px;
-    background: var(--down-soft); border: 1px solid rgba(255,85,107,.28); border-radius: var(--r-xs);
-    padding: 1px 6px; font-size: var(--fs-12); font-weight: 700; color: var(--down);
-    font-family: var(--font-mono); white-space: nowrap; vertical-align: middle;
-  }
-  .live-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--down); animation: pm-pulse 1s ease-in-out infinite; flex-shrink: 0; }
-  .live-clock { color: var(--muted); font-weight: 400; }
-  @keyframes pm-pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
   /* Skeleton */
   .skeleton { animation: shimmer 1.4s infinite; background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%); background-size: 400% 100%; border-radius: var(--r-xs); }
@@ -224,6 +214,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
   <!-- ===== CLASIFICACIÓN ===== -->
   <div class="tab-section" data-section="clasificacion">
+    <!-- Partidos en juego: marcadores AQUÍ, no dentro de la tabla -->
+    <div class="live-strip" id="live-strip" hidden></div>
+
     <div class="table-toolbar">
       <h2>Clasificación &amp; probabilidades</h2>
       <div class="prob-legend" id="legend"></div>
@@ -454,10 +447,12 @@ async function fetchLiveScores() {
       live.push({
         eventId:   event.id,
         homeId:    home.team.id,
-        homeName:  home.team.displayName,
+        homeName:  home.team.shortDisplayName || home.team.displayName,
+        homeLogo:  home.team.logo || '',
         homeScore: parseInt(home.score) || 0,
         awayId:    away.team.id,
-        awayName:  away.team.displayName,
+        awayName:  away.team.shortDisplayName || away.team.displayName,
+        awayLogo:  away.team.logo || '',
         awayScore: parseInt(away.score) || 0,
         clock:     event.status.displayClock || '',
       });
@@ -477,8 +472,9 @@ function applyLiveScores(standings, liveMatches) {
     const apts = m.awayScore > m.homeScore ? 3 : m.homeScore === m.awayScore ? 1 : 0;
     home.pts += hpts; home.gp += 1; home.gf += m.homeScore; home.gc += m.awayScore;
     away.pts += apts; away.gp += 1; away.gf += m.awayScore; away.gc += m.homeScore;
-    home.live = { score: `${m.homeScore}–${m.awayScore}`, clock: m.clock, eventId: m.eventId };
-    away.live = { score: `${m.homeScore}–${m.awayScore}`, clock: m.clock, eventId: m.eventId };
+    const res = p => p === 3 ? 'win' : p === 1 ? 'draw' : 'loss';
+    home.live = { score: `${m.homeScore}–${m.awayScore}`, res: res(hpts), eventId: m.eventId };
+    away.live = { score: `${m.awayScore}–${m.homeScore}`, res: res(apts), eventId: m.eventId };
   }
   return adjusted;
 }
@@ -561,7 +557,7 @@ function render(standings, results, slots) {
               onerror="fallbackAvatar(${i},'${nameEsc}','${color}')" />
           </span>
           <a class="team__name team-link" href="/equipo?id=${t.id}&name=${encodeURIComponent(t.name)}&league=seriea">${t.name}</a>
-          ${t.live ? `<a class="live-badge-link" href="/partido?league=seriea&id=${t.live.eventId}" title="Seguir en vivo"><span class="live-badge"><span class="live-dot"></span>${t.live.score}<span class="live-clock"> ${t.live.clock}</span></span></a>` : ''}
+          ${t.live ? `<a class="live-dot-link" href="/partido?league=seriea&id=${t.live.eventId}" title="En directo · ${t.live.score}"><span class="live-dot ${t.live.res}"></span></a>` : ''}
         </span>
       </td>
       <td class="col-pj col-dim"><span class="num">${t.gp}</span></td>
@@ -685,6 +681,7 @@ async function triggerUpdate(silent = false) {
     }
 
     const adjusted = applyLiveScores(standings, liveMatches);
+    PMLiveStrip.render('#live-strip', liveMatches, 'seriea');
 
     if (liveMatches.length > 0) {
       adjusted.sort((a, b) =>
@@ -744,17 +741,16 @@ if (!document.getElementById('tbody').children.length) renderSkeleton();
 triggerUpdate();
 updateSeason();
 </script>
-<script src="/assets/fixtures.js?v=20260814a"></script>
 <script>
   PMTabs.init();
   window.addEventListener('pmtab', function (e) {
     if (e.detail === 'partidos') PMFixtures.init('ita.1', '#fx-mount');
   });
 </script>
-<script src="/assets/account.js?v=20260814a"></script>
-  <script src="/assets/pm-leagues.js?v=20260814a"></script>
-  <script src="/assets/shell.js?v=20260814a"></script>
+<script src="/assets/account.js?v=20260814b"></script>
+  <script src="/assets/pm-leagues.js?v=20260814b"></script>
+  <script src="/assets/shell.js?v=20260814b"></script>
   <script>PMShell.chrome({ active: null });</script>
-  <script src="/assets/nav.js?v=20260814a"></script>
+  <script src="/assets/nav.js?v=20260814b"></script>
 </body>
 </html>
