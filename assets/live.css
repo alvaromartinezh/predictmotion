@@ -39,10 +39,7 @@ a.sl-team {
 }
 a.sl-team:hover { border-color: var(--accent-line); background: var(--surface-3); }
 a.sl-team:hover .sl-name { color: var(--accent); }
-.sl-crest {
-  width: 56px; height: 56px; flex: none; display: grid; place-items: center;
-  background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-md); padding: 8px;
-}
+.sl-crest { width: 56px; height: 56px; flex: none; display: grid; place-items: center; }
 .sl-crest img { width: 100%; height: 100%; object-fit: contain; }
 .sl-crest.ph { color: var(--muted); font-family: var(--font-mono); font-weight: 700; font-size: var(--fs-13); }
 .sl-meta { min-width: 0; width: 100%; }
