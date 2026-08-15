@@ -105,12 +105,25 @@
     .status-dot.error   { background:var(--red); }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
-    /* ── Estadísticas por competición ── */
-    #stats-grid { max-width:940px; margin:0 auto 16px; display:flex; flex-direction:column; gap:16px; }
+    /* ── Switch de competición (solo si el equipo juega en más de una) ── */
+    .stats-switch { max-width:940px; margin:0 auto 12px; display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; }
+    .stats-switch::-webkit-scrollbar { display:none; }
+    .stats-switch-btn {
+      flex:none; display:flex; align-items:center; gap:7px; padding:9px 16px; cursor:pointer;
+      border-radius:999px; border:1px solid var(--border); background:var(--surface); color:var(--muted);
+      font-family:var(--font-display); font-weight:700; font-size:.72rem; text-transform:uppercase;
+      letter-spacing:.04em; white-space:nowrap; transition:border-color .15s, background .15s, color .15s;
+    }
+    .stats-switch-btn:hover { color:var(--text); }
+    .stats-switch-btn.is-active { border-color:var(--accent); background:var(--surface2); color:var(--text); }
+    .stats-switch-btn .tag { font-family:var(--font-mono); font-size:.6rem; font-weight:600; color:var(--accent); }
+
+    /* ── Estadísticas de la competición activa ── */
+    #stats-grid { max-width:940px; margin:0 auto 16px; }
     .comp-stats { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
     .comp-stats-header { display:flex; align-items:center; gap:8px; padding:10px 16px; background:var(--surface2); border-bottom:1px solid var(--border); }
     .comp-stats-name { font-family:var(--font-display); font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); }
-    .comp-stats-tag { margin-left:auto; font-family:var(--font-mono); font-size:.6rem; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:var(--accent); border:1px solid var(--border); border-radius:999px; padding:2px 8px; }
+    .comp-stats-sub { margin-left:auto; font-family:var(--font-mono); font-size:.65rem; color:var(--muted); }
     .comp-stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:8px; padding:14px; }
     .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; }
     .stat-card .label {
@@ -122,6 +135,12 @@
       font-size:2rem; font-weight:800; line-height:1;
     }
     .stat-card .sub { font-size:.7rem; color:var(--muted); margin-top:3px; }
+
+    .probs-empty {
+      max-width:940px; margin:0 auto 16px; padding:22px 18px; text-align:center;
+      background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+      color:var(--muted); font-size:.8rem; line-height:1.5;
+    }
 
     /* ── Prob section ── */
     .probs-row { max-width:940px; margin:0 auto 16px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
@@ -414,12 +433,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <!-- VISTA: estadísticas + probabilidades -->
 <section class="team-view" id="view-stats">
-<!-- Estadísticas por competición -->
+<!-- Switch de competición: solo se muestra si el equipo juega en más de una -->
+<div class="stats-switch" id="stats-switch" hidden></div>
+<!-- Estadísticas de la competición activa -->
 <div id="stats-grid">
   <div class="comp-stats">
     <div class="comp-stats-header">
       <span class="comp-stats-name">Cargando…</span>
-      <span class="comp-stats-tag">Actual</span>
     </div>
     <div class="comp-stats-grid">
       <div class="stat-card"><div class="label">Puntos</div><div class="skeleton sk-stat"></div></div>
@@ -687,6 +707,12 @@ const LEAGUES = {
     ],
   },
 };
+
+// Código ESPN → entrada de LEAGUES. Sirve para saber, de una competición
+// adicional descubierta en el calendario del equipo (p. ej. uefa.champions),
+// si es una de nuestras 15 competiciones con dashboard/snapshot (probabilidades
+// disponibles) o una copa/amistoso fuera de catálogo (solo estadísticas).
+const LEAGUE_BY_CODE = Object.fromEntries(Object.values(LEAGUES).map(l => [l.code, l]));
 
 // ─── URL params ───────────────────────────────────────────────────────────
 const params  = new URLSearchParams(location.search);
@@ -1141,10 +1167,11 @@ function statCell(label, value, color) {
 
 // Estadísticas por competición: un bloque con la clasificación oficial (tabla
 // de ESPN) + un bloque por cada competición adicional detectada en el calendario.
-function renderStatsGrid(t, played) {
+// Solo la liga doméstica actual lleva "Puntos" — el resto (copas, fase de liga
+// UEFA…) son eliminatoria o un formato distinto donde ese número no aplica.
+function buildStatsBlocks(t, played) {
   const blocks = [{
-    name: LG.name,
-    tag: true,
+    name: LG.name, tag: true, trackedLeague: LG,
     stats: {
       pts: t.pts, gp: t.gp, wins: t.wins, draws: t.draws, losses: t.losses,
       gf: t.gf, gc: t.gc, gd: t.gf - t.gc,
@@ -1155,7 +1182,7 @@ function renderStatsGrid(t, played) {
   for (const m of played) {
     if (!m.league || m.league.slug === LG.code) continue;
     if (!byComp.has(m.league.slug)) {
-      byComp.set(m.league.slug, { name: m.league.name, gp:0, w:0, d:0, l:0, gf:0, gc:0 });
+      byComp.set(m.league.slug, { code: m.league.slug, name: m.league.name, gp:0, w:0, d:0, l:0, gf:0, gc:0 });
     }
     const g = byComp.get(m.league.slug);
     g.gp++;
@@ -1166,33 +1193,108 @@ function renderStatsGrid(t, played) {
     g.gc += m.oppScore;
   }
   for (const g of byComp.values()) {
-    blocks.push({ name: g.name, tag: false, stats: {
-      pts: 3*g.w + g.d, gp: g.gp, wins: g.w, draws: g.d, losses: g.l,
-      gf: g.gf, gc: g.gc, gd: g.gf - g.gc,
-    }});
+    blocks.push({
+      name: g.name, tag: false, trackedLeague: LEAGUE_BY_CODE[g.code] || null,
+      stats: { gp: g.gp, wins: g.w, draws: g.d, losses: g.l, gf: g.gf, gc: g.gc, gd: g.gf - g.gc },
+    });
   }
+  return blocks;
+}
 
-  document.getElementById('stats-grid').innerHTML = blocks.map(b => {
-    const s = b.stats;
-    const gd = (s.gd >= 0 ? '+' : '') + s.gd;
-    return `
+function renderStatsCard(b) {
+  const s = b.stats;
+  const gd = (s.gd >= 0 ? '+' : '') + s.gd;
+  const cells = [];
+  if (b.tag) cells.push(statCell('Puntos', s.pts));
+  cells.push(
+    statCell('Partidos', s.gp),
+    statCell('Victorias', s.wins, 'var(--green)'),
+    statCell('Empates', s.draws),
+    statCell('Derrotas', s.losses, 'var(--red)'),
+    statCell('Goles a favor', s.gf),
+    statCell('Goles en contra', s.gc),
+    statCell('Diferencia', gd, s.gd >= 0 ? 'var(--green)' : 'var(--red)'),
+  );
+  document.getElementById('stats-grid').innerHTML = `
     <div class="comp-stats">
       <div class="comp-stats-header">
         <span class="comp-stats-name">${b.name}</span>
-        ${b.tag ? '<span class="comp-stats-tag">Actual</span>' : ''}
+        <span class="comp-stats-sub">${s.gp} partido${s.gp === 1 ? '' : 's'} jugado${s.gp === 1 ? '' : 's'}</span>
       </div>
-      <div class="comp-stats-grid">
-        ${statCell('Puntos', s.pts)}
-        ${statCell('Partidos', s.gp)}
-        ${statCell('Victorias', s.wins, 'var(--green)')}
-        ${statCell('Empates', s.draws)}
-        ${statCell('Derrotas', s.losses, 'var(--red)')}
-        ${statCell('Goles a favor', s.gf)}
-        ${statCell('Goles en contra', s.gc)}
-        ${statCell('Diferencia', gd, s.gd >= 0 ? 'var(--green)' : 'var(--red)')}
-      </div>
+      <div class="comp-stats-grid">${cells.join('')}</div>
     </div>`;
-  }).join('');
+}
+
+function renderStatsSwitch(blocks) {
+  const host = document.getElementById('stats-switch');
+  if (blocks.length < 2) { host.hidden = true; host.innerHTML = ''; return; }
+  host.hidden = false;
+  host.innerHTML = blocks.map((b, i) => `
+    <button type="button" class="stats-switch-btn${i === activeStatsIdx ? ' is-active' : ''}" data-idx="${i}">
+      ${b.name}${b.tag ? '<span class="tag">Actual</span>' : ''}
+    </button>`).join('');
+  host.querySelectorAll('.stats-switch-btn').forEach(btn => {
+    btn.addEventListener('click', () => selectStatsBlock(parseInt(btn.dataset.idx, 10)));
+  });
+}
+
+// Probabilidades de una competición ADICIONAL (no la LG actual): lee su
+// clasificación + su snapshot ya calculado por el cron, igual que hace
+// computeProbs() para LG pero sin el ajuste de partidos en vivo (vista
+// secundaria: no merece la pena duplicar ese polling aquí). Cacheado por slug.
+async function computeProbsForSlug(entry) {
+  if (probsCache[entry.slug]) return probsCache[entry.slug];
+  const result = await (async () => {
+    try {
+      const standRes = await fetch(`https://site.api.espn.com/apis/v2/sports/soccer/${entry.code}/standings`);
+      if (!standRes.ok) throw new Error('standings');
+      const standData = await standRes.json();
+      const numTeams = standData.children[0].standings.entries.length;
+      const snapRes = await fetch(`/data/${entry.slug}/latest.json`, { cache: 'no-store' });
+      const snap = snapRes.ok ? await snapRes.json() : null;
+      const zones = (snap && Array.isArray(snap.bands) && snap.bands.length) ? zonesFromBands(snap.bands, numTeams) : entry.zones;
+      let probs = {};
+      if (snap && snap.teams) {
+        const ts = snap.teams.find(x => String(x.id) === String(TEAM_ID));
+        if (ts && ts.prob) probs = ts.prob;
+      }
+      return { zones, probs, ok: Object.keys(probs).length > 0 };
+    } catch { return { zones: entry.zones, probs: {}, ok: false }; }
+  })();
+  probsCache[entry.slug] = result;
+  return result;
+}
+
+function renderProbsLoading() {
+  document.getElementById('probs-row').innerHTML = '<div class="probs-empty">Cargando probabilidades…</div>';
+}
+function renderProbsUnavailable() {
+  document.getElementById('probs-row').innerHTML =
+    '<div class="probs-empty">Esta competición es eliminatoria directa: no calculamos probabilidades de fase de grupos.</div>';
+}
+function renderProbsNoData() {
+  document.getElementById('probs-row').innerHTML =
+    '<div class="probs-empty">Todavía no hay probabilidades calculadas para esta competición.</div>';
+}
+
+async function selectStatsBlock(i) {
+  const b = statsBlocks[i];
+  if (!b) return;
+  activeStatsIdx = i;
+  renderStatsSwitch(statsBlocks);
+  renderStatsCard(b);
+
+  if (b.tag) {
+    const cached = probsCache[LG.slug];
+    if (cached) renderProbs(cached.zones, cached.probs); else renderProbsLoading();
+    return;
+  }
+  if (!b.trackedLeague) { renderProbsUnavailable(); return; }
+  renderProbsLoading();
+  const res = await computeProbsForSlug(b.trackedLeague);
+  if (activeStatsIdx !== i) return;   // el usuario ya cambió de pestaña
+  if (!res.ok) { renderProbsNoData(); return; }
+  renderProbs(res.zones, res.probs);
 }
 
 // ─── Render: probabilities ────────────────────────────────────────────────
@@ -1655,11 +1757,20 @@ let isUpdating = false;
 
 let liveTimer = null;
 
+// Estado del switch de competición (ver buildStatsBlocks/selectStatsBlock más
+// arriba): qué bloque de estadísticas/probabilidades está activo, y una caché
+// de probabilidades por slug para no volver a pedirlas al cambiar de pestaña.
+let statsBlocks = [];
+let activeStatsIdx = 0;
+const probsCache = {};
+
 // Calcula y pinta las probabilidades del equipo. Camino común: LEE el precálculo
 // del snapshot (misma fuente que la tabla → mismos %). Solo re-simula en cliente si
 // hay partido en vivo o el snapshot no cuadra con la tabla (o no está disponible);
 // en ese fallback usa la `strength` ya calculada del snapshot (buildStrengthCtx),
-// no la re-deriva.
+// no la re-deriva. Cachea el resultado por si el switch de competición vuelve a
+// pedirlo, y solo pinta si la pestaña activa sigue siendo la liga actual (si el
+// usuario está viendo otra competición, no le pisamos la vista con un refresco).
 function computeProbs(standings, snapshot, liveMatches) {
   const adjusted = applyLiveScores(standings, liveMatches);
   const me = adjusted.find(t => String(t.id) === String(TEAM_ID));
@@ -1676,7 +1787,8 @@ function computeProbs(standings, snapshot, liveMatches) {
   } else {
     probs = simulate(adjusted, me ? me.name : '', zones, buildStrengthCtx(snapshot, adjusted));
   }
-  renderProbs(zones, probs);
+  probsCache[LG.slug] = { zones, probs, ok: true };
+  if (!statsBlocks.length || statsBlocks[activeStatsIdx].tag) renderProbs(zones, probs);
 }
 
 // Re-poll ligero durante partidos en vivo: solo tabla + live + snapshot + probs
@@ -1714,7 +1826,10 @@ async function triggerUpdate() {
 
     setSeason(snapshot && snapshot.season);
     renderTeamHeader(teamData);
-    renderStatsGrid(teamData, collectPlayed(scheduleData));
+    statsBlocks = buildStatsBlocks(teamData, collectPlayed(scheduleData));
+    activeStatsIdx = 0;
+    renderStatsSwitch(statsBlocks);
+    renderStatsCard(statsBlocks[0]);
     renderTimeline(scheduleData, upcomingEvents, teamData);
 
     computeProbs(standings, snapshot, liveMatches);
