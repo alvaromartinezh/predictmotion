@@ -176,13 +176,23 @@ def _load_state():
         return {}
 
 
-def _save_state(state):
+def _update_state(**claves):
+    """Relee el estado del disco y guarda SOLO las claves dadas.
+
+    Guardar el dict entero pisaba lo que hubiera escrito otro tramo mientras tanto:
+    `_poll_once` cargaba el estado, llamaba a `_process_league` (que anota su
+    `{slug: {season, label}}` anti-duplicado) y al terminar reescribía su copia
+    vieja con solo `offset`/`telegram_chat` — borrando la marca recién puesta, así
+    que el cron de lunes/jueves reenviaba los mismos tuits de esa jornada."""
+    state = _load_state()
+    state.update(claves)
     try:
         STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
         STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2),
                               encoding="utf-8")
     except OSError as e:
         print(f"[tweets] no se pudo guardar el estado: {e}", file=sys.stderr)
+    return state
 
 
 def _load_snapshot(slug):
@@ -639,7 +649,7 @@ def _process_league(slug, *, force=False, chat_id=None, dry_run=False):
         return 0
 
     season = snap.get("season", "")
-    label = int(snap.get("jornada", 0) or 0) + 1
+    label = int(snap.get("jornada", 0) or 0)
     state = _load_state()
     cur = state.get(slug) or {}
 
@@ -684,8 +694,7 @@ def _process_league(slug, *, force=False, chat_id=None, dry_run=False):
                 f"[tweets] no se envió ningún tuit de {slug}",
                 f"slug={slug} jornada={label} ({season})", dedup_key=f"tweets_send_{slug}")
         else:
-            state[slug] = {"season": season, "label": label}
-            _save_state(state)
+            _update_state(**{slug: {"season": season, "label": label}})
     return sent
 
 
@@ -769,8 +778,12 @@ def _poll_once():
         except Exception as e:
             print(f"[tweets] error procesando comando: {e}", file=sys.stderr)
     if updates:
-        state["offset"] = last + 1
-        _save_state(state)
+        # Solo estas dos claves: entre medias `_process_league` ha podido anotar la
+        # marca anti-duplicado de una liga, y guardar el dict entero la borraría.
+        campos = {"offset": last + 1}
+        if state.get("telegram_chat"):
+            campos["telegram_chat"] = state["telegram_chat"]
+        _update_state(**campos)
     return 0
 
 

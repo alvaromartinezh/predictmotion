@@ -206,11 +206,14 @@ footer a:hover{color:var(--text)}
 thead th,td{padding:8px 9px}.prob{min-width:78px}.stat .v{font-size:1.85rem}.lede{font-size:.98rem}}
 """
 
-# Ligas para la barra de navegación (mismas rutas limpias del sitio).
-NAV = [
-    ("/hypermotion", "Liga Hypermotion"),
-    ("/laliga", "LaLiga"),
-]
+# Ligas para la barra de navegación (mismas rutas limpias del sitio). Se deriva
+# del registro, no de una lista a mano: cuando el sitio pasó de 2 a 15 ligas esta
+# constante se quedó con las dos originales, así que las páginas SEO de las otras
+# 13 (~13/15 de todo lo generado) ofrecían una nav que no enlazaba ni a su propia
+# clasificación y nunca marcaba la liga activa.
+def _nav():
+    from .config import LEAGUES
+    return [(lg["dashboard"], lg["name"]) for lg in LEAGUES]
 
 
 def esc(s):
@@ -296,7 +299,7 @@ def page(title, description, canonical_path, body, *, heading, logo=None, badge=
                + json.dumps(block, ensure_ascii=False) + "</script>\n")
 
     nav_html = ""
-    for href, label in NAV:
+    for href, label in _nav():
         if href == active_nav:
             nav_html += f'<span class="league-btn active">{esc(label)}</span>'
         else:

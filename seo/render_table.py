@@ -258,7 +258,12 @@ def _jornada_page(league, after, before, logo):
         intro = (f'Cómo cambiaron las probabilidades {esc(de_league(league))} '
                  f'entre la jornada {before["jornada"]} y la {j}.')
 
-    nav = (f'<a href="{L.jornada_url(slug, j-1)}">← Jornada {j-1}</a>' if before else '')
+    # `before` es el snapshot anterior que EXISTE, no forzosamente el de j-1: si el
+    # cron se salta una liga un día (403, caída), la serie salta de la 20 a la 22 y
+    # /jornadas/<liga>/21 nunca se generó ni está en el sitemap. Enlazar j-1 le daba
+    # un 404 interno al crawler; la prosa de arriba ya usa before["jornada"].
+    nav = (f'<a href="{L.jornada_url(slug, before["jornada"])}">'
+           f'← Jornada {before["jornada"]}</a>' if before else '')
     nav += (f'<a href="{L.jornadas_hub_url(slug)}">Todas las jornadas</a>'
             f'<a href="{L.teams_hub_url(slug)}">Equipos</a>')
 
