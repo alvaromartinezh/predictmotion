@@ -40,6 +40,15 @@ def derive_bands_from_notes(bands, rows):
             cursor += 1
         if cursor > start:                                # hubo notas para esta zona
             b["lo"], b["hi"] = start + 1, cursor
+        else:
+            # Sin notas: la banda conserva su fallback, pero re-anclado detrás de la
+            # anterior. Si no, una zona de arriba que ESPN sí anota y sale más ancha
+            # que su fallback (5 plazas de Champions donde el fallback pone 4) se
+            # SOLAPA con la siguiente, y zone_prob cuenta esa posición en las dos:
+            # el 5º saldría con % de Champions Y de Europa, sumando más de 100.
+            b["lo"] = max(b["lo"], cursor + 1)
+            b["hi"] = max(b["hi"], b["lo"])
+            cursor = b["hi"]
     releg = next((b for b in bands if b.get("zone") == "relega"), None)
     if releg is not None:
         cnt, j = 0, n - 1
@@ -267,10 +276,21 @@ def _write_atomic(path, text):
     os.replace(tmp, path)
 
 
+def _payload(snap):
+    """JSON del snapshot SIN `rows_html`.
+
+    Las filas servidas sin JS van en su propio fichero `rows.html` (es el que lee la
+    plantilla de Caddy); dentro del JSON no las lee nadie —ni el motor, ni los
+    dashboards, ni pm-data.js— pero eran el 75-81% de sus bytes, y /buscar se baja
+    los 15 snapshots de una vez."""
+    return json.dumps({k: v for k, v in snap.items() if k != "rows_html"},
+                      ensure_ascii=False, indent=1)
+
+
 def save_snapshot(snap):
     d = _season_dir(snap["league"], snap["season"])
     path = d / "snapshots" / f"{snap['date']}.json"
-    payload = json.dumps(snap, ensure_ascii=False, indent=1)
+    payload = _payload(snap)
     _write_atomic(path, payload)
     _write_atomic(d / "latest.json", payload)                # latest de la temporada
     _write_atomic(DATA_DIR / snap["league"] / "latest.json", payload)  # latest vivo (dashboards)
@@ -285,8 +305,7 @@ def save_offseason_latest(slug, snap):
     ni de qué llevar histórico. Sustituye a la tabla congelada de la temporada
     anterior (Principio 1: una competición terminada no se congela)."""
     (DATA_DIR / slug).mkdir(parents=True, exist_ok=True)
-    payload = json.dumps(snap, ensure_ascii=False, indent=1)
-    _write_atomic(DATA_DIR / slug / "latest.json", payload)
+    _write_atomic(DATA_DIR / slug / "latest.json", _payload(snap))
     # rows.html VACÍO (o el tbody serviría la tabla de la temporada acabada).
     _write_atomic(DATA_DIR / slug / "rows.html", snap.get("rows_html", ""))
 

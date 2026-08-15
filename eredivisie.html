@@ -297,7 +297,10 @@ function noteToZone(desc) {
   if (d.includes('champion'))   return 'promo';
   if (d.includes('europa'))     return 'europa';
   if (d.includes('conference')) return 'conf';
-  if (d.includes('relegat'))    return 'relega';
+  // El "relegation playoff" (playoff de permanencia, puesto 16 en ger.1/fra.1/
+  // ned.1/por.1) NO es zona de descenso. Debe coincidir con seo/espn.py:
+  // _note_to_zone, o el rojo del cliente cubre un puesto más que el % del cron.
+  if (d.includes('relegat'))    return d.includes('playoff') ? 'none' : 'relega';
   return 'none';
 }
 
@@ -500,8 +503,12 @@ async function fetchStandings() {
   const entries = data.children[0].standings.entries;
   return entries.map((e, i) => {
     const stat = name => (e.stats.find(s => s.name === name) || {}).value || 0;
-    const logo = ((e.team.logos && e.team.logos[0]) ? e.team.logos[0].href : null)
-                 || LOGO_OVERRIDES[e.team.id] || null;
+    // El override GANA al escudo de ESPN (mismo orden que seo/espn.py y
+    // pm-data.js): existe justamente porque el href que ESPN devuelve para ese
+    // equipo no sirve, así que no puede tener prioridad sobre el override.
+    const logo = LOGO_OVERRIDES[e.team.id]
+                 || ((e.team.logos && e.team.logos[0]) ? e.team.logos[0].href : null)
+                 || null;
     return {
       rank:   i + 1,
       id:     e.team.id,
