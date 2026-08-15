@@ -36,11 +36,40 @@
     });
   }
 
+  function ymd(iso) { var d = new Date(iso); return d.getFullYear() + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2); }
+  // ── ESPN: TODOS los partidos de la temporada de una liga (rango del `calendar`
+  // del scoreboard) — mismo patrón que assets/fixtures.js. Sirve de fallback cuando
+  // el endpoint por equipo viene vacío (ver más abajo).
+  function seasonEvents(slug) {
+    var code = codeOf(slug); if (!code) return Promise.resolve([]);
+    return memo('season:' + code, function () {
+      return getJSON(ESPN + code + '/scoreboard').then(function (sb) {
+        var cal = (((sb && sb.leagues) || [])[0] || {}).calendar || [];
+        cal = cal.filter(function (x) { return typeof x === 'string'; });
+        if (!cal.length) return (sb && sb.events) || [];
+        return getJSON(ESPN + code + '/scoreboard?dates=' + ymd(cal[0]) + '-' + ymd(cal[cal.length - 1]) + '&limit=700')
+          .then(function (d) { return (d && d.events) || []; });
+      });
+    });
+  }
   // ── ESPN: calendario de un equipo (para su último/próximo/en vivo) ──
+  // El endpoint por equipo puede venir con 0 eventos aunque la liga ya esté en
+  // juego (visto en vivo el 2026-08-15: esp.1/esp.2/eng.1 con la jornada 1 en
+  // curso y `teams/{id}/schedule` vacío) — ESPN no lo repuebla siempre a tiempo.
+  // Si viene vacío, se filtra del calendario completo de la liga.
   function schedule(slug, teamId) {
     var code = codeOf(slug); if (!code || !teamId) return Promise.resolve([]);
     return memo('sch:' + code + ':' + teamId, function () {
-      return getJSON(ESPN + code + '/teams/' + teamId + '/schedule').then(function (j) { return (j && j.events) || []; });
+      return getJSON(ESPN + code + '/teams/' + teamId + '/schedule').then(function (j) {
+        var evs = (j && j.events) || [];
+        if (evs.length) return evs;
+        return seasonEvents(slug).then(function (all) {
+          return all.filter(function (e) {
+            var cs = (((e.competitions || [])[0] || {}).competitors) || [];
+            return cs.some(function (c) { return String((c.team || {}).id) === String(teamId); });
+          });
+        });
+      });
     });
   }
   // ── ESPN: marcador del día de una liga ──
