@@ -435,7 +435,7 @@ tr[data-zone="down"] .pos-badge { color: var(--down); }
 .footer { border-top: 1px solid var(--line); padding-block: var(--sp-7); margin-top: var(--sp-8); }
 .footer__inner { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); flex-wrap: wrap; }
 .footer p { font-size: var(--fs-13); color: var(--muted); }
-.footer__links { display: flex; gap: var(--sp-5); font-size: var(--fs-13); color: var(--muted); }
+.footer__links { display: flex; flex-wrap: wrap; gap: var(--sp-5); font-size: var(--fs-13); color: var(--muted); }
 .footer__links a:hover { color: var(--text); }
 
 /* ============================================================
