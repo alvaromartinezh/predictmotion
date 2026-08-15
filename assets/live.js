@@ -19,6 +19,7 @@
   var API = apiBase();
   var POLL_MS = 20000;
   var league = '', eventId = '', timer = null;
+  var lineupSide = 'home';   // equipo mostrado en el campo/banquillo de Alineación
 
   var LEAGUE_NAMES = {
     hypermotion: 'Liga Hypermotion', laliga: 'LaLiga',
@@ -201,7 +202,7 @@
     for (var li = 0; li < L; li++) {
       var n = counts[li];
       var frac = L > 1 ? li / (L - 1) : 0;
-      var t = side === 'home' ? (93 - frac * (93 - 55)) : (7 + frac * (47 - 7));
+      var t = 90 - frac * (90 - 10);   // portero abajo (90%) → delanteros arriba (10%)
       for (var k = 0; k < n; k++) {
         var x = n === 1 ? 50 : (18 + k * (82 - 18) / (n - 1));
         html += ppChip(starters[idx++], side, x.toFixed(1), t.toFixed(1));
@@ -215,18 +216,30 @@
     '<div class="pitch__mark pitch__box bot"></div><div class="pitch__mark pitch__six top"></div>' +
     '<div class="pitch__mark pitch__six bot"></div>';
 
-  function buildPitch(lu, m) {
-    if (!lu.home || !lu.away) return '';
-    var awayP = pitchPlayers(lu.away, 'away');
-    var homeP = pitchPlayers(lu.home, 'home');
-    if (awayP === null || homeP === null) return '';   // formación no resoluble → sin campo
+  // Un único equipo a la vez (lineupSide) — cambia con el switcher de abajo.
+  function buildPitch(lu, m, side) {
+    var lineup = lu[side];
+    if (!lineup) return '';
+    var players = pitchPlayers(lineup, side);
+    if (players === null) return '';   // formación no resoluble → sin campo
+    var team = m[side];
     var forms = '<div class="pitch-forms">' +
-      '<span class="pitch-form home"><i style="background:' + COL.home + '"></i>' + esc(m.home.abbr || m.home.name) + ' <b>' + esc(lu.home.formation) + '</b></span>' +
-      '<span class="pitch-form away"><b>' + esc(lu.away.formation) + '</b> ' + esc(m.away.abbr || m.away.name) + ' <i style="background:' + COL.away + '"></i></span>' +
+      '<span class="pitch-form ' + side + '"><i style="background:' + COL[side] + '"></i>' + esc(team.name || team.abbr) + ' <b>' + esc(lineup.formation) + '</b></span>' +
       '</div>';
     return '<div class="pitch-wrap">' + forms +
-      '<div class="pitch" role="img" aria-label="Posiciones de ambos equipos sobre el campo">' +
-      FIELD_MARKS + awayP + homeP + '</div></div>';
+      '<div class="pitch" role="img" aria-label="Posiciones de ' + esc(team.name || team.abbr) + ' sobre el campo">' +
+      FIELD_MARKS + players + '</div></div>';
+  }
+  function sideSwitchHTML(m, side) {
+    function btn(s) {
+      var team = m[s];
+      var crest = team.logo ? '<img src="' + esc(team.logo) + '" alt="">' : '';
+      return '<button type="button" class="side-switch__btn' + (s === side ? ' is-active' : '') +
+        '" data-side="' + s + '" style="--sw-col:' + COL[s] + '">' +
+        '<span class="side-switch__crest">' + crest + '</span>' +
+        '<span class="side-switch__name">' + esc(team.abbr || team.name) + '</span></button>';
+    }
+    return '<div class="side-switch" role="tablist" aria-label="Elegir equipo">' + btn('home') + btn('away') + '</div>';
   }
   function playerEv(p) {
     var s = '';
@@ -242,16 +255,19 @@
     return '<div class="player' + gk + '"><span class="player__num">' + esc(p.jersey || '') + '</span>' +
       '<span class="player__name">' + esc(pname(p)) + '</span>' + playerEv(p) + '</div>';
   }
-  function teamLineupBlock(lineup, team) {
+  // Solo suplentes: los titulares ya están dibujados en el campo, no hace
+  // falta repetirlos en una lista debajo.
+  function benchBlock(lineup, team) {
     if (!lineup) return '';
     var cr = team.logo ? '<span class="lineup__crest"><img src="' + esc(team.logo) + '" alt=""></span>' : '<span class="lineup__crest ph"></span>';
     var head = '<div class="lineup__head">' + cr +
       '<div class="lineup__meta"><div class="lineup__team">' + esc(team.name || team.abbr) + '</div>' +
       '<div class="lineup__form">' + esc(lineup.formation || '—') + '</div></div></div>';
-    var xi = '<div class="xi">' + sortedStarters(lineup).map(playerRow).join('') + '</div>';
     var subs = lineup.subs || [];
-    var bench = subs.length ? '<div class="bench"><p class="bench__label">Suplentes</p>' + subs.map(playerRow).join('') + '</div>' : '';
-    return '<div class="lineup ' + lineup.side + '">' + head + xi + bench + '</div>';
+    var bench = subs.length
+      ? '<div class="bench"><p class="bench__label">Suplentes</p>' + subs.map(playerRow).join('') + '</div>'
+      : '<p class="lv-msg lv-msg--sm">Sin suplentes disponibles.</p>';
+    return '<div class="lineup">' + head + bench + '</div>';
   }
   function renderLineups(m) {
     var lu = m.lineups || {};
@@ -259,8 +275,16 @@
       el('lv-lineups').innerHTML = '<div class="lv-msg">Alineaciones no disponibles todavía.</div>';
       return;
     }
-    var cols = teamLineupBlock(lu.home, m.home) + teamLineupBlock(lu.away, m.away);
-    el('lv-lineups').innerHTML = buildPitch(lu, m) + '<div class="lineups">' + cols + '</div>';
+    if (!lu[lineupSide]) lineupSide = lu.home ? 'home' : 'away';
+    el('lv-lineups').innerHTML = sideSwitchHTML(m, lineupSide) +
+      buildPitch(lu, m, lineupSide) +
+      '<div class="lineup-wrap">' + benchBlock(lu[lineupSide], m[lineupSide]) + '</div>';
+    Array.prototype.forEach.call(el('lv-lineups').querySelectorAll('.side-switch__btn'), function (b) {
+      b.addEventListener('click', function () {
+        lineupSide = b.getAttribute('data-side');
+        if (lastMatch) renderLineups(lastMatch);
+      });
+    });
   }
 
   // ── Minuto a minuto: timeline con espina central ──────────────────────────
