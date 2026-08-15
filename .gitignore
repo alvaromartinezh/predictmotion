@@ -40,3 +40,6 @@ docs/
 # Scratch local: exploración de diseño y baseline de paridad (no van al repo).
 _design_exploration/
 _pm_baseline.json
+
+# Hallazgos rescatados del code-review (local, no al repo público).
+_code_review_seo.md
