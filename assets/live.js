@@ -126,7 +126,7 @@
   }
   function slTeam(t, side, league) {
     var linked = !!t.id;
-    var inner = (side === 'home') ? slMeta(t) + crest(t) : crest(t) + slMeta(t);
+    var inner = crest(t) + slMeta(t);   // escudo arriba, nombre debajo (mismo orden en los dos lados)
     if (!linked) return '<div class="sl-team ' + side + '">' + inner + '</div>';
     return '<a class="sl-team ' + side + '" href="' + esc(teamHref(t, league)) + '" title="Ver página de ' + esc(t.name || t.abbr) + '">' + inner + '</a>';
   }
