@@ -54,7 +54,25 @@ def _js(snapshot, standings):
     return json.loads(p.stdout)
 
 
+def _temporada_terminada():
+    """Con la temporada acabada manda el `rank` oficial de ESPN, no la diferencia
+    de goles: LaLiga y Serie A desempatan por enfrentamiento directo, y este
+    snapshot se congela al 100% y se sirve como rows.html sin JS."""
+    rows = [
+        {"id": "1", "name": "GanoElH2H", "rank": 1, "gp": 38, "pts": 80, "gf": 70, "gc": 40},
+        {"id": "2", "name": "MejorDG",   "rank": 2, "gp": 38, "pts": 80, "gf": 90, "gc": 30},
+    ] + [{"id": str(i), "name": "Relleno%02d" % i, "rank": i, "gp": 38,
+          "pts": 40 - i, "gf": 40, "gc": 40} for i in range(3, 21)]
+    sim = sim_table.simulate(rows, P_HOME, P_DRAW, sim_n=100)
+    campeon = [n for n, r in sim.items() if r["pos_hist"][0] == 100][0]
+    assert campeon == "GanoElH2H", (
+        "temporada terminada: manda el rank de ESPN, no la diferencia de goles "
+        "(salió campeón %s)" % campeon)
+    print("temporada terminada: respeta el desempate oficial")
+
+
 def main():
+    _temporada_terminada()
     if not shutil.which("node"):
         print("node no está en el PATH — prueba omitida")
         return 0

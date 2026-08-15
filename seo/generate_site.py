@@ -304,6 +304,23 @@ def _run(args):
             "Revisar /home/ubuntu/seo_generate.log en el servidor.",
             dedup_key="generate_site_zero",
         )
+    elif failures and not args.dry_run and not args.league:
+        # Fallo PARCIAL: con 15 ligas, que una se caiga sola (código ESPN que
+        # cambia, 403, liga sin tabla) no llega nunca a ok==0, así que no avisaba
+        # nadie y ESA liga se congelaba en silencio mientras las otras 14 seguían
+        # — el patrón exacto que este proyecto persigue. La clave de dedupe lleva
+        # los slugs fallidos: un fallo distinto avisa, el mismo se calla 6 h.
+        motivos = "\n".join(f"  - {slug}: {err}" for slug, err in failures)
+        slugs = ",".join(sorted(slug for slug, _ in failures))
+        notify.send_alert(
+            f"[PredictMotion] generate_site: {len(failures)} liga(s) sin generar",
+            f"El cron SEO generó {ok}/{len(leagues)} ligas. Las que fallaron se "
+            "quedan con el snapshot viejo (dashboard e histórico congelados) "
+            "mientras el resto del sitio sigue actualizándose.\n\n"
+            f"Ligas fallidas:\n{motivos}\n\n"
+            "Revisar /home/ubuntu/seo_generate.log en el servidor.",
+            dedup_key=f"generate_site_partial:{slugs}",
+        )
 
     return 0 if ok > 0 else 1
 

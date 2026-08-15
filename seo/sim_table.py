@@ -136,10 +136,20 @@ def simulate(rows, p_home, p_draw, playoff_top=None, sim_n=SIM_N_TABLE, ratings=
     pf  = {name: 0 for name in names}
     pw  = {name: 0 for name in names}
 
-    # Temporada terminada → posiciones reales (port del cortocircuito JS).
+    # Temporada terminada → posiciones reales. Se usa el `rank` OFICIAL de ESPN,
+    # que ya aplica el desempate de cada liga (LaLiga y Serie A rompen empates por
+    # enfrentamiento directo, no por diferencia de goles). Reordenar aquí por
+    # pts→DG→GF colocaba mal a equipos empatados a puntos y congelaba ese error en
+    # el snapshot al 100%: los dashboards ya lo corrigieron en SU rama de temporada
+    # terminada, pero leen este snapshot cuando la tabla cuadra, y el rows.html que
+    # se sirve sin JS sale de aquí. Sin rank (tabla sintética) se cae al orden por
+    # puntos, que dentro del Monte Carlo sí es el único criterio disponible.
     if min_gp >= total_md:
-        ordered = sorted(rows, key=lambda t: (t["pts"], t["gf"] - t["gc"], t["gf"]),
-                         reverse=True)
+        if all(t.get("rank") for t in rows):
+            ordered = sorted(rows, key=lambda t: t["rank"])
+        else:
+            ordered = sorted(rows, key=lambda t: (t["pts"], t["gf"] - t["gc"], t["gf"]),
+                             reverse=True)
         for idx, t in enumerate(ordered):
             pos_hist[t["name"]][idx] = sim_n
         return _finalize(names, pos_hist, psf, pf, pw, sim_n, finished=True)
@@ -195,7 +205,11 @@ def simulate(rows, p_home, p_draw, playoff_top=None, sim_n=SIM_N_TABLE, ratings=
         for idx, nm in enumerate(ranking):
             pos_hist[nm][idx] += 1
 
-        # Play-off de ascenso: 3º vs 6º y 4º vs 5º (port exacto).
+        # Play-off de ascenso: 3º vs 6º y 4º vs 5º (port exacto). Los índices 2 y 3
+        # dan por hecho 2 ascensos directos: vale para Hypermotion, la única liga
+        # con playoff_top. Si otra liga con play-off tuviera otro número de plazas
+        # directas, esto hay que parametrizarlo (el motor JS ya lo hace con
+        # opts.promoSlots).
         if playoff_top and len(ranking) >= playoff_top:
             sf1h = ranking[2]; sf1a = ranking[playoff_top - 1]
             sf2h = ranking[3]; sf2a = ranking[playoff_top - 2]
