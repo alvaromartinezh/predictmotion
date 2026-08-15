@@ -10,6 +10,7 @@ El modelo de partido, el desempate (pts → DG → GF) y la simulación del play
 a doble partido son idénticos al navegador.
 """
 
+import collections
 import math
 
 from .config import (SIM_N_TABLE, STRENGTH_SCALE, STRENGTH_FADE_FRACTION,
@@ -91,6 +92,39 @@ def _strength_context(rows, ratings, p_home, p_draw, total_md):
     m = p_home + p_away
     s0 = p_home / m if m > 0 else 0.5
     s0 = min(1 - 1e-9, max(1e-9, s0))
+    return {"w": w, "logit_s0": math.log(s0 / (1 - s0)), "m": m, "strength": strength}
+
+
+def snapshot_context(snap, p_home, p_draw):
+    """Contexto de fuerza a partir de un SNAPSHOT ya publicado (no de la tabla en
+    vivo), para los consumidores que necesitan el 1X2 de un partido suelto
+    (registro de predicciones, live_tracker). Devuelven así la MISMA fórmula que
+    corrió la simulación en vez de reimplementarla.
+
+    Devuelve None si el snapshot no trae fuerza (→ el llamante usa el modelo
+    uniforme) o si declara un `strength_model` distinto del que este código tiene
+    compilado (→ el llamante NO debe inventar probabilidades con otra fórmula:
+    mismo guard que PMEngine.canSimulate en el motor JS). Distinguir los dos casos
+    desde fuera: `snap.get("strength_model")` solo existe si hay fuerza.
+
+    El rating de un equipo que no esté en el snapshot cae al FONDO DE TABLA, igual
+    que resolve_strengths.
+    """
+    model = "v2" if USE_ABSOLUTE_RATING else "v1"
+    if snap.get("strength_model") != model:
+        return None
+    known = {str(t["id"]): float(t["strength"]) for t in snap.get("teams", [])
+             if t.get("strength") is not None}
+    if not known:
+        return None
+    total_md = int(snap.get("total_md") or 0)
+    w = fade_weight(int(snap.get("jornada") or 0), total_md) if total_md else 0.0
+    p_away = 1.0 - p_home - p_draw
+    m = p_home + p_away
+    if m <= 0:
+        return None
+    s0 = min(1 - 1e-9, max(1e-9, p_home / m))
+    strength = collections.defaultdict(lambda: min(known.values()), known)
     return {"w": w, "logit_s0": math.log(s0 / (1 - s0)), "m": m, "strength": strength}
 
 

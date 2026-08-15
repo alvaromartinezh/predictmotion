@@ -71,8 +71,89 @@ def _temporada_terminada():
     print("temporada terminada: respeta el desempate oficial")
 
 
+def _consumidores_del_modelo():
+    """Los OTROS consumidores del modelo, que no pasan por league-engine.js.
+
+    `predictions.py` tenía una copia literal de la fórmula v1 y siguió escribiendo
+    con ella cuando el cron pasó a v2: su fichero es append-only e inmutable, así
+    que cada fila desde el 2026-08-10 mide un modelo que no existe — y su único
+    propósito es calibrar el que sí. `live_tracker/strength.py` aplicaba la fórmula
+    compilada a cualquier snapshot sin mirar `strength_model`."""
+    from . import predictions
+    from .config import league_by_slug
+
+    lg = league_by_slug("laliga")
+    snapshot = {
+        "jornada": 0, "total_md": 38,
+        "strength_model": "v2" if USE_ABSOLUTE_RATING else "v1",
+        "strength_scale": STRENGTH_SCALE,
+        "teams": [{"id": "H", "strength": 1.5}, {"id": "A", "strength": -1.2}],
+    }
+    sc = sim_table.snapshot_context(snapshot, lg["p_home"], lg["p_draw"])
+    esperado = sim_table._match_ph_pd(sc, "H", "A", lg["p_draw"], sc["w"])
+    ph, pd, _ = predictions._match_probs(sc, "H", "A", lg["p_home"], lg["p_draw"])
+    assert abs(ph - esperado[0]) < 1e-4 and abs(pd - esperado[1]) < 1e-4, (
+        "el registro de predicciones no usa la fórmula de la simulación "
+        "(%.4f/%.4f vs %.4f/%.4f)" % (ph, pd, esperado[0], esperado[1]))
+
+    # Modelo desconocido o snapshot de un cron anterior → sin contexto, nadie
+    # multiplica ratings de una escala por la constante de otra.
+    assert sim_table.snapshot_context(dict(snapshot, strength_model="v9"), .46, .26) is None
+    assert sim_table.snapshot_context({k: v for k, v in snapshot.items()
+                                       if k != "strength_model"}, .46, .26) is None
+    print("consumidores del modelo: predictions y live_tracker usan _match_ph_pd")
+
+
+def _registros_cliente():
+    """Las tablas de liga que viven en el cliente deben cuadrar con config.py.
+
+    `equipo.html` re-simula cuando el snapshot no cuadra con la tabla (partido en
+    vivo o resultado que el cron aún no recogió), así que sus p_home/p_draw tienen
+    que ser los del cron o la página de equipo y su dashboard dan números distintos
+    para el mismo equipo. LaLiga llevaba pDraw 0.25 contra el 0.26 de config."""
+    import re
+    from .config import LEAGUES
+
+    texto = (ROOT / "equipo.html").read_text(encoding="utf-8")
+    vistos = {m[0]: (float(m[1]), float(m[2])) for m in re.findall(
+        r"^\s{2}(\w+): \{\n(?:.*?\n)*?\s{4}pHome: ([\d.]+), pDraw: ([\d.]+)",
+        texto, re.M)}
+    for lg in LEAGUES:
+        par = vistos.get(lg["slug"])
+        assert par is not None, "equipo.html no conoce la liga %s" % lg["slug"]
+        assert par == (lg["p_home"], lg["p_draw"]), (
+            "equipo.html %s tiene pHome/pDraw %s y seo/config.py %s"
+            % (lg["slug"], par, (lg["p_home"], lg["p_draw"])))
+    print("registros cliente: equipo.html cuadra con config.py en las %d ligas"
+          % len(LEAGUES))
+
+
+def _notas_de_zona():
+    """El mapeo nota de ESPN → zona debe ser el MISMO en el cron y en las plantillas
+    de dashboard. El "relegation playoff" (puesto 16 en ger.1/fra.1/ned.1/por.1) no
+    es descenso: `seo/espn.py` lo dejó de contar y `top1.html` siguió contándolo, así
+    que el cliente pintaba de rojo un puesto más que el % del cron y que el
+    rows.html servido sin JS."""
+    from .espn import _note_to_zone
+
+    casos = {"Relegation playoff": "none", "Relegation playoffs": "none",
+             "Relegation": "relega", "Relegated": "relega",
+             "Champions League": "promo", "Europa League": "europa"}
+    for nota, zona in casos.items():
+        assert _note_to_zone(nota) == zona, "espn.py: %r → %s" % (nota, _note_to_zone(nota))
+    for plantilla in ("top1", "tier2"):
+        js = (ROOT / "seo" / "dashboards" / f"{plantilla}.html").read_text(encoding="utf-8")
+        linea = [l for l in js.splitlines() if "'relegat'" in l or '"relegat"' in l]
+        assert linea and "playoff" in linea[0], (
+            "%s.html cuenta el 'relegation playoff' como descenso y espn.py no" % plantilla)
+    print("notas de zona: el 'relegation playoff' no es descenso en cron ni cliente")
+
+
 def main():
     _temporada_terminada()
+    _consumidores_del_modelo()
+    _registros_cliente()
+    _notas_de_zona()
     if not shutil.which("node"):
         print("node no está en el PATH — prueba omitida")
         return 0

@@ -18,12 +18,10 @@ Todo dentro del pipeline del cron, sin intervención manual (Principio 2).
 """
 
 import json
-import math
 from datetime import datetime, timezone, timedelta
 
-from . import espn
+from . import espn, sim_table
 from .config import DATA_DIR
-from .sim_table import fade_weight
 
 # Ventana de emisión: se registra un partido cuando falta <= N días para el
 # saque, así la predicción se emite con un adelanto consistente (≈ la jornada
@@ -57,16 +55,18 @@ def _append(path, obj):
         f.write(json.dumps(obj, ensure_ascii=False) + "\n")
 
 
-def _match_probs(str_h, str_a, w, p_home, p_draw, scale):
-    """1X2 del modelo para un partido: sesga la cuota local por la fuerza (con
-    desvanecimiento), misma fórmula que sim_table. p_draw constante. Suma 1."""
-    p_away = 1.0 - p_home - p_draw
-    m = p_home + p_away
-    s0 = min(1 - 1e-9, max(1e-9, p_home / m if m > 0 else 0.5))
-    logit = math.log(s0 / (1 - s0))
-    s = 1.0 / (1.0 + math.exp(-(logit + w * scale * (str_h - str_a))))
-    ph = round(m * s, 4)
-    pd = round(p_draw, 4)
+def _match_probs(sc, hid, aid, p_home, p_draw):
+    """1X2 del modelo para un partido. Delega en sim_table para que la fila
+    registrada mida EXACTAMENTE el modelo que corrió la simulación: tener aquí una
+    copia de la fórmula hizo que, desde el 2026-08-10, el cron simulara con v2
+    (rating absoluto) mientras este registro escribía v1 — y las filas son
+    inmutables, así que la calibración se estaba haciendo contra un modelo que no
+    existe. `sc` None → sin prior aplicable, modelo uniforme de la liga."""
+    if sc is None:
+        ph, pd = p_home, p_draw
+    else:
+        ph, pd = sim_table._match_ph_pd(sc, hid, aid, p_draw, sc["w"])
+    ph, pd = round(ph, 4), round(pd, 4)
     return ph, pd, round(1.0 - ph - pd, 4)
 
 
@@ -80,10 +80,16 @@ def record_matchday(league, snap):
     res_path = d / "results.jsonl"
 
     # Fuerza por equipo desde el snapshot (misma que usó la sim); default fondo.
-    strengths = {t["id"]: t["strength"] for t in snap["teams"] if t.get("strength") is not None}
-    default = min(strengths.values()) if strengths else 0.0
-    scale = snap.get("strength_scale", 0.0) or 0.0
-    w = fade_weight(snap["jornada"], snap["total_md"]) if scale else 0.0
+    sc = sim_table.snapshot_context(snap, league["p_home"], league["p_draw"])
+    # El snapshot trae fuerza pero declara un modelo que este código no tiene
+    # compilado → no se EMITEN predicciones nuevas. Las filas son INMUTABLES: mejor
+    # ninguna que congelar para siempre probabilidades de una fórmula distinta de la
+    # que simuló. Los resultados (paso 2) no dependen del modelo y sí se rellenan.
+    skip_emit = sc is None and bool(snap.get("strength_model"))
+    if skip_emit:
+        print(f"[predictions] {slug}: strength_model="
+              f"{snap.get('strength_model')} desconocido, no se emiten predicciones")
+    w = sc["w"] if sc else 0.0
 
     today = datetime.now(timezone.utc).date()
     issued = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -91,15 +97,16 @@ def record_matchday(league, snap):
 
     # 1) Emitir predicciones de los fixtures próximos aún no registrados.
     logged = _logged_ids(pred_path)
-    upcoming = espn.fetch_scoreboard_range(
+    upcoming = [] if skip_emit else espn.fetch_scoreboard_range(
         code, fmt(today), fmt(today + timedelta(days=PREDICTION_LEAD_DAYS)))
     n_new = 0
     for ev in upcoming:
         if ev["state"] != "pre" or ev["event_id"] in logged:
             continue
-        sh = strengths.get(ev["home"]["id"], default)
-        sa = strengths.get(ev["away"]["id"], default)
-        ph, pd, pa = _match_probs(sh, sa, w, league["p_home"], league["p_draw"], scale)
+        hid, aid = str(ev["home"]["id"]), str(ev["away"]["id"])
+        sh = sc["strength"][hid] if sc else 0.0
+        sa = sc["strength"][aid] if sc else 0.0
+        ph, pd, pa = _match_probs(sc, hid, aid, league["p_home"], league["p_draw"])
         _append(pred_path, {
             "event_id": ev["event_id"], "issued_at": issued, "season": season,
             "league": slug, "kickoff": ev["date"],

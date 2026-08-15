@@ -15,7 +15,6 @@ Best-effort (Principio 2): si falta el snapshot, la fuerza, la liga o el import 
 
 import json
 import logging
-import math
 import threading
 import time
 
@@ -52,20 +51,16 @@ def pre_match_probs(league: str, home_id, away_id):
     La fuerza de cada equipo sale del snapshot del cron SEO (el mismo que leen los
     dashboards) y el 1X2 se calcula con la MISMA función que usa la simulación por
     liga (`seo.sim_table._match_ph_pd`). None → el modelo usa las medias planas.
+
+    `snapshot_context` incluye el guard de `strength_model`: si el snapshot en disco
+    lo declara distinto del modelo compilado aquí (deploy/rollback con el snapshot
+    del cron aún sin regenerar, hasta 3 h), devuelve None y caemos a las medias
+    planas en vez de multiplicar ratings de una escala por la constante de otra.
     """
     snap = _load_snapshot(league)
     if not snap:
         return None
-    strength = {}
-    for t in snap.get("teams", []):
-        s = t.get("strength")
-        if s is not None:
-            strength[str(t["id"])] = float(s)
-    if not strength:
-        return None
     hid, aid = str(home_id), str(away_id)
-    if hid not in strength or aid not in strength:
-        return None
     try:
         from seo import sim_table
         from seo.config import league_by_slug
@@ -77,19 +72,9 @@ def pre_match_probs(league: str, home_id, away_id):
     if lg:
         p_home = float(lg.get("p_home") or p_home)
         p_draw = float(lg.get("p_draw") or p_draw)
-    p_away = max(0.0, 1.0 - p_home - p_draw)
-    m = p_home + p_away
-    if m <= 0:
+    sc = sim_table.snapshot_context(snap, p_home, p_draw)
+    # `in` sobre el defaultdict no dispara el default: exige fuerza REAL de ambos.
+    if sc is None or hid not in sc["strength"] or aid not in sc["strength"]:
         return None
-    s0 = min(1 - 1e-9, max(1e-9, p_home / m))
-    total_md = int(snap.get("total_md", 0) or 0)
-    jornada = int(snap.get("jornada", 0) or 0)
-    w_md = sim_table.fade_weight(jornada, total_md) if total_md else 0.0
-    sc = {
-        "strength": strength,
-        "m": m,
-        "logit_s0": math.log(s0 / (1 - s0)),
-        "w": w_md,
-    }
-    ph, pd = sim_table._match_ph_pd(sc, hid, aid, p_draw, w_md)
+    ph, pd = sim_table._match_ph_pd(sc, hid, aid, p_draw, sc["w"])
     return (ph, pd, max(0.0, 1.0 - ph - pd))
