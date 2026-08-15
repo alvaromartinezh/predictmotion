@@ -23,6 +23,10 @@ Disparadores (todo dentro del cron, ver CLAUDE.md Principio 2):
     y esa (season, jornada) no se ha tuiteado ya.
   - Manual: comando `/tweet` (y `/tweet <liga>`) vía Telegram para jornadas
     partidas o reenvíos. `--poll` es el cron de comandos (getUpdates breve).
+  - Botón inline: cada tweet enviado (y el mensaje de /start) lleva un teclado
+    con un botón por liga activa ("⚽ Tweet <liga>"); al pulsarlo se regeneran
+    los tuits de esa liga con las estadísticas del momento (callback_query que
+    procesa el mismo `--poll`).
 
 Robustez: best-effort. Sin credenciales de Telegram → no hace nada. Si algo
 lanza, alerta por email (seo.notify) y no rompe el cron. Pillow es OPCIONAL
@@ -505,9 +509,22 @@ def _tg_url(method):
     return f"https://api.telegram.org/bot{token}/{method}"
 
 
-def _tg_send_message(chat_id, text):
+def _tg_keyboard():
+    """Teclado inline: un botón por liga activa → regenera sus tuits al pulsarlo."""
+    buttons = []
+    for slug in TWEET_LEAGUES:
+        lg = league_by_slug(slug)
+        label = (lg or {}).get("name") or slug
+        buttons.append({"text": f"⚽ Tweet {label}", "callback_data": f"tweet:{slug}"})
+    return {"inline_keyboard": [buttons]}
+
+
+def _tg_send_message(chat_id, text, reply_markup=None):
     try:
-        data = urllib.parse.urlencode({"chat_id": chat_id, "text": text}).encode()
+        data = {"chat_id": chat_id, "text": text}
+        if reply_markup:
+            data["reply_markup"] = json.dumps(reply_markup)
+        data = urllib.parse.urlencode(data).encode()
         req = urllib.request.Request(_tg_url("sendMessage"), data=data)
         with urllib.request.urlopen(req, timeout=30) as r:
             return bool((json.loads(r.read().decode()) or {}).get("ok"))
@@ -516,11 +533,14 @@ def _tg_send_message(chat_id, text):
         return False
 
 
-def _tg_send_photo(chat_id, caption, png_bytes):
+def _tg_send_photo(chat_id, caption, png_bytes, reply_markup=None):
     try:
         boundary = "----PM" + uuid.uuid4().hex
         parts = []
-        for name, value in (("chat_id", str(chat_id)), ("caption", caption)):
+        fields = [("chat_id", str(chat_id)), ("caption", caption)]
+        if reply_markup:
+            fields.append(("reply_markup", json.dumps(reply_markup)))
+        for name, value in fields:
             parts.append(f'--{boundary}\r\nContent-Disposition: form-data; '
                          f'name="{name}"\r\n\r\n{value}\r\n'.encode())
         parts.append(f'--{boundary}\r\nContent-Disposition: form-data; '
@@ -537,6 +557,19 @@ def _tg_send_photo(chat_id, caption, png_bytes):
             return bool((json.loads(r.read().decode()) or {}).get("ok"))
     except Exception as e:
         print(f"[tweets] sendPhoto falló: {e}", file=sys.stderr)
+        return False
+
+
+def _tg_answer_callback(callback_query_id):
+    """Confirma el callback para que el botón deje de girar en el chat."""
+    try:
+        data = urllib.parse.urlencode(
+            {"callback_query_id": callback_query_id}).encode()
+        req = urllib.request.Request(_tg_url("answerCallbackQuery"), data=data)
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return bool((json.loads(r.read().decode()) or {}).get("ok"))
+    except Exception as e:
+        print(f"[tweets] answerCallbackQuery falló: {e}", file=sys.stderr)
         return False
 
 
@@ -584,8 +617,8 @@ def _send_tweet(chat_id, text, png, dry_run=False, slug=None, zone_label=None):
             print(f"[tweets] no se pudo escribir preview: {e}", file=sys.stderr)
         return True
     if png:
-        return _tg_send_photo(chat_id, text, png)
-    return _tg_send_message(chat_id, text)
+        return _tg_send_photo(chat_id, text, png, reply_markup=_tg_keyboard())
+    return _tg_send_message(chat_id, text, reply_markup=_tg_keyboard())
 
 
 def _process_league(slug, *, force=False, chat_id=None, dry_run=False):
@@ -689,6 +722,27 @@ def _poll_once():
     last = state.get("offset") or 0
     for u in updates:
         last = max(last, u.get("update_id", 0))
+        cbq = u.get("callback_query") or {}
+        if cbq:
+            cid = cbq.get("id")
+            data = (cbq.get("data") or "").strip()
+            chat_id = ((cbq.get("message") or {}).get("chat") or {}).get("id")
+            if chat_id:
+                state["telegram_chat"] = chat_id
+            if cid:
+                _tg_answer_callback(cid)
+            try:
+                if data.startswith("tweet:"):
+                    arg = data.split(":", 1)[1]
+                    if arg and arg not in TWEET_LEAGUES:
+                        _tg_send_message(chat_id, f"Liga desconocida: {arg}. "
+                                                  f"Válidas: {', '.join(TWEET_LEAGUES)}")
+                        continue
+                    _tg_send_message(chat_id, "Generando tuits…")
+                    _process_league(arg or "hypermotion", force=True, chat_id=chat_id)
+            except Exception as e:
+                print(f"[tweets] error procesando callback: {e}", file=sys.stderr)
+            continue
         msg = u.get("message") or {}
         text = (msg.get("text") or "").strip()
         chat_id = (msg.get("chat") or {}).get("id")
@@ -707,9 +761,11 @@ def _poll_once():
                 for s in ([arg] if arg else TWEET_LEAGUES):
                     _process_league(s, force=True, chat_id=chat_id)
             elif text.startswith(("/start", "/help")):
-                _tg_send_message(chat_id, "PredictMotion: /tweet para los tuits "
-                                          "de la jornada (o /tweet <liga>). "
-                                          "Ligas: " + ", ".join(TWEET_LEAGUES))
+                _tg_send_message(chat_id, "PredictMotion: pulsa el botón para "
+                                          "generar los tuits de la jornada con los "
+                                          "datos del momento (o /tweet <liga>). "
+                                          "Ligas: " + ", ".join(TWEET_LEAGUES),
+                                 reply_markup=_tg_keyboard())
         except Exception as e:
             print(f"[tweets] error procesando comando: {e}", file=sys.stderr)
     if updates:
