@@ -39,15 +39,14 @@ a.sl-team {
 }
 a.sl-team:hover { border-color: var(--accent-line); background: var(--surface-3); }
 a.sl-team:hover .sl-name { color: var(--accent); }
-a.sl-team:hover .sl-sub { color: var(--accent); }
 .sl-crest {
   width: 56px; height: 56px; flex: none; display: grid; place-items: center;
   background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-md); padding: 8px;
 }
 .sl-crest img { width: 100%; height: 100%; object-fit: contain; }
 .sl-crest.ph { color: var(--muted); font-family: var(--font-mono); font-weight: 700; font-size: var(--fs-13); }
-.sl-name { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; font-size: var(--fs-22); line-height: 1.05; letter-spacing: .01em; }
-.sl-sub { font-family: var(--font-mono); font-size: var(--fs-12); color: var(--muted); margin-top: 4px; white-space: nowrap; }
+.sl-meta { min-width: 0; }
+.sl-name { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; font-size: var(--fs-22); line-height: 1.05; letter-spacing: .01em; overflow-wrap: anywhere; }
 .sl-center { text-align: center; padding: 0 var(--sp-2); }
 .sl-score { font-family: var(--font-display); font-weight: 800; font-size: var(--fs-48); line-height: 1; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
 .sl-score .sep { color: var(--faint); margin: 0 6px; }
@@ -321,14 +320,19 @@ html[data-theme="light"] .poss__seg { color: #fff; }
 .footer { max-width: var(--maxw); margin: var(--sp-8) auto 0; }
 
 @media (max-width: 720px) {
-  .lineups { grid-template-columns: 1fr; }
   .scoreline { gap: var(--sp-3); }
   a.sl-team { padding: 8px 12px; }
   .sl-name { font-size: var(--fs-18); }
   .sl-score { font-size: var(--fs-36); }
   .sl-crest { width: 44px; height: 44px; }
-  .sl-sub { font-size: 10px; }
   .tl-row { grid-template-columns: 1fr 48px 1fr; }
   .tl-row.home .tl-card, .tl-row.away .tl-card { flex-direction: row; text-align: left; justify-self: stretch; }
   .tl-title { white-space: normal; }
+}
+
+@media (max-width: 400px) {
+  a.sl-team { padding: 6px 8px; gap: var(--sp-2); }
+  .sl-name { font-size: var(--fs-14); }
+  .sl-crest { width: 34px; height: 34px; }
+  .sl-score { font-size: var(--fs-28); }
 }
