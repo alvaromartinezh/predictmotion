@@ -113,6 +113,11 @@ def record_matchday(league, snap):
             "home": {"id": ev["home"]["id"], "name": ev["home"]["name"], "strength": round(sh, 4)},
             "away": {"id": ev["away"]["id"], "name": ev["away"]["name"], "strength": round(sa, 4)},
             "w": round(w, 4), "p_home": ph, "p_draw": pd, "p_away": pa,
+            # Con QUÉ modelo se calculó esta fila. Sin esto, distinguir una fila
+            # válida de una escrita con la fórmula equivocada exige arqueología de
+            # fechas contra el git log (las del 2026-08-11 al 08-15 dicen v1 con el
+            # cron ya en v2). La fila es inmutable: que se explique sola.
+            "model": snap.get("strength_model") or "uniform",
         })
         logged.add(ev["event_id"])
         n_new += 1
