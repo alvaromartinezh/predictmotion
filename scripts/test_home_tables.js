@@ -77,4 +77,19 @@ assert((out.col.match(/class="mini"/g) || []).length === 1, 'una sola tabla en t
 assert(out.col.indexOf('Noticia de Uno') > 0, 'la última noticia del favorito sale pegada a su tabla');
 assert(out.col.indexOf('De Dos') > 0 && out.col.indexOf('De Serie A') > 0, 'noticias del resto de seguidos, sin tabla propia');
 assert(out.col.indexOf('Sin relación') < 0, 'no cuela noticias de lo que no se sigue');
+
+// 7) el partido destacado enlaza a /partido y la tabla del favorito enlaza a /<liga>
+assert(out.col.indexOf('href="/partido?league=laliga&amp;id=m1"') > 0, 'el hero enlaza al partido');
+assert(out.col.indexOf('href="/laliga"') > 0, 'la mini-tabla enlaza a la clasificación de la liga');
+
+// 8) con detalle del live_tracker: raya 1X2 de 3 colores (uno por equipo + empate)
+const liveDetail = {
+  home: { name: 'Uno', abbr: 'UNO', color: '#111111' },
+  away: { name: 'Rival', abbr: 'RIV', color: '#222222' },
+  winProbability: { pHome: 55, pDraw: 25, pAway: 20, note: 'Probabilidad estimada' },
+};
+const outWithProb = H.buildUserHTML(f, { '1': favMatch }, { laliga: snapMulti }, allNews, {}, liveDetail);
+assert(outWithProb.col.indexOf('class="winbar"') > 0, 'pinta la raya de probabilidades 1X2');
+assert(outWithProb.col.indexOf('background:#111111') > 0 && outWithProb.col.indexOf('background:#222222') > 0, 'cada color de la raya es el de su equipo');
+assert(outWithProb.col.indexOf('UNO 55%') > 0 && outWithProb.col.indexOf('RIV 20%') > 0 && outWithProb.col.indexOf('Empate 25%') > 0, 'pinta las 3 probabilidades');
 console.log('OK');

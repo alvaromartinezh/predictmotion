@@ -23,6 +23,20 @@
     return fn().then(function (v) { cache[key] = v; return v; });
   }
   function codeOf(slug) { return (L[slug] || {}).code; }
+  // Base del backend live_tracker (mismo criterio que assets/live.js: local con
+  // frontend en otro puerto → :8770 directo; producción → mismo origen vía Caddy).
+  function liveApiBase() {
+    if (window.PM_LIVE_API) return window.PM_LIVE_API;
+    var h = location.hostname, p = location.port;
+    if ((h === 'localhost' || h === '127.0.0.1') && p !== '8770') return 'http://127.0.0.1:8770/api/live';
+    return '/api/live';
+  }
+  // ── live_tracker: detalle de un partido (probabilidad 1X2 + colores de equipo) ──
+  function liveMatch(slug, eventId) {
+    if (!slug || !eventId) return Promise.resolve(null);
+    return getJSON(liveApiBase() + '/' + encodeURIComponent(slug) + '/match/' + encodeURIComponent(eventId))
+      .then(function (r) { return (r && r.ok && r.match) ? r.match : null; });
+  }
 
   // ── snapshot (clasificación + probabilidades por equipo) ──
   function snapshot(slug) {
@@ -191,7 +205,7 @@
   window.PMData = {
     L: L, codeOf: codeOf,
     snapshot: snapshot, news: news, schedule: schedule, scoreboard: scoreboard,
-    liveTable: liveTable,
+    liveTable: liveTable, liveMatch: liveMatch,
     parseEvent: parseEvent, pickTeamMatch: pickTeamMatch
   };
 })();

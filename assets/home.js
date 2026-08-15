@@ -44,18 +44,20 @@
     if (m.state === 'post') return 'Final';
     return esc(kick(m.date) || m.detail || 'Próx.');
   }
+  function matchHref(m) { return m.id ? '/partido?league=' + encodeURIComponent(m.slug) + '&id=' + encodeURIComponent(m.id) : ''; }
   function resultCard(m, followed) {
     var loseH = m.state === 'post' && !m.home.winner, loseA = m.state === 'post' && !m.away.winner;
     var sc = m.state === 'pre'
       ? '<div class="match__score" style="font-size:var(--fs-22)">' + esc(kick(m.date)) + '</div>'
       : '<div class="match__score">' + (m.home.score == null ? '-' : m.home.score) + '<span class="sep">–</span>' + (m.away.score == null ? '-' : m.away.score) + '</div>';
-    return '<article class="card card--link">'
+    var href = matchHref(m), tag = href ? 'a' : 'article';
+    return '<' + tag + ' class="card card--link"' + (href ? ' href="' + esc(href) + '"' : '') + '>'
       + leagueHead(m.slug, followed ? '<span class="followed">★ SIGUES</span>' : '')
       + '<div class="match">'
       + '<div class="match__team ' + (loseH ? 'lose' : '') + '">' + crest(m.home.logo, m.home.name, m.home.id) + '<span class="name">' + esc(m.home.name) + '</span></div>'
       + '<div style="text-align:center">' + sc + '<span class="match__status">' + statusHTML(m) + '</span></div>'
       + '<div class="match__team ' + (loseA ? 'lose' : '') + '">' + crest(m.away.logo, m.away.name, m.away.id) + '<span class="name">' + esc(m.away.name) + '</span></div>'
-      + '</div></article>';
+      + '</div></' + tag + '>';
   }
   // Filas de clasificación a pintar: la tabla REAL de ESPN con los partidos en juego
   // ya aplicados (PMData.liveTable) cuando la tenemos, y si no el snapshot del cron,
@@ -103,10 +105,11 @@
       if (p == null || p < 10) return '';
       return '<span class="prob-pill" style="color:var(' + zoneVar(b) + ');background:transparent;border-color:currentColor">' + p + '% ' + esc(b.label) + '</span>';
     }).join('');
-    return '<article class="card">' + leagueHead(slug || (snap && snap.league), '<span style="color:var(--faint);font-family:var(--font-mono);font-size:var(--fs-11)">Clasificación</span>')
+    var lg = slug || (snap && snap.league);
+    return '<a class="card card--link" href="/' + esc(lg) + '">' + leagueHead(lg, '<span style="color:var(--faint);font-family:var(--font-mono);font-size:var(--fs-11)">Clasificación</span>')
       + '<div class="mini">' + rows + '</div>'
       + '<div class="mini__foot"><span>' + esc(teamName || me.name) + ' · ' + me.rank + 'º</span>'
-      + (pills ? '<span style="display:flex;gap:var(--sp-2);flex-wrap:wrap;justify-content:flex-end">' + pills + '</span>' : '') + '</div></article>';
+      + (pills ? '<span style="display:flex;gap:var(--sp-2);flex-wrap:wrap;justify-content:flex-end">' + pills + '</span>' : '') + '</div></a>';
   }
   function newsCard(it) {
     var lslug = (it.leagues || [])[0], hue = { laliga: 150, hypermotion: 195, premier: 265, seriea: 210, champions: 220 }[lslug] || 205;
@@ -121,15 +124,39 @@
       + '<div class="news__meta"><span class="time">' + (it.published ? ago(it.published) : '') + '</span></div>'
       + '<div class="news__chips">' + chips + '</div></div></a>';
   }
-  function hero(m, pill) {
+  // Raya 1X2 (probabilidad de victoria local / empate / visitante) de UN partido
+  // concreto — coloreada por equipo. Viene del live_tracker (mismo modelo/endpoint
+  // que /partido: prior de fuerza + desvanecimiento), no del snapshot de temporada.
+  var WINBAR_FALLBACK = ['#2ec98a', '#4a90ff', '#e0a13a', '#a855f7', '#ff556b', '#13c4c4'];
+  function winbarHTML(lm) {
+    if (!lm || !lm.winProbability) return '';
+    var wp = lm.winProbability;
+    var h = (lm.home && lm.home.color) || WINBAR_FALLBACK[0];
+    var aRaw = lm.away && lm.away.color;
+    var a = (aRaw && aRaw.toLowerCase() !== h.toLowerCase()) ? aRaw
+      : (WINBAR_FALLBACK.filter(function (c) { return c.toLowerCase() !== h.toLowerCase(); })[0] || WINBAR_FALLBACK[1]);
+    var hn = (lm.home && (lm.home.abbr || lm.home.name)) || '', an = (lm.away && (lm.away.abbr || lm.away.name)) || '';
+    return '<div class="winbar" aria-label="Probabilidad de resultado">'
+      + '<div class="winbar__track">'
+      + '<span class="winbar__seg h" style="width:' + wp.pHome + '%;background:' + esc(h) + '"></span>'
+      + '<span class="winbar__seg d" style="width:' + wp.pDraw + '%"></span>'
+      + '<span class="winbar__seg a" style="width:' + wp.pAway + '%;background:' + esc(a) + '"></span>'
+      + '</div>'
+      + '<div class="winbar__legend"><b>' + esc(hn) + ' ' + wp.pHome + '%</b>'
+      + '<span class="mid">Empate ' + wp.pDraw + '%</span>'
+      + '<b>' + esc(an) + ' ' + wp.pAway + '%</b></div>'
+      + (wp.note ? '<div class="winbar__note">' + esc(wp.note) + '</div>' : '') + '</div>';
+  }
+  function hero(m, pill, winbar) {
     var mid = m.state === 'pre' ? esc(kick(m.date)) : (m.state === 'in' ? esc(m.clock || 'EN VIVO') : ((m.home.score == null ? '' : m.home.score) + '–' + (m.away.score == null ? '' : m.away.score)));
     var sub = m.state === 'post' ? 'Final' : (m.state === 'in' ? 'En vivo' : esc(lname(m.slug)));
-    return '<section class="hero-match"><p class="eyebrow hero-match__eyebrow">Destacado para ti</p>'
+    var href = matchHref(m), tag = href ? 'a' : 'section';
+    return '<' + tag + ' class="hero-match"' + (href ? ' href="' + esc(href) + '"' : '') + '><p class="eyebrow hero-match__eyebrow">Destacado para ti</p>'
       + '<div class="hero-match__row">'
       + '<div class="hero-match__team">' + crest(m.home.logo, m.home.name, m.home.id) + '<span class="name">' + esc(m.home.name) + '</span></div>'
       + '<div class="hero-match__vs"><span class="kick">' + mid + '</span>' + sub + '</div>'
       + '<div class="hero-match__team">' + crest(m.away.logo, m.away.name, m.away.id) + '<span class="name">' + esc(m.away.name) + '</span></div>'
-      + '</div>' + (pill ? '<div style="text-align:center;margin-top:var(--sp-5)">' + pill + '</div>' : '') + '</section>';
+      + '</div>' + (pill ? '<div style="text-align:center;margin-top:var(--sp-5)">' + pill + '</div>' : '') + (winbar || '') + '</' + tag + '>';
   }
   // Rail de seguidos: competiciones (con logo) + equipos (con escudo) + añadir.
   // Líderes de una competición. En PRETEMPORADA o con datos inestables (prob.first
@@ -146,13 +173,13 @@
     if (!snap || !snap.teams) return '';
     var L = leaders(snap, 5, table), title = (L.mode === 'std' ? 'Clasificación · ' : 'Favoritos al título · ') + lname(slug);
     var rows = L.rows.map(function (r) { return '<div class="trend"><span class="rank num">' + r.num + '</span>' + crest(r.t.logo, r.t.name, r.t.id) + '<span class="name">' + esc(r.t.name) + '</span><span class="val">' + r.val + '</span></div>'; }).join('');
-    return '<div class="rail-card"><h4>' + esc(title) + '</h4>' + rows + '</div>';
+    return '<a class="rail-card" href="/' + esc(slug) + '"><h4>' + esc(title) + '</h4>' + rows + '</a>';
   }
   function leadersCard(snap, slug, table) {
     if (!snap || !snap.teams) return '';
     var L = leaders(snap, 5, table), head = (L.mode === 'std' ? 'Clasificación · ' : 'Favoritos al título · Monte Carlo · ') + lname(slug);
     var rows = L.rows.map(function (r) { return '<div class="mini__row"><span class="pos num">' + r.num + '</span>' + crest(r.t.logo, r.t.name, r.t.id) + '<span class="name">' + esc(r.t.name) + '</span><span class="pj"></span><span class="pts" style="color:var(--up)">' + r.val + '</span></div>'; }).join('');
-    return '<article class="card"><div class="card__head"><span class="lg-name">' + esc(head) + '</span></div><div class="mini">' + rows + '</div></article>';
+    return '<a class="card card--link" href="/' + esc(slug) + '"><div class="card__head"><span class="lg-name">' + esc(head) + '</span></div><div class="mini">' + rows + '</div></a>';
   }
   function feedSec(title, moreTxt, moreHref, tagHTML) {
     return '<div class="feed-sec"><h2 class="feed-sec__title">' + esc(title) + (tagHTML || '') + '</h2>'
@@ -163,7 +190,7 @@
   // Foco en el equipo FAVORITO: su partido más cercano (con probabilidades) + su
   // clasificación (±2 y todas las zonas >10%) + su última noticia. Debajo, el resto
   // de noticias de lo que sigue — sin más tablas ni partidos.
-  function buildUserHTML(f, matches, snaps, allNews, tables) {
+  function buildUserHTML(f, matches, snaps, allNews, tables, liveMatchDetail) {
     matches = matches || {}; tables = tables || {};
     var teams = (f.teams || []).slice(0, 4), favId = f.favorite_team && String(f.favorite_team.espn_team_id);
     teams.sort(function (a, b) { return (String(b.espn_team_id) === favId) - (String(a.espn_team_id) === favId); });
@@ -188,7 +215,7 @@
         var ft = (favSnap.teams || []).filter(function (x) { return String(x.id) === String(fav.espn_team_id); })[0];
         if (ft) { var b = bandForRank(favSnap, ft.rank), p = b && pct(ft.prob[b.key]); if (b && p != null) pill = '<span class="prob-pill" style="color:var(' + zoneVar(b) + ');background:transparent;border-color:currentColor">' + esc(fav.name) + ' · ' + p + '% ' + esc(b.label) + '</span>'; }
       }
-      col.push(hero(favM, pill));
+      col.push(hero(favM, pill, winbarHTML(liveMatchDetail)));
     }
     if (fav) {
       var mt = miniTable(favSnap, fav.espn_team_id, fav.name, tables[fav.league_slug], fav.league_slug);
@@ -271,6 +298,14 @@
           var matches = {}; if (fav && r2[0]) matches[fav.espn_team_id] = r2[0];
           var tables = {}; if (primary && r2[1]) tables[primary] = r2[1];
           mount(buildUserHTML(f, matches, snaps, news, tables));
+          // Fase 3: probabilidad 1X2 + colores del partido del favorito (live_tracker).
+          var favM = fav && matches[fav.espn_team_id];
+          if (favM && favM.id) {
+            D.liveMatch(fav.league_slug, favM.id).then(function (lm) {
+              if (my !== token || !lm) return;
+              mount(buildUserHTML(f, matches, snaps, news, tables, lm));
+            });
+          }
         }).catch(fail);
     }).catch(fail);
   }
