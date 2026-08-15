@@ -343,7 +343,6 @@
   // ── Voto 1X2 de la comunidad (solo /partido; requiere cuenta de Google) ───
   // El voto solo se puede emitir mientras el partido está en 'pre'. Los
   // porcentajes quedan ocultos hasta que el usuario vota (o el partido empieza).
-  var VOTE_PICKS = ['1', 'X', '2'];
   var lastMatch = null;
 
   function votesBase() {
@@ -451,24 +450,26 @@
   function renderVoteDone(host, m, votes, total, mine) {
     if (!host || !m) return;
     host.style.display = '';
-    var rows = VOTE_PICKS.map(function (k) {
-      var p = pctOf(votes, k), sel = mine === k ? ' is-sel' : '';
-      var fill = k === '1' ? COL.home : k === '2' ? COL.away : 'var(--muted)';
-      return '<div class="vote__res' + sel + '">' +
-        '<span class="vote__res-name">' + esc(voteName(k, m)) + '</span>' +
-        '<span class="vote__res-track"><span class="vote__res-fill" style="width:' + p + '%;background:' + fill + '"></span></span>' +
-        '<span class="vote__res-pct">' + p + '%</span></div>';
-    }).join('');
+    var pH = pctOf(votes, '1'), pD = pctOf(votes, 'X'), pA = pctOf(votes, '2');
     var canChange = m.status && m.status.state === 'pre';
     host.innerHTML =
       '<div class="vote">' +
         '<div class="vote__head">' +
           '<span class="vote__title">¿Quién ganará? · Comunidad</span>' +
-          '<span class="vote__meta">Tu voto: ' + esc(mine) + ' · ' + (total || 0) + ' votos' +
+          '<span class="vote__meta">Tu voto: ' + esc(voteName(mine, m)) + ' · ' + (total || 0) + ' votos' +
             (canChange ? ' · <button type="button" class="vote__change" data-change="1">Cambiar</button>' : '') +
           '</span>' +
         '</div>' +
-        '<div class="vote__results">' + rows + '</div>' +
+        '<div class="winbar" aria-label="Resultado de la votación">' +
+          '<div class="winbar__track">' +
+            '<span class="winbar__seg h" style="width:' + pH + '%;background:' + COL.home + '"></span>' +
+            '<span class="winbar__seg d" style="width:' + pD + '%"></span>' +
+            '<span class="winbar__seg a" style="width:' + pA + '%;background:' + COL.away + '"></span>' +
+          '</div>' +
+          '<div class="winbar__legend"><b>' + esc(m.home.abbr || m.home.name) + ' ' + pH + '%</b>' +
+          '<span class="mid">Empate ' + pD + '%</span>' +
+          '<b>' + esc(m.away.abbr || m.away.name) + ' ' + pA + '%</b></div>' +
+        '</div>' +
       '</div>';
     var ch = host.querySelector('.vote__change');
     if (ch) ch.addEventListener('click', function () { renderVotePick(host, m, total); });
