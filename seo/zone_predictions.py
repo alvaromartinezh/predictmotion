@@ -34,7 +34,7 @@ Todo dentro del pipeline del cron, best-effort (si ESPN falla, no escribe ni rom
 import json
 from datetime import datetime, timezone, timedelta
 
-from . import espn
+from . import espn, snapshots
 from .config import DATA_DIR, SIM_N_TABLE
 
 # Margen de seguridad ligado a la cadencia del cron (3h), no al calendario: si hay
@@ -61,14 +61,25 @@ def _parse_kickoff(s):
 def _is_calm(espn_code):
     """True si no hay ningún partido en juego ahora ni ningún saque en la próxima
     hora. Rango de 3 días (ayer..mañana) para cubrir directos y saques cercanos con
-    holgura de zona horaria. Best-effort: [] (sin partidos en el rango) = calma;
-    esta función solo se invoca tras un fetch_table OK, así que [] significa
-    genuinamente 'no hay partidos', no un error de red."""
+    holgura de zona horaria.
+
+    Si el scoreboard FALLA, NO es calma. Se invoca tras un fetch_table OK, pero ese
+    va a /apis/v2/…/standings y este a /apis/site/v2/…/scoreboard: el incidente del
+    2026-08-05 mostró que ESPN puede tirar una ruta y no la otra. Como
+    fetch_scoreboard_range devuelve [] ante cualquier error, un 403 se leía como
+    'no hay partidos' y se escribía la fila con probabilidades de media jornada —
+    que queda CONGELADA para siempre si max(gp) avanza justo después."""
     now = datetime.now(timezone.utc)
     today = now.date()
     fmt = lambda d: d.strftime("%Y%m%d")
-    events = espn.fetch_scoreboard_range(
-        espn_code, fmt(today - timedelta(days=1)), fmt(today + timedelta(days=1)))
+    try:
+        events = espn.fetch_scoreboard_range(
+            espn_code, fmt(today - timedelta(days=1)), fmt(today + timedelta(days=1)),
+            strict=True)
+    except Exception as e:
+        print(f"[zone_predictions] {espn_code}: scoreboard no disponible ({e}); "
+              f"no se toca la fila de esta jornada")
+        return False
     margin = now + timedelta(minutes=KICKOFF_MARGIN_MINUTES)
     for ev in events:
         if ev.get("state") == "in":
@@ -101,7 +112,12 @@ def _write_rows(path, rows_by_jornada):
     la que se está upsertando se conservan tal cual (congeladas)."""
     lines = [json.dumps(rows_by_jornada[j], ensure_ascii=False)
              for j in sorted(rows_by_jornada)]
-    path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+    # Atómica (tmp+rename): es una reescritura ENTERA del fichero en cada pasada de
+    # calma, y sus filas de jornadas pasadas están congeladas y no se pueden
+    # regenerar. Morir a mitad de write_text (OOM del pool de 4, kill del cron,
+    # disco lleno) se llevaba por delante el histórico de calibración de la
+    # temporada, sin aviso.
+    snapshots._write_atomic(path, "\n".join(lines) + ("\n" if lines else ""))
 
 
 def record_jornada(league, snap):

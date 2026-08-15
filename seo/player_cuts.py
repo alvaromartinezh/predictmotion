@@ -184,22 +184,29 @@ def run(leagues, limit=DEFAULT_LIMIT, dry_run=False):
         done += 1
         if dry_run:
             continue
+        fallo = False
         for attempt in range(3):
             try:
                 u = lookup_cutout(name, team)
                 break
             except Exception:
                 if attempt == 2:
-                    u = None  # fallo de red → no cachear, reintentará otro día
+                    u, fallo = None, True
                     break
                 time.sleep(BACKOFF_S)
         if u:
             found += 1
-        cache[aid] = {"u": u, "t": int(time.time())}
-        if not dry_run and done % _SAVE_EVERY == 0:
-            save_cache(cache)
+        # Un fallo de RED no es "este jugador no tiene foto": si se cacheara, el
+        # re-probe (RE_PROBE_DAYS=30) lo daría por resuelto un mes, y una caída de
+        # TheSportsDB durante unas pocas pasadas envenenaría casi toda la plantilla
+        # — cada pasada quemando su presupuesto en los 200 siguientes.
+        if not fallo:
+            cache[aid] = {"u": u, "t": int(time.time())}
+            if not dry_run and done % _SAVE_EVERY == 0:
+                save_cache(cache)
         if not dry_run:
-            print(f"  [{done}/{len(todo)}] {name} → {'FOTO' if u else '—'}")
+            print(f"  [{done}/{len(todo)}] {name} → "
+                  f"{'FOTO' if u else 'ERROR DE RED' if fallo else '—'}")
             sys.stdout.flush()
         time.sleep(SLEEP)
 

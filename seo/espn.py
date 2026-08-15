@@ -145,16 +145,23 @@ def fetch_roster(espn_code, team_id):
     return out
 
 
-def fetch_scoreboard_range(espn_code, start_yyyymmdd, end_yyyymmdd):
+def fetch_scoreboard_range(espn_code, start_yyyymmdd, end_yyyymmdd, strict=False):
     """Eventos del scoreboard en un rango de fechas (YYYYMMDD-YYYYMMDD),
     normalizados. Best-effort → [] si falla. Usado por el registro de predicciones.
     Cada evento: {event_id, date, kickoff, state, home{id,name}, away{id,name},
     home_score, away_score} (scores None si aún no jugado). `date` es solo la fecha
-    (YYYY-MM-DD); `kickoff` es el timestamp ISO completo (para umbrales de hora)."""
+    (YYYY-MM-DD); `kickoff` es el timestamp ISO completo (para umbrales de hora).
+
+    `strict=True` PROPAGA el error en vez de devolver []. Para el llamante que
+    necesita distinguir "no hay partidos" de "no pude preguntar": tragarse el fallo
+    hace que un 403 parezca calma y se congele una fila de calibración a mitad de
+    jornada."""
     try:
         data = _get_json(f"{_BASE_SITE}/{espn_code}/scoreboard"
                          f"?dates={start_yyyymmdd}-{end_yyyymmdd}&limit=500")
     except Exception:
+        if strict:
+            raise
         return []
 
     def _score(c):

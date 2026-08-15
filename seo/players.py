@@ -92,6 +92,7 @@ def _player_data(athlete: dict, team: dict, league_slug: str, season: str,
                         val = int(val)
                     stat_map[name] = val
     def _g(k): return stat_map.get(k) if k in stat_map else '--'
+    def _gg(*ks): return next((stat_map[k] for k in ks if k in stat_map), '--')
 
     # Foto: headshot ESPN (vía combiner, redimensionado) o cutout TheSportsDB.
     aid = str(athlete.get("id", ""))
@@ -124,11 +125,16 @@ def _player_data(athlete: dict, team: dict, league_slug: str, season: str,
         "flag":         flag.get("href") if isinstance(flag, dict) else None,
         "headshot":     headshot,
         "injury":       injury_text,
+        # `_gg` prueba varios nombres y se queda con el PRIMERO QUE EXISTE, no con
+        # el primero que sea verdadero: con `or`, un 0 legítimo (la mayoría de los
+        # jugadores en goles y asistencias) caía al nombre alternativo — que ESPN no
+        # publica en el roster — y se mostraba '--' en vez de '0'. Los nombres
+        # reales son appearances/totalGoals/goalAssists; 'minutes' no existe.
         "stats": {
-            "matches":  _g("appearances") or _g("gamesPlayed"),
-            "minutes": _g("minutes"),
-            "goals":    _g("totalGoals") or _g("goals"),
-            "assists":  _g("goalAssists") or _g("assists"),
+            "matches":  _gg("appearances", "gamesPlayed"),
+            "minutes":  _gg("minutes"),
+            "goals":    _gg("totalGoals", "goals"),
+            "assists":  _gg("goalAssists", "assists"),
             "yellow":   _g("yellowCards"),
             "red":      _g("redCards"),
         },
@@ -206,6 +212,16 @@ def run(league_slugs: list[str] | None = None, dry_run: bool = False,
             league_players = league_players[:limit]
         all_players.extend(league_players)
         print(f"  [{slug}] {len(league_players)} fichas")
+
+    # El índice se reescribe entero desde `all_players`: si ESPN falla para todas
+    # las ligas (el 403 del 2026-08-05 es precedente) el bucle solo apunta en
+    # `errors` y seguía escribiendo un índice VACÍO — /buscar deja de encontrar
+    # jugadores mientras sus data/players/<id>.json siguen en disco. Sin fichas,
+    # mejor dejar el índice anterior tal cual.
+    if not dry_run and not all_players:
+        print("players: 0 fichas (¿ESPN caído?), se conserva el índice anterior.",
+              file=sys.stderr)
+        return {"ok": 0, "errors": errors}
 
     if not dry_run:
         for p in all_players:

@@ -116,6 +116,18 @@ def _process_table(league, today, dry_run, ratings=None):
         snap = _process_offseason(league, meta, today, dry_run)
         return snap, []
 
+    # La temporada es la CLAVE DE PARTICIÓN del histórico. Si el scoreboard falla
+    # (endpoint distinto del de standings: ya han fallado por separado),
+    # fetch_league_meta devuelve season=None y el snapshot caía al `season` FIJO de
+    # config.py — 2025-26 — archivando la tabla de 2026-27 dentro de la temporada
+    # anterior y cruzando por jornada las dos, justo lo que la partición existe para
+    # evitar. Mejor saltarse la liga esta pasada: el aviso de fallo parcial lo dice y
+    # la siguiente se recupera sola.
+    if not meta.get("season"):
+        raise RuntimeError(
+            "ESPN no devolvió la temporada (scoreboard caído): no se archiva el "
+            "snapshot para no mezclarlo con la temporada de config.py")
+
     rows = espn.fetch_table(league["espn_code"])
     # use_strength=False (UEFA) → modelo uniforme, sin prior. Se fuerza ratings=None
     # para NO heredar un prior parcial e inconsistente (los clubes que además juegan
@@ -213,11 +225,35 @@ def _run(args):
     # Prior de fuerza: se construye UNA vez (la temporada previa de ambas
     # divisiones) y se comparte entre ligas. Best-effort: si falla, ratings={} y
     # el Monte Carlo corre en modo uniforme de siempre.
-    current_year = espn.fetch_current_season_year(LEAGUES[0]["espn_code"])
+    # El año sale de UNA sola llamada; si esa falla, TODAS las ligas pierden el
+    # prior. Se reintenta con las siguientes antes de rendirse: son endpoints
+    # distintos y ESPN ha fallado por liga suelta.
+    current_year = None
+    for lg in leagues:
+        current_year = espn.fetch_current_season_year(lg["espn_code"])
+        if current_year:
+            break
     active_codes = {lg["espn_code"] for lg in leagues}
     ratings = espn.build_strength_ratings(current_year, active_codes)
     print(f"Prior de fuerza: {len(ratings)} equipos con rating"
           f" (temporada previa {current_year - 1 if current_year else '??'})")
+
+    # Sin ratings, las 15 ligas simulan con el modelo UNIFORME (en pretemporada,
+    # todos los equipos con el mismo %) y publican un snapshot sin `strength`. Como
+    # las ligas sí se generan, `ok` sale 15 y no saltaba ninguna de las dos alertas:
+    # el sitio entero cambiaba de modelo en silencio. Solo se avisa si alguna liga
+    # esperaba prior (UEFA corre sin él por diseño, use_strength=False).
+    if not ratings and not args.dry_run and not args.league \
+            and any(lg.get("use_strength") is not False for lg in leagues):
+        notify.send_alert(
+            "[PredictMotion] generate_site: sin prior de fuerza",
+            "No se pudo construir el prior de fuerza (temporada previa de ESPN), "
+            "así que TODAS las ligas se han simulado con el modelo uniforme: en "
+            "pretemporada eso son porcentajes casi iguales para todos los equipos.\n\n"
+            f"Año de temporada detectado: {current_year or 'ninguno'}.\n\n"
+            "Revisar /home/ubuntu/seo_generate.log en el servidor.",
+            dedup_key="generate_site_no_strength",
+        )
 
     jobs = _resolve_jobs(args, len(leagues))
     tasks = [(lg["slug"], today, args.dry_run) for lg in leagues]
@@ -284,9 +320,24 @@ def _run(args):
     if not args.dry_run and not args.league:
         try:
             from . import players
-            players.run()
+            res = players.run()
+            # `run()` recoge un error por liga y sigue: sin mirar el retorno, que
+            # /buscar se quedara sin la mitad de los jugadores (o sin ninguno) no lo
+            # veía nadie. Mismo patrón de fallo silencioso que el de las ligas.
+            if res and res.get("errors"):
+                notify.send_alert(
+                    "[PredictMotion] players: fichas incompletas",
+                    f"players.run() escribió {res.get('ok', 0)} fichas con "
+                    f"{len(res['errors'])} errores. El buscador (/buscar) solo "
+                    "encuentra a los jugadores del índice.\n\n"
+                    + "\n".join(f"  - {e}" for e in res["errors"][:20]),
+                    dedup_key="players_partial",
+                )
         except Exception as exc:
             print(f"  [SKIP] players: {exc}", file=sys.stderr)
+            notify.send_alert(
+                "[PredictMotion] players: excepción",
+                f"players.run() lanzó: {exc}", dedup_key="players_crash")
 
     print(f"\nFin — {ok}/{len(leagues)} ligas generadas.")
 
