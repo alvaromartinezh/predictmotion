@@ -142,18 +142,21 @@
     };
   }
 
-  // Elige el partido relevante de un equipo: en vivo > último jugado > próximo.
+  // Elige el partido relevante de un equipo: en vivo > el más cercano en el tiempo
+  // entre el último jugado y el próximo (el que quede más cerca de "ahora").
   function pickTeamMatch(events, slug) {
     var parsed = (events || []).map(function (e) { return parseEvent(e, slug); }).filter(Boolean);
     var live = parsed.filter(function (p) { return p.state === 'in'; });
     if (live.length) return live[0];
     var now = Date.now();
     var past = parsed.filter(function (p) { return p.state === 'post'; })
-      .sort(function (a, b) { return new Date(b.date) - new Date(a.date); });
-    if (past.length) return past[0];
-    var future = parsed.filter(function (p) { return p.state === 'pre' && new Date(p.date) >= now - 6 * 3600e3; })
-      .sort(function (a, b) { return new Date(a.date) - new Date(b.date); });
-    return future[0] || parsed[0] || null;
+      .sort(function (a, b) { return new Date(b.date) - new Date(a.date); })[0];
+    var future = parsed.filter(function (p) { return p.state === 'pre'; })
+      .sort(function (a, b) { return new Date(a.date) - new Date(b.date); })[0];
+    if (!past) return future || parsed[0] || null;
+    if (!future) return past;
+    var dPast = now - new Date(past.date), dFuture = new Date(future.date) - now;
+    return dFuture < dPast ? future : past;
   }
 
   window.PMData = {
