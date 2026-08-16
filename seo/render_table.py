@@ -6,7 +6,7 @@ sale de variables reales; si un dato no existe, la frase no se incluye.
 
 from . import links as L
 from .chrome import (page, esc, crumbs, avatar, prob_cell, stat_card, sparkline,
-                     COLOR_PALETTE)
+                     COLOR_PALETTE, team_avatar, delta_span)
 from .config import SITE
 from .snapshots import per_period_series
 from .textutil import pct, signed, ordinal, de_league, en_league
@@ -37,13 +37,10 @@ def _zone_color(bands, rank):
 
 
 def _av(team, size=32):
-    color = COLOR_PALETTE[(team["rank"] - 1) % len(COLOR_PALETTE)]
-    return avatar(team.get("logo"), team["name"], color, size=size)
+    return team_avatar(team.get("logo"), team["name"], team["rank"] - 1, size=size)
 
 
-def _delta_span(d, unit="pp"):
-    cls = "delta-up" if d > 0.05 else "delta-down" if d < -0.05 else "delta-eq"
-    return f'<span class="{cls}">{signed(d)} {unit}</span>'
+_delta_span = delta_span
 
 
 # ── Página de equipo ────────────────────────────────────────────────────────
@@ -149,8 +146,11 @@ def _team_page(league, snap, series, team, extras, logo):
     if team["logo"]:
         ld["logo"] = team["logo"]
 
+    # og:image/favicon del equipo: su propio escudo es más específico para una
+    # vista previa social que el de la competición (fallback si ESPN no lo trae).
     html = page(title, desc, L.team_url(slug, team["slug"]), body,
-                heading=league["name"], logo=logo, badge=f"Jornada <strong>{j}</strong>",
+                heading=league["name"], logo=team["logo"] or logo,
+                badge=f"Jornada <strong>{j}</strong>",
                 json_ld=[ld], active_nav=league["dashboard"])
     return L.team_file(slug, team["slug"]), html
 
@@ -278,8 +278,16 @@ def _jornada_page(league, after, before, logo):
     title = f'Jornada {j} · Probabilidades de {league["name"]} {league["season"]}'
     desc = (f'Evolución de las probabilidades {de_league(league)} en la jornada {j}: '
             f'cuánto movió cada resultado la carrera por {primary["label"].lower()}.')
+    ld = {
+        "@context": "https://schema.org", "@type": "ItemList", "name": title,
+        "itemListElement": [
+            {"@type": "ListItem", "position": t["rank"], "name": t["name"],
+             "url": SITE + L.team_url(slug, t["slug"])}
+            for t in sorted(after["teams"], key=lambda x: x["rank"])],
+    }
     return L.jornada_file(slug, j), page(title, desc, L.jornada_url(slug, j), body,
                                          heading=league["name"], logo=logo, badge=f"Jornada <strong>{j}</strong>",
+                                         json_ld=[ld],
                                          active_nav=league["dashboard"])
 
 

@@ -98,6 +98,28 @@ line-height:1.02;text-transform:uppercase;letter-spacing:.02em}
 .hero-meta .s{font-size:.78rem;color:var(--muted);margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .poschip{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.74rem;letter-spacing:.05em;
 text-transform:uppercase;padding:3px 10px;border-radius:20px;border:1px solid var(--border);background:var(--surface)}
+
+/* Cabecera de partido grande (previa del día, articles/render.py): mismo
+   patrón que .hero-match de la home (assets/shell.css), portado a los
+   tokens de esta página en vez de cargar ese stylesheet aparte (paleta y
+   tipografía incompatibles entre los dos sistemas de diseño del sitio). */
+.match-hero{padding:22px 20px 20px;background:linear-gradient(180deg,var(--surface2),var(--surface))}
+.match-hero__row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:14px}
+.match-hero__team{display:flex;flex-direction:column;align-items:center;gap:9px;min-width:0}
+.match-hero__team .name{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.95rem;
+text-transform:uppercase;letter-spacing:.02em;text-align:center}
+.match-hero__vs{font-family:'Inconsolata',monospace;color:var(--muted);font-size:.72rem;text-align:center}
+.match-hero__vs .kick{display:block;font-family:'Barlow Condensed',sans-serif;font-weight:800;
+font-size:1.7rem;color:var(--text);line-height:1.05;margin-bottom:2px}
+.winbar{max-width:420px;margin:18px auto 0}
+.winbar__track{display:flex;height:8px;border-radius:20px;overflow:hidden;background:var(--surface2)}
+.winbar__seg{height:100%}
+.winbar__seg.h{background:var(--accent)}
+.winbar__seg.d{background:var(--border)}
+.winbar__seg.a{background:var(--blue)}
+.winbar__legend{display:flex;justify-content:space-between;margin-top:7px;
+font-family:'Inconsolata',monospace;font-size:.7rem;color:var(--muted)}
+.winbar__legend b{color:var(--text);font-weight:600}
 .poschip.green{color:var(--green);border-color:rgba(0,201,122,.4)}
 .poschip.blue{color:var(--blue);border-color:rgba(61,142,245,.4)}
 .poschip.violet{color:var(--violet);border-color:rgba(155,107,255,.4)}
@@ -194,6 +216,31 @@ text-decoration:none;color:var(--text);background:var(--surface2);border:1px sol
 border-radius:8px;padding:8px 11px;transition:border-color .15s,color .15s}
 .chips a:hover{border-color:var(--muted);color:var(--accent)}
 .chips a .av{border-radius:4px}
+/* Variante de tap-target más grande (p.ej. equipos mencionados en un
+   artículo): mismo componente .chips, más aire para tocar bien en móvil. */
+.chips-lg a{padding:11px 15px;font-size:.9rem;gap:9px}
+
+/* Carrusel horizontal (artículos relacionados) — 3 tarjetas visibles,
+   snap al deslizar + botón/degradado a la derecha mientras queda contenido
+   (JS solo esconde el aviso al llegar al final; el scroll nativo funciona
+   sin él). */
+.carousel-wrap{position:relative}
+.carousel{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;
+-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none}
+.carousel::-webkit-scrollbar{display:none}
+.carousel-item{flex:0 0 calc(33.333% - 8px);min-width:170px;scroll-snap-align:start}
+.carousel-item .card{height:100%;margin-bottom:0}
+.carousel-wrap::after{content:"";position:absolute;top:0;right:0;bottom:0;width:36px;
+background:linear-gradient(to right,transparent,var(--surface));pointer-events:none;
+opacity:1;transition:opacity .2s}
+.carousel-wrap.at-end::after{opacity:0}
+.carousel-nav{position:absolute;top:50%;right:2px;transform:translateY(-50%);
+width:28px;height:28px;border-radius:50%;border:1px solid var(--border);
+background:var(--surface2);color:var(--text);font-size:1rem;line-height:1;
+display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:.9;
+transition:opacity .2s}
+.carousel-nav:hover{color:var(--accent);border-color:var(--muted)}
+.carousel-wrap.at-end .carousel-nav{opacity:0;pointer-events:none}
 
 /* Footer */
 footer{max-width:940px;margin:26px auto 0;padding-top:16px;border-top:1px solid var(--border);
@@ -203,7 +250,11 @@ footer a:hover{color:var(--text)}
 
 @media (max-width:600px){
 .header-text h1{font-size:1.4rem}.hero-meta .h{font-size:1.5rem}.hero-av{width:52px;height:52px}
-thead th,td{padding:8px 9px}.prob{min-width:78px}.stat .v{font-size:1.85rem}.lede{font-size:.98rem}}
+thead th,td{padding:8px 9px}.prob{min-width:78px}.stat .v{font-size:1.85rem}.lede{font-size:.98rem}
+.carousel-item{flex-basis:calc(50% - 8px)}
+.chips-lg a{padding:13px 17px;font-size:.94rem;gap:10px}
+.match-hero__row{gap:8px}.match-hero .hero-av{width:52px;height:52px}
+.match-hero__team .name{font-size:.78rem}.match-hero__vs .kick{font-size:1.3rem}}
 """
 
 # Ligas para la barra de navegación (mismas rutas limpias del sitio). Se deriva
@@ -250,6 +301,20 @@ def prob_cell(value, color):
             f'<div class="pbg"><div class="pf fill-{color}" style="width:{w:.1f}%"></div></div></div>')
 
 
+def team_avatar(logo, name, seed, size=32):
+    """Avatar de equipo con color determinista de COLOR_PALETTE por `seed`
+    (normalmente rank-1 o un índice) — compartido por render_table.py y
+    articles/render.py para no reimplementar la misma paleta+fallback dos veces."""
+    color = COLOR_PALETTE[seed % len(COLOR_PALETTE)]
+    return avatar(logo, name, color, size=size)
+
+
+def delta_span(d, unit="pp"):
+    from .textutil import signed
+    cls = "delta-up" if d > 0.05 else "delta-down" if d < -0.05 else "delta-eq"
+    return f'<span class="{cls}">{signed(d)} {unit}</span>'
+
+
 def stat_card(value, label, color):
     from .textutil import pct
     w = min(max(value, 0), 100)
@@ -287,23 +352,32 @@ def crumbs(items):
 
 
 def page(title, description, canonical_path, body, *, heading, logo=None, badge=None,
-         json_ld=None, active_nav=None, og_type="website"):
+         json_ld=None, active_nav=None, og_type="website", show_nav=True, noindex=False):
     """HTML completo. `heading` = H1 del header; `title` = <title>/meta.
 
     `logo` = logo de la COMPETICIÓN (nunca el de la web). Se usa en la cabecera,
     og:image y favicon. Si no hay logo, simplemente se omiten.
-    """
+
+    `show_nav=False` omite la barra de las 15 competiciones (irrelevante en
+    páginas centradas en contenido, como los artículos, donde ya hay
+    breadcrumbs + enlaces internos propios).
+
+    `noindex=True` para páginas que no deben indexarse (p.ej. la vista previa
+    privada de artículos en /preview-articulos, gateada aparte por
+    basic_auth en Caddy — este meta es una segunda capa, no la que protege
+    el acceso)."""
     ld = ""
     for block in (json_ld or []):
         ld += ('<script type="application/ld+json">'
                + json.dumps(block, ensure_ascii=False) + "</script>\n")
 
     nav_html = ""
-    for href, label in _nav():
-        if href == active_nav:
-            nav_html += f'<span class="league-btn active">{esc(label)}</span>'
-        else:
-            nav_html += f'<a class="league-btn" href="{href}">{esc(label)}</a>'
+    if show_nav:
+        for href, label in _nav():
+            if href == active_nav:
+                nav_html += f'<span class="league-btn active">{esc(label)}</span>'
+            else:
+                nav_html += f'<a class="league-btn" href="{href}">{esc(label)}</a>'
 
     badge_html = f'<div class="header-actions"><div class="badge">{badge}</div></div>' if badge else ""
     logo_box = f'<div class="logo"><img src="{esc(logo)}" alt="{esc(heading)}"></div>' if logo else ""
@@ -319,7 +393,7 @@ def page(title, description, canonical_path, body, *, heading, logo=None, badge=
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{esc(title)}</title>
 <meta name="description" content="{esc(description)}">
-<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<meta name="robots" content="{'noindex, nofollow' if noindex else 'index, follow, max-snippet:-1, max-image-preview:large'}">
 <meta name="theme-color" content="#060916">
 <link rel="canonical" href="{canonical}">
 <meta property="og:type" content="{og_type}">
@@ -345,7 +419,7 @@ def page(title, description, canonical_path, body, *, heading, logo=None, badge=
 <p>PredictMotion · Simulación Monte Carlo</p></div>
 {badge_html}
 </div></div>
-<nav class="league-nav">{nav_html}</nav>
+{'<nav class="league-nav">' + nav_html + '</nav>' if show_nav else ''}
 <div class="wrap">
 {body}
 </div>
