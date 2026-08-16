@@ -244,20 +244,13 @@ def _preview_cards(index):
 _PUBLIC_INDEX_NAME = "latest.json"
 
 
-def _write_public_index(index):
-    """Índice público de artículos PUBLICADOS (`data/articles/latest.json`,
-    en el mismo `ARTICLES_DATA_DIR` que los JSON por artículo pero con
-    nombre reservado — ver el skip en _preview_index de arriba), servido sin
-    gate por el `file_server` genérico de Caddy (mismo bucket que
-    `data/news/latest.json`, que ya se sirve así). Lo consume el home para
-    poder filtrar artículos por follows (`/preview-home`, ver plan) — mismos
-    campos `leagues`/`teams` que noticias, pero sin heurística de alias: el
-    tagging ya está en el payload de grounding (`render._mentioned_teams`),
-    estructurado desde el principio, no adivinado de texto libre.
-
-    `index`: artículos publicados (`_published_index()`), más recientes
-    primero. Escritura atómica (tmp+rename) para que un lector concurrente
-    (el propio home, en pleno fetch) nunca vea el fichero a medias."""
+def _index_payload(index):
+    """{generated, count, items} para un índice de artículos consumible por
+    el home — `leagues`/`teams` salen de `render._mentioned_teams` (dato ya
+    estructurado en el payload de grounding, sin heurística de alias como
+    noticias). Compartido por el índice público y el de preview: la única
+    diferencia entre los dos es de qué lista de artículos parten y dónde se
+    escriben."""
     items = []
     for a in index:
         teams = render._mentioned_teams(a["type"], a["grounding_data"])
@@ -267,13 +260,41 @@ def _write_public_index(index):
             "teams": [{"id": tid, "name": name} for tid, name, _logo in teams],
             "generated_at": a["generated_at"],
         })
-    payload = {"generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-              "count": len(items), "items": items}
-    path = ARTICLES_DATA_DIR / _PUBLIC_INDEX_NAME
+    return {"generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+           "count": len(items), "items": items}
+
+
+def _write_json_atomic(path, payload):
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
     os.replace(tmp, path)
+
+
+def _write_public_index(index):
+    """Índice público de artículos PUBLICADOS (`data/articles/latest.json`,
+    en el mismo `ARTICLES_DATA_DIR` que los JSON por artículo pero con
+    nombre reservado — ver el skip en _preview_index de arriba), servido sin
+    gate por el `file_server` genérico de Caddy (mismo bucket que
+    `data/news/latest.json`, que ya se sirve así). `index`: artículos
+    publicados (`_published_index()`), más recientes primero. Escritura
+    atómica para que un lector concurrente (el home, en pleno fetch) nunca
+    vea el fichero a medias."""
+    _write_json_atomic(ARTICLES_DATA_DIR / _PUBLIC_INDEX_NAME, _index_payload(index))
+
+
+def _write_preview_index(index):
+    """Como _write_public_index pero para /preview-home (ver plan): se
+    escribe DENTRO de `preview-articulos/` — la misma carpeta que ya sirve
+    Caddy gateada por basic_auth (`@previewarticulos path /preview-articulos
+    /preview-articulos/*`) — para que este índice, que expone títulos y
+    equipos de artículos AÚN NO públicos, quede protegido igual que las
+    páginas que enlaza, sin una regla de Caddy nueva. `index`:
+    `_preview_index()` (draft/pending_review/flagged), más recientes
+    primero. Se regenera SIEMPRE (no solo en --publish) — mismo trigger que
+    el resto del preview, ver más abajo."""
+    _write_json_atomic(ARTICLES_OUT_DIR.parent / "preview-articulos" / _PUBLIC_INDEX_NAME,
+                       _index_payload(index))
 
 
 def _fuentes_txt(article):
@@ -443,6 +464,7 @@ def _run(args):
                 print(f"  [WARN] preview render failed {a['slug']}: {e}", file=sys.stderr)
         hub_path, hub_html = render.render_preview_hub(_preview_cards(preview_articles))
         files[hub_path] = hub_html
+        _write_preview_index(preview_articles)
 
     if not args.dry_run:
         for relpath, html in files.items():

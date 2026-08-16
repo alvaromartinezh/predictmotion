@@ -195,11 +195,18 @@
 
   // ── NUEVO: carrusel de "Artículos" (editorial IA) ──
   // Mismo dato/patrón que las noticias (leagues[]/teams[] para filtrar por
-  // follows) pero servido desde data/articles/latest.json (articles/generate.py)
-  // en vez de data/news/latest.json. Fetch inline (no PMData.articles todavía:
-  // este fichero es la versión preview, ver cabecera).
+  // follows). PREVIEW: los artículos todavía no se publican de verdad
+  // (articles/generate.run() corre siempre sin --publish, ver CLAUDE.md), así
+  // que aquí se lee el índice de PREVIEW (preview-articulos/latest.json,
+  // gateado por la misma basic_auth que el resto de /preview-articulos — ver
+  // generate.py:_write_preview_index) y se enlaza a la vista preview de cada
+  // artículo. Al graduar esto a home.js real: cambiar ambas rutas de
+  // '/preview-articulos/...' a '/articulos/...' (data/articles/latest.json +
+  // _write_public_index), nada más — la lógica de filtrado no cambia.
+  var ARTICLES_INDEX_URL = '/preview-articulos/latest.json';
+  var ARTICLE_URL_BASE = '/preview-articulos/';
   function fetchArticles() {
-    return fetch('/data/articles/latest.json', { cache: 'no-store' })
+    return fetch(ARTICLES_INDEX_URL, { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) { return (j && j.items) || []; })
       .catch(function () { return []; });
@@ -209,7 +216,7 @@
     cronica_partido: 'Crónica', previa_diaria: 'Previa', resumen_diario: 'Resumen',
   };
   function articleCard(a) {
-    return '<a class="card card--link acarousel-item" href="/articulos/' + esc(a.slug) + '">'
+    return '<a class="card card--link acarousel-item" href="' + ARTICLE_URL_BASE + esc(a.slug) + '">'
       + leagueHead(a.league, '<span class="chip chip--accent">' + esc(ARTICLE_TYPE_LABEL[a.type] || 'Artículo') + '</span>')
       + '<div class="acard__body"><div class="news__title">' + esc(a.title) + '</div>'
       + '<div class="news__meta">' + esc(a.meta_description) + '</div></div></a>';
