@@ -291,7 +291,6 @@ html[data-theme="light"] .poss__seg { color: #fff; }
 }
 .vote__opt:hover { border-color: var(--accent-line); background: var(--surface-3); }
 .vote__opt.is-active { border-color: var(--accent); background: var(--accent-soft); }
-.vote__opt.is-active .vote__opt-key { background: var(--accent); color: var(--accent-ink, #08111f); }
 .vote__opt-key {
   width: 26px; height: 26px; flex: none; display: grid; place-items: center; border-radius: var(--r-xs);
   background: var(--surface-3); font-family: var(--font-mono); font-weight: 700; font-size: var(--fs-12); color: var(--accent);

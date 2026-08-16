@@ -437,9 +437,14 @@
       '</div>';
   }
 
+  // Mismos colores de equipo que la barra de resultado y las de Datos
+  // (COL.home/COL.away); el empate se queda neutro, como en esas barras.
   function voteOption(pick, m, current) {
+    var col = pick === '1' ? COL.home : pick === '2' ? COL.away : null;
+    var txt = pick === '1' ? COL.homeText : pick === '2' ? COL.awayText : null;
+    var keyStyle = col ? ' style="background:' + col + ';color:' + txt + '"' : '';
     return '<button type="button" class="vote__opt' + (pick === current ? ' is-active' : '') + '" data-pick="' + pick + '">' +
-      '<span class="vote__opt-key">' + pick + '</span>' +
+      '<span class="vote__opt-key"' + keyStyle + '>' + pick + '</span>' +
       '<span class="vote__opt-name">' + esc(voteName(pick, m)) + '</span></button>';
   }
 
