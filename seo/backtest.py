@@ -36,6 +36,7 @@ from . import espn
 from .config import (STRENGTH_LADDERS, STRENGTH_SCALE, STRENGTH_LEVEL_GAP,
                      STRENGTH_FADE_FRACTION, STRENGTH_SCALE_ABS, DRAW_SHRINK_KAPPA,
                      STRENGTH_LEVEL_GAP_ABS, PROJECTION_HORIZON_FADE,
+                     PRIOR_SEASONS, PRIOR_DECAY,
                      DATA_DIR, league_by_slug, LEAGUES)
 from .sim_table import fade_weight
 
@@ -243,6 +244,45 @@ class Metrics:
             if c:
                 e += (c / tot) * abs(pred_sum / c - act_sum / c)
         return e
+
+
+# ── Fiabilidad ESPECÍFICA del empate ─────────────────────────────────────────
+# Metrics.ece solo bina sobre la prob. de victoria LOCAL: el empate podía estar
+# mal calibrado (sistemáticamente sobre o infra-estimado) sin que ninguna métrica
+# existente lo reflejara — el kappa=0.15 se validó por Brier/LogLoss/ECE agregados,
+# nunca contra la frecuencia real de empates. Ver cmd_draw.
+class DrawMetrics:
+    MISMATCH_EDGES = [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, float("inf")]
+
+    def __init__(self):
+        self.n = 0
+        self.n_draws = 0
+        self.sum_pd = 0.0
+        self.pd_bins = [[0.0, 0, 0] for _ in range(11)]   # p_draw en pasos de 2.5pp; último = "resto"
+        self.mm_bins = [[0.0, 0, 0] for _ in range(len(self.MISMATCH_EDGES) - 1)]
+
+    def add(self, pd, is_draw, abs_d):
+        self.n += 1
+        self.n_draws += is_draw
+        self.sum_pd += pd
+        b = self.pd_bins[min(10, int(pd / 0.025))]
+        b[0] += pd; b[1] += 1; b[2] += is_draw
+        for k in range(len(self.MISMATCH_EDGES) - 1):
+            if self.MISMATCH_EDGES[k] <= abs_d < self.MISMATCH_EDGES[k + 1]:
+                b = self.mm_bins[k]; b[0] += pd; b[1] += 1; b[2] += is_draw
+                break
+
+    def merge(self, o):
+        self.n += o.n; self.n_draws += o.n_draws; self.sum_pd += o.sum_pd
+        for i in range(len(self.pd_bins)):
+            for j in range(3): self.pd_bins[i][j] += o.pd_bins[i][j]
+        for i in range(len(self.mm_bins)):
+            for j in range(3): self.mm_bins[i][j] += o.mm_bins[i][j]
+
+    @property
+    def pred_rate(self): return self.sum_pd / self.n if self.n else float("nan")
+    @property
+    def actual_rate(self): return self.n_draws / self.n if self.n else float("nan")
 
 
 # Primeras jornadas: ventana donde el prior está a plena potencia (antes de
@@ -624,6 +664,77 @@ def cmd_multi(args):
         print(f"  {team:22} {hdr}   mercado≈{int(mk[1]*100) if mk else '?'}%")
 
 
+def cmd_draw(args):
+    """¿Sobreestima v2 la probabilidad de empate? Compara kappa=0 (bug original,
+    empate fijo pase lo que pase) contra kappa=DRAW_SHRINK_KAPPA (VIVO), con la
+    receta viva (rating multi-temporada H1) en todo lo demás. Dos desgloses:
+      - por p_draw predicha: ¿el número que se enseña está calibrado en el agregado?
+      - por |Δlogit| (desequilibrio del partido): el encogido debería bajar el sesgo
+        al crecer el desequilibrio; si no lo hace (o se pasa), se ve aquí."""
+    leagues = _leagues(args.leagues or DEFAULT_LEAGUE_SLUGS)
+    seasons = args.seasons or DEFAULT_SEASONS
+    sc, lgp, fade = STRENGTH_SCALE_ABS, STRENGTH_LEVEL_GAP_ABS, STRENGTH_FADE_FRACTION
+    ns, dc = PRIOR_SEASONS, PRIOR_DECAY
+    print(f"Fiabilidad del EMPATE: {len(leagues)} ligas × {len(seasons)} temporadas "
+          f"| rating multi n={ns} d={dc}, scale={sc}, level_gap={lgp}\n")
+
+    def run(kappa):
+        total = DrawMetrics()
+        for lg in leagues:
+            code, p_home, p_draw = lg["espn_code"], lg["p_home"], lg["p_draw"]
+            for s in seasons:
+                ratings = build_ratings_multiseason(code, s - 1, lgp, ns, dc)
+                default = min(ratings.values()) if ratings else 0.0
+                evs = [e for e in matches_cached(code, s)
+                       if e["state"] == "post" and e["home_score"] is not None]
+                evs.sort(key=lambda e: e["kickoff"] or e["date"])
+                ids = set()
+                for e in evs:
+                    ids.add(e["home"]["id"]); ids.add(e["away"]["id"])
+                n = len(ids) or 20
+                total_md = 2 * (n - 1)
+                gp = {i: 0 for i in ids}
+                for e in evs:
+                    hid, aid = e["home"]["id"], e["away"]["id"]
+                    jornada = (gp[hid] + gp[aid]) / 2.0
+                    w = fade_weight(jornada, total_md * (fade / STRENGTH_FADE_FRACTION)) if fade else 0.0
+                    Rh = ratings.get(hid, default); Ra = ratings.get(aid, default)
+                    d = w * sc * (Rh - Ra)
+                    _ph, pd, _pa = predict(Rh, Ra, w, p_home, p_draw, sc, kappa)
+                    hs, as_ = e["home_score"], e["away_score"]
+                    total.add(pd, hs == as_, abs(d))
+                    gp[hid] += 1; gp[aid] += 1
+        return total
+
+    for label, kappa in [("kappa=0 (bug original, empate fijo)", 0.0),
+                          (f"kappa={DRAW_SHRINK_KAPPA} (VIVO)", DRAW_SHRINK_KAPPA)]:
+        m = run(kappa)
+        bias = (m.pred_rate - m.actual_rate) * 100
+        print(f"{label}")
+        print(f"  Global: predicha={m.pred_rate*100:5.2f}%  real={m.actual_rate*100:5.2f}%  "
+              f"sesgo={bias:+5.2f}pp (positivo = sobreestima)   N={m.n}")
+        print(f"  Por p_draw predicha:")
+        print(f"    {'p_draw':>11} {'n':>6} {'predicha':>9} {'real':>7} {'sesgo':>7}")
+        for i, (s, n, nd) in enumerate(m.pd_bins):
+            if not n:
+                continue
+            lo = i * 2.5
+            lbl = f"{lo:.1f}-{lo + 2.5:.1f}%" if i < 10 else "≥27.5%"
+            pred, act = s / n * 100, nd / n * 100
+            print(f"    {lbl:>11} {n:6d} {pred:8.2f}% {act:6.2f}% {pred - act:+6.2f}pp")
+        print(f"  Por desequilibrio |Δlogit| (ahí actúa el encogido):")
+        print(f"    {'|d|':>11} {'n':>6} {'predicha':>9} {'real':>7} {'sesgo':>7}")
+        edges = DrawMetrics.MISMATCH_EDGES
+        for i, (s, n, nd) in enumerate(m.mm_bins):
+            if not n:
+                continue
+            lo, hi = edges[i], edges[i + 1]
+            lbl = f"{lo:.1f}-{hi:.1f}" if hi != float("inf") else f"≥{lo:.1f}"
+            pred, act = s / n * 100, nd / n * 100
+            print(f"    {lbl:>11} {n:6d} {pred:8.2f}% {act:6.2f}% {pred - act:+6.2f}pp")
+        print()
+
+
 # ── Capa de calibración post-hoc (isotónica, stdlib PAV) ─────────────────────
 # Fix INDEPENDIENTE y ADITIVO sobre el prior multi-temporada: no lo reemplaza.
 # Mapea prob_predicha → frecuencia observada, UNIFORME (no por equipo). Se valida
@@ -874,6 +985,7 @@ def main():
     ap.add_argument("--recency", action="store_true", help="barrido de la vida media (half-life) del prior por partido")
     ap.add_argument("--multi", action="store_true", help="barrido del prior multi-temporada (H1) vs. el prior vivo")
     ap.add_argument("--calib", action="store_true", help="capa de calibración post-hoc isotónica (LOSO) sobre H1")
+    ap.add_argument("--draw", action="store_true", help="fiabilidad del empate: predicha vs real, kappa=0 vs VIVO")
     ap.add_argument("--leagues", nargs="*", help="slugs (por defecto: 1as europeas)")
     ap.add_argument("--seasons", nargs="*", type=int, help="años de inicio (2022 2023 …)")
     ap.add_argument("--scale", type=float, default=0.8)
@@ -883,6 +995,8 @@ def main():
     args = ap.parse_args()
     if args.grid:
         cmd_grid(args)
+    elif args.draw:
+        cmd_draw(args)
     elif args.multi:
         cmd_multi(args)
     elif args.calib:
