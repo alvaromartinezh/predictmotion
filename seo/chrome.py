@@ -287,7 +287,7 @@ def crumbs(items):
 
 
 def page(title, description, canonical_path, body, *, heading, logo=None, badge=None,
-         json_ld=None, active_nav=None):
+         json_ld=None, active_nav=None, og_type="website"):
     """HTML completo. `heading` = H1 del header; `title` = <title>/meta.
 
     `logo` = logo de la COMPETICIÓN (nunca el de la web). Se usa en la cabecera,
@@ -322,7 +322,7 @@ def page(title, description, canonical_path, body, *, heading, logo=None, badge=
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
 <meta name="theme-color" content="#060916">
 <link rel="canonical" href="{canonical}">
-<meta property="og:type" content="website">
+<meta property="og:type" content="{og_type}">
 <meta property="og:title" content="{esc(title)}">
 <meta property="og:description" content="{esc(description)}">
 <meta property="og:url" content="{canonical}">
