@@ -59,7 +59,6 @@ a.sl-team:hover .sl-name { color: var(--accent); }
 .winbar__legend { display: flex; justify-content: space-between; margin-top: var(--sp-2); font-family: var(--font-mono); font-size: var(--fs-12); color: var(--text-2); }
 .winbar__legend b { color: var(--text); font-weight: 600; }
 .winbar__legend .mid { color: var(--muted); }
-.winbar__note { text-align: center; margin-top: var(--sp-2); font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
 
 /* ===== Contenedores centrados ===== */
 .page-tabs, .tab-section { max-width: var(--maxw); margin-left: auto; margin-right: auto; }
@@ -291,6 +290,8 @@ html[data-theme="light"] .poss__seg { color: #fff; }
   color: var(--text); font: inherit; transition: border-color .14s var(--ease), background .14s var(--ease);
 }
 .vote__opt:hover { border-color: var(--accent-line); background: var(--surface-3); }
+.vote__opt.is-active { border-color: var(--accent); background: var(--accent-soft); }
+.vote__opt.is-active .vote__opt-key { background: var(--accent); color: var(--accent-ink, #08111f); }
 .vote__opt-key {
   width: 26px; height: 26px; flex: none; display: grid; place-items: center; border-radius: var(--r-xs);
   background: var(--surface-3); font-family: var(--font-mono); font-weight: 700; font-size: var(--fs-12); color: var(--accent);
@@ -305,10 +306,12 @@ html[data-theme="light"] .poss__seg { color: #fff; }
 .vote__login:hover { background: var(--accent-line); }
 .vote .winbar { max-width: none; margin-top: 0; }
 .vote__change {
-  background: none; border: none; padding: 0; cursor: pointer; color: var(--accent);
-  font: inherit; text-decoration: underline; font-family: var(--font-mono); font-size: var(--fs-12);
+  display: block; width: 100%; margin-top: var(--sp-4); padding: var(--sp-3) var(--sp-4); cursor: pointer;
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-md); color: var(--text);
+  font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: .03em; font-size: var(--fs-13);
+  transition: border-color .14s var(--ease), background .14s var(--ease);
 }
-.vote__change:hover { color: var(--text); }
+.vote__change:hover { border-color: var(--accent-line); background: var(--surface-3); }
 .vote--locked .vote__head { margin-bottom: 0; }
 
 @media (max-width: 480px) {

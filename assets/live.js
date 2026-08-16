@@ -164,7 +164,6 @@
           '<div class="winbar__legend"><b>' + esc(m.home.abbr || m.home.name) + ' ' + wp.pHome + '%</b>' +
           '<span class="mid">Empate ' + wp.pDraw + '%</span>' +
           '<b>' + esc(m.away.abbr || m.away.name) + ' ' + wp.pAway + '%</b></div>' +
-          (wp.note ? '<div class="winbar__note">' + esc(wp.note) + '</div>' : '') +
         '</div>';
     }
     el('match-header').innerHTML = '<div class="match-hd">' + meta + scoreline + winbar + '</div>';
@@ -438,23 +437,25 @@
       '</div>';
   }
 
-  function voteOption(pick, m) {
-    return '<button type="button" class="vote__opt" data-pick="' + pick + '">' +
+  function voteOption(pick, m, current) {
+    return '<button type="button" class="vote__opt' + (pick === current ? ' is-active' : '') + '" data-pick="' + pick + '">' +
       '<span class="vote__opt-key">' + pick + '</span>' +
       '<span class="vote__opt-name">' + esc(voteName(pick, m)) + '</span></button>';
   }
 
-  function renderVotePick(host, m, total) {
+  // `current` = voto ya emitido (al venir del botón "Cambiar mi voto") para
+  // resaltar la opción de partida; ausente en la primera votación.
+  function renderVotePick(host, m, total, current) {
     host.style.display = '';
     host.innerHTML =
       '<div class="vote">' +
         '<div class="vote__head">' +
           '<span class="vote__title">¿Quién ganará?</span>' +
-          '<span class="vote__meta">Vota para ver los porcentajes' +
+          '<span class="vote__meta">' + (current ? 'Elige otro resultado para cambiar tu voto' : 'Vota para ver los porcentajes') +
             (total ? ' · ' + total + ' votos' : '') + '</span>' +
         '</div>' +
         '<div class="vote__options">' +
-          voteOption('1', m) + voteOption('X', m) + voteOption('2', m) +
+          voteOption('1', m, current) + voteOption('X', m, current) + voteOption('2', m, current) +
         '</div>' +
       '</div>';
     wireVoteOptions(host);
@@ -488,9 +489,7 @@
       '<div class="vote">' +
         '<div class="vote__head">' +
           '<span class="vote__title">¿Quién ganará? · Comunidad</span>' +
-          '<span class="vote__meta">Tu voto: ' + esc(voteName(mine, m)) + ' · ' + (total || 0) + ' votos' +
-            (canChange ? ' · <button type="button" class="vote__change" data-change="1">Cambiar</button>' : '') +
-          '</span>' +
+          '<span class="vote__meta">Tu voto: ' + esc(voteName(mine, m)) + ' · ' + (total || 0) + ' votos</span>' +
         '</div>' +
         '<div class="winbar" aria-label="Resultado de la votación">' +
           '<div class="winbar__track">' +
@@ -502,9 +501,10 @@
           '<span class="mid">Empate ' + pD + '%</span>' +
           '<b>' + esc(m.away.abbr || m.away.name) + ' ' + pA + '%</b></div>' +
         '</div>' +
+        (canChange ? '<button type="button" class="vote__change">Cambiar mi voto</button>' : '') +
       '</div>';
     var ch = host.querySelector('.vote__change');
-    if (ch) ch.addEventListener('click', function () { renderVotePick(host, m, total); });
+    if (ch) ch.addEventListener('click', function () { renderVotePick(host, m, total, mine); });
   }
 
   function renderVoteClosed(host, m) {
