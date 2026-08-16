@@ -269,11 +269,21 @@
   }
   function renderLineups(m) {
     var lu = m.lineups || {};
-    if (!lu.home && !lu.away) {
-      el('lv-lineups').innerHTML = '<div class="lv-msg">Alineaciones no disponibles todavía.</div>';
+    // ESPN publica las alineaciones ~1h antes del saque; hasta entonces puede
+    // devolver el objeto de equipo ya presente pero sin titulares (roster
+    // vacío), no ausente del todo — hay que mirar los titulares, no solo si
+    // `lu.home`/`lu.away` existen.
+    var hasLineup = (lu.home && lu.home.starters && lu.home.starters.length) ||
+                    (lu.away && lu.away.starters && lu.away.starters.length);
+    if (!hasLineup) {
+      el('lv-lineups').innerHTML = '<div class="lv-msg lv-msg--bare">Alineaciones no disponibles todavía.</div>';
       return;
     }
-    if (!lu[lineupSide]) lineupSide = lu.home ? 'home' : 'away';
+    // Si el lado seleccionado no tiene titulares (p. ej. solo se publicó un
+    // equipo todavía), cae al que sí los tenga.
+    if (!(lu[lineupSide] && lu[lineupSide].starters && lu[lineupSide].starters.length)) {
+      lineupSide = (lu.home && lu.home.starters && lu.home.starters.length) ? 'home' : 'away';
+    }
     el('lv-lineups').innerHTML = sideSwitchHTML(m, lineupSide) +
       buildPitch(lu, m, lineupSide) +
       '<div class="lineup-wrap">' + benchBlock(lu[lineupSide], m[lineupSide]) + '</div>';
