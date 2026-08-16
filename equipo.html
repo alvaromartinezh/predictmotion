@@ -116,25 +116,25 @@
     }
     .stats-switch-btn:hover { color:var(--text); }
     .stats-switch-btn.is-active { border-color:var(--accent); background:var(--surface2); color:var(--text); }
-    .stats-switch-btn .tag { font-family:var(--font-mono); font-size:.6rem; font-weight:600; color:var(--accent); }
 
-    /* ── Estadísticas de la competición activa ── */
+    /* ── Estadísticas de la competición activa: tira compacta, datos objetivos
+       (ESPN) en segundo plano frente a las probabilidades que calculamos. ── */
     #stats-grid { max-width:940px; margin:0 auto 16px; }
     .comp-stats { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
-    .comp-stats-header { display:flex; align-items:center; gap:8px; padding:10px 16px; background:var(--surface2); border-bottom:1px solid var(--border); }
-    .comp-stats-name { font-family:var(--font-display); font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); }
-    .comp-stats-sub { margin-left:auto; font-family:var(--font-mono); font-size:.65rem; color:var(--muted); }
-    .comp-stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:8px; padding:14px; }
-    .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; }
+    .comp-stats-header { display:flex; align-items:center; gap:8px; padding:8px 14px; background:var(--surface2); border-bottom:1px solid var(--border); }
+    .comp-stats-name { font-family:var(--font-mono); font-size:.62rem; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }
+    .comp-stats-sub { margin-left:auto; font-family:var(--font-mono); font-size:.6rem; color:var(--muted); }
+    .comp-stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(68px,1fr)); }
+    .stat-card { padding:8px 4px; text-align:center; border-left:1px solid var(--border); }
+    .stat-card:first-child { border-left:none; }
     .stat-card .label {
-      font-family:var(--font-display);
-      font-size:.65rem; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; margin-bottom:6px; font-weight:700;
+      font-family:var(--font-mono);
+      font-size:.55rem; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; margin-bottom:2px; font-weight:600;
     }
     .stat-card .value {
       font-family:var(--font-display);
-      font-size:2rem; font-weight:800; line-height:1;
+      font-size:1.05rem; font-weight:800; line-height:1;
     }
-    .stat-card .sub { font-size:.7rem; color:var(--muted); margin-top:3px; }
 
     .probs-empty {
       max-width:940px; margin:0 auto 16px; padding:22px 18px; text-align:center;
@@ -435,7 +435,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <section class="team-view" id="view-stats">
 <!-- Switch de competición: solo se muestra si el equipo juega en más de una -->
 <div class="stats-switch" id="stats-switch" hidden></div>
-<!-- Estadísticas de la competición activa -->
+
+<!-- Lo que calculamos nosotros va primero: probabilidades Monte Carlo -->
+<div class="probs-row" id="probs-row">
+  <div class="prob-card green"><div class="p-label" style="color:var(--green)">Ascenso directo</div><div class="p-pct skeleton" style="height:32px;width:80px;border-radius:6px"></div></div>
+  <div class="prob-card blue"><div class="p-label" style="color:var(--blue)">Play-off</div><div class="p-pct skeleton" style="height:32px;width:80px;border-radius:6px"></div></div>
+  <div class="prob-card red"><div class="p-label" style="color:var(--red)">Descenso</div><div class="p-pct skeleton" style="height:32px;width:80px;border-radius:6px"></div></div>
+</div>
+
+<!-- Debajo, los datos objetivos de la competición (ESPN): tira compacta -->
 <div id="stats-grid">
   <div class="comp-stats">
     <div class="comp-stats-header">
@@ -452,13 +460,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="stat-card"><div class="label">Diferencia</div><div class="skeleton sk-stat"></div></div>
     </div>
   </div>
-</div>
-
-<!-- Probabilidades Monte Carlo -->
-<div class="probs-row" id="probs-row">
-  <div class="prob-card green"><div class="p-label" style="color:var(--green)">Ascenso directo</div><div class="p-pct skeleton" style="height:32px;width:80px;border-radius:6px"></div></div>
-  <div class="prob-card blue"><div class="p-label" style="color:var(--blue)">Play-off</div><div class="p-pct skeleton" style="height:32px;width:80px;border-radius:6px"></div></div>
-  <div class="prob-card red"><div class="p-label" style="color:var(--red)">Descenso</div><div class="p-pct skeleton" style="height:32px;width:80px;border-radius:6px"></div></div>
 </div>
 </section>
 
@@ -1230,9 +1231,7 @@ function renderStatsSwitch(blocks) {
   if (blocks.length < 2) { host.hidden = true; host.innerHTML = ''; return; }
   host.hidden = false;
   host.innerHTML = blocks.map((b, i) => `
-    <button type="button" class="stats-switch-btn${i === activeStatsIdx ? ' is-active' : ''}" data-idx="${i}">
-      ${b.name}${b.tag ? '<span class="tag">Actual</span>' : ''}
-    </button>`).join('');
+    <button type="button" class="stats-switch-btn${i === activeStatsIdx ? ' is-active' : ''}" data-idx="${i}">${b.name}</button>`).join('');
   host.querySelectorAll('.stats-switch-btn').forEach(btn => {
     btn.addEventListener('click', () => selectStatsBlock(parseInt(btn.dataset.idx, 10)));
   });
