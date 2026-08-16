@@ -11,11 +11,12 @@ from datetime import datetime, timezone
 from html import escape
 from urllib.parse import quote
 
-from .config import (DATA_DIR, STRENGTH_SCALE, STRENGTH_FADE_FRACTION,
+from . import links as L
+from .config import (DATA_DIR, SITE, STRENGTH_SCALE, STRENGTH_FADE_FRACTION,
                      USE_ABSOLUTE_RATING, STRENGTH_SCALE_ABS, DRAW_SHRINK_KAPPA,
                      PROJECTION_HORIZON_FADE)
 from .sim_table import zone_prob, resolve_strengths
-from .textutil import slugify
+from .textutil import pct, slugify
 
 
 # ── Construcción ────────────────────────────────────────────────────────────
@@ -136,7 +137,73 @@ def build_table_snapshot(league, rows, sim, sim_n, today, league_logo=None,
             snap["projection_horizon_fade"] = PROJECTION_HORIZON_FADE
     # Filas de tabla servidas sin JS (Caddy inyecta rows.html en el tbody).
     snap["rows_html"] = render_rows_html(league, snap)
+    # <head> dinámico (título/descripción/OG/JSON-LD) servido por el mismo
+    # mecanismo de Caddy templates sobre los 15 dashboards.
+    snap["head_fragments"] = render_head_fragments(league, snap)
     return snap
+
+
+def render_head_fragments(league, snap):
+    """Fragmentos de <head> dinámico para los dashboards: título, descripción,
+    imagen social y JSON-LD basados en la tabla ACTUAL (líder + probabilidad de su
+    zona + jornada), no en texto fijo de plantilla. Caddy los inyecta sobre la
+    plantilla estática (mismo patrón que rows.html/tbody).
+
+    Devuelve {} si no hay tabla (no ocurre en la práctica: build_table_snapshot ya
+    habría fallado antes calculando `jornada` sobre una tabla vacía; el guard es
+    para que la persistencia sepa que no debe escribir nada, igual que
+    render_rows_html hace con offseason)."""
+    teams = snap.get("teams") or []
+    bands = snap.get("bands") or []
+    if not teams or not bands:
+        return {}
+    leader = min(teams, key=lambda t: t["rank"])
+    primary = bands[0]
+    pv = leader["prob"].get(primary["key"], 0)
+    name, season, jornada, zone = league["name"], snap["season"], snap["jornada"], primary["label"]
+    slug = league["slug"]
+
+    title = (f'{name} {season}: {leader["name"]} lidera con {pct(pv)} de '
+             f'{zone.lower()} · Jornada {jornada} | PredictMotion')
+    desc = (f'Clasificación de {name} {season} con probabilidades en tiempo real: '
+            f'{leader["name"]} lidera con {pct(pv)} de {zone.lower()} tras la '
+            f'jornada {jornada}. Simulación Monte Carlo actualizada.')
+    image = snap.get("league_logo") or f'{SITE}/media/twitter_profile.png'
+
+    top = sorted(teams, key=lambda t: t["prob"].get(primary["key"], 0), reverse=True)[:5]
+    item_list = {
+        "@context": "https://schema.org", "@type": "ItemList",
+        "name": f'{name} {season} · Favoritos a {zone.lower()}',
+        "itemListElement": [
+            {"@type": "ListItem", "position": i + 1, "name": t["name"],
+             "url": SITE + L.team_url(slug, t["slug"])}
+            for i, t in enumerate(top)
+        ],
+    }
+    web_app = {
+        "@context": "https://schema.org", "@type": "WebApplication",
+        "name": f'PredictMotion – {name} {season}',
+        "description": desc,
+        "url": f'{SITE}/{slug}',
+        "applicationCategory": "SportsApplication",
+        "operatingSystem": "Web",
+        "inLanguage": "es-ES",
+        "dateModified": snap.get("generated_at"),
+        "about": {"@type": "SportsOrganization", "name": name, "sport": "Soccer"},
+        "offers": {"@type": "Offer", "price": "0", "priceCurrency": "EUR"},
+    }
+    jsonld = (
+        '<script type="application/ld+json">'
+        + json.dumps(web_app, ensure_ascii=False) + '</script>\n  '
+        '<script type="application/ld+json">'
+        + json.dumps(item_list, ensure_ascii=False) + '</script>'
+    )
+    return {
+        "title": escape(title, quote=True),
+        "desc": escape(desc, quote=True),
+        "image": escape(image, quote=True),
+        "jsonld": jsonld,
+    }
 
 
 # ── Filas de tabla servidas (SEO sin JavaScript) ─────────────────────────────
@@ -277,14 +344,42 @@ def _write_atomic(path, text):
 
 
 def _payload(snap):
-    """JSON del snapshot SIN `rows_html`.
+    """JSON del snapshot SIN `rows_html`/`head_fragments`.
 
     Las filas servidas sin JS van en su propio fichero `rows.html` (es el que lee la
     plantilla de Caddy); dentro del JSON no las lee nadie —ni el motor, ni los
     dashboards, ni pm-data.js— pero eran el 75-81% de sus bytes, y /buscar se baja
-    los 15 snapshots de una vez."""
-    return json.dumps({k: v for k, v in snap.items() if k != "rows_html"},
+    los 15 snapshots de una vez. `head_fragments` es el mismo caso: solo lo lee
+    `_write_head_fragments` para escribir los `head_*` sueltos."""
+    skip = ("rows_html", "head_fragments")
+    return json.dumps({k: v for k, v in snap.items() if k not in skip},
                       ensure_ascii=False, indent=1)
+
+
+_HEAD_FRAGMENT_FILES = {
+    "title":  "head_title.txt",
+    "desc":   "head_desc.txt",
+    "image":  "head_image.txt",
+    "jsonld": "head_jsonld.html",
+}
+
+
+def _write_head_fragments(league_dir, fragments):
+    """Escribe (o limpia) los fragmentos de <head> dinámico de un dashboard.
+
+    Sin fragmentos (offseason, o una tabla vacía que en la práctica no ocurre) hay
+    que BORRAR los ficheros existentes en vez de dejarlos: si quedaran de una
+    ejecución anterior, `fileExists` en Caddy seguiría dando true y serviría un
+    título/JSON-LD stale de meses atrás en vez de caer al texto genérico de la
+    plantilla."""
+    league_dir.mkdir(parents=True, exist_ok=True)
+    for key, fname in _HEAD_FRAGMENT_FILES.items():
+        path = league_dir / fname
+        value = fragments.get(key)
+        if value:
+            _write_atomic(path, value)
+        else:
+            path.unlink(missing_ok=True)
 
 
 def save_snapshot(snap):
@@ -295,6 +390,7 @@ def save_snapshot(snap):
     _write_atomic(d / "latest.json", payload)                # latest de la temporada
     _write_atomic(DATA_DIR / snap["league"] / "latest.json", payload)  # latest vivo (dashboards)
     _write_atomic(DATA_DIR / snap["league"] / "rows.html", snap.get("rows_html", ""))
+    _write_head_fragments(DATA_DIR / snap["league"], snap.get("head_fragments") or {})
     return path
 
 
@@ -306,8 +402,10 @@ def save_offseason_latest(slug, snap):
     anterior (Principio 1: una competición terminada no se congela)."""
     (DATA_DIR / slug).mkdir(parents=True, exist_ok=True)
     _write_atomic(DATA_DIR / slug / "latest.json", _payload(snap))
-    # rows.html VACÍO (o el tbody serviría la tabla de la temporada acabada).
+    # rows.html VACÍO (o el tbody serviría la tabla de la temporada acabada); sin
+    # head_fragments (se limpian los head_* si quedaran de la temporada viva).
     _write_atomic(DATA_DIR / slug / "rows.html", snap.get("rows_html", ""))
+    _write_head_fragments(DATA_DIR / slug, {})
 
 
 def load_all(slug, season):

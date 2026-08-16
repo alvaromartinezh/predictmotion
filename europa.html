@@ -37,7 +37,7 @@
   <script src="/assets/league-engine.js?v=20260816h"></script>
   <script src="/assets/fixtures.js?v=20260816h"></script>
 
-  <title>Europa League 2025-26 · Probabilidades de la fase de liga</title>
+  <title>{{if fileExists "/data/europa/head_title.txt"}}{{readFile "/data/europa/head_title.txt"}}{{else}}Europa League 2025-26 · Probabilidades de la fase de liga{{end}}</title>
   <style>
   /* ===== europa.html · estilos de página (sistema base en styles.css) ===== */
   main.wrap { padding-bottom: var(--sp-9); }
@@ -82,7 +82,7 @@
   </style>
 
   <!-- SEO principal -->
-  <meta name="description" content="Simulación Monte Carlo de la Europa League 2025-26. Probabilidades en tiempo real de octavos de final, play-off de eliminatorias y eliminación para los 36 equipos de la fase de liga." />
+  <meta name="description" content="{{if fileExists "/data/europa/head_desc.txt"}}{{readFile "/data/europa/head_desc.txt"}}{{else}}Simulación Monte Carlo de la Europa League 2025-26. Probabilidades en tiempo real de octavos de final, play-off de eliminatorias y eliminación para los 36 equipos de la fase de liga.{{end}}" />
   <meta name="keywords" content="Europa League, Europa League probabilidades, fase de liga Europa League, octavos Europa League, play-off eliminatorias, clasificación Europa League 2025-26, predicción fútbol, simulación Monte Carlo" />
   <meta name="author" content="PredictMotion" />
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
@@ -94,22 +94,22 @@
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://predictmotion.com/europa" />
-  <meta property="og:title" content="Europa League 2025-26 · Probabilidades de la fase de liga" />
-  <meta property="og:description" content="Simulación Monte Carlo de la Europa League 2025-26. Probabilidades en tiempo real de octavos, play-off de eliminatorias y eliminación para los 36 equipos de la fase de liga." />
-  <meta property="og:image" content="https://predictmotion.com/media/twitter_profile.png" />
+  <meta property="og:title" content="{{if fileExists "/data/europa/head_title.txt"}}{{readFile "/data/europa/head_title.txt"}}{{else}}Europa League 2025-26 · Probabilidades de la fase de liga{{end}}" />
+  <meta property="og:description" content="{{if fileExists "/data/europa/head_desc.txt"}}{{readFile "/data/europa/head_desc.txt"}}{{else}}Simulación Monte Carlo de la Europa League 2025-26. Probabilidades en tiempo real de octavos, play-off de eliminatorias y eliminación para los 36 equipos de la fase de liga.{{end}}" />
+  <meta property="og:image" content="{{if fileExists "/data/europa/head_image.txt"}}{{readFile "/data/europa/head_image.txt"}}{{else}}https://predictmotion.com/media/twitter_profile.png{{end}}" />
   <meta property="og:image:alt" content="Logo PredictMotion" />
   <meta property="og:locale" content="es_ES" />
   <meta property="og:site_name" content="PredictMotion" />
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Europa League 2025-26 · Probabilidades de la fase de liga" />
-  <meta name="twitter:description" content="20 000 simulaciones Monte Carlo para predecir la fase de liga de la Europa League 2025-26." />
-  <meta name="twitter:image" content="https://predictmotion.com/media/twitter_profile.png" />
+  <meta name="twitter:title" content="{{if fileExists "/data/europa/head_title.txt"}}{{readFile "/data/europa/head_title.txt"}}{{else}}Europa League 2025-26 · Probabilidades de la fase de liga{{end}}" />
+  <meta name="twitter:description" content="{{if fileExists "/data/europa/head_desc.txt"}}{{readFile "/data/europa/head_desc.txt"}}{{else}}20 000 simulaciones Monte Carlo para predecir la fase de liga de la Europa League 2025-26.{{end}}" />
+  <meta name="twitter:image" content="{{if fileExists "/data/europa/head_image.txt"}}{{readFile "/data/europa/head_image.txt"}}{{else}}https://predictmotion.com/media/twitter_profile.png{{end}}" />
   <meta name="twitter:image:alt" content="Logo PredictMotion" />
 
   <!-- Structured Data (JSON-LD) -->
-  <script type="application/ld+json">
+  {{if fileExists "/data/europa/head_jsonld.html"}}{{readFile "/data/europa/head_jsonld.html"}}{{else}}<script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "WebApplication",
@@ -130,7 +130,7 @@
       "priceCurrency": "EUR"
     }
   }
-  </script>
+  </script>{{end}}
 
   <!-- Google AdSense Auto Ads -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3055585323326983"

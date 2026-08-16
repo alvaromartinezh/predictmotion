@@ -36,7 +36,7 @@
   <script src="/assets/league-engine.js?v=20260816h"></script>
   <script src="/assets/fixtures.js?v=20260816h"></script>
 
-  <title>Ligue 2 2025-26 · Probabilidades de Ascenso y Descenso</title>
+  <title>{{if fileExists "/data/ligue2/head_title.txt"}}{{readFile "/data/ligue2/head_title.txt"}}{{else}}Ligue 2 2025-26 · Probabilidades de Ascenso y Descenso{{end}}</title>
   <style>
   /* ===== ligue2.html · estilos de página (sistema base en styles.css) ===== */
   /* Alias de variables heredadas que usan los strings inline del JS (bracket) */
@@ -114,7 +114,7 @@
   </style>
 
   <!-- SEO principal -->
-  <meta name="description" content="Simulación Monte Carlo de la Ligue 2 2025-26. Probabilidades en tiempo real de ascenso directo, play-off y descenso para los 22 equipos de Francia española." />
+  <meta name="description" content="{{if fileExists "/data/ligue2/head_desc.txt"}}{{readFile "/data/ligue2/head_desc.txt"}}{{else}}Simulación Monte Carlo de la Ligue 2 2025-26. Probabilidades en tiempo real de ascenso directo, play-off y descenso para los 22 equipos de Francia española.{{end}}" />
   <meta name="keywords" content="Ligue 2, Francia probabilidades, ascenso Francia, play-off ascenso, descenso Ligue 2, predicción fútbol, simulación Francia 2025-26" />
   <meta name="author" content="PredictMotion" />
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
@@ -127,36 +127,35 @@
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://predictmotion.com/ligue2" />
-  <meta property="og:title" content="Ligue 2 2025-26 · Probabilidades de Ascenso y Descenso" />
-  <meta property="og:description" content="Simulación Monte Carlo de la Ligue 2 2025-26. Probabilidades en tiempo real de ascenso directo, play-off y descenso para los 22 equipos de Francia." />
-  <meta property="og:image" content="https://predictmotion.com/media/twitter_profile.png" />
+  <meta property="og:title" content="{{if fileExists "/data/ligue2/head_title.txt"}}{{readFile "/data/ligue2/head_title.txt"}}{{else}}Ligue 2 2025-26 · Probabilidades de Ascenso y Descenso{{end}}" />
+  <meta property="og:description" content="{{if fileExists "/data/ligue2/head_desc.txt"}}{{readFile "/data/ligue2/head_desc.txt"}}{{else}}Simulación Monte Carlo de la Ligue 2 2025-26. Probabilidades en tiempo real de ascenso directo, play-off y descenso para los 22 equipos de Francia.{{end}}" />
+  <meta property="og:image" content="{{if fileExists "/data/ligue2/head_image.txt"}}{{readFile "/data/ligue2/head_image.txt"}}{{else}}https://predictmotion.com/media/twitter_profile.png{{end}}" />
   <meta property="og:image:alt" content="Logo PredictMotion" />
   <meta property="og:locale" content="es_ES" />
   <meta property="og:site_name" content="PredictMotion" />
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Ligue 2 2025-26 · Probabilidades de Ascenso y Descenso" />
-  <meta name="twitter:description" content="20 000 simulaciones Monte Carlo para predecir el final de la temporada en Francia española." />
-  <meta name="twitter:image" content="https://predictmotion.com/media/twitter_profile.png" />
+  <meta name="twitter:title" content="{{if fileExists "/data/ligue2/head_title.txt"}}{{readFile "/data/ligue2/head_title.txt"}}{{else}}Ligue 2 2025-26 · Probabilidades de Ascenso y Descenso{{end}}" />
+  <meta name="twitter:description" content="{{if fileExists "/data/ligue2/head_desc.txt"}}{{readFile "/data/ligue2/head_desc.txt"}}{{else}}20 000 simulaciones Monte Carlo para predecir el final de la temporada en Francia española.{{end}}" />
+  <meta name="twitter:image" content="{{if fileExists "/data/ligue2/head_image.txt"}}{{readFile "/data/ligue2/head_image.txt"}}{{else}}https://predictmotion.com/media/twitter_profile.png{{end}}" />
   <meta name="twitter:image:alt" content="Logo PredictMotion" />
 
   <!-- Structured Data (JSON-LD) -->
-  <script type="application/ld+json">
+  {{if fileExists "/data/ligue2/head_jsonld.html"}}{{readFile "/data/ligue2/head_jsonld.html"}}{{else}}<script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "WebApplication",
     "name": "PredictMotion – Ligue 2 2025-26",
     "description": "Simulador Monte Carlo para la Ligue 2 2025-26. Probabilidades de ascenso directo, play-off y descenso para los 22 equipos de Francia española.",
-    "url": "https://predictmotion.com/",
+    "url": "https://predictmotion.com/ligue2",
     "applicationCategory": "SportsApplication",
     "operatingSystem": "Web",
     "inLanguage": "es-ES",
     "about": {
       "@type": "SportsOrganization",
       "name": "Ligue 2",
-      "sport": "Soccer",
-      "url": "https://www.laliga.com/laliga-ligue2"
+      "sport": "Soccer"
     },
     "offers": {
       "@type": "Offer",
@@ -164,7 +163,7 @@
       "priceCurrency": "EUR"
     }
   }
-  </script>
+  </script>{{end}}
 
   <!-- Google AdSense Auto Ads -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3055585323326983"

@@ -35,7 +35,7 @@
   <script src="/assets/league-engine.js?v=20260816h"></script>
   <script src="/assets/fixtures.js?v=20260816h"></script>
 
-  <title>Bundesliga 2025-26 · Probabilidades Champions, Europa y Descenso</title>
+  <title>{{if fileExists "/data/bundesliga/head_title.txt"}}{{readFile "/data/bundesliga/head_title.txt"}}{{else}}Bundesliga 2025-26 · Probabilidades Champions, Europa y Descenso{{end}}</title>
   <style>
   /* ===== bundesliga.html · estilos de página (sistema base en styles.css) ===== */
   body {
@@ -118,7 +118,7 @@
   </style>
 
   <!-- SEO principal -->
-  <meta name="description" content="Simulación Monte Carlo de Bundesliga 2025-26. Probabilidades en tiempo real de Champions League, Europa League, Conference League y descenso para los 20 equipos de Alemania española." />
+  <meta name="description" content="{{if fileExists "/data/bundesliga/head_desc.txt"}}{{readFile "/data/bundesliga/head_desc.txt"}}{{else}}Simulación Monte Carlo de Bundesliga 2025-26. Probabilidades en tiempo real de Champions League, Europa League, Conference League y descenso para los 20 equipos de Alemania española.{{end}}" />
   <meta name="keywords" content="Bundesliga probabilidades, Alemania clasificación, Champions League probabilidad, descenso Bundesliga, predicción Bundesliga 2025-26, simulación fútbol español" />
   <meta name="author" content="PredictMotion" />
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
@@ -131,22 +131,22 @@
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://predictmotion.com/bundesliga" />
-  <meta property="og:title" content="Bundesliga 2025-26 · Probabilidades Champions, Europa y Descenso" />
-  <meta property="og:description" content="Simulación Monte Carlo de Bundesliga 2025-26. Probabilidades en tiempo real de Champions League, Europa League y descenso para los 20 equipos de Alemania." />
-  <meta property="og:image" content="https://predictmotion.com/media/twitter_profile.png" />
+  <meta property="og:title" content="{{if fileExists "/data/bundesliga/head_title.txt"}}{{readFile "/data/bundesliga/head_title.txt"}}{{else}}Bundesliga 2025-26 · Probabilidades Champions, Europa y Descenso{{end}}" />
+  <meta property="og:description" content="{{if fileExists "/data/bundesliga/head_desc.txt"}}{{readFile "/data/bundesliga/head_desc.txt"}}{{else}}Simulación Monte Carlo de Bundesliga 2025-26. Probabilidades en tiempo real de Champions League, Europa League y descenso para los 20 equipos de Alemania.{{end}}" />
+  <meta property="og:image" content="{{if fileExists "/data/bundesliga/head_image.txt"}}{{readFile "/data/bundesliga/head_image.txt"}}{{else}}https://predictmotion.com/media/twitter_profile.png{{end}}" />
   <meta property="og:image:alt" content="Logo PredictMotion" />
   <meta property="og:locale" content="es_ES" />
   <meta property="og:site_name" content="PredictMotion" />
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Bundesliga 2025-26 · Probabilidades Champions, Europa y Descenso" />
-  <meta name="twitter:description" content="20 000 simulaciones Monte Carlo para predecir el final de la temporada en Bundesliga 2025-26." />
-  <meta name="twitter:image" content="https://predictmotion.com/media/twitter_profile.png" />
+  <meta name="twitter:title" content="{{if fileExists "/data/bundesliga/head_title.txt"}}{{readFile "/data/bundesliga/head_title.txt"}}{{else}}Bundesliga 2025-26 · Probabilidades Champions, Europa y Descenso{{end}}" />
+  <meta name="twitter:description" content="{{if fileExists "/data/bundesliga/head_desc.txt"}}{{readFile "/data/bundesliga/head_desc.txt"}}{{else}}20 000 simulaciones Monte Carlo para predecir el final de la temporada en Bundesliga 2025-26.{{end}}" />
+  <meta name="twitter:image" content="{{if fileExists "/data/bundesliga/head_image.txt"}}{{readFile "/data/bundesliga/head_image.txt"}}{{else}}https://predictmotion.com/media/twitter_profile.png{{end}}" />
   <meta name="twitter:image:alt" content="Logo PredictMotion" />
 
   <!-- Structured Data (JSON-LD) -->
-  <script type="application/ld+json">
+  {{if fileExists "/data/bundesliga/head_jsonld.html"}}{{readFile "/data/bundesliga/head_jsonld.html"}}{{else}}<script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "WebApplication",
@@ -159,8 +159,7 @@
     "about": {
       "@type": "SportsOrganization",
       "name": "Bundesliga",
-      "sport": "Soccer",
-      "url": "https://www.bundesliga.com"
+      "sport": "Soccer"
     },
     "offers": {
       "@type": "Offer",
@@ -168,7 +167,7 @@
       "priceCurrency": "EUR"
     }
   }
-  </script>
+  </script>{{end}}
 
   <!-- Google AdSense Auto Ads -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3055585323326983"
