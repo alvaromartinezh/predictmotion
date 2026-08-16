@@ -392,6 +392,24 @@ def demo():
         cards = generate._preview_cards(idx)
         assert all("status" in c and c["league_name"] == "Liga Hypermotion" for c in cards)
 
+        # _write_public_index: índice público (data/articles/latest.json) para
+        # el carrusel del home — teams/leagues salen de render._mentioned_teams
+        # (dato estructurado del payload, no heurística de texto libre como en
+        # noticias). Solo artículos PUBLICADOS entran aquí.
+        published_article = json.loads((data_dir / "already-live.json").read_text(encoding="utf-8"))
+        generate._write_public_index([published_article])
+        public = json.loads((data_dir / "latest.json").read_text(encoding="utf-8"))
+        assert public["count"] == 1 and len(public["items"]) == 1
+        item = public["items"][0]
+        assert item["slug"] == "already-live" and item["league"] == "hypermotion"
+        assert item["leagues"] == ["hypermotion"]
+        assert {t["id"] for t in item["teams"]} == {"13", "14"}, item["teams"]
+        # El índice público no es un artículo: _preview_index no debe recogerlo
+        # aunque comparta carpeta y extensión con los JSON reales.
+        idx2 = generate._preview_index()
+        assert "latest" not in [a.get("slug") for a in idx2]
+        assert len(idx2) == 2
+
     print("articles.test_generate: OK")
 
 

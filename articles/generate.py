@@ -20,6 +20,7 @@ Uso:
 
 import argparse
 import json
+import os
 import sys
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -30,7 +31,7 @@ from seo.config import LEAGUES, league_by_slug
 from . import grounding, render, writer
 from .config import (ARTICLE_LEAGUES, ARTICLES_DATA_DIR, ARTICLES_MAX_PER_DAY,
                      ARTICLES_OUT_DIR, ARTICLES_PREVIEW_DIR, ARTICLES_STATE_FILE,
-                     EXPLAINER_COOLDOWN_DAYS, PREVIA_NEWS_REVIEW_UNTIL,
+                     DATA_DIR, EXPLAINER_COOLDOWN_DAYS, PREVIA_NEWS_REVIEW_UNTIL,
                      TITLE_RACE_MIN_GAP_DAYS, TITLE_RACE_PROB_SWING_TRIGGER_PP)
 from .gemini_client import GeminiError
 
@@ -219,6 +220,8 @@ def _preview_index():
         if not d.exists():
             continue
         for f in d.glob("*.json"):
+            if f.name == _PUBLIC_INDEX_NAME:   # el índice agregado, no un artículo
+                continue
             try:
                 a = json.loads(f.read_text(encoding="utf-8"))
             except (OSError, ValueError):
@@ -236,6 +239,41 @@ def _preview_cards(index):
             "league_name": league_by_slug(a["league"])["name"], "generated_at": a["generated_at"],
             "status": a["status"]}
            for a in index]
+
+
+_PUBLIC_INDEX_NAME = "latest.json"
+
+
+def _write_public_index(index):
+    """Índice público de artículos PUBLICADOS (`data/articles/latest.json`,
+    en el mismo `ARTICLES_DATA_DIR` que los JSON por artículo pero con
+    nombre reservado — ver el skip en _preview_index de arriba), servido sin
+    gate por el `file_server` genérico de Caddy (mismo bucket que
+    `data/news/latest.json`, que ya se sirve así). Lo consume el home para
+    poder filtrar artículos por follows (`/preview-home`, ver plan) — mismos
+    campos `leagues`/`teams` que noticias, pero sin heurística de alias: el
+    tagging ya está en el payload de grounding (`render._mentioned_teams`),
+    estructurado desde el principio, no adivinado de texto libre.
+
+    `index`: artículos publicados (`_published_index()`), más recientes
+    primero. Escritura atómica (tmp+rename) para que un lector concurrente
+    (el propio home, en pleno fetch) nunca vea el fichero a medias."""
+    items = []
+    for a in index:
+        teams = render._mentioned_teams(a["type"], a["grounding_data"])
+        items.append({
+            "slug": a["slug"], "title": a["title"], "meta_description": a["meta_description"],
+            "type": a["type"], "league": a["league"], "leagues": [a["league"]],
+            "teams": [{"id": tid, "name": name} for tid, name, _logo in teams],
+            "generated_at": a["generated_at"],
+        })
+    payload = {"generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "count": len(items), "items": items}
+    path = ARTICLES_DATA_DIR / _PUBLIC_INDEX_NAME
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp, path)
 
 
 def _fuentes_txt(article):
@@ -376,9 +414,11 @@ def _run(args):
                 break
 
     if args.publish and files:
-        hub_path, hub_html = render.render_hub(_article_cards(_published_index()))
+        published = _published_index()
+        hub_path, hub_html = render.render_hub(_article_cards(published))
         files[hub_path] = hub_html
         urls.append((render.hub_url(), today))
+        _write_public_index(published)
 
     # Preview privado (/preview-articulos, gateado por basic_auth en Caddy —
     # ver CLAUDE.md "Preview privado de artículos"): TODO lo que el pipeline
