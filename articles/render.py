@@ -16,6 +16,7 @@ from seo.chrome import crumbs, delta_span, esc, page, stat_card, team_avatar
 from seo.config import SITE
 from seo.textutil import pct
 
+from .illustration import figure_html, pick as pick_illustration
 from .writer import cronica_slug
 
 _MADRID_TZ = ZoneInfo("Europe/Madrid")
@@ -23,7 +24,7 @@ _MADRID_TZ = ZoneInfo("Europe/Madrid")
 # Rediseño editorial "old-newspaper" — hoja propia (assets/articles-editorial.css),
 # no toca seo/chrome.py:CSS. Bump manual del ?v= si se vuelve a tocar el CSS
 # (los artículos se generan en el servidor, no pasan por el sed de *.html del repo).
-_EDITORIAL_ASSET_V = "8"
+_EDITORIAL_ASSET_V = "9"
 _EDITORIAL_HEAD = (
     '<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900'
     '&family=PT+Serif:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">'
@@ -68,19 +69,11 @@ def _seed(team_id):
         return 0
 
 
-def _body_html(text, icon=None):
+def _body_html(text):
     """Devuelve (html, n_párrafos). `n_párrafos` decide el nº de columnas del
-    llamante (data-cols, ver assets/articles-editorial.css) — un atributo
-    explícito en vez de contar hermanos `.lede` por CSS (`:has(.lede+.lede)`)
-    porque el divisor decorativo de abajo NO es un `.lede`: insertarlo rompe
-    esa cadena de hermanos. Con `icon` y ≥3 párrafos, mete un `.col-divider`
-    (mismo icono que la marca de agua del lead card, ver _LEAD_ICON) a mitad
-    de camino — el separador vintage "entre columnas" que pidió el usuario,
-    no solo el watermark de esquina de la ronda anterior."""
+    llamante (data-cols, ver assets/articles-editorial.css)."""
     paras = [p.strip() for p in text.split("\n\n") if p.strip()]
     parts = [f'<p class="lede">{esc(p)}</p>' for p in paras]
-    if icon and len(paras) >= 3:
-        parts.insert(len(parts) // 2, f'<div class="col-divider" data-icon="{esc(icon)}"></div>')
     return "".join(parts), len(paras)
 
 
@@ -180,11 +173,6 @@ def _matches_body_html(text, partidos, builder):
     return "".join(out)
 
 
-# Iconos que separan un breve del siguiente en el resumen del día — se
-# rotan para que una jornada de 10 partidos no repita el mismo icono 9 veces.
-_BRIEF_DIVIDER_ICONS = ("goal-net", "whistle", "ball", "corner-flag", "boots", "stadium")
-
-
 def _brief_zone(t):
     """Una línea 'equipo · zona · prob (± pp)' de un breve. `delta_span` es el
     mismo de las páginas SEO; sin `prob_zona_antes_del_partido` (no hay
@@ -209,17 +197,11 @@ def _brief_zone(t):
             f'<b>{pct(prob)}</b>{d}</div>')
 
 
-def _brief(m, league_slug, text, icon):
+def _brief(m, league_slug, text):
     """Un resultado del día como breve de periódico: marcador (enlazado a la
-    crónica de ese partido, mismo destino que _match_card) + su párrafo + qué
-    le hizo el resultado a la probabilidad de zona de cada equipo, y un icono
-    vintage de cierre. Bloque autocontenido: fluye entero por una columna
-    (`break-inside:avoid`).
-
-    El icono va DENTRO del breve, al final, no como separador suelto entre
-    dos breves: en un flujo por columnas un separador entre bloques acaba al
-    pie de la columna (donde ya no separa nada) y el último breve se queda
-    sin él. Como cierre de cada breve, la marca sale siempre donde toca."""
+    crónica de ese partido) + su párrafo + qué le hizo el resultado a la
+    probabilidad de zona de cada equipo. Bloque autocontenido: fluye entero
+    por una columna (`break-inside:avoid`)."""
     l, v, r = m["local"], m["visitante"], m["resultado"]
     head = (f'{team_avatar(l.get("logo"), l["nombre"], _seed(l.get("id")), 22)}'
             f'<span class="n">{esc(l["nombre"])}</span>'
@@ -231,27 +213,23 @@ def _brief(m, league_slug, text, icon):
         head = f'<a class="brief__head" href="{esc(href)}">{head}</a>'
     else:
         head = f'<div class="brief__head">{head}</div>'
+    zones = "".join(_brief_zone(t) for t in (l, v))
     return (f'<div class="brief">{head}<p class="lede">{esc(text)}</p>'
-            + "".join(_brief_zone(t) for t in (l, v))
-            + f'<div class="col-divider" data-icon="{icon}"></div></div>')
+            + zones + '</div>')
 
 
-def _briefs_body_html(text, partidos, league_slug, icon_attr=""):
-    """Cuerpo del resumen del día: un breve por partido (ver _brief) fluyendo
-    por las columnas de un único `.card-pad[data-cols]`, con un icono vintage
-    entre breve y breve. Mismo contrato que _matches_body_html — un párrafo
-    por partido, en el orden de DATOS — y misma degradación si Gemini no lo
-    respeta: prosa suelta, sin emparejar párrafo con el partido equivocado."""
+def _briefs_body_html(text, partidos, league_slug):
+    """Cuerpo del resumen del día: un breve por partido fluyendo por las
+    columnas de un único `.card-pad[data-cols]`."""
     paras = [p.strip() for p in text.split("\n\n") if p.strip()]
     if len(paras) != len(partidos):
         prose, n = _body_html(text)
-        return (f'<div class="card"{icon_attr}><div class="card-pad" '
+        return (f'<div class="card"><div class="card-pad" '
                 f'data-cols="{min(n, 3)}">{prose}</div></div>')
     out = []
-    for i, (p, m) in enumerate(zip(paras, partidos)):
-        out.append(_brief(m, league_slug, p,
-                          _BRIEF_DIVIDER_ICONS[i % len(_BRIEF_DIVIDER_ICONS)]))
-    return (f'<div class="card"{icon_attr}><div class="card-pad" '
+    for p, m in zip(paras, partidos):
+        out.append(_brief(m, league_slug, p))
+    return (f'<div class="card"><div class="card-pad" '
             f'data-cols="{min(len(partidos), 3)}">{"".join(out)}</div></div>')
 
 
@@ -269,24 +247,9 @@ def _stat_grid(cards):
     return f'<div class="stat-grid">{"".join(stat_card(v, l, _color(c)) for v, l, c in cards)}</div>'
 
 
-# Icono de marca de agua del lead card, por tipo de artículo — ver
-# assets/articles-editorial.css (`.card[data-icon]::after`, tamaño --ico-lg).
-_LEAD_ICON = {
-    "cronica_partido": "goal-net",
-    "previa_diaria": "corner-flag",
-    "resumen_diario": "medal",
-    "recap_jornada": "ball",
-    "explicador_probabilidad": "boots",
-    "carrera_titulo": "trophy",
-}
-
-
-def _section_label(text, icon=None):
-    """`.section-label` con icono opcional a la derecha (ver
-    `.section-label[data-icon]::after` en assets/articles-editorial.css,
-    tamaño --ico-sm) — sin icono, cae en la regla simétrica de siempre."""
-    attr = f' data-icon="{icon}"' if icon else ""
-    return f'<div class="section-label"{attr}>{esc(text)}</div>'
+def _section_label(text):
+    """`.section-label` — rótulo de sección con reglas a los lados."""
+    return f'<div class="section-label">{esc(text)}</div>'
 
 
 # ── Hero + stat cards por tipo (los hechos ya vienen del payload de grounding;
@@ -381,7 +344,7 @@ def _previa_visual(payload):
 # cabecera de escudos + stat-grid aparte, sino repartidos en un breve por
 # partido dentro del propio cuerpo (ver _briefs_body_html).
 _NO_HERO_VISUALS = {
-    "previa_diaria": ("Partidos de hoy", "whistle", _previa_visual),
+    "previa_diaria": ("Partidos de hoy", _previa_visual),
 }
 
 
@@ -491,7 +454,7 @@ def _sources_card(sources):
         f'{esc(s["title"])}</a>'
         for s in sources
     )
-    return (f'<div class="card"><div class="card-pad">{_section_label("Fuentes", "tactics-board")}'
+    return (f'<div class="card"><div class="card-pad">{_section_label("Fuentes")}'
             f'<div class="chips">{links}</div></div></div>')
 
 
@@ -513,15 +476,14 @@ def render_article(article, league, logo=None, recent=None, preview=False):
     jornada = payload.get("jornada")
     crumb_label = _CRUMB_LABEL.get(tipo, "Artículo")
 
-    lead_icon_attr = f' data-icon="{_LEAD_ICON[tipo]}"' if tipo in _LEAD_ICON else ""
     lead_card = ""
     if tipo in _NO_HERO_VISUALS:
-        label, label_icon, builder = _NO_HERO_VISUALS[tipo]
+        label, builder = _NO_HERO_VISUALS[tipo]
         crests, cards = builder(payload)
         if crests:
             avs = "".join(team_avatar(logo_, name, _seed(tid), 32) for logo_, name, tid in crests)
-            lead_card = (f'<div class="card"{lead_icon_attr}><div class="card-pad">'
-                        f'{_section_label(label, label_icon)}'
+            lead_card = (f'<div class="card"><div class="card-pad">'
+                        f'{_section_label(label)}'
                         f'<div class="chips">{avs}</div></div>'
                         + (_stat_grid(cards) if cards else "") + '</div>')
     else:
@@ -529,21 +491,24 @@ def render_article(article, league, logo=None, recent=None, preview=False):
         if builder:
             hero, cards = builder(payload)
             if hero:
-                lead_card = (f'<div class="card"{lead_icon_attr}>{hero}'
+                lead_card = (f'<div class="card">{hero}'
                             + (_stat_grid(cards) if cards else "") + '</div>')
 
     mentioned = _mentioned_teams(tipo, payload)
     seguir = ""
     if recent:
         seguir += (
-            f'<div class="card"><div class="card-pad">{_section_label("Seguir viendo…", "runner")}'
+            f'<div class="card"><div class="card-pad">{_section_label("Seguir viendo…")}'
             + _article_carousel(recent[:7]) + '</div></div>'
         )
     if mentioned:
         seguir += (
-            f'<div class="card"><div class="card-pad">{_section_label("Equipos mencionados", "corner-flag")}'
+            f'<div class="card"><div class="card-pad">{_section_label("Equipos mencionados")}'
             + _mentions_chips(league, logo, mentioned) + '</div></div>'
         )
+
+    fecha = article["generated_at"][:10]
+    ill = pick_illustration(slug, tipo, fecha)
 
     if tipo == "previa_diaria":
         body_html = _matches_body_html(
@@ -552,12 +517,22 @@ def render_article(article, league, logo=None, recent=None, preview=False):
                                   liga=league["name"], hora=m.get("hora"), win_prob=m.get("win_prob")))
     elif tipo == "resumen_diario":
         body_html = _briefs_body_html(article["body"], payload.get("partidos") or [],
-                                      league["slug"], lead_icon_attr)
+                                      league["slug"])
+        if ill and body_html:
+            ill_html = figure_html(ill, full_width=True)
+            body_html = body_html.replace("</div></div>\n</div>", ill_html + "</div></div>\n</div>", 1)
+            if ill_html not in body_html:
+                body_html = ill_html + body_html
     else:
-        prose_html, n_paras = _body_html(article["body"], _LEAD_ICON.get(tipo))
+        prose_html, n_paras = _body_html(article["body"])
         cols = min(n_paras, 3)
+        ill_box = figure_html(ill) if ill else ""
         body_html = (f'<div class="card"><div class="card-pad" data-cols="{cols}">'
                      f'{prose_html}</div></div>')
+        if ill_box:
+            body_html += (f'<div class="card"><div class="card-pad">'
+                          f'<div class="illo-card">{ill_box}</div>'
+                          f'</div></div>')
 
     body = (
         crumbs([("Inicio", league["dashboard"]),

@@ -232,7 +232,7 @@ def demo():
             assert 'class="winbar"' not in html, "post-partido no lleva raya 1X2"
             assert html.count('class="brief"') == 2
             assert html.count('data-cols="2"') == 1, "2 partidos -> 2 columnas, un solo card"
-            assert html.count('class="col-divider"') == 2, "un icono de cierre por breve"
+            assert html.count('class="col-divider"') == 0, "sin iconos de cierre"
             assert '<b class="sc">2–0</b>' in html and '<b class="sc">1–1</b>' in html
             assert 'class="brief__head" href="/articulos/hypermotion-cronica-777"' in html
             assert 'class="brief__head" href="/articulos/hypermotion-cronica-778"' in html
@@ -261,8 +261,8 @@ def demo():
             # no tiene sentido.
             assert 'class="hero-av"' in html
             assert '<span class="kick">2–1</span><span class="s">Final</span>' in html
-            assert '<a class="comp-link"><div class="card" data-icon="goal-net"><div class="match-hero">' not in html
-            assert '<div class="card" data-icon="goal-net"><div class="match-hero">' in html
+            assert '<a class="comp-link"><div class="card"><div class="match-hero">' not in html
+            assert '<div class="card"><div class="match-hero">' in html
         else:
             assert 'class="hero-av"' in html, f"{tipo} debería llevar hero"
         # Seguir viendo (carrusel de artículos) + Equipos mencionados (chips),
@@ -327,7 +327,7 @@ def demo():
     _p, html1 = render.render_article(dict(article_resumen, body="Cuerpo."), league_full,
                                       logo="https://logo/liga.png")
     assert html1.count('class="brief"') == 1 and 'data-cols="1"' in html1
-    assert html1.count('class="col-divider"') == 1
+    assert html1.count('class="col-divider"') == 0, "sin iconos"
     assert '<b class="sc">2–0</b>' in html1
 
     # _pick_daily_preview: NO dispara antes de PREVIEW_LOCAL_HOUR (08:00
