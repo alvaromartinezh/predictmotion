@@ -5,8 +5,15 @@ cron propio: hereda la cadencia del cron SEO existente). La cadencia REAL de
 artículos la decide el *gating* interno de este módulo (state file), igual
 que seo/tweets.py decide si hay algo nuevo que publicar.
 
-Tres niveles, de menos a más intrusivo:
+Niveles, de menos a más intrusivo:
   --dry-run              no llama a Gemini; solo imprime qué se generaría.
+                          NO renderiza (ni el preview), así que no sirve para
+                          repintar lo que ya existe — para eso, --render-only.
+  --render-only          0 llamadas a Gemini y 0 red: no genera nada nuevo,
+                          solo vuelve a renderizar a HTML los artículos que YA
+                          están en disco, con el código actual. Es lo que hay
+                          que usar tras tocar render.py o el CSS para ver el
+                          cambio sin esperar al cron ni gastar cuota.
   (por defecto)           llama a Gemini y escribe a data/articles_preview/
                           (gitignored) — nada público, ni sitemap ni hub.
   --publish               además renderiza a articulos/*.html, actualiza el
@@ -14,6 +21,7 @@ Tres niveles, de menos a más intrusivo:
 
 Uso:
     python -m articles.generate --dry-run
+    python -m articles.generate --render-only
     python -m articles.generate --league laliga
     python -m articles.generate --league laliga --publish
 """
@@ -410,7 +418,15 @@ def _run(args):
     # quita presupuesto — la crónica es el único tipo seguro de aplazar al
     # siguiente cron (ESPN sigue reportando el partido como 'post' hasta
     # que lo registramos), los demás no tienen esa garantía de reintento.
-    for league, snap, lstate in ctx:
+    # --render-only: se salta LAS DOS fases de generación (lista vacía en vez de
+    # re-indentar los bucles) y cae directo al render del preview de abajo. Cero
+    # llamadas a Gemini y cero red de los _pick_* — `ctx` sigue intacto porque
+    # el bloque de preview lo necesita para los logos de liga. Para cuando se
+    # toca render.py o el CSS y hay que repintar lo que YA existe sin gastar
+    # cuota (es justo lo que pasa iterando el diseño del preview).
+    ctx_gen = [] if args.render_only else ctx
+
+    for league, snap, lstate in ctx_gen:
         preview = _pick_daily_preview(league, snap, lstate, today_local, now_local)
         if preview and not _emit("preview", preview, None, league, snap, lstate, today_local):
             break
@@ -429,7 +445,7 @@ def _run(args):
 
     # Fase B: crónicas de partido (Hypermotion), después de garantizar el
     # resto de tipos.
-    for league, snap, lstate in ctx:
+    for league, snap, lstate in ctx_gen:
         for report in _pick_match_reports(league, snap, lstate, today):
             if not _emit("cronica", report, None, league, snap, lstate, today):
                 break
@@ -495,6 +511,10 @@ def main(argv=None):
     ap.add_argument("--publish", action="store_true",
                     help="Renderiza a articulos/*.html y actualiza el hub (si no, solo preview)")
     ap.add_argument("--league", help="Procesar solo esta liga (slug)")
+    ap.add_argument("--render-only", action="store_true",
+                    help="No genera nada nuevo (0 llamadas a Gemini): solo vuelve a "
+                         "renderizar a HTML los artículos que ya existen en disco, "
+                         "con el código actual. Para iterar render.py/CSS sin gastar cuota")
     args = ap.parse_args(argv)
     try:
         code, _urls = _run(args)
@@ -517,7 +537,10 @@ def run():
     ligas), sin --publish todavía (se activa a mano cuando se decida que la
     calidad es suficiente — ver plan). Devuelve la lista de (url, lastmod)
     para el sitemap (vacía mientras no se pase --publish)."""
-    args = argparse.Namespace(dry_run=False, publish=False, league=None)
+    # OJO: este Namespace se construye a mano, así que cada flag nueva de
+    # main() hay que añadirla aquí también o el cron muere con AttributeError.
+    args = argparse.Namespace(dry_run=False, publish=False, league=None,
+                              render_only=False)
     _code, urls = _run(args)
     return urls
 

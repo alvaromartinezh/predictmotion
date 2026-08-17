@@ -435,6 +435,51 @@ def demo():
         assert "latest" not in [a.get("slug") for a in idx2]
         assert len(idx2) == 2
 
+    # ── --render-only no puede llamar a Gemini NUNCA ────────────────────────
+    # Es toda la garantía de la flag: existe para repintar sin gastar cuota, y
+    # si algún día se cuela una llamada nadie se enteraría (best-effort: los
+    # fallos de Gemini se registran y siguen). Se sabotea write_article para
+    # que reviente si alguien lo invoca, y se comprueba además que run() sigue
+    # llevando la flag en su Namespace hecho a mano — olvidarla mata el cron
+    # con AttributeError.
+    # Se sabotean los _pick_* (no write_article) a propósito: se llaman UNA vez
+    # por liga con contexto, sin depender del state del día, así la prueba es
+    # determinista — con write_article dependería de que hubiera algo que
+    # generar hoy y podría pasar en vacío. Además los _pick_* son los que tocan
+    # ESPN, así que esto cubre también el "0 red".
+    import argparse as _ap
+
+    def _boom(*a, **k):
+        raise AssertionError("--render-only ha entrado en la fase de generación")
+
+    _origs = {n: getattr(generate, n) for n in
+              ("_pick_daily_preview", "_pick_daily_wrap", "_pick_recap",
+               "_pick_explainer", "_pick_title_race", "_pick_match_reports")}
+    for n in _origs:
+        setattr(generate, n, _boom)
+    try:
+        base = dict(dry_run=False, publish=False, league=None)
+        generate._run(_ap.Namespace(**base, render_only=True))   # no debe explotar
+        # …y la prueba no es vacía: sin la flag, esos mismos _pick_* SÍ se
+        # llaman (hay snapshots en disco), así que debe explotar.
+        vacia = False
+        try:
+            generate._run(_ap.Namespace(**base, render_only=False))
+            vacia = True
+        except AssertionError:
+            pass
+        assert not vacia, ("sin --render-only tampoco se llamó a los _pick_*: "
+                           "no hay snapshots en disco y la prueba no verifica nada")
+    finally:
+        for n, f in _origs.items():
+            setattr(generate, n, f)
+
+    import inspect
+    src = inspect.getsource(generate.run)
+    assert "render_only" in src, (
+        "run() construye su Namespace a mano: si no incluye render_only, "
+        "_run() muere con AttributeError en el cron de 3h")
+
     print("articles.test_generate: OK")
 
 
