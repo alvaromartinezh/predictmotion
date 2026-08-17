@@ -16,7 +16,6 @@ from seo.chrome import crumbs, delta_span, esc, page, stat_card, team_avatar
 from seo.config import SITE
 from seo.textutil import pct
 
-from . import illustration
 from .writer import cronica_slug
 
 _MADRID_TZ = ZoneInfo("Europe/Madrid")
@@ -24,7 +23,7 @@ _MADRID_TZ = ZoneInfo("Europe/Madrid")
 # Rediseño editorial "old-newspaper" — hoja propia (assets/articles-editorial.css),
 # no toca seo/chrome.py:CSS. Bump manual del ?v= si se vuelve a tocar el CSS
 # (los artículos se generan en el servidor, no pasan por el sed de *.html del repo).
-_EDITORIAL_ASSET_V = "5"
+_EDITORIAL_ASSET_V = "8"
 _EDITORIAL_HEAD = (
     '<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900'
     '&family=PT+Serif:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">'
@@ -165,24 +164,24 @@ def _match_card(local, visitante, league_slug, event_id, **kw):
 
 def _matches_body_html(text, partidos, builder):
     """Igual que _body_html, pero antepone builder(m) (una _match_card) a
-    cada párrafo — previa_diaria/resumen_diario redactan un párrafo por
-    partido, en el mismo orden que DATOS (ver
-    writer.py:_INSTRUCTIONS['previa_diaria'/'resumen_diario']). Si el
+    cada párrafo — previa_diaria redacta un párrafo por partido, en el mismo
+    orden que DATOS (ver writer.py:_INSTRUCTIONS['previa_diaria']). Si el
     recuento no cuadra (Gemini no respetó el 1-párrafo-por-partido), degrada
     a una única card de texto sin cabeceras en vez de emparejar mal."""
     paras = [p.strip() for p in text.split("\n\n") if p.strip()]
     if len(paras) != len(partidos):
-        return f'<div class="card"><div class="card-pad">{_body_html(text)[0]}</div></div>'
+        return (f'<div class="card"><div class="card-pad">'
+                f'{_body_html(text)[0]}</div></div>')
     out = []
     for p, m in zip(paras, partidos):
         out.append(builder(m))
-        out.append(f'<div class="card"><div class="card-pad"><p class="lede">{esc(p)}</p></div></div>')
+        out.append(f'<div class="card"><div class="card-pad">'
+                   f'<p class="lede">{esc(p)}</p></div></div>')
     return "".join(out)
 
 
 # Iconos que separan un breve del siguiente en el resumen del día — se
-# rotan para que una jornada de 10 partidos no repita el mismo grabado 9
-# veces (los mismos SVG de assets/articles-editorial.css, nada nuevo).
+# rotan para que una jornada de 10 partidos no repita el mismo icono 9 veces.
 _BRIEF_DIVIDER_ICONS = ("goal-net", "whistle", "ball", "corner-flag", "boots", "stadium")
 
 
@@ -248,8 +247,10 @@ def _briefs_body_html(text, partidos, league_slug, icon_attr=""):
         prose, n = _body_html(text)
         return (f'<div class="card"{icon_attr}><div class="card-pad" '
                 f'data-cols="{min(n, 3)}">{prose}</div></div>')
-    out = [_brief(m, league_slug, p, _BRIEF_DIVIDER_ICONS[i % len(_BRIEF_DIVIDER_ICONS)])
-           for i, (p, m) in enumerate(zip(paras, partidos))]
+    out = []
+    for i, (p, m) in enumerate(zip(paras, partidos)):
+        out.append(_brief(m, league_slug, p,
+                          _BRIEF_DIVIDER_ICONS[i % len(_BRIEF_DIVIDER_ICONS)]))
     return (f'<div class="card"{icon_attr}><div class="card-pad" '
             f'data-cols="{min(len(partidos), 3)}">{"".join(out)}</div></div>')
 
@@ -555,21 +556,14 @@ def render_article(article, league, logo=None, recent=None, preview=False):
     else:
         prose_html, n_paras = _body_html(article["body"], _LEAD_ICON.get(tipo))
         cols = min(n_paras, 3)
-        body_html = f'<div class="card"><div class="card-pad" data-cols="{cols}">{prose_html}</div></div>'
-
-    # Grabado de cabecera: titular -> ilustración -> datos, en ese orden (el de
-    # un periódico). Determinista por (slug, tipo, fecha DEL ARTÍCULO) — nunca
-    # por la fecha de hoy, o el cron de 3h le cambiaría el dibujo a cada pasada.
-    illo_card = (f'<div class="card illo-card">'
-                 f'{illustration.svg(slug, tipo, article["generated_at"], title=esc(crumb_label))}'
-                 f'</div>')
+        body_html = (f'<div class="card"><div class="card-pad" data-cols="{cols}">'
+                     f'{prose_html}</div></div>')
 
     body = (
         crumbs([("Inicio", league["dashboard"]),
                 ("Artículos" + (" (preview)" if preview else ""), hub),
                 (crumb_label, None)])
         + f'<h2 class="article-headline">{esc(article["title"])}</h2>'
-        + illo_card
         + lead_card
         + body_html
         + _sources_card(article.get("sources"))

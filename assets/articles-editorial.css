@@ -126,23 +126,6 @@ body.articles-page .card{
     27% 100%,18% 98%,10% 100%,3% 98.3%,0 97%);
   filter:drop-shadow(0 3px 5px rgba(0,0,0,.4)) drop-shadow(0 1px 0 rgba(0,0,0,.25));
 }
-/* ── Ilustración de cabecera (articles/illustration.py) ──────────────────
- * Va INLINE en el HTML, no como data-URI: por eso aquí sí sirve
- * currentColor y hereda --text (los iconos de arriba tienen el color
- * horneado justo porque un data-URI no cruza el cascade). El sujeto se
- * dibuja dentro de una caja fija sobre el horizonte del fondo, así que la
- * relación de aspecto 400×300 NO se puede tocar: recortarla descuadraría
- * el apoyo del sujeto en la línea de base. */
-body.articles-page .illo-card{padding:0}
-body.articles-page .illo{
-  display:block;width:100%;height:auto;aspect-ratio:4/3;
-  color:var(--text);opacity:.9;
-  /* A ancho completo de columna el grabado mide ~700px de alto y se come la
-   * primera pantalla entera antes de una sola línea de texto. Se limita y se
-   * centra, como una lámina de periódico: el sujeto sigue dominando SU panel,
-   * que es de lo que iba el encuadre, sin dominar la página. */
-  max-width:560px;margin:0 auto;
-}
 
 /* separador tipo columna entre cards apiladas (no aplica al primer card) */
 body.articles-page .wrap > * + .card{position:relative;margin-top:26px}
