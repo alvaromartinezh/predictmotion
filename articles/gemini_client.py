@@ -12,13 +12,21 @@ import urllib.error
 import urllib.request
 
 from seo.notify import _load_env
-from .config import GEMINI_ENDPOINT
+from .config import GEMINI_MODEL, GEMINI_MODEL_GROUNDED, gemini_endpoint
 
 HTTP_TIMEOUT = 60  # s — generación de texto, más lento que un fetch normal
 
 
 class GeminiError(Exception):
     """Fallo de la llamada a Gemini (HTTP, respuesta vacía o key ausente)."""
+
+
+def _model_for(tools):
+    """Qué modelo atiende esta llamada. El criterio es si lleva grounding, no
+    el tipo de artículo: `tools` solo lo pone generate_grounded() y ese camino
+    es exclusivo de previa_diaria (writer.py). Así el reparto vive en UN sitio
+    y no hay un mapa tipo→modelo que mantener en paralelo al `if` de writer."""
+    return GEMINI_MODEL_GROUNDED if tools else GEMINI_MODEL
 
 
 def _call(prompt, temperature, tools=None):
@@ -38,8 +46,9 @@ def _call(prompt, temperature, tools=None):
     if tools:
         req_body["tools"] = tools
 
+    model = _model_for(tools)
     req = urllib.request.Request(
-        GEMINI_ENDPOINT,
+        gemini_endpoint(model),
         data=json.dumps(req_body).encode("utf-8"),
         method="POST",
         headers={
@@ -52,7 +61,9 @@ def _call(prompt, temperature, tools=None):
             payload = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         detail = e.read().decode("utf-8", errors="replace")
-        raise GeminiError(f"HTTP {e.code}: {detail}") from e
+        # El modelo va en el mensaje: desde que hay dos, un 429 no dice nada
+        # si no se sabe cuál lo dio (la cuota es por modelo).
+        raise GeminiError(f"HTTP {e.code} [{model}]: {detail}") from e
     except urllib.error.URLError as e:
         raise GeminiError(f"Fallo de red: {e.reason}") from e
 

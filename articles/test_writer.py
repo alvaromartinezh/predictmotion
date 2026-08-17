@@ -91,6 +91,16 @@ def demo():
     assert called == {"grounded": 0, "plain": 1}, "recap_jornada no debe usar grounding"
     assert a4["sources"] == []
 
+    # Reparto de modelo: la llamada grounded (previa_diaria) va a 2.5-flash
+    # porque el tool google_search NO existe en free tier para 3.x (429 sin
+    # QuotaFailure, medido — ver config.py); el resto va a Flash-Lite, que es
+    # de donde sale el margen de cuota. Sin red: solo se comprueba el reparto.
+    from .config import GEMINI_MODEL, GEMINI_MODEL_GROUNDED, gemini_endpoint
+    from .gemini_client import _model_for
+    assert _model_for(None) == GEMINI_MODEL == "gemini-3.5-flash-lite"
+    assert _model_for([{"google_search": {}}]) == GEMINI_MODEL_GROUNDED == "gemini-2.5-flash"
+    assert gemini_endpoint("m").endswith("/models/m:generateContent")
+
     print("articles.test_writer: OK")
 
 

@@ -14,21 +14,51 @@ ARTICLES_OUT_DIR = ROOT / "articulos"              # HTML publicado (gitignored,
 # estructural — ampliar cuando el tráfico lo justifique).
 ARTICLE_LEAGUES = ["laliga", "hypermotion"]
 
-GEMINI_MODEL = "gemini-2.5-flash"
-GEMINI_ENDPOINT = (
-    f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
-)
+# Modelo por defecto: TODOS los tipos salvo previa_diaria (cronica_partido,
+# recap_jornada, explicador_probabilidad, carrera_titulo, resumen_diario), que
+# son el grueso del volumen diario. Motivo del cambio: cuota — 2.5-flash son
+# 20 RPD medidos y se agotan (pasó el 2026-08-16 y el 2026-08-17).
+GEMINI_MODEL = "gemini-3.5-flash-lite"
+
+# previa_diaria es el ÚNICO tipo con Grounding with Google Search, y ese tool
+# NO está disponible en el nivel gratuito para los modelos 3.x. MEDIDO el
+# 2026-08-17, no supuesto: una llamada CON tools:[{"google_search":{}}] a
+# gemini-3.5-flash-lite devuelve 429 RESOURCE_EXHAUSTED mientras una llamada
+# SIN tools al MISMO modelo, segundos antes, responde 200 — así que no es la
+# cuota del modelo. Y ese 429 trae SOLO un Help link: ni QuotaFailure ni
+# RetryInfo, a diferencia del 429 de RPD real de 2.5-flash, que sí nombra
+# quotaId=GenerateRequestsPerDayPerProjectPerModel-FreeTier value=20. Es decir:
+# límite 0, no cuota agotada ni fallo transitorio — reintentar NO lo arregla.
+# Por eso previa_diaria se queda en 2.5-flash (2 llamadas/día, 1 por liga:
+# sobra de largo dentro de sus 20 RPD).
+GEMINI_MODEL_GROUNDED = "gemini-2.5-flash"
+
+
+def gemini_endpoint(model):
+    return f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 # ── Tope diario de llamadas a Gemini ─────────────────────────────────────────
-# Cuota REAL de la key de este proyecto, verificada en aistudio.google.com/
-# rate-limit el 2026-08-16 (gemini-2.5-flash, nivel gratuito): RPD 20 / RPM 5 /
-# TPM 250K. 15 = 75% de los 20 RPD reales — margen del 25% para reintentos y
-# para no depender de que Google no cambie la cuota sin aviso (ya ha pasado
-# con los límites de ESPN, ver CLAUDE.md). El RPM (5) no es cuello de botella:
-# los artículos se generan secuenciales y best-effort, no en ráfaga. NO es una
-# cifra sacada de terceros (que reportan entre 250 y 1500 RPD, cifras que no
-# corresponden a la cuenta real de este proyecto): es la cuota medida.
-ARTICLES_MAX_PER_DAY = 15
+# Contador ÚNICO y global (todas las llamadas, los dos modelos). Sigue
+# valiendo como guardia de gasto porque el reparto es muy asimétrico: por
+# GEMINI_MODEL_GROUNDED (2.5-flash, 20 RPD medidos) solo pasa previa_diaria,
+# 1 llamada por liga y día = 2 con las ligas activas; todo lo demás va por
+# GEMINI_MODEL (Flash-Lite). O sea: quien manda en este número es la cuota de
+# Flash-Lite, no la de 2.5-flash.
+#
+# Histórico: 15 = 75% de los 20 RPD de 2.5-flash medidos en
+# aistudio.google.com/rate-limit el 2026-08-16 (RPD 20 / RPM 5 / TPM 250K).
+# Ese tope se agotó dos días seguidos (2026-08-16 y 2026-08-17).
+#
+# ⚠️ PROVISIONAL — la cuota real de Flash-Lite en ESTA cuenta NO está medida.
+# 60 es holgado frente a los 20 de antes y deliberadamente muy conservador
+# frente a los 500 RPD que documenta Google: esa es justo la clase de cifra de
+# terceros de la que este fichero ya desconfía (para 2.5-flash se reportaban
+# entre 250 y 1500 y la real era 20). Aguanta aunque la cuota real resulte ser
+# bastante menor que la documentada. CONFIRMAR en aistudio.google.com/
+# rate-limit y ajustar entonces al 75% de lo que marque el panel.
+# El RPM no es cuello de botella: los artículos se generan secuenciales y
+# best-effort, no en ráfaga.
+ARTICLES_MAX_PER_DAY = 60
 
 # ── Ventanas de dedupe/cadencia por tipo (días) ──────────────────────────────
 EXPLAINER_COOLDOWN_DAYS = 14   # no repetir el mismo equipo en un explicador
