@@ -16,6 +16,7 @@ from seo.chrome import crumbs, delta_span, esc, page, stat_card, team_avatar
 from seo.config import SITE
 from seo.textutil import pct
 
+from . import illustration
 from .writer import cronica_slug
 
 _MADRID_TZ = ZoneInfo("Europe/Madrid")
@@ -23,7 +24,7 @@ _MADRID_TZ = ZoneInfo("Europe/Madrid")
 # Rediseño editorial "old-newspaper" — hoja propia (assets/articles-editorial.css),
 # no toca seo/chrome.py:CSS. Bump manual del ?v= si se vuelve a tocar el CSS
 # (los artículos se generan en el servidor, no pasan por el sed de *.html del repo).
-_EDITORIAL_ASSET_V = "4"
+_EDITORIAL_ASSET_V = "5"
 _EDITORIAL_HEAD = (
     '<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900'
     '&family=PT+Serif:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">'
@@ -556,11 +557,19 @@ def render_article(article, league, logo=None, recent=None, preview=False):
         cols = min(n_paras, 3)
         body_html = f'<div class="card"><div class="card-pad" data-cols="{cols}">{prose_html}</div></div>'
 
+    # Grabado de cabecera: titular -> ilustración -> datos, en ese orden (el de
+    # un periódico). Determinista por (slug, tipo, fecha DEL ARTÍCULO) — nunca
+    # por la fecha de hoy, o el cron de 3h le cambiaría el dibujo a cada pasada.
+    illo_card = (f'<div class="card illo-card">'
+                 f'{illustration.svg(slug, tipo, article["generated_at"], title=esc(crumb_label))}'
+                 f'</div>')
+
     body = (
         crumbs([("Inicio", league["dashboard"]),
                 ("Artículos" + (" (preview)" if preview else ""), hub),
                 (crumb_label, None)])
         + f'<h2 class="article-headline">{esc(article["title"])}</h2>'
+        + illo_card
         + lead_card
         + body_html
         + _sources_card(article.get("sources"))
