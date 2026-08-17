@@ -1,0 +1,302 @@
+/* Rediseño editorial "old-newspaper" — SOLO articles/render.py (/articulos,
+ * /preview-articulos). Todo escapado bajo body.articles-page para no tocar
+ * seo/chrome.py:CSS, que sirve también /equipos, /jornadas, /historico.
+ * Misma paleta oscura de chrome.py (--bg/--surface/--border/--accent/...) —
+ * solo tipografía (Playfair Display / PT Serif), estructura de periódico y
+ * textura de papel. Nada de sepia/crema.
+ */
+
+body.articles-page{position:relative}
+
+/* ── Iconos vintage línea/grabado (11), 3 tamaños fijos ──────────────────
+ * Un solo SVG por icono, reutilizado en las 4 zonas ya mapeadas via var()
+ * en background-image + tamaño por clase de contexto (nunca a medida).
+ * NOTA: currentColor/var(--*) no cruzan a un recurso data-URI aislado (es
+ * un documento SVG aparte, no hereda el cascade del HTML) — el color va
+ * "horneado" al valor actual de --text (#dce8fa); si el token cambia, hay
+ * que re-hornear estos SVG a mano (mismo patrón que el ?v= de cache-bust).
+ */
+body.articles-page{
+  /* --ico-sm NO baja de 24px: por debajo, el trazo de estos grabados (64
+   * unidades de viewBox) cae de sub-píxel y el icono se lee como una mancha
+   * gris. Por el mismo motivo ninguna red va con stroke < 1 (ver goal-net /
+   * ball-net): a 24px una malla fina se rellena y parece un recuadro roto. */
+  --ico-sm:24px;--ico-md:38px;--ico-lg:128px;
+  --ico-ball:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='22' fill='none' stroke='%23dce8fa' stroke-width='2'/%3E%3Cpath d='M32 14l7 5-2.7 8.3H27.7L25 19z' fill='none' stroke='%23dce8fa' stroke-width='1.6'/%3E%3Cpath d='M32 27.3l7 5-2.7 8.3h-8.6L25 32.3z' fill='none' stroke='%23dce8fa' stroke-width='1.6'/%3E%3Cpath d='M25 19l-9 3M39 19l9 3M22.3 27.3l-6 8M41.7 27.3l6 8M27.7 40.6l1 8M36.3 40.6l-1 8' stroke='%23dce8fa' stroke-width='1.2'/%3E%3C/svg%3E");
+  --ico-boots:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M14 44c0-10 3-18 3-22 0-3 2-5 5-5h10c2 0 3 1 3 3v13l14 6c3 1 5 4 5 7v3c0 2-2 4-4 4H18c-2 0-4-2-4-4z' fill='none' stroke='%23dce8fa' stroke-width='2'/%3E%3Cpath d='M22 21v13M27 20v14M35 33l6 3M40 35l6 3M45 37l6 3' stroke='%23dce8fa' stroke-width='1.2'/%3E%3Cpath d='M17 47h34M20 51h4M27 51h4M34 51h4' stroke='%23dce8fa' stroke-width='1.4'/%3E%3C/svg%3E");
+  --ico-goal-net:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none' stroke='%23dce8fa'%3E%3Cpath d='M9 17h46M11 17v32M53 17v32M5 49h54' stroke-width='2.6' stroke-linecap='round'/%3E%3Cpath d='M22 19v30M32 19v30M42 19v30M11 29h42M11 39h42' stroke-width='1.2'/%3E%3C/svg%3E");
+  --ico-trophy:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M20 12h24v10c0 9-6 15-12 15s-12-6-12-15z' fill='none' stroke='%23dce8fa' stroke-width='2'/%3E%3Cpath d='M20 15c-6 0-9 4-9 8s3 8 9 9M44 15c6 0 9 4 9 8s-3 8-9 9' fill='none' stroke='%23dce8fa' stroke-width='1.6'/%3E%3Cpath d='M32 37v8M24 50h16M26 45h12v5H26z' fill='none' stroke='%23dce8fa' stroke-width='2'/%3E%3Cpath d='M24 20l4 10M40 20l-4 10' stroke='%23dce8fa' stroke-width='1'/%3E%3C/svg%3E");
+  --ico-whistle:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M12 28a10 10 0 1 0 20 0 10 10 0 1 0-20 0z' fill='none' stroke='%23dce8fa' stroke-width='2'/%3E%3Ccircle cx='22' cy='28' r='3' fill='none' stroke='%23dce8fa' stroke-width='1.4'/%3E%3Cpath d='M32 28h14c3 0 5 2 5 5v0c0 3-2 5-5 5H32' fill='none' stroke='%23dce8fa' stroke-width='2'/%3E%3Cpath d='M46 38c0 4 3 7 3 10' stroke='%23dce8fa' stroke-width='1.4'/%3E%3Cpath d='M12 24l4 8M12 32l4-8' stroke='%23dce8fa' stroke-width='1'/%3E%3C/svg%3E");
+  --ico-stadium:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M8 40c0-10 11-18 24-18s24 8 24 18' fill='none' stroke='%23dce8fa' stroke-width='2'/%3E%3Cpath d='M4 44c0-6 3-9 3-9M60 44c0-6-3-9-3-9' fill='none' stroke='%23dce8fa' stroke-width='2'/%3E%3Cpath d='M8 40h48M12 22v-6M12 16h-3M12 16h3M52 22v-6M52 16h-3M52 16h3' stroke='%23dce8fa' stroke-width='1.4'/%3E%3Cpath d='M16 40c1-5 6-9 16-9s15 4 16 9' stroke='%23dce8fa' stroke-width='1'/%3E%3C/svg%3E");
+  --ico-corner-flag:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M20 8v48' fill='none' stroke='%23dce8fa' stroke-width='2'/%3E%3Cpath d='M20 10l18 6-18 6z' fill='none' stroke='%23dce8fa' stroke-width='2'/%3E%3Cpath d='M20 56a14 14 0 0 0 14-14' fill='none' stroke='%23dce8fa' stroke-width='1.6'/%3E%3Cpath d='M23 12l12 4-12 4' stroke='%23dce8fa' stroke-width='0.9'/%3E%3C/svg%3E");
+  --ico-medal:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M22 8l6 14M42 8l-6 14' fill='none' stroke='%23dce8fa' stroke-width='2'/%3E%3Ccircle cx='32' cy='38' r='16' fill='none' stroke='%23dce8fa' stroke-width='2'/%3E%3Cpath d='M32 28l3 7h7l-6 5 2 8-6-5-6 5 2-8-6-5h7z' fill='none' stroke='%23dce8fa' stroke-width='1.3'/%3E%3C/svg%3E");
+  --ico-tactics-board:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='8' y='10' width='48' height='34' rx='2' fill='none' stroke='%23dce8fa' stroke-width='2'/%3E%3Cpath d='M8 27h48' stroke='%23dce8fa' stroke-width='1'/%3E%3Ccircle cx='20' cy='19' r='2.4' fill='none' stroke='%23dce8fa' stroke-width='1.4'/%3E%3Ccircle cx='34' cy='36' r='2.4' fill='none' stroke='%23dce8fa' stroke-width='1.4'/%3E%3Cpath d='M22 20c6 4 8 12 11 15' fill='none' stroke='%23dce8fa' stroke-width='1.4' stroke-dasharray='2 2'/%3E%3Cpath d='M28 50h8M24 54h16' stroke='%23dce8fa' stroke-width='1.6'/%3E%3C/svg%3E");
+  --ico-runner:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='34' cy='12' r='5' fill='none' stroke='%23dce8fa' stroke-width='2'/%3E%3Cpath d='M34 17l-4 12 8 6-2 14M30 29l-12 4M38 35l10-2M30 35l-6 15M38 35l8 13' fill='none' stroke='%23dce8fa' stroke-width='2'/%3E%3Cpath d='M14 33l4-1M48 33l4 2' stroke='%23dce8fa' stroke-width='1'/%3E%3C/svg%3E");
+  --ico-ball-net:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none' stroke='%23dce8fa'%3E%3Cpath d='M7 15h38M9 15v27M43 15v27M4 42h40' stroke-width='2.6' stroke-linecap='round'/%3E%3Cpath d='M20 17v25M32 17v25M9 27h34' stroke-width='1.2'/%3E%3Ccircle cx='48' cy='44' r='11' stroke-width='2.6'/%3E%3Cpath d='M48 37l6 4.4-2.3 7h-7.4L42 41.4z' stroke-width='1.5'/%3E%3C/svg%3E");
+}
+/* Un solo mapeo icono→imagen, reutilizado por las 3 zonas con `data-icon`
+ * (section-label, card watermark, col-divider) — cada zona solo aporta
+ * tamaño/posición/opacidad vía su propio selector, no repite el mapeo. */
+body.articles-page [data-icon="ball"]::after{background-image:var(--ico-ball)}
+body.articles-page [data-icon="boots"]::after{background-image:var(--ico-boots)}
+body.articles-page [data-icon="goal-net"]::after{background-image:var(--ico-goal-net)}
+body.articles-page [data-icon="trophy"]::after{background-image:var(--ico-trophy)}
+body.articles-page [data-icon="whistle"]::after{background-image:var(--ico-whistle)}
+body.articles-page [data-icon="stadium"]::after{background-image:var(--ico-stadium)}
+body.articles-page [data-icon="corner-flag"]::after{background-image:var(--ico-corner-flag)}
+body.articles-page [data-icon="medal"]::after{background-image:var(--ico-medal)}
+body.articles-page [data-icon="tactics-board"]::after{background-image:var(--ico-tactics-board)}
+body.articles-page [data-icon="runner"]::after{background-image:var(--ico-runner)}
+body.articles-page [data-icon="ball-net"]::after{background-image:var(--ico-ball-net)}
+
+/* Grano de papel: overlay fijo de baja opacidad, feTurbulence inline (sin
+ * asset nuevo). Encima de todo pero casi imperceptible — no estorba lectura. */
+body.articles-page::after{
+  content:"";position:fixed;inset:0;z-index:9999;pointer-events:none;
+  opacity:.035;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Viñeta de bordes envejecidos */
+body.articles-page{
+  background-image:
+    radial-gradient(ellipse 60% 40% at 4% 0%,rgba(230,161,23,.05),transparent 55%),
+    radial-gradient(ellipse 50% 40% at 96% 100%,rgba(61,142,245,.04),transparent 55%),
+    radial-gradient(ellipse 120% 90% at 50% 50%,transparent 60%,rgba(0,0,0,.35) 100%);
+}
+
+/* ── Cabecera / masthead ─────────────────────────────────────────────── */
+body.articles-page .header-wrap{
+  position:relative;border-top:none;padding-top:18px;padding-bottom:22px;
+  clip-path:polygon(0 0,100% 0,100% 90%,97% 100%,90% 93%,83% 100%,76% 94%,69% 100%,
+    62% 93%,55% 100%,48% 94%,41% 100%,34% 93%,27% 100%,20% 94%,13% 100%,6% 93%,0 100%);
+}
+body.articles-page .header-wrap::before{
+  content:"";position:absolute;top:0;left:0;right:0;height:6px;
+  border-top:3px solid var(--accent);border-bottom:1px solid var(--accent);
+}
+body.articles-page .header{flex-direction:column;text-align:center;gap:6px}
+body.articles-page .logo{margin-bottom:4px}
+body.articles-page .header-text h1{
+  position:relative;display:inline-flex;align-items:center;
+  font-family:'Playfair Display',serif;font-weight:900;font-style:normal;
+  font-size:2.1rem;letter-spacing:0;text-transform:none;
+  padding:0 calc(var(--ico-md) + 10px);
+}
+body.articles-page .header-text h1::before,
+body.articles-page .header-text h1::after{
+  content:"";position:absolute;top:50%;transform:translateY(-50%);
+  width:var(--ico-md);height:var(--ico-md);
+  background-repeat:no-repeat;background-position:center;background-size:contain;opacity:.9;
+}
+body.articles-page .header-text h1::before{left:0;background-image:var(--ico-ball)}
+body.articles-page .header-text h1::after{right:0;background-image:var(--ico-trophy)}
+body.articles-page .header-text p{
+  font-family:'PT Serif',serif;font-style:italic;font-size:.72rem;letter-spacing:.1em;
+}
+body.articles-page .header-actions{margin:8px auto 0}
+body.articles-page .badge{
+  font-family:'PT Serif',serif;font-style:italic;letter-spacing:.03em;
+  background:transparent;border:none;border-top:1px solid var(--border);
+  border-bottom:1px solid var(--border);border-radius:0;padding:8px 6px;
+}
+
+/* ── Breadcrumb / kicker ─────────────────────────────────────────────── */
+body.articles-page .crumbs{
+  font-family:'PT Serif',serif;font-style:italic;color:var(--muted);
+}
+body.articles-page .crumbs .sep{opacity:.5}
+
+/* ── Titular real del artículo ───────────────────────────────────────── */
+body.articles-page .article-headline{
+  font-family:'Playfair Display',serif;font-weight:900;font-size:2.5rem;
+  line-height:1.08;letter-spacing:-.01em;margin:6px 0 20px;color:var(--text);
+  border-bottom:3px double var(--border);padding-bottom:18px;
+}
+@media (max-width:600px){
+  body.articles-page .article-headline{font-size:1.7rem;padding-bottom:14px}
+}
+
+/* ── Card: silueta de papel rasgado ──────────────────────────────────── */
+body.articles-page .card{
+  border-radius:0;border:1px solid var(--border);
+  clip-path:polygon(0 3%,3% 0%,10% 2%,18% 0%,27% 1.5%,36% 0%,45% 1.8%,54% 0%,63% 1.5%,
+    72% 0%,81% 2%,90% 0%,97% 1.5%,100% 3%,
+    100% 97%,97% 100%,90% 98%,81% 100%,72% 98.3%,63% 100%,54% 98%,45% 100%,36% 98.3%,
+    27% 100%,18% 98%,10% 100%,3% 98.3%,0 97%);
+  filter:drop-shadow(0 3px 5px rgba(0,0,0,.4)) drop-shadow(0 1px 0 rgba(0,0,0,.25));
+}
+/* separador tipo columna entre cards apiladas (no aplica al primer card) */
+body.articles-page .wrap > * + .card{position:relative;margin-top:26px}
+body.articles-page .wrap > * + .card::before{
+  content:"";position:absolute;top:-14px;left:12%;right:12%;height:1px;
+  background:repeating-linear-gradient(90deg,var(--border) 0 6px,transparent 6px 10px);
+}
+
+/* ── Rótulos de sección con reglas a los lados ───────────────────────── */
+body.articles-page .section-label{
+  display:flex;align-items:center;gap:10px;
+  font-family:'Playfair Display',serif;font-weight:700;font-style:italic;
+  font-size:.78rem;letter-spacing:.12em;
+}
+body.articles-page .section-label::before{content:"";flex:1;height:1px;background:var(--border)}
+body.articles-page .section-label:not([data-icon])::after{content:"";flex:1;height:1px;background:var(--border)}
+body.articles-page .section-label[data-icon]::after{
+  content:"";flex:0 0 var(--ico-sm);height:var(--ico-sm);
+  background-repeat:no-repeat;background-position:center;background-size:contain;opacity:.65;
+}
+
+/* ── Cuerpo de texto: columnas de periódico reales ───────────────────────
+ * `data-cols` (1/2/3) lo pone render.py:_body_html según el nº real de
+ * párrafos — no un `:has(.lede+.lede)` contando hermanos por CSS, porque el
+ * `.col-divider` de abajo se inserta ENTRE párrafos y rompería esa cadena.
+ * 1 párrafo (partido suelto en previa/resumen) nunca lleva columnas. */
+body.articles-page .lede{font-family:'PT Serif',serif;font-size:1.08rem;line-height:1.7}
+@media (min-width:700px){
+  body.articles-page .card-pad[data-cols="2"]{column-count:2;column-gap:32px}
+  body.articles-page .card-pad[data-cols="3"]{column-count:2;column-gap:28px}
+  /* `>`: capitular solo en la prosa suelta. En el resumen del día los .lede
+   * viven dentro de cada .brief (cada uno sería "el primer p de su padre") y
+   * saldrían 5 capitulares en la misma página. */
+  body.articles-page .card-pad[data-cols] > .lede:first-of-type::first-letter{
+    font-family:'Playfair Display',serif;font-size:3.2em;font-weight:900;
+    float:left;line-height:.82;padding:.04em .08em 0 0;color:var(--accent);
+  }
+}
+@media (min-width:1000px){
+  /* solo a partir de aquí caben 3 columnas de lectura cómoda */
+  body.articles-page .card-pad[data-cols="3"]{column-count:3;column-gap:26px}
+}
+
+/* Divisor decorativo DENTRO del flujo de columnas (a mitad de la prosa,
+ * ver _body_html) — separador de la maqueta, no marca de agua de esquina. */
+body.articles-page .col-divider{
+  break-inside:avoid;column-span:none;margin:16px 0;padding:12px 0;
+  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+}
+/* El divisor ocupa el ancho de la columna: aquí el icono va a --ico-md, no
+ * al tamaño inline de los rótulos (a 18-24px este grabado no se leía). */
+body.articles-page .col-divider::after{
+  content:"";display:block;width:var(--ico-md);height:var(--ico-md);
+  background-repeat:no-repeat;background-position:center;background-size:contain;opacity:.7;
+}
+
+/* ── Breves del resumen del día ──────────────────────────────────────────
+ * Un resultado = un bloque autocontenido (marcador + prosa + qué le hizo a
+ * la probabilidad de zona de cada equipo) que fluye por las columnas del
+ * .card-pad[data-cols], separado del siguiente por un .col-divider. Sustituye
+ * al patrón fila-de-escudos + stat-grid + prosa aparte. */
+body.articles-page .brief{break-inside:avoid;margin-bottom:6px}
+/* min-height: un nombre largo ("Sporting de Gijón") parte en 2 líneas y su
+ * columna arrancaba el párrafo más abajo que las vecinas. Con el alto fijo
+ * las 3 columnas empiezan a la misma altura, parta o no el nombre. */
+body.articles-page .brief__head{
+  display:flex;align-items:center;gap:7px;min-height:44px;
+  border-bottom:1px solid var(--border);padding-bottom:7px;margin-bottom:9px;
+  color:var(--text);text-decoration:none;
+}
+body.articles-page .brief__head .n{
+  flex:1;min-width:0;font-family:'PT Serif',serif;font-weight:700;font-size:.76rem;line-height:1.2;
+}
+body.articles-page .brief__head .n.away{text-align:right}
+body.articles-page .brief__head .sc{
+  font-family:'Playfair Display',serif;font-weight:900;font-size:1.25rem;
+  font-variant-numeric:lining-nums tabular-nums;white-space:nowrap;
+}
+body.articles-page a.brief__head:hover .sc{color:var(--accent)}
+body.articles-page .brief__head .av{border:1px solid var(--border);border-radius:2px;flex:none}
+body.articles-page .brief .lede{font-size:.98rem;line-height:1.62;margin:0 0 9px}
+body.articles-page .brief__zone{
+  display:flex;align-items:baseline;gap:6px;margin-top:3px;padding:1px 0 1px 8px;
+  border-left:2px solid var(--border);
+  font-family:'PT Serif',serif;font-size:.72rem;color:var(--muted);
+}
+body.articles-page .brief__zone .n{color:var(--text);font-weight:700}
+body.articles-page .brief__zone .z{flex:1;font-style:italic;min-width:0}
+body.articles-page .brief__zone b{color:var(--text);font-variant-numeric:lining-nums tabular-nums}
+body.articles-page .brief__zone.green{border-left-color:var(--green)}
+body.articles-page .brief__zone.blue{border-left-color:var(--blue)}
+body.articles-page .brief__zone.violet{border-left-color:var(--violet)}
+body.articles-page .brief__zone.red{border-left-color:var(--red)}
+/* Cierre del breve: filete + icono, sin la segunda raya del divisor de prosa
+ * (ahí separa dos bloques de texto; aquí remata uno). */
+body.articles-page .brief .col-divider{margin:11px 0 0;padding:10px 0 0;border-bottom:none}
+
+/* ── Stat cards ("por los números") ──────────────────────────────────── */
+body.articles-page .stat{
+  border-radius:0;clip-path:polygon(0 0,100% 0,100% 88%,93% 100%,0 100%);
+}
+body.articles-page .stat .v{
+  font-family:'Playfair Display',serif;font-weight:800;
+  font-variant-numeric:lining-nums tabular-nums;
+}
+body.articles-page .stat .l{font-family:'PT Serif',serif;font-style:italic;letter-spacing:.05em}
+body.articles-page .stat .u{top:0;bottom:auto;border-radius:0}
+
+/* ── Match hero (marcador / previa) ──────────────────────────────────── */
+body.articles-page .hero-av .av,
+body.articles-page .match-hero .av{border:1px solid var(--border);border-radius:2px}
+body.articles-page .match-hero__team .name{
+  font-family:'PT Serif',serif;font-weight:700;font-style:normal;
+}
+body.articles-page .match-hero__vs .kick{
+  font-family:'Playfair Display',serif;font-weight:900;
+  font-variant-numeric:lining-nums tabular-nums;
+}
+body.articles-page .match-hero__vs .s{
+  display:inline-block;margin-top:4px;padding:2px 9px;border:1px solid var(--border);
+  font-family:'PT Serif',serif;font-style:italic;font-size:.68rem;letter-spacing:.06em;
+}
+body.articles-page .winbar__track{border-radius:0;height:6px;border:1px solid var(--border)}
+body.articles-page .winbar__seg{border-radius:0}
+body.articles-page .winbar__legend{font-family:'PT Serif',serif;font-style:italic}
+
+/* ── Chips (Fuentes / Equipos mencionados) — lista con reglas, no píldoras ── */
+body.articles-page .chips a{
+  background:none;border:none;border-radius:0;
+  border-right:1px solid var(--border);
+  font-family:'PT Serif',serif;
+}
+body.articles-page .chips a:last-child{border-right:none}
+body.articles-page .chips a:hover{color:var(--accent)}
+body.articles-page .chips a .av{border-radius:2px;border:1px solid var(--border)}
+
+/* ── Carrusel / tarjetas de índice ────────────────────────────────────── */
+body.articles-page .comp-head .t{
+  font-family:'Playfair Display',serif;font-weight:800;text-transform:none;letter-spacing:0;
+}
+body.articles-page .comp-head .t small{
+  font-family:'PT Serif',serif;font-style:italic;letter-spacing:.05em;text-transform:none;
+}
+body.articles-page .comp-meta{font-family:'PT Serif',serif;font-style:italic}
+
+/* Hub: primera tarjeta = historia destacada, a todo el ancho */
+body.articles-page .comp-grid > a:first-child{grid-column:1 / -1}
+body.articles-page .comp-grid > a:first-child .comp-head .t{font-size:1.9rem}
+body.articles-page .comp-grid > a:first-child .comp-meta{font-size:.95rem;max-width:640px}
+
+/* ── Marca de agua de esquina (lead card por tipo de artículo + tarjeta
+ * destacada del hub) — detrás del contenido real (z-index:-1), muy tenue. */
+body.articles-page .card[data-icon]{position:relative}
+body.articles-page .card[data-icon]::after{
+  content:"";position:absolute;top:8px;right:10px;z-index:-1;
+  width:var(--ico-lg);height:var(--ico-lg);
+  background-repeat:no-repeat;background-position:center;background-size:contain;
+  opacity:.09;pointer-events:none;
+}
+
+/* En el resumen del día la esquina superior derecha ya la ocupa el marcador
+ * del último breve: ahí la marca de agua caía justo detrás de los escudos.
+ * Se baja al pie, que en esa maqueta queda libre. */
+body.articles-page .card[data-icon]:has(.brief)::after{top:auto;bottom:12px}
+
+/* Hub: tarjeta destacada = "stadium" fijo (no necesita data-icon en Python:
+   siempre la misma marca de agua, vía el mismo mapeo [data-icon] de arriba). */
+body.articles-page .comp-grid > a:first-child .card{position:relative}
+body.articles-page .comp-grid > a:first-child .card::after{
+  content:"";position:absolute;top:8px;right:10px;z-index:-1;
+  width:var(--ico-lg);height:var(--ico-lg);
+  background-image:var(--ico-stadium);background-repeat:no-repeat;background-position:center;background-size:contain;
+  opacity:.09;pointer-events:none;
+}

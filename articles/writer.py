@@ -43,6 +43,23 @@ _SEARCH_SYSTEM_SUFFIX = (
     "confunde con las probabilidades del modelo."
 )
 
+# Contrato de formato de los 2 tipos multi-partido. render.py MAQUETA por
+# párrafo (un match-card/breve por partido, ver _matches_body_html y
+# _briefs_body_html): si el recuento no es 1:1 degrada a prosa suelta, así
+# que sin esta regla explícita la maqueta por partido no llega a salir NUNCA.
+# Y no salía: los 3 resúmenes reales del servidor (2026-08-15/16) traían
+# 3 párrafos para 4 partidos y 4 para 2 — el contrato se daba por supuesto
+# en un docstring de render.py, pero el prompt no lo pedía.
+_ONE_PARA_PER_MATCH = (
+    "\n\nFORMATO OBLIGATORIO: escribe EXACTAMENTE un párrafo por cada partido de "
+    "DATOS.partidos, en el MISMO orden, separados por una línea en blanco. Si hay 4 "
+    "partidos, el cuerpo tiene 4 párrafos: ni uno más ni uno menos. Nada de párrafo de "
+    "introducción o de cierre, y nada de juntar dos partidos en un mismo párrafo. Cada "
+    "párrafo tiene que sostenerse solo (se publica como una pieza independiente, no como "
+    "parte de un texto corrido): no empieces con conectores que remitan al párrafo "
+    "anterior ('Continuando con...', 'En otro frente...', 'El cierre de la jornada...')."
+)
+
 _INSTRUCTIONS = {
     "recap_jornada": (
         "Escribe un recap de la jornada: quién lidera, qué equipos han subido o "
@@ -68,14 +85,14 @@ _INSTRUCTIONS = {
     ),
     "previa_diaria": (
         "Escribe una previa de los partidos de hoy: qué se juega cada equipo según "
-        "el modelo y por qué le importa a la afición."
+        "el modelo y por qué le importa a la afición." + _ONE_PARA_PER_MATCH
     ),
     "resumen_diario": (
         "Escribe un resumen de los partidos de esta liga que han terminado hoy: resultados y "
         "cómo cambia la probabilidad de zona de cada equipo implicado. Antes de cada partido el "
         "modelo daba a cada equipo la probabilidad 'prob_zona_antes_del_partido' de su zona; "
-        "compárala con 'prob_zona_actual' para explicar qué cambió con el resultado. Si hay "
-        "varios partidos, dales a todos su espacio, no solo al más llamativo."
+        "compárala con 'prob_zona_actual' para explicar qué cambió con el resultado."
+        + _ONE_PARA_PER_MATCH
     ),
 }
 

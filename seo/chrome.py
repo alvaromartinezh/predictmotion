@@ -352,7 +352,8 @@ def crumbs(items):
 
 
 def page(title, description, canonical_path, body, *, heading, logo=None, badge=None,
-         json_ld=None, active_nav=None, og_type="website", show_nav=True, noindex=False):
+         json_ld=None, active_nav=None, og_type="website", show_nav=True, noindex=False,
+         body_class="", extra_head=""):
     """HTML completo. `heading` = H1 del header; `title` = <title>/meta.
 
     `logo` = logo de la COMPETICIÓN (nunca el de la web). Se usa en la cabecera,
@@ -365,7 +366,12 @@ def page(title, description, canonical_path, body, *, heading, logo=None, badge=
     `noindex=True` para páginas que no deben indexarse (p.ej. la vista previa
     privada de artículos en /preview-articulos, gateada aparte por
     basic_auth en Caddy — este meta es una segunda capa, no la que protege
-    el acceso)."""
+    el acceso).
+
+    `body_class`/`extra_head`: hooks vacíos por defecto (no cambian nada para
+    render_table.py, el otro llamante). Los usa articles/render.py para cargar
+    su propia hoja de estilos (rediseño editorial) sin tocar el CSS de arriba,
+    que sirve también /equipos, /jornadas, /historico."""
     ld = ""
     for block in (json_ld or []):
         ld += ('<script type="application/ld+json">'
@@ -410,8 +416,8 @@ def page(title, description, canonical_path, body, *, heading, logo=None, badge=
 <link rel="dns-prefetch" href="https://a.espncdn.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;600;700;800&family=Inconsolata:wght@400;600;700&display=swap" rel="stylesheet">
 <style>{CSS}</style>
-{ld}</head>
-<body>
+{ld}{extra_head}</head>
+<body{f' class="{esc(body_class)}"' if body_class else ''}>
 {GTM_BODY}
 <div class="header-wrap"><div class="header">
 {logo_box}

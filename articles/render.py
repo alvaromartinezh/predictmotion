@@ -12,13 +12,23 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from seo.chrome import crumbs, esc, page, stat_card, team_avatar
+from seo.chrome import crumbs, delta_span, esc, page, stat_card, team_avatar
 from seo.config import SITE
 from seo.textutil import pct
 
 from .writer import cronica_slug
 
 _MADRID_TZ = ZoneInfo("Europe/Madrid")
+
+# Rediseño editorial "old-newspaper" — hoja propia (assets/articles-editorial.css),
+# no toca seo/chrome.py:CSS. Bump manual del ?v= si se vuelve a tocar el CSS
+# (los artículos se generan en el servidor, no pasan por el sed de *.html del repo).
+_EDITORIAL_ASSET_V = "4"
+_EDITORIAL_HEAD = (
+    '<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900'
+    '&family=PT+Serif:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">'
+    f'<link rel="stylesheet" href="/assets/articles-editorial.css?v={_EDITORIAL_ASSET_V}">'
+)
 
 _CRUMB_LABEL = {
     "recap_jornada": "Recap de jornada",
@@ -58,11 +68,20 @@ def _seed(team_id):
         return 0
 
 
-def _body_html(text):
-    return "".join(
-        f'<p class="lede">{esc(p.strip())}</p>'
-        for p in text.split("\n\n") if p.strip()
-    )
+def _body_html(text, icon=None):
+    """Devuelve (html, n_párrafos). `n_párrafos` decide el nº de columnas del
+    llamante (data-cols, ver assets/articles-editorial.css) — un atributo
+    explícito en vez de contar hermanos `.lede` por CSS (`:has(.lede+.lede)`)
+    porque el divisor decorativo de abajo NO es un `.lede`: insertarlo rompe
+    esa cadena de hermanos. Con `icon` y ≥3 párrafos, mete un `.col-divider`
+    (mismo icono que la marca de agua del lead card, ver _LEAD_ICON) a mitad
+    de camino — el separador vintage "entre columnas" que pidió el usuario,
+    no solo el watermark de esquina de la ronda anterior."""
+    paras = [p.strip() for p in text.split("\n\n") if p.strip()]
+    parts = [f'<p class="lede">{esc(p)}</p>' for p in paras]
+    if icon and len(paras) >= 3:
+        parts.insert(len(parts) // 2, f'<div class="col-divider" data-icon="{esc(icon)}"></div>')
+    return "".join(parts), len(paras)
 
 
 def _kickoff_label(iso):
@@ -152,12 +171,86 @@ def _matches_body_html(text, partidos, builder):
     a una única card de texto sin cabeceras en vez de emparejar mal."""
     paras = [p.strip() for p in text.split("\n\n") if p.strip()]
     if len(paras) != len(partidos):
-        return f'<div class="card"><div class="card-pad">{_body_html(text)}</div></div>'
+        return f'<div class="card"><div class="card-pad">{_body_html(text)[0]}</div></div>'
     out = []
     for p, m in zip(paras, partidos):
         out.append(builder(m))
         out.append(f'<div class="card"><div class="card-pad"><p class="lede">{esc(p)}</p></div></div>')
     return "".join(out)
+
+
+# Iconos que separan un breve del siguiente en el resumen del día — se
+# rotan para que una jornada de 10 partidos no repita el mismo grabado 9
+# veces (los mismos SVG de assets/articles-editorial.css, nada nuevo).
+_BRIEF_DIVIDER_ICONS = ("goal-net", "whistle", "ball", "corner-flag", "boots", "stadium")
+
+
+def _brief_zone(t):
+    """Una línea 'equipo · zona · prob (± pp)' de un breve. `delta_span` es el
+    mismo de las páginas SEO; sin `prob_zona_antes_del_partido` (no hay
+    snapshot previo al partido) se enseña la prob sin flecha, no un 0,0 pp
+    inventado."""
+    prob = t.get("prob_zona_actual")
+    if prob is None:
+        return ""
+    antes = t.get("prob_zona_antes_del_partido")
+    if antes is None:
+        d = ""
+    elif abs(prob - antes) < 0.05:
+        # `delta_span` escribe "= pp" para un cambio nulo: en una tabla SEO se
+        # entiende, leído dentro de un breve parece una errata. Mismo color
+        # (.delta-eq), texto de prosa.
+        d = '<span class="delta-eq">sin cambio</span>'
+    else:
+        d = delta_span(prob - antes)
+    return (f'<div class="brief__zone {_color(t.get("zona_color"))}">'
+            f'<span class="n">{esc(t["nombre"])}</span>'
+            f'<span class="z">{esc(t["zona"])}</span>'
+            f'<b>{pct(prob)}</b>{d}</div>')
+
+
+def _brief(m, league_slug, text, icon):
+    """Un resultado del día como breve de periódico: marcador (enlazado a la
+    crónica de ese partido, mismo destino que _match_card) + su párrafo + qué
+    le hizo el resultado a la probabilidad de zona de cada equipo, y un icono
+    vintage de cierre. Bloque autocontenido: fluye entero por una columna
+    (`break-inside:avoid`).
+
+    El icono va DENTRO del breve, al final, no como separador suelto entre
+    dos breves: en un flujo por columnas un separador entre bloques acaba al
+    pie de la columna (donde ya no separa nada) y el último breve se queda
+    sin él. Como cierre de cada breve, la marca sale siempre donde toca."""
+    l, v, r = m["local"], m["visitante"], m["resultado"]
+    head = (f'{team_avatar(l.get("logo"), l["nombre"], _seed(l.get("id")), 22)}'
+            f'<span class="n">{esc(l["nombre"])}</span>'
+            f'<b class="sc">{r["local"]}–{r["visitante"]}</b>'
+            f'<span class="n away">{esc(v["nombre"])}</span>'
+            f'{team_avatar(v.get("logo"), v["nombre"], _seed(v.get("id")), 22)}')
+    if m.get("event_id"):
+        href = article_url(cronica_slug(league_slug, m["event_id"]))
+        head = f'<a class="brief__head" href="{esc(href)}">{head}</a>'
+    else:
+        head = f'<div class="brief__head">{head}</div>'
+    return (f'<div class="brief">{head}<p class="lede">{esc(text)}</p>'
+            + "".join(_brief_zone(t) for t in (l, v))
+            + f'<div class="col-divider" data-icon="{icon}"></div></div>')
+
+
+def _briefs_body_html(text, partidos, league_slug, icon_attr=""):
+    """Cuerpo del resumen del día: un breve por partido (ver _brief) fluyendo
+    por las columnas de un único `.card-pad[data-cols]`, con un icono vintage
+    entre breve y breve. Mismo contrato que _matches_body_html — un párrafo
+    por partido, en el orden de DATOS — y misma degradación si Gemini no lo
+    respeta: prosa suelta, sin emparejar párrafo con el partido equivocado."""
+    paras = [p.strip() for p in text.split("\n\n") if p.strip()]
+    if len(paras) != len(partidos):
+        prose, n = _body_html(text)
+        return (f'<div class="card"{icon_attr}><div class="card-pad" '
+                f'data-cols="{min(n, 3)}">{prose}</div></div>')
+    out = [_brief(m, league_slug, p, _BRIEF_DIVIDER_ICONS[i % len(_BRIEF_DIVIDER_ICONS)])
+           for i, (p, m) in enumerate(zip(paras, partidos))]
+    return (f'<div class="card"{icon_attr}><div class="card-pad" '
+            f'data-cols="{min(len(partidos), 3)}">{"".join(out)}</div></div>')
 
 
 def _hero(crests, heading, sub):
@@ -172,6 +265,26 @@ def _hero(crests, heading, sub):
 def _stat_grid(cards):
     """cards: lista de (value, label, color|None)."""
     return f'<div class="stat-grid">{"".join(stat_card(v, l, _color(c)) for v, l, c in cards)}</div>'
+
+
+# Icono de marca de agua del lead card, por tipo de artículo — ver
+# assets/articles-editorial.css (`.card[data-icon]::after`, tamaño --ico-lg).
+_LEAD_ICON = {
+    "cronica_partido": "goal-net",
+    "previa_diaria": "corner-flag",
+    "resumen_diario": "medal",
+    "recap_jornada": "ball",
+    "explicador_probabilidad": "boots",
+    "carrera_titulo": "trophy",
+}
+
+
+def _section_label(text, icon=None):
+    """`.section-label` con icono opcional a la derecha (ver
+    `.section-label[data-icon]::after` en assets/articles-editorial.css,
+    tamaño --ico-sm) — sin icono, cae en la regla simétrica de siempre."""
+    attr = f' data-icon="{icon}"' if icon else ""
+    return f'<div class="section-label"{attr}>{esc(text)}</div>'
 
 
 # ── Hero + stat cards por tipo (los hechos ya vienen del payload de grounding;
@@ -262,26 +375,11 @@ def _previa_visual(payload):
     return crests, cards
 
 
-def _resumen_visual(payload):
-    """Mismo patrón que _previa_visual (fila de escudos + un stat card por
-    partido, sin hero — puede haber varios resultados el mismo día), pero
-    con los campos de un resultado YA jugado (prob_zona_actual/zona, los
-    mismos que usa _cronica_visual) en vez de los de un partido futuro."""
-    partidos = payload.get("partidos") or []
-    crests, cards = [], []
-    for p in partidos:
-        l, v = p["local"], p["visitante"]
-        crests.append((l.get("logo"), l["nombre"], l.get("id")))
-        crests.append((v.get("logo"), v["nombre"], v.get("id")))
-        for t in (l, v):
-            if t.get("prob_zona_actual") is not None:
-                cards.append((t["prob_zona_actual"], f'{t["nombre"]} · {t["zona"]}', t.get("zona_color")))
-    return crests, cards
-
-
+# `resumen_diario` NO está aquí a propósito: sus resultados no van en una
+# cabecera de escudos + stat-grid aparte, sino repartidos en un breve por
+# partido dentro del propio cuerpo (ver _briefs_body_html).
 _NO_HERO_VISUALS = {
-    "previa_diaria": ("Partidos de hoy", _previa_visual),
-    "resumen_diario": ("Resultados de hoy", _resumen_visual),
+    "previa_diaria": ("Partidos de hoy", "whistle", _previa_visual),
 }
 
 
@@ -391,7 +489,7 @@ def _sources_card(sources):
         f'{esc(s["title"])}</a>'
         for s in sources
     )
-    return (f'<div class="card"><div class="card-pad"><div class="section-label">Fuentes</div>'
+    return (f'<div class="card"><div class="card-pad">{_section_label("Fuentes", "tactics-board")}'
             f'<div class="chips">{links}</div></div></div>')
 
 
@@ -413,14 +511,15 @@ def render_article(article, league, logo=None, recent=None, preview=False):
     jornada = payload.get("jornada")
     crumb_label = _CRUMB_LABEL.get(tipo, "Artículo")
 
+    lead_icon_attr = f' data-icon="{_LEAD_ICON[tipo]}"' if tipo in _LEAD_ICON else ""
     lead_card = ""
     if tipo in _NO_HERO_VISUALS:
-        label, builder = _NO_HERO_VISUALS[tipo]
+        label, label_icon, builder = _NO_HERO_VISUALS[tipo]
         crests, cards = builder(payload)
         if crests:
             avs = "".join(team_avatar(logo_, name, _seed(tid), 32) for logo_, name, tid in crests)
-            lead_card = (f'<div class="card"><div class="card-pad">'
-                        f'<div class="section-label">{esc(label)}</div>'
+            lead_card = (f'<div class="card"{lead_icon_attr}><div class="card-pad">'
+                        f'{_section_label(label, label_icon)}'
                         f'<div class="chips">{avs}</div></div>'
                         + (_stat_grid(cards) if cards else "") + '</div>')
     else:
@@ -428,19 +527,19 @@ def render_article(article, league, logo=None, recent=None, preview=False):
         if builder:
             hero, cards = builder(payload)
             if hero:
-                lead_card = (f'<div class="card">{hero}'
+                lead_card = (f'<div class="card"{lead_icon_attr}>{hero}'
                             + (_stat_grid(cards) if cards else "") + '</div>')
 
     mentioned = _mentioned_teams(tipo, payload)
     seguir = ""
     if recent:
         seguir += (
-            '<div class="card"><div class="card-pad"><div class="section-label">Seguir viendo…</div>'
+            f'<div class="card"><div class="card-pad">{_section_label("Seguir viendo…", "runner")}'
             + _article_carousel(recent[:7]) + '</div></div>'
         )
     if mentioned:
         seguir += (
-            '<div class="card"><div class="card-pad"><div class="section-label">Equipos mencionados</div>'
+            f'<div class="card"><div class="card-pad">{_section_label("Equipos mencionados", "corner-flag")}'
             + _mentions_chips(league, logo, mentioned) + '</div></div>'
         )
 
@@ -450,17 +549,18 @@ def render_article(article, league, logo=None, recent=None, preview=False):
             lambda m: _match_card(m["local"], m["visitante"], league["slug"], m.get("event_id"),
                                   liga=league["name"], hora=m.get("hora"), win_prob=m.get("win_prob")))
     elif tipo == "resumen_diario":
-        body_html = _matches_body_html(
-            article["body"], payload.get("partidos") or [],
-            lambda m: _match_card(m["local"], m["visitante"], league["slug"], m.get("event_id"),
-                                  resultado=m["resultado"]))
+        body_html = _briefs_body_html(article["body"], payload.get("partidos") or [],
+                                      league["slug"], lead_icon_attr)
     else:
-        body_html = f'<div class="card"><div class="card-pad">{_body_html(article["body"])}</div></div>'
+        prose_html, n_paras = _body_html(article["body"], _LEAD_ICON.get(tipo))
+        cols = min(n_paras, 3)
+        body_html = f'<div class="card"><div class="card-pad" data-cols="{cols}">{prose_html}</div></div>'
 
     body = (
         crumbs([("Inicio", league["dashboard"]),
                 ("Artículos" + (" (preview)" if preview else ""), hub),
                 (crumb_label, None)])
+        + f'<h2 class="article-headline">{esc(article["title"])}</h2>'
         + lead_card
         + body_html
         + _sources_card(article.get("sources"))
@@ -487,7 +587,8 @@ def render_article(article, league, logo=None, recent=None, preview=False):
     html = page(article["title"], article["meta_description"], url_fn(slug), body,
                 heading=league["name"], logo=logo, badge=badge,
                 json_ld=[json_ld], active_nav=league["dashboard"], og_type="article",
-                show_nav=False, noindex=preview)
+                show_nav=False, noindex=preview,
+                body_class="articles-page", extra_head=_EDITORIAL_HEAD)
     return file_fn(slug), html
 
 
@@ -500,7 +601,8 @@ def render_hub(articles_meta):
     title = "Artículos y análisis · PredictMotion"
     desc = ("Recaps de jornada, explicadores del modelo y análisis de la carrera por "
             "el título, generados a partir de las probabilidades reales de PredictMotion.")
-    return hub_file(), page(title, desc, hub_url(), body, heading="Artículos")
+    return hub_file(), page(title, desc, hub_url(), body, heading="Artículos",
+                            body_class="articles-page", extra_head=_EDITORIAL_HEAD)
 
 
 def render_preview_hub(articles_meta):
@@ -518,4 +620,5 @@ def render_preview_hub(articles_meta):
     title = "Preview de artículos · PredictMotion"
     desc = "Vista privada de los artículos que el pipeline ha generado, pendientes de revisión o publicación."
     return preview_hub_file(), page(title, desc, preview_hub_url(), body,
-                                    heading="Artículos (preview)", noindex=True)
+                                    heading="Artículos (preview)", noindex=True,
+                                    body_class="articles-page", extra_head=_EDITORIAL_HEAD)

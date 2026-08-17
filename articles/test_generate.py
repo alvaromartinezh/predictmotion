@@ -175,7 +175,8 @@ def demo():
             "tipo": "resumen_diario", "jornada": 4, "fecha": "2026-08-15", "liga": "Liga Hypermotion",
             "partidos": [
                 {"local": {"nombre": "R1L", "id": "30", "logo": "rl1.png",
-                          "zona": "Ascenso directo", "zona_color": "green", "prob_zona_actual": 60.0},
+                          "zona": "Ascenso directo", "zona_color": "green", "prob_zona_actual": 60.0,
+                          "prob_zona_antes_del_partido": 52.0},
                  "visitante": {"nombre": "R1V", "id": "31", "logo": "rv1.png",
                               "zona": "Descenso", "zona_color": "red", "prob_zona_actual": 10.0},
                  "resultado": {"local": 2, "visitante": 0}, "event_id": "777"},
@@ -223,27 +224,45 @@ def demo():
             wpbar = render._win_prob_bar({"home": 45.2, "draw": 27.0, "away": 27.8}, "Eibar", "Tenerife")
             assert 'class="winbar__seg h"' in wpbar and "Eibar 45,2%" in wpbar and "Tenerife 27,8%" in wpbar
         elif tipo == "resumen_diario":
-            # Mismo patrón que previa, pero en modo post-partido: marcador +
-            # 'Final' en el centro, SIN raya 1X2 (ya no aplica), enlazando a
-            # la crónica de cada partido (que a estas alturas del día ya
-            # debería existir).
-            assert html.count('class="hero-av"') == 4, "una cabecera de 2 escudos por partido (2 partidos)"
+            # Un BREVE autocontenido por partido (marcador + párrafo + qué le
+            # hizo a la prob. de zona de cada equipo), todos dentro de un
+            # único .card-pad con columnas y separados por un icono — no la
+            # cabecera de escudos + stat-grid + prosa aparte de antes.
+            assert 'class="hero-av"' not in html and 'class="stat ' not in html
             assert 'class="winbar"' not in html, "post-partido no lleva raya 1X2"
-            assert '<span class="kick">2–0</span><span class="s">Final</span>' in html
-            assert '<span class="kick">1–1</span><span class="s">Final</span>' in html
-            assert 'class="comp-link" href="/articulos/hypermotion-cronica-777"' in html
-            assert 'class="comp-link" href="/articulos/hypermotion-cronica-778"' in html
+            assert html.count('class="brief"') == 2
+            assert html.count('data-cols="2"') == 1, "2 partidos -> 2 columnas, un solo card"
+            assert html.count('class="col-divider"') == 2, "un icono de cierre por breve"
+            assert '<b class="sc">2–0</b>' in html and '<b class="sc">1–1</b>' in html
+            assert 'class="brief__head" href="/articulos/hypermotion-cronica-777"' in html
+            assert 'class="brief__head" href="/articulos/hypermotion-cronica-778"' in html
             assert html.index("cronica-777") < html.index("Primer párrafo")
             assert html.index("Primer párrafo") < html.index("cronica-778")
             assert html.index("cronica-778") < html.index("Segundo párrafo")
+            # La zona de cada equipo se cuenta en su breve, con el cambio en
+            # pp solo si hay `prob_zona_antes_del_partido` (aquí lo lleva un
+            # único equipo: 52,0 -> 60,0). Sin ese dato, prob sin delta
+            # inventado — no un "0,0 pp" que no dice nada.
+            assert html.count('class="brief__zone ') == 4
+            assert html.count('<span class="delta-') == 1
+            assert '<span class="delta-up">+8,0 pp</span>' in html
+            # Cambio nulo -> "sin cambio", no el "= pp" de las tablas SEO.
+            assert render._brief_zone({"nombre": "X", "zona": "Z", "zona_color": None,
+                                       "prob_zona_actual": 50.0,
+                                       "prob_zona_antes_del_partido": 50.0}
+                                      ).endswith('<span class="delta-eq">sin cambio</span></div>')
+            # Recuento de párrafos != partidos -> prosa suelta, sin breves.
+            degraded = render._briefs_body_html("Solo un párrafo.", payload["partidos"],
+                                                "hypermotion")
+            assert 'class="brief"' not in degraded and "Solo un párrafo." in degraded
         elif tipo == "cronica_partido":
             # El hero de la propia crónica usa el mismo match-card (marcador
             # + 'Final', sin raya 1X2), pero SIN enlace: enlazarse a sí misma
             # no tiene sentido.
             assert 'class="hero-av"' in html
             assert '<span class="kick">2–1</span><span class="s">Final</span>' in html
-            assert '<a class="comp-link"><div class="card"><div class="match-hero">' not in html
-            assert '<div class="card"><div class="match-hero">' in html
+            assert '<a class="comp-link"><div class="card" data-icon="goal-net"><div class="match-hero">' not in html
+            assert '<div class="card" data-icon="goal-net"><div class="match-hero">' in html
         else:
             assert 'class="hero-av"' in html, f"{tipo} debería llevar hero"
         # Seguir viendo (carrusel de artículos) + Equipos mencionados (chips),
@@ -294,7 +313,7 @@ def demo():
     title, desc = writer._compose_resumen_head(resumen)
     assert "Resumen del día" in title and "1 partido" in title
 
-    # render: resumen_diario usa el mismo patrón sin-hero que previa_diaria.
+    # render: resumen_diario = breves, sin hero ni stat-grid.
     article_resumen = dict(slug="test-resumen", type="resumen_diario", league="hypermotion",
                            title=title, meta_description=desc, body="Cuerpo.\n\nSegundo.",
                            grounding_data=resumen, status="draft",
@@ -302,8 +321,14 @@ def demo():
     league_full = {"name": "Liga Hypermotion", "dashboard": "/hypermotion", "slug": "hypermotion"}
     _p, html = render.render_article(article_resumen, league_full, logo="https://logo/liga.png")
     assert 'class="hero-av"' not in html, "resumen_diario no debería llevar hero"
-    assert "Resultados de hoy" in html
-    assert html.count('class="stat ') >= 1
+    # 1 partido pero 2 párrafos -> degrada a prosa suelta (no empareja mal).
+    assert 'class="brief"' not in html and 'class="stat ' not in html
+    # 1 partido y 1 párrafo -> un breve, 1 columna, sin separador.
+    _p, html1 = render.render_article(dict(article_resumen, body="Cuerpo."), league_full,
+                                      logo="https://logo/liga.png")
+    assert html1.count('class="brief"') == 1 and 'data-cols="1"' in html1
+    assert html1.count('class="col-divider"') == 1
+    assert '<b class="sc">2–0</b>' in html1
 
     # _pick_daily_preview: NO dispara antes de PREVIEW_LOCAL_HOUR (08:00
     # local), aunque haya partidos programados y no se haya generado hoy.
