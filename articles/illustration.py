@@ -48,6 +48,7 @@ Uso: `illustration.svg(slug, tipo, fecha_iso)` -> markup listo para incrustar.
 """
 
 import hashlib
+import math
 from datetime import date
 
 VIEWBOX = "0 0 400 300"
@@ -465,16 +466,54 @@ LABELS = {
 }
 
 
-def _digest(slug, tipo, fecha):
+def digest(slug, tipo, fecha):
     """md5 EXPLÍCITO, nunca hash(): hash() de un str va con sal aleatoria por
     proceso (PYTHONHASHSEED), así que el cron de 3h daría una ilustración
     distinta en cada pasada y el artículo cambiaría de dibujo solo. Lo cubre
-    test_illustration con dos subprocesos y semillas distintas."""
+    test_illustration con dos subprocesos y semillas distintas.
+
+    Público (no `_digest`) porque articles/mosaic.py elige con él la maqueta
+    del artículo: la maqueta tiene que ser tan estable entre procesos como el
+    dibujo, y hacerlo con el MISMO digest evita una segunda función de hash
+    que alguien podría escribir con `hash()`."""
     if isinstance(fecha, str):
         fecha = date.fromisoformat(fecha[:10])
     salt = TYPE_SALT.get(tipo, tipo or "")
     key = f"{slug}|{fecha.toordinal()}|{salt}"
     return int(hashlib.md5(key.encode("utf-8")).hexdigest(), 16)
+
+
+# Pasos coprimos con el nº de sujetos: recorrer la lista de sujetos "a saltos"
+# de un paso coprimo la recorre ENTERA sin repetir, así los N grabados de un
+# mismo artículo son siempre distintos entre sí (con N <= nº de sujetos) sin
+# tener que llevar un conjunto de ya-usados ni reintentar.
+_COPRIME_STEPS = tuple(k for k in range(1, len(SUBJECT_NAMES))
+                       if math.gcd(k, len(SUBJECT_NAMES)) == 1)
+
+
+def picks(slug, tipo, fecha, n=1):
+    """Los `n` (sujeto, fondo) de un artículo, todos distintos de sujeto.
+    `picks(..., 1)[0] == pick(...)`: el primero es exactamente el de antes, así
+    que los artículos ya generados no cambian de grabado de cabecera."""
+    if n > len(SUBJECT_NAMES):
+        raise ValueError(f"solo hay {len(SUBJECT_NAMES)} sujetos, se piden {n}")
+    d = digest(slug, tipo, fecha)
+    s0 = (d & 0xFFFFFFFF) % len(SUBJECT_NAMES)
+    b0 = (d >> 32) & 0xFFFFFFFF
+    step = _COPRIME_STEPS[(d >> 64) % len(_COPRIME_STEPS)]
+    out = []
+    for i in range(n):
+        subject = SUBJECT_NAMES[(s0 + i * step) % len(SUBJECT_NAMES)]
+        # `+i` para que dos grabados seguidos no compartan fondo; el bucle en
+        # `j` es el mismo salto de exclusión de siempre.
+        for j in range(len(BACKDROP_NAMES)):
+            backdrop = BACKDROP_NAMES[(b0 + i + j) % len(BACKDROP_NAMES)]
+            if (subject, backdrop) not in BLOCKED:
+                break
+        else:
+            raise AssertionError(f"todos los fondos excluidos para {subject!r}")
+        out.append((subject, backdrop))
+    return out
 
 
 def pick(slug, tipo, fecha):
@@ -491,22 +530,23 @@ def pick(slug, tipo, fecha):
     familia primero deja P(misma familia) = 1/15 = 6,7% frente al 7,4% de
     elegir sujeto uniformemente, es decir nada, a cambio de que los 6 sujetos
     emparejados salgan la mitad de veces que el resto. Se elige uniforme."""
-    d = _digest(slug, tipo, fecha)
-    subject = SUBJECT_NAMES[(d & 0xFFFFFFFF) % len(SUBJECT_NAMES)]
-    # Rebanada distinta del digest para que fondo y sujeto sean independientes.
-    b = (d >> 32) & 0xFFFFFFFF
-    for i in range(len(BACKDROP_NAMES)):
-        backdrop = BACKDROP_NAMES[(b + i) % len(BACKDROP_NAMES)]
-        if (subject, backdrop) not in BLOCKED:
-            return subject, backdrop
-    raise AssertionError(f"todos los fondos excluidos para {subject!r}")
+    return picks(slug, tipo, fecha, 1)[0]
+
+
+def plates(slug, tipo, fecha, n=1):
+    """`n` láminas (markup, nombre) de sujetos distintos — las 3-4 que la
+    maqueta de mosaico reparte por el artículo (ver articles/mosaic.py)."""
+    return [_plate(s, b) for s, b in picks(slug, tipo, fecha, n)]
 
 
 def plate(slug, tipo, fecha):
     """(markup, nombre_del_grabado). El markup usa `currentColor` (no un color
     fijo): al ir inline SÍ hereda el cascade, a diferencia de los iconos
     data-URI. El nombre lo pinta render.py como pie de la lámina."""
-    subject, backdrop = pick(slug, tipo, fecha)
+    return plates(slug, tipo, fecha, 1)[0]
+
+
+def _plate(subject, backdrop):
     label = LABELS[subject]
     markup = (
         f'<svg class="illo" viewBox="{VIEWBOX}" role="img" aria-label="{label}" '
