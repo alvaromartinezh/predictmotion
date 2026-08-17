@@ -128,11 +128,19 @@ def demo():
             assert m in I.SUBJECTS, f"familia con sujeto inexistente: {m}"
 
     # ── 8. El markup que se incrusta es el esperado ─────────────────────────
-    markup = I.svg("recap-jornada-3-laliga", "recap_jornada", "2026-08-17T09:00:00")
+    markup, label = I.plate("recap-jornada-3-laliga", "recap_jornada", "2026-08-17T09:00:00")
     assert markup.startswith("<svg class=\"illo\"")
     assert 'stroke="currentColor"' in markup and "#" not in markup
     assert f'viewBox="{I.VIEWBOX}"' in markup
+    assert f'aria-label="{label}"' in markup, "el aria-label debe describir el DIBUJO"
     ET.fromstring(markup)
+
+    # ── 9. Cada sujeto tiene nombre legible (pie de lámina + aria-label) ────
+    faltan = set(I.SUBJECT_NAMES) - set(I.LABELS)
+    assert not faltan, f"sujetos sin nombre en LABELS: {faltan}"
+    sobran = set(I.LABELS) - set(I.SUBJECT_NAMES)
+    assert not sobran, f"LABELS con sujetos inexistentes: {sobran}"
+    assert len(set(I.LABELS.values())) == len(I.LABELS), "dos sujetos con el mismo nombre"
 
     print(f"articles.test_illustration: OK "
           f"({len(I.SUBJECTS)}×{len(I.BACKDROPS)}−{len(I.BLOCKED)} = "

@@ -439,6 +439,31 @@ TYPE_SALT = {
 SUBJECT_NAMES = tuple(sorted(SUBJECTS))
 BACKDROP_NAMES = tuple(sorted(BACKDROPS))
 
+# Nombre legible de cada grabado: va al pie de la lámina y al aria-label (que
+# antes llevaba el tipo de artículo — describía el artículo, no el dibujo, que
+# es lo que un lector de pantalla necesita ahí). test_illustration exige que
+# estén los 18.
+LABELS = {
+    "aspersores":  "Aspersores",
+    "balon":       "Balón en el punto",
+    "banquillo":   "Banquillo",
+    "camara":      "Torre de cámara",
+    "carro":       "Carro de balones",
+    "corner":      "Banderín de córner",
+    "focos2":      "Torre de focos",
+    "grada":       "Grada esquinada",
+    "manual":      "Marcador manual",
+    "marcador2":   "Marcador",
+    "megafonia":   "Torre de megafonía",
+    "pizarra":     "Pizarra táctica",
+    "porteria2":   "Portería",
+    "puerta":      "Puerta de vestuario",
+    "reloj":       "Reloj de estadio",
+    "torniquetes": "Torniquetes",
+    "trofeo2":     "Trofeo",
+    "tunel":       "Boca de túnel",
+}
+
 
 def _digest(slug, tipo, fecha):
     """md5 EXPLÍCITO, nunca hash(): hash() de un str va con sal aleatoria por
@@ -477,14 +502,16 @@ def pick(slug, tipo, fecha):
     raise AssertionError(f"todos los fondos excluidos para {subject!r}")
 
 
-def svg(slug, tipo, fecha, title=None):
-    """Markup listo para incrustar. `currentColor` (no un color fijo): al ir
-    inline SÍ hereda el cascade, a diferencia de los iconos data-URI."""
+def plate(slug, tipo, fecha):
+    """(markup, nombre_del_grabado). El markup usa `currentColor` (no un color
+    fijo): al ir inline SÍ hereda el cascade, a diferencia de los iconos
+    data-URI. El nombre lo pinta render.py como pie de la lámina."""
     subject, backdrop = pick(slug, tipo, fecha)
-    label = title or "Ilustración"
-    return (
+    label = LABELS[subject]
+    markup = (
         f'<svg class="illo" viewBox="{VIEWBOX}" role="img" aria-label="{label}" '
         f'fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" '
         f'data-illo="{subject}/{backdrop}">'
         f"{BACKDROPS[backdrop]}{SUBJECTS[subject]}</svg>"
     )
+    return markup, label

@@ -133,15 +133,40 @@ body.articles-page .card{
  * dibuja dentro de una caja fija sobre el horizonte del fondo, así que la
  * relación de aspecto 400×300 NO se puede tocar: recortarla descuadraría
  * el apoyo del sujeto en la línea de base. */
-body.articles-page .illo-card{padding:0}
+/* El grabado va DENTRO del cuerpo, nunca como banda sobre la página. Dos
+ * formas, las dos en el flujo y a ancho de columna:
+ *   .illo-aside -> caja propia (kicker + pie) para los tipos de prosa, que no
+ *                  tienen bloques donde meterlo.
+ *   .illo-plate -> desnudo, dentro de un bloque que YA es una caja (el breve
+ *                  del resumen del día); otro borde ahí sería caja en caja.
+ * NO se intentó flotarlo para que el texto lo envuelva: el cuerpo es
+ * multi-columna (column-count abajo) y un float en ese contexto de
+ * shrink-to-fit colapsa a altura 0 — comprobado en escritorio y en 390px, y
+ * también quitando el aspect-ratio. Envolver texto exigiría renunciar al
+ * multi-columna, que es justo el look de periódico. */
+body.articles-page .illo-aside,
+body.articles-page .illo-plate{
+  break-inside:avoid;margin:2px 0 14px;
+  /* Tope para que la caja siga siendo pequeña donde NO hay columnas (las cards
+   * de texto de la previa van a ancho completo). Dentro de una columna (~275px)
+   * no llega al tope y manda el ancho de la columna. */
+  max-width:300px;
+}
+body.articles-page .illo-aside{
+  border:1px solid var(--border);padding:10px;background:rgba(255,255,255,.02);
+}
 body.articles-page .illo{
   display:block;width:100%;height:auto;aspect-ratio:4/3;
   color:var(--text);opacity:.9;
-  /* A ancho completo de columna el grabado mide ~700px de alto y se come la
-   * primera pantalla entera antes de una sola línea de texto. Se limita y se
-   * centra, como una lámina de periódico: el sujeto sigue dominando SU panel,
-   * que es de lo que iba el encuadre, sin dominar la página. */
-  max-width:560px;margin:0 auto;
+}
+body.articles-page .illo-kicker{
+  display:block;font:700 .64rem/1.2 'PT Serif',serif;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--accent);margin-bottom:7px;
+}
+body.articles-page .illo-aside figcaption,
+body.articles-page .illo-plate figcaption{
+  font:italic .74rem/1.4 'PT Serif',serif;color:var(--muted);
+  padding-top:5px;border-top:1px solid var(--border);margin-top:5px;
 }
 
 /* separador tipo columna entre cards apiladas (no aplica al primer card) */

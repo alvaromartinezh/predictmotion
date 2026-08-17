@@ -24,7 +24,7 @@ _MADRID_TZ = ZoneInfo("Europe/Madrid")
 # Rediseño editorial "old-newspaper" — hoja propia (assets/articles-editorial.css),
 # no toca seo/chrome.py:CSS. Bump manual del ?v= si se vuelve a tocar el CSS
 # (los artículos se generan en el servidor, no pasan por el sed de *.html del repo).
-_EDITORIAL_ASSET_V = "5"
+_EDITORIAL_ASSET_V = "6"
 _EDITORIAL_HEAD = (
     '<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900'
     '&family=PT+Serif:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">'
@@ -69,7 +69,25 @@ def _seed(team_id):
         return 0
 
 
-def _body_html(text, icon=None):
+def _illo_figure(markup, label):
+    """Grabado como CAJA de historia lateral, con kicker y pie: la variante
+    para los tipos de prosa, que no tienen bloques propios donde meterlo.
+    Fluye por la columna como un bloque más (`break-inside:avoid`) y se topa
+    a 300px, así vale igual dentro de una columna estrecha (~275px, donde no
+    llega al tope) que en una card a ancho completo, como las de previa."""
+    return (f'<figure class="illo-aside"><span class="illo-kicker">Grabado</span>'
+            f'{markup}<figcaption>{esc(label)}</figcaption></figure>')
+
+
+def _illo_plain(markup, label):
+    """Grabado desnudo (sin recuadro ni kicker), para meterlo DENTRO de un
+    bloque que ya es una caja — el breve del resumen del día. Otro borde
+    dentro del breve sería una caja dentro de una caja."""
+    return (f'<figure class="illo-plate">{markup}'
+            f'<figcaption>{esc(label)}</figcaption></figure>')
+
+
+def _body_html(text, icon=None, illo=None):
     """Devuelve (html, n_párrafos). `n_párrafos` decide el nº de columnas del
     llamante (data-cols, ver assets/articles-editorial.css) — un atributo
     explícito en vez de contar hermanos `.lede` por CSS (`:has(.lede+.lede)`)
@@ -82,6 +100,14 @@ def _body_html(text, icon=None):
     parts = [f'<p class="lede">{esc(p)}</p>' for p in paras]
     if icon and len(paras) >= 3:
         parts.insert(len(parts) // 2, f'<div class="col-divider" data-icon="{esc(icon)}"></div>')
+    if illo:
+        # Tras el PRIMER párrafo: cae en la primera columna, debajo de la
+        # entradilla (que lleva la capitular), que es donde la referencia pone
+        # sus grabados. Va después del divisor a propósito: insertarlo antes
+        # desplazaría el índice calculado para el divisor.
+        parts.insert(1, illo)
+    # n_paras NO cuenta la lámina: es lo que decide data-cols y el nº de
+    # columnas debe seguir saliendo del texto, no de la decoración.
     return "".join(parts), len(paras)
 
 
@@ -163,7 +189,7 @@ def _match_card(local, visitante, league_slug, event_id, **kw):
     return f'<a class="comp-link" href="{esc(href)}">{card}</a>'
 
 
-def _matches_body_html(text, partidos, builder):
+def _matches_body_html(text, partidos, builder, illo=None):
     """Igual que _body_html, pero antepone builder(m) (una _match_card) a
     cada párrafo — previa_diaria/resumen_diario redactan un párrafo por
     partido, en el mismo orden que DATOS (ver
@@ -172,11 +198,17 @@ def _matches_body_html(text, partidos, builder):
     a una única card de texto sin cabeceras en vez de emparejar mal."""
     paras = [p.strip() for p in text.split("\n\n") if p.strip()]
     if len(paras) != len(partidos):
-        return f'<div class="card"><div class="card-pad">{_body_html(text)[0]}</div></div>'
+        return (f'<div class="card"><div class="card-pad">'
+                f'{_body_html(text, illo=illo)[0]}</div></div>')
     out = []
-    for p, m in zip(paras, partidos):
+    for i, (p, m) in enumerate(zip(paras, partidos)):
         out.append(builder(m))
-        out.append(f'<div class="card"><div class="card-pad"><p class="lede">{esc(p)}</p></div></div>')
+        # El grabado va en la card de texto del PRIMER partido: aquí no hay
+        # flujo por columnas (esto son cards de nivel superior alternando
+        # partido/texto), así que la caja se apoya en su propio max-width.
+        pre = illo if (illo and i == 0) else ""
+        out.append(f'<div class="card"><div class="card-pad">{pre}'
+                   f'<p class="lede">{esc(p)}</p></div></div>')
     return "".join(out)
 
 
@@ -210,7 +242,7 @@ def _brief_zone(t):
             f'<b>{pct(prob)}</b>{d}</div>')
 
 
-def _brief(m, league_slug, text, icon):
+def _brief(m, league_slug, text, icon, illo=None):
     """Un resultado del día como breve de periódico: marcador (enlazado a la
     crónica de ese partido, mismo destino que _match_card) + su párrafo + qué
     le hizo el resultado a la probabilidad de zona de cada equipo, y un icono
@@ -232,12 +264,14 @@ def _brief(m, league_slug, text, icon):
         head = f'<a class="brief__head" href="{esc(href)}">{head}</a>'
     else:
         head = f'<div class="brief__head">{head}</div>'
-    return (f'<div class="brief">{head}<p class="lede">{esc(text)}</p>'
+    # El grabado va entre el marcador y el párrafo: dentro de la caja del
+    # breve y atado a ESE partido, no flotando sobre la página.
+    return (f'<div class="brief">{head}{illo or ""}<p class="lede">{esc(text)}</p>'
             + "".join(_brief_zone(t) for t in (l, v))
             + f'<div class="col-divider" data-icon="{icon}"></div></div>')
 
 
-def _briefs_body_html(text, partidos, league_slug, icon_attr=""):
+def _briefs_body_html(text, partidos, league_slug, icon_attr="", illo=None, illo_box=None):
     """Cuerpo del resumen del día: un breve por partido (ver _brief) fluyendo
     por las columnas de un único `.card-pad[data-cols]`, con un icono vintage
     entre breve y breve. Mismo contrato que _matches_body_html — un párrafo
@@ -245,10 +279,14 @@ def _briefs_body_html(text, partidos, league_slug, icon_attr=""):
     respeta: prosa suelta, sin emparejar párrafo con el partido equivocado."""
     paras = [p.strip() for p in text.split("\n\n") if p.strip()]
     if len(paras) != len(partidos):
-        prose, n = _body_html(text)
+        # Degradado a prosa suelta: aquí ya no hay breves donde meter el
+        # grabado, así que se usa la caja de los tipos de prosa.
+        prose, n = _body_html(text, illo=illo_box)
         return (f'<div class="card"{icon_attr}><div class="card-pad" '
                 f'data-cols="{min(n, 3)}">{prose}</div></div>')
-    out = [_brief(m, league_slug, p, _BRIEF_DIVIDER_ICONS[i % len(_BRIEF_DIVIDER_ICONS)])
+    # Solo en el PRIMER breve: uno por partido saturaría la página.
+    out = [_brief(m, league_slug, p, _BRIEF_DIVIDER_ICONS[i % len(_BRIEF_DIVIDER_ICONS)],
+                  illo=illo if i == 0 else None)
            for i, (p, m) in enumerate(zip(paras, partidos))]
     return (f'<div class="card"{icon_attr}><div class="card-pad" '
             f'data-cols="{min(len(partidos), 3)}">{"".join(out)}</div></div>')
@@ -544,32 +582,34 @@ def render_article(article, league, logo=None, recent=None, preview=False):
             + _mentions_chips(league, logo, mentioned) + '</div></div>'
         )
 
+    # Grabado de la ilustración: va DENTRO del cuerpo, no como banda encima de
+    # todo. Dos formas según el tipo (ver _illo_figure / _illo_plain):
+    #   · resumen_diario -> desnudo, DENTRO del primer breve (ya es una caja).
+    #   · resto          -> caja propia con kicker y pie, en el flujo.
+    illo_markup, illo_label = illustration.plate(slug, tipo, article["generated_at"])
+    illo_box = _illo_figure(illo_markup, illo_label)
+
     if tipo == "previa_diaria":
         body_html = _matches_body_html(
             article["body"], payload.get("partidos") or [],
             lambda m: _match_card(m["local"], m["visitante"], league["slug"], m.get("event_id"),
-                                  liga=league["name"], hora=m.get("hora"), win_prob=m.get("win_prob")))
+                                  liga=league["name"], hora=m.get("hora"), win_prob=m.get("win_prob")),
+            illo=illo_box)
     elif tipo == "resumen_diario":
         body_html = _briefs_body_html(article["body"], payload.get("partidos") or [],
-                                      league["slug"], lead_icon_attr)
+                                      league["slug"], lead_icon_attr,
+                                      illo=_illo_plain(illo_markup, illo_label),
+                                      illo_box=illo_box)
     else:
-        prose_html, n_paras = _body_html(article["body"], _LEAD_ICON.get(tipo))
+        prose_html, n_paras = _body_html(article["body"], _LEAD_ICON.get(tipo), illo=illo_box)
         cols = min(n_paras, 3)
         body_html = f'<div class="card"><div class="card-pad" data-cols="{cols}">{prose_html}</div></div>'
-
-    # Grabado de cabecera: titular -> ilustración -> datos, en ese orden (el de
-    # un periódico). Determinista por (slug, tipo, fecha DEL ARTÍCULO) — nunca
-    # por la fecha de hoy, o el cron de 3h le cambiaría el dibujo a cada pasada.
-    illo_card = (f'<div class="card illo-card">'
-                 f'{illustration.svg(slug, tipo, article["generated_at"], title=esc(crumb_label))}'
-                 f'</div>')
 
     body = (
         crumbs([("Inicio", league["dashboard"]),
                 ("Artículos" + (" (preview)" if preview else ""), hub),
                 (crumb_label, None)])
         + f'<h2 class="article-headline">{esc(article["title"])}</h2>'
-        + illo_card
         + lead_card
         + body_html
         + _sources_card(article.get("sources"))
