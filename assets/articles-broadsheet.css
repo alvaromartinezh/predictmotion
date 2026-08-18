@@ -134,7 +134,7 @@ a.bs-brief__head:hover { border-bottom-color: #f0a92a; }
 .bs-zone { padding: 4px 0 4px 9px; margin-top: 4px; border-left: 2px solid; font-family: 'Geist Mono', monospace; font-size: .66rem; color: #66789c; overflow-wrap: anywhere; }
 .bs-zone__row { display: flex; align-items: baseline; gap: 7px; }
 .bs-zone__team { color: #e4ecfa; font-weight: 600; min-width: 0; }
-.bs-zone__val { margin-left: auto; color: #e4ecfa; }
+.bs-zone__val { color: #e4ecfa; }
 .bs-zone__label { margin-top: 2px; font-size: .6rem; letter-spacing: .06em; text-transform: uppercase; color: #3d4d6e; }
 .bs-zone--sm { padding: 3px 0 3px 9px; font-size: .64rem; }
 
