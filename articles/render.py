@@ -11,12 +11,12 @@ import re
 from datetime import date, datetime, timezone
 
 from seo.chrome import COLOR_PALETTE, GTM_BODY, GTM_HEAD, avatar, esc, team_avatar
-from seo.config import SITE
-from seo.textutil import pct, signed
+from seo.config import SIM_N_TABLE, SITE
+from seo.textutil import pct, signed, slugify
 
 from . import grounding, illustration, writer
 
-_CSS_V = "7"
+_CSS_V = "8"
 _DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 _MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 ZONE_HEX = {"ascenso": "#2ec98a", "playoff": "#f3b23f", "descenso": "#ff556b"}
@@ -32,6 +32,14 @@ def url_for(fecha):
 
 def file_for(fecha):
     return f"articulos/{slug_for(fecha)}.html"
+
+
+def slug_for_match(fecha, local_nombre, visitante_nombre):
+    return f"hypermotion-{slugify(local_nombre)}-{slugify(visitante_nombre)}-{fecha}"
+
+
+def url_for_match(fecha, local_nombre, visitante_nombre):
+    return f"/articulos/{slug_for_match(fecha, local_nombre, visitante_nombre)}"
 
 
 def _seed(team_id):
@@ -108,16 +116,20 @@ def _delta(actual, antes):
     return signed(d) + " pp", ("bs-delta-up" if d > 0 else "bs-delta-down")
 
 
-def _zone_block(t, size_cls=""):
+def _zone_block(t, size_cls="", show_before=False):
     if t is None or t.get("prob_zona_actual") is None:
         return ""
     color = ZONE_HEX.get(t.get("zona_key"), "#66789c")
     delta_txt, delta_cls = _delta(t["prob_zona_actual"], t.get("prob_zona_antes_del_partido"))
     delta_html = f'<span class="{delta_cls}">{esc(delta_txt)}</span>' if delta_txt else ""
+    before_html = ""
+    if show_before and t.get("prob_zona_antes_del_partido") is not None:
+        before_html = f'<span class="bs-zone__before">{pct(t["prob_zona_antes_del_partido"])} →</span>'
     cls = "bs-zone" + (f" {size_cls}" if size_cls else "")
     return (f'<div class="{cls}" style="border-left-color:{color}">'
             f'<div class="bs-zone__row">'
             f'<span class="bs-zone__team">{esc(t["nombre"])}</span>'
+            f'{before_html}'
             f'<b class="bs-zone__val">{pct(t["prob_zona_actual"])}</b>'
             f'{delta_html}</div>'
             f'<div class="bs-zone__label">{esc(t["zona"])}</div></div>')
@@ -195,6 +207,61 @@ def _mentions_html(payload_resumen, league_name, league_logo):
         '<div class="bs-mentions"><div class="bs-mentions__label">Equipos mencionados</div>'
         f'<div class="bs-mentions__list">{"".join(chips)}</div></div>'
     )
+
+
+def _masthead_html(tagline):
+    """Cabecera compartida por el broadsheet diario y el de partido — único
+    sitio que la define, para no tener dos copias del mismo marcado."""
+    return f"""<div class="bs-masthead">
+<div class="bs-masthead__kicker"><span>Simulación Monte Carlo</span><span>Datos oficiales · ESPN</span></div>
+<div class="bs-masthead__title"><span class="bs-masthead__dot"></span>
+<h1>Predict<span>Motion</span></h1></div>
+<div class="bs-masthead__tagline">{esc(tagline)}</div>
+</div>"""
+
+
+def _footer_html():
+    return """<div class="bs-footer">
+<span>© 2025 PredictMotion · Todos los derechos reservados</span>
+<a href="/privacy">Privacidad</a>
+</div>"""
+
+
+def _page_html(title, description, canonical, league_logo, json_ld, body):
+    """Documento HTML completo (head+body) compartido por el broadsheet
+    diario y el de partido — solo cambian título/meta/JSON-LD/cuerpo."""
+    return f"""<!DOCTYPE html>
+<html lang="es">
+<head>
+{GTM_HEAD}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1180">
+<title>{esc(title)}</title>
+<meta name="description" content="{esc(description)}">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<meta name="theme-color" content="#060916">
+<link rel="canonical" href="{canonical}">
+<meta property="og:type" content="article">
+<meta property="og:title" content="{esc(title)}">
+<meta property="og:description" content="{esc(description)}">
+<meta property="og:url" content="{canonical}">
+<meta property="og:image" content="{esc(league_logo or '')}">
+<meta property="og:locale" content="es_ES">
+<meta property="og:site_name" content="PredictMotion">
+<meta name="twitter:card" content="summary">
+<link rel="icon" type="image/png" href="{esc(league_logo or '')}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="dns-prefetch" href="https://a.espncdn.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Saira+Condensed:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/articles-broadsheet.css?v={_CSS_V}">
+<script type="application/ld+json">{json.dumps(json_ld, ensure_ascii=False)}</script>
+</head>
+<body>
+{GTM_BODY}
+{body}
+</body>
+</html>"""
 
 
 def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explainer_body,
@@ -295,12 +362,7 @@ def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explaine
     body = f"""<div class="bs-page">
 <a class="bs-back" href="/hypermotion">← Volver a la clasificación</a>
 <div class="bs-sheet">
-<div class="bs-masthead">
-<div class="bs-masthead__kicker"><span>Simulación Monte Carlo</span><span>Datos oficiales · ESPN</span></div>
-<div class="bs-masthead__title"><span class="bs-masthead__dot"></span>
-<h1>Predict<span>Motion</span></h1></div>
-<div class="bs-masthead__tagline">{esc(payload_resumen["liga"])} · El diario de las probabilidades</div>
-</div>
+{_masthead_html(f'{payload_resumen["liga"]} · El diario de las probabilidades')}
 <div class="bs-edition">
 <span class="bs-edition__item">Edición diaria</span>
 <span class="bs-edition__item bs-edition__item--muted">{_fecha_label(fecha)}</span>
@@ -310,41 +372,205 @@ def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explaine
 </div>
 {grid}
 {mentions}
-<div class="bs-footer">
-<span>© 2025 PredictMotion · Todos los derechos reservados</span>
-<a href="/privacy">Privacidad</a>
-</div>
+{_footer_html()}
 </div></div>"""
 
-    return f"""<!DOCTYPE html>
-<html lang="es">
-<head>
-{GTM_HEAD}
-<meta charset="UTF-8">
-<meta name="viewport" content="width=1180">
-<title>{esc(title)}</title>
-<meta name="description" content="{esc(description)}">
-<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
-<meta name="theme-color" content="#060916">
-<link rel="canonical" href="{canonical}">
-<meta property="og:type" content="article">
-<meta property="og:title" content="{esc(title)}">
-<meta property="og:description" content="{esc(description)}">
-<meta property="og:url" content="{canonical}">
-<meta property="og:image" content="{esc(league_logo or '')}">
-<meta property="og:locale" content="es_ES">
-<meta property="og:site_name" content="PredictMotion">
-<meta name="twitter:card" content="summary">
-<link rel="icon" type="image/png" href="{esc(league_logo or '')}">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="dns-prefetch" href="https://a.espncdn.com">
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Saira+Condensed:wght@500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/articles-broadsheet.css?v={_CSS_V}">
-<script type="application/ld+json">{json.dumps(json_ld, ensure_ascii=False)}</script>
-</head>
-<body>
-{GTM_BODY}
-{body}
-</body>
-</html>"""
+    return _page_html(title, description, canonical, league_logo, json_ld, body)
+
+
+# ── Broadsheet de PARTIDO ────────────────────────────────────────────────
+
+def _team_headline(team):
+    """H2 de la columna del equipo: 'Su <zona> <verbo> <valor>' — determinista
+    (mismo criterio que el titular del explicador diario: la cifra la compone
+    Python a partir del payload, nunca Gemini)."""
+    actual = team.get("prob_zona_actual")
+    zona = esc(team["zona"])
+    if actual is None:
+        return zona
+    antes = team.get("prob_zona_antes_del_partido")
+    val = pct(actual)
+    if antes is None:
+        return f'Su {zona.lower()} queda en el <span>{val}</span>'
+    d = actual - antes
+    verb = "se mantiene en" if abs(d) < 0.05 else ("sube al" if d > 0 else "cae al")
+    return f'Su {zona.lower()} {verb} <span>{val}</span>'
+
+
+def _match_stats_html(team):
+    rows = []
+    for z in team["zonas"]:
+        if z["actual"] is None:
+            continue
+        color = ZONE_HEX.get(z["key"], "#66789c")
+        delta_txt, delta_cls = _delta(z["actual"], z["antes"])
+        delta_html = f'<span class="bs-stats__delta {delta_cls}">{esc(delta_txt)}</span>' if delta_txt else ""
+        rows.append(
+            f'<div class="bs-stats__row">'
+            f'<span class="bs-stats__value" style="color:{color}">{pct(z["actual"])}</span>'
+            f'<span class="bs-stats__label">{esc(z["label"])}</span>'
+            f'{delta_html}</div>'
+        )
+    return f'<div class="bs-stats">{"".join(rows)}</div>'
+
+
+def _match_side_html(cls, label, team, body_text, illo, extra_html=""):
+    return (
+        f'<div class="{cls}">'
+        f'<div class="bs-section-label">{esc(label)}</div>'
+        f'<div class="bs-match-team">'
+        f'{team_avatar(team.get("logo"), team["nombre"], _seed(team.get("id")), 30)}'
+        f'<span class="bs-match-team__name">{esc(team["nombre"])}</span>'
+        f'<span class="bs-match-team__meta">{team["posicion"]}º · {team["puntos"]} pts</span>'
+        f'</div>'
+        f'<h2>{_team_headline(team)}</h2>'
+        f'{_match_stats_html(team)}'
+        f'{_prose_html(body_text)}'
+        f'{extra_html}'
+        f'{_illo_html(illo, "bs-illo bs-illo--fill")}'
+        f'</div>'
+    )
+
+
+def _scoreline_html(local, visitante, resultado, status_label):
+    return (
+        '<div class="bs-scoreline">'
+        '<div class="bs-scoreline__side">'
+        f'{team_avatar(local.get("logo"), local["nombre"], _seed(local.get("id")), 46)}'
+        f'<span class="bs-scoreline__name">{esc(local["nombre"])}</span>'
+        '<span class="bs-scoreline__tag">Local</span></div>'
+        '<div class="bs-scoreline__mid">'
+        f'<span class="bs-scoreline__score">{resultado["local"]}–{resultado["visitante"]}</span>'
+        f'<span class="bs-scoreline__status">{esc(status_label)}</span></div>'
+        '<div class="bs-scoreline__side">'
+        f'{team_avatar(visitante.get("logo"), visitante["nombre"], _seed(visitante.get("id")), 46)}'
+        f'<span class="bs-scoreline__name">{esc(visitante["nombre"])}</span>'
+        '<span class="bs-scoreline__tag">Visitante</span></div>'
+        '</div>'
+    )
+
+
+def _facts_html(payload):
+    l, v, r = payload["local"], payload["visitante"], payload["resultado"]
+    sim_n = f"{SIM_N_TABLE:,}".replace(",", ".")
+    rows = [
+        ("Competición", payload["liga"]),
+        ("Jornada", str(payload["jornada"])),
+        ("Fecha", _fecha_label(payload["fecha"])),
+        ("Estadio", payload.get("estadio") or "—"),
+        ("Marcador", f'{l["nombre"]} {r["local"]} – {r["visitante"]} {v["nombre"]}'),
+        ("Modelo", f"Monte Carlo · {sim_n} sim."),
+    ]
+    rows_html = "".join(f'<div class="bs-facts__row"><span>{esc(k)}</span><span>{esc(val)}</span></div>'
+                         for k, val in rows)
+    return f'<div class="bs-facts"><div class="bs-facts__label">Ficha del partido</div>{rows_html}</div>'
+
+
+def _model_reading(jornada):
+    """'Lectura del modelo' — determinista (sin Gemini): la fiabilidad del
+    prior de fuerza depende de cuántas jornadas reales se han acumulado, un
+    hecho ya conocido por jornada, no algo que necesite redactarse por IA."""
+    if jornada <= 3:
+        plural = "s" if jornada != 1 else ""
+        return (
+            f"Con solo {jornada} jornada{plural} disputada{plural}, el simulador trabaja todavía sobre una base "
+            "de información mínima, de modo que cada partido mueve las probabilidades mucho más de lo que lo "
+            "hará en primavera. Conviene leer estos porcentajes como una fotografía del momento y no como una "
+            "tendencia consolidada: el rating de fuerza de cada plantilla sigue pesando más que el resultado "
+            "puntual hasta que se acumulen suficientes jornadas."
+        )
+    return (
+        f"Con la jornada {jornada} ya disputada, el simulador combina los resultados reales de la temporada con "
+        "el rating de fuerza de cada plantilla, que va perdiendo peso a medida que se acumulan partidos. Un "
+        "resultado aislado mueve ya menos las probabilidades que al principio de la competición, pero sigue "
+        "siendo una señal real para el modelo."
+    )
+
+
+def _match_mentions_html(payload, league_name, league_logo):
+    chips = [f'<a href="/hypermotion">{avatar(league_logo, league_name, "#e11d48", 20)}{esc(league_name)}</a>']
+    for t in (payload["local"], payload["visitante"]):
+        color = COLOR_PALETTE[_seed(t.get("id")) % len(COLOR_PALETTE)]
+        href = f'/equipo?id={t["id"]}&name={esc(t["nombre"])}&league=hypermotion'
+        chips.append(f'<a href="{href}">{avatar(t.get("logo"), t["nombre"], color, 20)}{esc(t["nombre"])}</a>')
+    return (
+        '<div class="bs-mentions"><div class="bs-mentions__label">Equipos mencionados</div>'
+        f'<div class="bs-mentions__list">{"".join(chips)}</div></div>'
+    )
+
+
+def render_match_broadsheet(payload, local_body, visitante_body, cronica_body,
+                             *, headline, teaser, league_logo, status_label="Finalizado"):
+    local, visitante, resultado = payload["local"], payload["visitante"], payload["resultado"]
+    fecha = payload["fecha"]
+    picked_files = set()
+
+    def pick_illo(variant):
+        ill = illustration.pick(fecha, f'match-{payload.get("event_id")}-{variant}', avoid=picked_files)
+        picked_files.add(ill["file"])
+        return ill
+
+    title = f'{headline} | PredictMotion'
+    description = teaser
+    canonical = SITE + url_for_match(fecha, local["nombre"], visitante["nombre"])
+    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    json_ld = {
+        "@context": "https://schema.org", "@type": "SportsArticle", "headline": title,
+        "description": description, "datePublished": generated_at,
+        "author": {"@type": "Organization", "name": "PredictMotion"},
+        "publisher": {"@type": "Organization", "name": "PredictMotion",
+                      "logo": {"@type": "ImageObject", "url": "https://predictmotion.com/media/twitter_profile.png"}},
+        "about": {"@type": "SportsEvent", "name": f'{local["nombre"]} - {visitante["nombre"]}',
+                  "homeTeam": {"@type": "SportsTeam", "name": local["nombre"]},
+                  "awayTeam": {"@type": "SportsTeam", "name": visitante["nombre"]}},
+        "url": canonical,
+    }
+
+    home_col = _match_side_html("bs-match-home", "El local", local, local_body, pick_illo("home"))
+    away_col = _match_side_html("bs-match-away", "El visitante", visitante, visitante_body, pick_illo("away"),
+                                 extra_html=_facts_html(payload))
+
+    moves_html = (
+        '<div class="bs-note"><div class="bs-note__label">Movimientos del modelo</div>'
+        + _zone_block(local, show_before=True) + _zone_block(visitante, show_before=True) +
+        '</div>'
+    )
+    reading_html = (
+        '<div class="bs-note"><div class="bs-note__label">Lectura del modelo</div>'
+        f'<p>{esc(_model_reading(payload["jornada"]))}</p></div>'
+    )
+    center_col = (
+        '<div class="bs-match-center">'
+        + _illo_html(pick_illo("cover"), "bs-cover") +
+        f'<div class="bs-main-label">Crónica de la jornada {payload["jornada"]}</div>'
+        f'<h2>{_highlight_teams(headline, [local["nombre"], visitante["nombre"]])}</h2>'
+        f'<div class="bs-teaser"><p>{esc(teaser)}</p></div>'
+        + _scoreline_html(local, visitante, resultado, status_label) +
+        _prose_html(cronica_body) + moves_html + reading_html +
+        '</div>'
+    )
+
+    grid = f'<div class="bs-grid">{home_col}{center_col}{away_col}</div>'
+    mentions = _match_mentions_html(payload, payload["liga"], league_logo)
+
+    venue_bits = [b for b in (payload.get("estadio"), payload.get("hora")) if b]
+    venue_txt = " · ".join(venue_bits) if venue_bits else "—"
+
+    body = f"""<div class="bs-page">
+<a class="bs-back" href="/hypermotion">← Volver a la clasificación</a>
+<div class="bs-sheet">
+{_masthead_html(f'{payload["liga"]} · El diario de las probabilidades')}
+<div class="bs-edition">
+<span class="bs-edition__item">Crónica de partido</span>
+<span class="bs-edition__item bs-edition__item--muted">{_fecha_label(fecha)}</span>
+<span class="bs-edition__item">Jornada {payload["jornada"]}</span>
+<span class="bs-edition__item">{esc(venue_txt)}</span>
+<span class="bs-edition__item bs-edition__item--status">{esc(status_label)}</span>
+</div>
+{grid}
+{mentions}
+{_footer_html()}
+</div></div>"""
+
+    return _page_html(title, description, canonical, league_logo, json_ld, body)

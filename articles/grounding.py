@@ -8,9 +8,13 @@ citarlo).
 """
 
 import json
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from seo.snapshots import load_all
 from .config import DATA_DIR
+
+_MADRID_TZ = ZoneInfo("Europe/Madrid")
 
 
 def load_snapshot(slug):
@@ -59,7 +63,11 @@ def _best_band(bands, prob):
 
 
 def _match_side_summary(snap, bands, prior_by_id, team_id):
-    """Nombre/zona/prob antes-y-después de UN equipo en UN partido."""
+    """Nombre/zona/prob antes-y-después de UN equipo en UN partido, más el
+    detalle de puntos/racha/fuerza y las 3 zonas completas (antes/actual) que
+    necesita el broadsheet de partido (render.py:render_match_broadsheet) —
+    el resumen diario solo usa el subconjunto zona-mejor de siempre, así que
+    los campos de más no le rompen nada (nunca los lee)."""
     t = team_by_id(snap, team_id)
     if not t:
         return None
@@ -67,9 +75,17 @@ def _match_side_summary(snap, bands, prior_by_id, team_id):
     pt = prior_by_id.get(str(t["id"]))
     return {
         "nombre": t["name"], "id": t["id"], "logo": t["logo"], "posicion": t["rank"],
+        "puntos": t["pts"], "pj": t.get("gp"), "victorias": t.get("wins"),
+        "empates": t.get("draws"), "derrotas": t.get("losses"), "rating_fuerza": t.get("strength"),
         "zona": zone["label"], "zona_key": zone["key"],
         "prob_zona_actual": t["prob"].get(zone["key"]),
         "prob_zona_antes_del_partido": pt["prob"].get(zone["key"]) if pt else None,
+        "zonas": [
+            {"label": b["label"], "key": b["key"],
+             "actual": t["prob"].get(b["key"]),
+             "antes": (pt["prob"].get(b["key"]) if pt else None)}
+            for b in bands
+        ],
     }
 
 
@@ -97,6 +113,39 @@ def ground_resumen_diario(league, snap, matches):
         "tipo": "resumen_diario",
         "liga": league["name"], "temporada": snap["season"], "jornada": snap["jornada"],
         "fecha": fecha, "partidos": partidos,
+    }
+
+
+def ground_match(league, snap, match):
+    """payload de hechos de UN partido de Hypermotion terminado hoy, para el
+    broadsheet de partido (render.py:render_match_broadsheet). `match`: un
+    evento de espn.fetch_scoreboard_range con state=='post'. None si alguno
+    de los dos equipos no está en el snapshot (mismo criterio de
+    ground_resumen_diario)."""
+    bands = snap["bands"]
+    prior = _prior_snapshot(league["slug"], snap["season"], match["date"])
+    prior_by_id = {str(t["id"]): t for t in (prior or {}).get("teams", [])}
+
+    local = _match_side_summary(snap, bands, prior_by_id, match["home"]["id"])
+    visitante = _match_side_summary(snap, bands, prior_by_id, match["away"]["id"])
+    if not local or not visitante:
+        return None
+
+    hora = None
+    if match.get("kickoff"):
+        try:
+            dt = datetime.fromisoformat(match["kickoff"].replace("Z", "+00:00"))
+            hora = dt.astimezone(_MADRID_TZ).strftime("%H:%M")
+        except ValueError:
+            hora = None
+
+    return {
+        "tipo": "match_cronica",
+        "liga": league["name"], "temporada": snap["season"], "jornada": snap["jornada"],
+        "fecha": match["date"], "event_id": match.get("event_id"),
+        "estadio": match.get("venue"), "hora": hora,
+        "local": local, "visitante": visitante,
+        "resultado": {"local": match["home_score"], "visitante": match["away_score"]},
     }
 
 

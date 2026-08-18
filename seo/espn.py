@@ -149,8 +149,9 @@ def fetch_scoreboard_range(espn_code, start_yyyymmdd, end_yyyymmdd, strict=False
     """Eventos del scoreboard en un rango de fechas (YYYYMMDD-YYYYMMDD),
     normalizados. Best-effort → [] si falla. Usado por el registro de predicciones.
     Cada evento: {event_id, date, kickoff, state, home{id,name}, away{id,name},
-    home_score, away_score} (scores None si aún no jugado). `date` es solo la fecha
-    (YYYY-MM-DD); `kickoff` es el timestamp ISO completo (para umbrales de hora).
+    home_score, away_score, venue} (scores None si aún no jugado; venue None si
+    ESPN no lo trae). `date` es solo la fecha (YYYY-MM-DD); `kickoff` es el
+    timestamp ISO completo (para umbrales de hora).
 
     `strict=True` PROPAGA el error en vez de devolver []. Para el llamante que
     necesita distinguir "no hay partidos" de "no pude preguntar": tragarse el fallo
@@ -188,6 +189,7 @@ def fetch_scoreboard_range(espn_code, start_yyyymmdd, end_yyyymmdd, strict=False
             "away":       {"id": str(away["team"]["id"]), "name": away["team"].get("displayName", "")},
             "home_score": _score(home),
             "away_score": _score(away),
+            "venue":      (comp.get("venue") or {}).get("fullName"),
         })
     return out
 

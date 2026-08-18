@@ -93,6 +93,49 @@ def demo():
     )
     assert html_filled.count("<figure") == 3  # portada + explicador + hueco extra (2 partidos, sin lateral)
     assert "height:250px" in html_filled
+    # ── render_match_broadsheet: smoke-test end-to-end sobre datos sintéticos ──
+    def _side(nombre, id_, posicion, puntos, zona, zona_key, actual, antes, strength):
+        return {
+            "nombre": nombre, "id": id_, "logo": None, "posicion": posicion, "puntos": puntos,
+            "pj": 1, "victorias": 1, "empates": 0, "derrotas": 0, "rating_fuerza": strength,
+            "zona": zona, "zona_key": zona_key,
+            "prob_zona_actual": actual, "prob_zona_antes_del_partido": antes,
+            "zonas": [
+                {"label": "Ascenso directo", "key": "ascenso", "actual": 4.9, "antes": 6.7},
+                {"label": "Play-off de ascenso", "key": "playoff", "actual": actual, "antes": antes},
+                {"label": "Descenso", "key": "descenso", "actual": 12.7, "antes": 8.6},
+            ],
+        }
+
+    payload_match = {
+        "tipo": "match_cronica", "liga": "Liga Hypermotion", "temporada": "2026-27", "jornada": 1,
+        "fecha": "2026-08-16", "event_id": "401883229", "estadio": "Ipurua", "hora": "21:00",
+        "local": _side("Eibar", "3752", 20, 0, "Play-off de ascenso", "playoff", 22.1, 25.7, -0.8421),
+        "visitante": _side("Tenerife", "245", 2, 3, "Descenso", "descenso", 27.8, 38.8, 1.1203),
+        "resultado": {"local": 1, "visitante": 3},
+    }
+    match_body_3p = "Párrafo uno.\n\nPárrafo dos.\n\nPárrafo tres."
+    match_body_4p = "Uno.\n\nDos.\n\nTres.\n\nCuatro."
+    html_match = render.render_match_broadsheet(
+        payload_match, match_body_3p, match_body_3p, match_body_4p,
+        headline="Titular de partido", teaser="Entradilla de partido", league_logo=None,
+    )
+    assert "<!DOCTYPE html>" in html_match
+    assert "Eibar" in html_match and "Tenerife" in html_match
+    assert "Titular de partido" in html_match and "Entradilla de partido" in html_match
+    assert "Ficha del partido" in html_match and "Movimientos del modelo" in html_match and "Lectura del modelo" in html_match
+    assert html_match.count("<figure") == 3  # portada + local + visitante
+    assert "1–3" in html_match
+
+    # ── slug_for_match: determinista y sin acentos/mayúsculas ──
+    assert render.slug_for_match("2026-08-16", "Eibar", "Tenerife") == "hypermotion-eibar-tenerife-2026-08-16"
+
+    # ── _team_headline: sube/baja/sin histórico ──
+    up = render._team_headline({"zona": "Play-off", "prob_zona_actual": 30.0, "prob_zona_antes_del_partido": 20.0})
+    down = render._team_headline({"zona": "Play-off", "prob_zona_actual": 10.0, "prob_zona_antes_del_partido": 20.0})
+    first = render._team_headline({"zona": "Play-off", "prob_zona_actual": 15.0, "prob_zona_antes_del_partido": None})
+    assert "sube al" in up and "cae al" in down and "queda en el" in first
+
     print("articles.test_generate: OK")
 
 

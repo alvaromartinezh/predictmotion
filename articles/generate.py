@@ -120,6 +120,66 @@ def _notify_telegram(headline, cta, article_url):
         print("hypermotion: aviso a Telegram no confirmado", file=sys.stderr)
 
 
+def _match_flag_id(payload):
+    l, v = payload["local"], payload["visitante"]
+    return f'{payload["fecha"]}-{l["id"]}-{v["id"]}'
+
+
+def _run_match(league, snap, match, dry_run):
+    """Crónica de UN partido terminado (broadsheet de partido, ver
+    render.render_match_broadsheet). Best-effort igual que el resumen diario:
+    si el grounding marca alguno de los 3 textos, no se publica y se avisa;
+    el llamador (el bucle de _run) además aísla las excepciones por partido
+    para que una jornada de varios partidos no se caiga entera por uno."""
+    payload = grounding.ground_match(league, snap, match)
+    if not payload:
+        return 0
+    l, v = payload["local"], payload["visitante"]
+
+    if dry_run:
+        print(f"hypermotion: publicaría crónica {render.slug_for_match(payload['fecha'], l['nombre'], v['nombre'])}")
+        return 0
+
+    results = {
+        "local": writer.write_article(dict(payload, tipo="match_local")),
+        "visitante": writer.write_article(dict(payload, tipo="match_visitante")),
+        "cronica": writer.write_article(dict(payload, tipo="match_cronica")),
+    }
+    if any(r["status"] != "draft" for r in results.values()):
+        flag_id = _match_flag_id(payload)
+        bad = []
+        for key, r in results.items():
+            if r["status"] != "draft":
+                _save_flagged(flag_id, f"match-{key}", payload, r)
+                bad += r["flagged_values"]
+        notify.send_alert(
+            "[PredictMotion] crónica de partido de Hypermotion sin publicar (grounding)",
+            f"El texto generado por Gemini para {l['nombre']} {payload['resultado']['local']}-"
+            f"{payload['resultado']['visitante']} {v['nombre']} ({payload['fecha']}) citaba cifras "
+            f"que no están en los datos reales, así que no se publica: {bad}\n\n"
+            f"Detalle en {_FLAGGED_DIR}/match-*-{flag_id}.json (en el servidor).",
+            dedup_key="articles_match_flagged",
+        )
+        return 1
+
+    catchy = writer.write_match_headline(dict(payload, tipo="match_cronica"))
+    if catchy:
+        headline, teaser = catchy
+    else:
+        print(f"hypermotion: titular de partido no disponible ({l['nombre']}-{v['nombre']}), cae al determinista")
+        headline = f'{l["nombre"]} {payload["resultado"]["local"]}-{payload["resultado"]["visitante"]} {v["nombre"]}'
+        teaser = results["cronica"]["meta_description"]
+
+    html = render.render_match_broadsheet(
+        payload, results["local"]["body"], results["visitante"]["body"], results["cronica"]["body"],
+        headline=headline, teaser=teaser, league_logo=snap.get("league_logo"),
+    )
+    slug = render.slug_for_match(payload["fecha"], l["nombre"], v["nombre"])
+    _write_atomic(ARTICLES_OUT_DIR / f"{slug}.html", html)
+    print(f"hypermotion: publicado {render.url_for_match(payload['fecha'], l['nombre'], v['nombre'])}")
+    return 0
+
+
 def _write_sitemap():
     """sitemap-articles.xml: se reconstruye escaneando los HTML ya en disco —
     self-healing, sin estado aparte que pueda desincronizarse."""
@@ -157,6 +217,20 @@ def _run(dry_run, date_override=None):
     if not payload_resumen["partidos"]:
         print("hypermotion: partidos de hoy sin equipo resoluble en el snapshot")
         return 0
+
+    for m in finished:
+        try:
+            _run_match(league, snap, m, dry_run)
+        except Exception:
+            tb = traceback.format_exc()
+            print(tb, file=sys.stderr)
+            if not dry_run:
+                notify.send_alert(
+                    "[PredictMotion] crónica de partido de Hypermotion cayó con una excepción",
+                    f"Partido {m.get('home', {}).get('name')}-{m.get('away', {}).get('name')} "
+                    f"({today}) abortó con una excepción:\n\n{tb}",
+                    dedup_key="articles_match_crash",
+                )
 
     team_id = _pick_highlight_team_id(payload_resumen["partidos"])
     team = grounding.team_by_id(snap, team_id)

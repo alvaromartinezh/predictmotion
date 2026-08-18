@@ -65,6 +65,35 @@ _INSTRUCTIONS = {
     ),
 }
 
+# Broadsheet de PARTIDO (un partido de Hypermotion terminado hoy, ver
+# render.py:render_match_broadsheet): 3 llamadas de contenido (local /
+# visitante / crónica central) sobre el MISMO payload (grounding.ground_match)
+# con solo el campo "tipo" cambiado por el llamador (generate.py) — así los
+# tres textos comparten pool de hechos válidos para el validador de
+# grounding, en vez de tener payloads recortados por texto.
+_MATCH_SIDE_INSTR_TMPL = (
+    "Analiza el partido desde la perspectiva del equipo {lado} (el objeto DATOS.{campo}): "
+    "cómo le afecta el resultado, cómo cambia la probabilidad de su zona actual (compara "
+    "'antes' con 'actual' en DATOS.{campo}.zonas) y su situación en la tabla (posición, "
+    "puntos). Si DATOS.{campo}.rating_fuerza está presente, puedes usarlo como el "
+    "argumento de fondo del modelo para sus opciones a más largo plazo.\n\n"
+    "FORMATO OBLIGATORIO: escribe EXACTAMENTE 3 párrafos cortos (50-80 palabras cada uno) "
+    "separados por una línea en blanco. Sin introducción ni cierre genérico: cada párrafo "
+    "aporta algo nuevo (el efecto inmediato del resultado / cómo lo lee el modelo / qué "
+    "viene después). No repitas el marcador completo en cada párrafo."
+)
+
+_INSTRUCTIONS["match_local"] = _MATCH_SIDE_INSTR_TMPL.format(lado="local", campo="local")
+_INSTRUCTIONS["match_visitante"] = _MATCH_SIDE_INSTR_TMPL.format(lado="visitante", campo="visitante")
+_INSTRUCTIONS["match_cronica"] = (
+    "Escribe la crónica central de este partido de Hypermotion: el resultado, qué explica "
+    "ese marcador y qué dice del nivel de cada equipo según el modelo. Usa el resultado y "
+    "los datos de DATOS.local/DATOS.visitante — si no hay detalle de goles o jugadas, cíñete "
+    "al marcador final, no inventes minutos ni autores.\n\n"
+    "FORMATO OBLIGATORIO: escribe EXACTAMENTE 4 párrafos separados por una línea en blanco. "
+    "Sin titular ni frase de apertura tipo 'En un partido...': empieza directo con el hecho."
+)
+
 
 def build_prompt(payload):
     instr = _INSTRUCTIONS[payload["tipo"]]
@@ -103,9 +132,21 @@ def _compose_explainer_head(payload):
     return title, desc
 
 
+def _compose_match_head(payload):
+    l, v, r = payload["local"], payload["visitante"], payload["resultado"]
+    title = f'{l["nombre"]} {r["local"]}-{r["visitante"]} {v["nombre"]} | PredictMotion'
+    desc = (f'Crónica del {l["nombre"]} {r["local"]}-{r["visitante"]} {v["nombre"]} '
+            f'({payload["liga"]}, jornada {payload["jornada"]}) y cómo cambia la '
+            f'probabilidad de zona de ambos según el modelo de PredictMotion.')
+    return title, desc
+
+
 _HEAD_BUILDERS = {
     "resumen_diario": _compose_resumen_head,
     "explicador_probabilidad": _compose_explainer_head,
+    "match_local": _compose_match_head,
+    "match_visitante": _compose_match_head,
+    "match_cronica": _compose_match_head,
 }
 
 
@@ -132,14 +173,30 @@ _HEADLINE_INSTR = (
 )
 
 
-def write_headline(payload):
-    """Titular + subtítulo llamativos para el resumen del día (a petición
-    expresa: deben "dar ganas de hacer clic"). Devuelve (titular, subtitulo)
-    o None si Gemini falla, no respeta el formato de 2 líneas, o cuela una
-    cifra que no está en el payload — en cualquiera de esos casos el
-    llamador cae a la cabecera determinista en vez de bloquear la
-    publicación por un titular que solo es un adorno."""
-    prompt = f"{_HEADLINE_SYSTEM}\n\n{_HEADLINE_INSTR}\n\nDATOS:\n{grounding.to_prompt_json(payload)}"
+_MATCH_HEADLINE_INSTR = (
+    "Escribe un titular llamativo para la crónica de este partido de Hypermotion (sin dos "
+    "puntos, sin comillas) y, en la línea siguiente, una entradilla corta y también "
+    "llamativa (1 frase) que enganche a seguir leyendo. Que no se repitan casi las mismas "
+    "palabras entre las dos líneas.\n\n"
+    "FORMATO OBLIGATORIO: EXACTAMENTE 2 líneas — primero el titular, luego la entradilla — "
+    "sin etiquetas ('Titular:'/'Entradilla:'), sin numerarlas, sin nada más de texto. No "
+    "menciones ningún porcentaje ni cifra de probabilidad: eso va en el cuerpo del "
+    "artículo, no aquí (el marcador del partido SÍ puedes mencionarlo, está en DATOS). Usa "
+    "siempre el nombre de cada equipo tal cual aparece en DATOS.local.nombre/"
+    "DATOS.visitante.nombre — NUNCA un gentilicio, apodo o ciudad: si no estás seguro de a "
+    "qué ciudad o afición corresponde, lo más probable es que te equivoques."
+)
+
+
+def write_headline(payload, instr=_HEADLINE_INSTR):
+    """Titular + subtítulo llamativos (a petición expresa: deben "dar ganas
+    de hacer clic"). Devuelve (titular, subtitulo) o None si Gemini falla,
+    no respeta el formato de 2 líneas, o cuela una cifra que no está en el
+    payload — en cualquiera de esos casos el llamador cae a la cabecera
+    determinista en vez de bloquear la publicación por un titular que solo
+    es un adorno. `instr`: _HEADLINE_INSTR (resumen diario) por defecto;
+    _MATCH_HEADLINE_INSTR para el broadsheet de partido."""
+    prompt = f"{_HEADLINE_SYSTEM}\n\n{instr}\n\nDATOS:\n{grounding.to_prompt_json(payload)}"
     try:
         text = generate(prompt, temperature=0.9)
     except GeminiError:
@@ -151,6 +208,12 @@ def write_headline(payload):
     if not ok:
         return None
     return lines[0], lines[1]
+
+
+def write_match_headline(payload):
+    """write_headline() con las instrucciones del broadsheet de partido
+    (titular + entradilla, marcador permitido en vez de vetado)."""
+    return write_headline(payload, instr=_MATCH_HEADLINE_INSTR)
 
 
 def split_explainer_paragraphs(body):

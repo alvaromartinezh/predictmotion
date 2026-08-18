@@ -194,3 +194,54 @@ a.bs-brief__head:hover::after { color: #f0a92a; transform: translateX(2px); }
 .av.fb img { display: none; }
 .av.fb b { display: flex; }
 
+/* ── Broadsheet de PARTIDO (articles/render.py:render_match_broadsheet) ──
+   Reusa .bs-page/.bs-sheet/.bs-back/.bs-masthead/.bs-edition/.bs-grid/
+   .bs-section-label/.bs-prose/.bs-illo/.bs-cover/.bs-note/.bs-zone/
+   .bs-delta-*/.bs-mentions/.bs-footer/.av de arriba. Columnas propias (NO
+   .bs-col-explainer/.bs-col-main/.bs-col-side) para no acoplar el tamaño de
+   letra de esta pieza al del broadsheet diario a través de una regla CSS
+   compartida por casualidad de nombre. */
+.bs-match-home, .bs-match-away { padding: 22px 22px 26px; display: flex; flex-direction: column; }
+.bs-match-center {
+  grid-column: span 2; padding: 22px 24px 26px;
+  border-left: 1px solid #1b2944; border-right: 1px solid #1b2944;
+}
+
+.bs-match-team { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid #14203a; }
+.bs-match-team__name { font-family: 'Saira Condensed', sans-serif; font-weight: 700; text-transform: uppercase; font-size: 1.25rem; letter-spacing: .03em; }
+.bs-match-team__meta { margin-left: auto; font-family: 'Geist Mono', monospace; font-size: .7rem; color: #66789c; }
+
+.bs-match-home h2, .bs-match-away h2 {
+  font-family: 'Saira Condensed', sans-serif; font-weight: 800; text-transform: uppercase; font-size: 1.5rem;
+  line-height: 1.04; letter-spacing: .01em; margin: 14px 0 12px; color: #e4ecfa;
+}
+.bs-match-home h2 span, .bs-match-away h2 span { color: #f0a92a; }
+
+.bs-stats__delta { margin-left: auto; font-family: 'Geist Mono', monospace; font-size: .64rem; }
+
+/* Ilustración que rellena el resto de la columna (home/away) — CSS Grid
+   estira cada columna a la altura de la fila más alta y flex:1 hace que la
+   ilustración absorba esa diferencia sola, sin estimar alturas en Python
+   (a diferencia del broadsheet diario, que sí necesita layout_estimate.py
+   porque su columna lateral no es la última pieza del flex). */
+.bs-illo--fill { flex: 1; display: flex; flex-direction: column; min-height: 140px; }
+.bs-illo--fill img { flex: 1; width: 100%; min-height: 0; object-fit: cover; }
+
+.bs-scoreline { display: flex; align-items: center; justify-content: center; gap: 18px; border: 1px solid #1b2944; padding: 18px 16px; margin-bottom: 20px; }
+.bs-scoreline__side { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.bs-scoreline__name { font-family: 'Saira Condensed', sans-serif; font-weight: 700; text-transform: uppercase; font-size: 1.05rem; letter-spacing: .04em; text-align: center; }
+.bs-scoreline__tag { font-family: 'Geist Mono', monospace; font-size: .58rem; letter-spacing: .12em; text-transform: uppercase; color: #3d4d6e; }
+.bs-scoreline__mid { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: none; }
+.bs-scoreline__score { font-family: 'Saira Condensed', sans-serif; font-weight: 800; font-size: 3.25rem; line-height: 1; letter-spacing: .02em; color: #e4ecfa; }
+.bs-scoreline__status { font-family: 'Geist Mono', monospace; font-size: .58rem; letter-spacing: .14em; text-transform: uppercase; color: #f0a92a; }
+
+/* "Movimientos del modelo" reusa .bs-note + .bs-zone con este añadido
+   (antes → valor, en vez de solo el valor del broadsheet diario). */
+.bs-zone__before { margin-left: auto; color: #3d4d6e; }
+
+/* "Ficha del partido" */
+.bs-facts { border: 1px solid #1b2944; padding: 14px 16px; margin-bottom: 16px; }
+.bs-facts__label { font-family: 'Geist Mono', monospace; font-size: .6rem; letter-spacing: .18em; text-transform: uppercase; color: #66789c; padding-bottom: 9px; margin-bottom: 9px; border-bottom: 1px solid #14203a; }
+.bs-facts__row { display: flex; align-items: baseline; gap: 10px; padding: 5px 0; font-family: 'Geist Mono', monospace; font-size: .66rem; color: #66789c; }
+.bs-facts__row span:last-child { margin-left: auto; text-align: right; color: #e4ecfa; }
+
