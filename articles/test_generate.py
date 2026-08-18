@@ -3,7 +3,7 @@
 Uso: python3 -m articles.test_generate
 """
 
-from . import generate, illustration, layout_estimate, render
+from . import generate, illustration, layout_estimate, render, writer
 from .writer import validate_grounding
 
 _TEAM_A = {"nombre": "Eibar", "id": "3752", "logo": None, "posicion": 20,
@@ -33,6 +33,19 @@ def demo():
     assert ok, f"cifra real con redondeo no debería marcarse: {bad}"
     ok, bad = validate_grounding("Ya roza el 90% de play-off.", payload)
     assert not ok and bad == [90.0]
+
+    # ── write_headline: el titular DEBE llevar un porcentaje (a petición
+    # expresa, es lo que se manda tal cual a Telegram) — sin red, se
+    # sustituye writer.generate por un doble determinista ──
+    _orig_generate = writer.generate
+    try:
+        writer.generate = lambda prompt, temperature=0.9: "Titular sin cifra\nSubtítulo cualquiera"
+        assert writer.write_headline({"tipo": "resumen_diario"}) is None
+        writer.generate = lambda prompt, temperature=0.9: "El play-off sube al 33%\nSubtítulo cualquiera"
+        assert writer.write_headline({"tipo": "resumen_diario", "x": 33.0}) == (
+            "El play-off sube al 33%", "Subtítulo cualquiera")
+    finally:
+        writer.generate = _orig_generate
 
     # ── _pick_highlight_team_id: el mayor |delta| gana (Tenerife, 11.0 pp) ──
     assert generate._pick_highlight_team_id(_PARTIDOS) == "245"

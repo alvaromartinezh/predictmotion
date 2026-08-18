@@ -50,13 +50,14 @@ _LEAGUE_SLUG = "hypermotion"
 _FLAGGED_DIR = DATA_DIR / "articles_flagged"
 
 # Frase que anima a entrar al artículo, para el tweet — a propósito SIN
-# Gemini (el titular/subtítulo ya no llevan porcentajes, ver
-# writer._HEADLINE_INSTR, así que esta línea existe justo para señalar que
-# las cifras están dentro). Elegida a mano, determinista por clave (mismo
-# patrón que illustration.pick — fecha para el resumen diario,
-# _match_flag_id(payload) para cada crónica de partido, así dos artículos
-# del mismo día no repiten frase) para que no haga falta gastar una llamada
-# a Gemini ni validarla — es solo una invitación a hacer clic, no un dato.
+# Gemini (el titular ya lleva un porcentaje real, ver writer._HEADLINE_INSTR/
+# _MATCH_HEADLINE_INSTR, pero esta línea sigue aportando la invitación a
+# entrar a ver el resto — "el análisis completo", no solo esa cifra suelta).
+# Elegida a mano, determinista por clave (mismo patrón que illustration.pick
+# — fecha para el resumen diario, _match_flag_id(payload) para cada crónica
+# de partido, así dos artículos del mismo día no repiten frase) para que no
+# haga falta gastar una llamada a Gemini ni validarla — es solo una
+# invitación a hacer clic, no un dato.
 _TWEET_CTAS = [
     "Los porcentajes completos, en el artículo 👇",
     "¿Cuánto ha cambiado cada equipo? Entra a verlo.",

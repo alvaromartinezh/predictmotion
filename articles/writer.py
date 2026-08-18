@@ -160,14 +160,16 @@ _HEADLINE_SYSTEM = (
 _HEADLINE_INSTR = (
     "Escribe un titular llamativo para la portada de un resumen de los partidos de "
     "Hypermotion de hoy (sin dos puntos, sin comillas, sin mencionar el número de "
-    "partidos jugados) y, en la línea siguiente, un subtítulo corto y también "
-    "llamativo que cuente cómo han quedado los equipos. Que no se repitan casi las "
-    "mismas palabras entre las dos líneas.\n\n"
-    "FORMATO OBLIGATORIO: EXACTAMENTE 2 líneas — primero el titular, luego el "
-    "subtítulo — sin etiquetas ('Titular:'/'Subtítulo:'), sin numerarlas, sin nada "
-    "más de texto. No menciones ningún porcentaje ni cifra: eso va en el cuerpo del "
-    "artículo, no aquí. Usa siempre el nombre de cada equipo tal cual aparece en "
-    "DATOS — NUNCA un gentilicio, apodo o ciudad ('alicantina', 'merengues', "
+    "partidos jugados). El TITULAR (la primera línea) es lo que se manda tal cual a "
+    "Telegram como titular del tuit, así que DEBE incluir al menos un porcentaje real "
+    "de DATOS (una probabilidad de zona de algún equipo, con el símbolo %) — es el "
+    "gancho del tuit. Y, en la línea siguiente, un subtítulo corto y también llamativo "
+    "que cuente cómo han quedado los equipos. Que no se repitan casi las mismas "
+    "palabras entre las dos líneas.\n\n"
+    "FORMATO OBLIGATORIO: EXACTAMENTE 2 líneas — primero el titular (CON el "
+    "porcentaje), luego el subtítulo — sin etiquetas ('Titular:'/'Subtítulo:'), sin "
+    "numerarlas, sin nada más de texto. Usa siempre el nombre de cada equipo tal cual "
+    "aparece en DATOS — NUNCA un gentilicio, apodo o ciudad ('alicantina', 'merengues', "
     "'el conjunto de Vigo'...): si no estás seguro de a qué ciudad o afición "
     "corresponde, lo más probable es que te equivoques, y eso no está en DATOS."
 )
@@ -175,27 +177,33 @@ _HEADLINE_INSTR = (
 
 _MATCH_HEADLINE_INSTR = (
     "Escribe un titular llamativo para la crónica de este partido de Hypermotion (sin dos "
-    "puntos, sin comillas) y, en la línea siguiente, una entradilla corta y también "
-    "llamativa (1 frase) que enganche a seguir leyendo. Que no se repitan casi las mismas "
-    "palabras entre las dos líneas.\n\n"
-    "FORMATO OBLIGATORIO: EXACTAMENTE 2 líneas — primero el titular, luego la entradilla — "
-    "sin etiquetas ('Titular:'/'Entradilla:'), sin numerarlas, sin nada más de texto. No "
-    "menciones ningún porcentaje ni cifra de probabilidad: eso va en el cuerpo del "
-    "artículo, no aquí (el marcador del partido SÍ puedes mencionarlo, está en DATOS). Usa "
-    "siempre el nombre de cada equipo tal cual aparece en DATOS.local.nombre/"
-    "DATOS.visitante.nombre — NUNCA un gentilicio, apodo o ciudad: si no estás seguro de a "
-    "qué ciudad o afición corresponde, lo más probable es que te equivoques."
+    "puntos, sin comillas). El TITULAR (la primera línea) es lo que se manda tal cual a "
+    "Telegram como titular del tuit, así que DEBE incluir al menos un porcentaje real de "
+    "DATOS.local o DATOS.visitante (una probabilidad de zona de alguno de los dos "
+    "equipos, con el símbolo %) — es el gancho del tuit; el marcador del partido también "
+    "puedes mencionarlo, está en DATOS. Y, en la línea siguiente, una entradilla corta y "
+    "también llamativa (1 frase) que enganche a seguir leyendo. Que no se repitan casi "
+    "las mismas palabras entre las dos líneas.\n\n"
+    "FORMATO OBLIGATORIO: EXACTAMENTE 2 líneas — primero el titular (CON el "
+    "porcentaje), luego la entradilla — sin etiquetas ('Titular:'/'Entradilla:'), sin "
+    "numerarlas, sin nada más de texto. Usa siempre el nombre de cada equipo tal cual "
+    "aparece en DATOS.local.nombre/DATOS.visitante.nombre — NUNCA un gentilicio, apodo o "
+    "ciudad: si no estás seguro de a qué ciudad o afición corresponde, lo más probable "
+    "es que te equivoques."
 )
 
 
 def write_headline(payload, instr=_HEADLINE_INSTR):
     """Titular + subtítulo llamativos (a petición expresa: deben "dar ganas
     de hacer clic"). Devuelve (titular, subtitulo) o None si Gemini falla,
-    no respeta el formato de 2 líneas, o cuela una cifra que no está en el
-    payload — en cualquiera de esos casos el llamador cae a la cabecera
-    determinista en vez de bloquear la publicación por un titular que solo
-    es un adorno. `instr`: _HEADLINE_INSTR (resumen diario) por defecto;
-    _MATCH_HEADLINE_INSTR para el broadsheet de partido."""
+    no respeta el formato de 2 líneas, el titular no lleva ningún porcentaje
+    (a petición expresa: el titular es lo que se manda tal cual a Telegram
+    como titular del tuit — generate._notify_telegram solo usa esta primera
+    línea, no la segunda), o cuela una cifra que no está en el payload — en
+    cualquiera de esos casos el llamador cae a la cabecera determinista en
+    vez de bloquear la publicación por un titular que solo es un adorno.
+    `instr`: _HEADLINE_INSTR (resumen diario) por defecto; _MATCH_HEADLINE_INSTR
+    para el broadsheet de partido."""
     prompt = f"{_HEADLINE_SYSTEM}\n\n{instr}\n\nDATOS:\n{grounding.to_prompt_json(payload)}"
     try:
         text = generate(prompt, temperature=0.9)
@@ -203,6 +211,8 @@ def write_headline(payload, instr=_HEADLINE_INSTR):
         return None
     lines = [l.strip(" \"'") for l in text.strip().split("\n") if l.strip()]
     if len(lines) != 2:
+        return None
+    if not _PCT_RE.search(lines[0]):
         return None
     ok, _ = validate_grounding(text, payload)
     if not ok:
