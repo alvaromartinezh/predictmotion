@@ -41,6 +41,11 @@ def demo():
     t = render._teaser(_PARTIDOS)
     assert "Tenerife" in t and t.endswith(".")
 
+    # ── _pick_tweet_cta: determinista por fecha, siempre del pool ──
+    cta = generate._pick_tweet_cta("2026-08-17")
+    assert cta == generate._pick_tweet_cta("2026-08-17")
+    assert cta in generate._TWEET_CTAS
+
     # ── _split_briefs: 1 párrafo por partido empareja; recuento roto degrada ──
     two_paras = "Párrafo del primer partido.\n\nPárrafo del segundo partido."
     pairs = render._split_briefs(two_paras, _PARTIDOS)

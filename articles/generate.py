@@ -10,7 +10,9 @@ Si Gemini falla o el validador de grounding no acepta el texto, NO se
 publica y se manda un email — mismo patrón que seo/generate_site.py.
 
 Al publicar, manda un aviso a Telegram (mismo bot que seo/tweets.py) con el
-titular y el enlace del artículo, para que el dueño lo tuitee a mano.
+titular, una frase de invitación a entrar (_TWEET_CTAS, determinista por
+fecha, SIN Gemini) y el enlace del artículo, para que el dueño lo tuitee a
+mano.
 
 Uso:
     python -m articles.generate            # lo que corre el cron
@@ -18,6 +20,7 @@ Uso:
 """
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -37,6 +40,28 @@ from .config import ARTICLES_OUT_DIR, DATA_DIR
 _MADRID_TZ = ZoneInfo("Europe/Madrid")
 _LEAGUE_SLUG = "hypermotion"
 _FLAGGED_DIR = DATA_DIR / "articles_flagged"
+
+# Frase que anima a entrar al artículo, para el tweet — a propósito SIN
+# Gemini (el titular/subtítulo ya no llevan porcentajes, ver
+# writer._HEADLINE_INSTR, así que esta línea existe justo para señalar que
+# las cifras están dentro). Elegida a mano, determinista por fecha (mismo
+# patrón que illustration.pick) para que no haga falta gastar una llamada a
+# Gemini ni validarla — es solo una invitación a hacer clic, no un dato.
+_TWEET_CTAS = [
+    "Los porcentajes completos, en el artículo 👇",
+    "¿Cuánto ha cambiado cada equipo? Entra a verlo.",
+    "Las probabilidades actualizadas, aquí:",
+    "El modelo ha movido las opciones de varios equipos. Compruébalo.",
+    "Con cifras y explicación, un clic más abajo.",
+    "¿Sube o baja cada equipo? Los números, en el enlace.",
+    "Todo el análisis de probabilidades, en el artículo completo.",
+    "¿Qué dice el modelo ahora? Descúbrelo aquí.",
+]
+
+
+def _pick_tweet_cta(fecha):
+    idx = int(hashlib.md5(f"tweet-cta|{fecha}".encode()).hexdigest(), 16) % len(_TWEET_CTAS)
+    return _TWEET_CTAS[idx]
 
 
 def _pick_highlight_team_id(partidos):
@@ -77,18 +102,20 @@ def _write_latest_pointer(fecha, title):
                                     ensure_ascii=False))
 
 
-def _notify_telegram(headline, subtitle, article_url):
+def _notify_telegram(headline, cta, article_url):
     """Best-effort: aviso a Telegram (mismo bot que seo/tweets.py) con el
-    titular + subtítulo + enlace del artículo recién publicado, para que el
-    dueño lo tuitee a mano — reusa _caption()/_tg_send_message() (texto +
-    enlace directo al compositor de X precargado), sin el teclado inline de
-    los tuits de jornada: esto es de un solo uso, no hay nada que regenerar."""
+    titular + una frase que invita a entrar (ver _TWEET_CTAS, NO el
+    subtítulo generado por Gemini — ese ya cumplió su función en la propia
+    página) + enlace del artículo, para que el dueño lo tuitee a mano —
+    reusa _caption()/_tg_send_message() (texto + enlace directo al
+    compositor de X precargado), sin el teclado inline de los tuits de
+    jornada: esto es de un solo uso, no hay nada que regenerar."""
     notify._load_env()
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
     if not os.environ.get("TELEGRAM_BOT_TOKEN") or not chat_id:
         print("hypermotion: sin TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID, no se avisa a Telegram")
         return
-    tweet_text = f"{headline}\n{subtitle}\n{article_url}"
+    tweet_text = f"{headline}\n{cta}\n{article_url}"
     if not _tg_send_message(chat_id, _caption(tweet_text)):
         print("hypermotion: aviso a Telegram no confirmado", file=sys.stderr)
 
@@ -202,7 +229,7 @@ def _run(dry_run, date_override=None):
     _write_latest_pointer(today, headline)
     print(f"hypermotion: publicado {render.url_for(today)}")
 
-    _notify_telegram(headline, subtitle, SITE + render.url_for(today))
+    _notify_telegram(headline, _pick_tweet_cta(today), SITE + render.url_for(today))
     return 0
 
 
