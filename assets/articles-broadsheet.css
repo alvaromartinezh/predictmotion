@@ -3,6 +3,9 @@
    mismo criterio que el cuadro UEFA: aquí el look "periódico bajo lámpara"
    es la identidad de la pieza, no una superficie que deba aclararse. */
 
+html, body { margin: 0; padding: 0; background: #060916; }
+* { box-sizing: border-box; }
+
 .bs-page {
   min-height: 100vh;
   background: #060916;
