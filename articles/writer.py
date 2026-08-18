@@ -125,7 +125,10 @@ _HEADLINE_INSTR = (
     "FORMATO OBLIGATORIO: EXACTAMENTE 2 líneas — primero el titular, luego el "
     "subtítulo — sin etiquetas ('Titular:'/'Subtítulo:'), sin numerarlas, sin nada "
     "más de texto. No menciones ningún porcentaje ni cifra: eso va en el cuerpo del "
-    "artículo, no aquí."
+    "artículo, no aquí. Usa siempre el nombre de cada equipo tal cual aparece en "
+    "DATOS — NUNCA un gentilicio, apodo o ciudad ('alicantina', 'merengues', "
+    "'el conjunto de Vigo'...): si no estás seguro de a qué ciudad o afición "
+    "corresponde, lo más probable es que te equivoques, y eso no está en DATOS."
 )
 
 
