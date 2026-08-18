@@ -15,9 +15,14 @@ html, body { margin: 0; padding: 0; background: #060916; }
   color: #e4ecfa;
   font-family: 'Geist', sans-serif;
   padding: 26px 18px 60px;
+  /* El broadsheet mantiene su maqueta de 3 columnas SIEMPRE, también en
+     móvil (a petición expresa) — por debajo de min-width, se lee paneando
+     en horizontal, como un periódico real, en vez de apilar a 1 columna. */
+  overflow-x: auto;
 }
 .bs-sheet {
   max-width: 1180px;
+  min-width: 960px;
   margin: 0 auto;
   background: #0b1124;
   border: 1px solid #1b2944;
@@ -25,11 +30,20 @@ html, body { margin: 0; padding: 0; background: #060916; }
 }
 
 .bs-back {
-  display: block; max-width: 1180px; margin: 0 auto 14px; padding: 0 2px;
+  display: block; max-width: 1180px; min-width: 960px; margin: 0 auto 14px; padding: 0 2px;
   font-family: 'Geist', sans-serif; font-size: .8125rem; color: #66789c;
   text-decoration: none; letter-spacing: .02em;
 }
 .bs-back:hover { color: #f0a92a; }
+
+/* Por debajo de este ancho .bs-sheet/.bs-back ya no caben centrados sin
+   overflow — centrar con margin:auto en una caja MÁS ANCHA que su
+   contenedor con overflow-x:auto recorta el lado izquierdo (scrollLeft no
+   puede ir a negativo): se alinean a la izquierda para que el scroll
+   empiece mostrando el borde real de la página, no un punto intermedio. */
+@media (max-width: 996px) {
+  .bs-sheet, .bs-back { margin-left: 0; margin-right: 0; }
+}
 
 /* Masthead */
 .bs-masthead { border-top: 3px solid #f0a92a; border-bottom: 1px solid rgba(240,169,42,.42); padding: 18px 26px 14px; }
@@ -65,10 +79,6 @@ html, body { margin: 0; padding: 0; background: #060916; }
 .bs-col-explainer { padding: 22px 22px 26px; }
 .bs-col-main { grid-column: span 2; padding: 22px 24px 26px; border-left: 1px solid #1b2944; border-right: 1px solid #1b2944; }
 .bs-col-side { padding: 22px 22px 26px; }
-@media (max-width: 760px) {
-  .bs-grid { grid-template-columns: 1fr; }
-  .bs-col-main { grid-column: span 1; border-left: none; border-right: none; border-top: 1px solid #1b2944; border-bottom: 1px solid #1b2944; }
-}
 
 .bs-section-label {
   font-family: 'Geist Mono', monospace; font-size: .62rem; letter-spacing: .2em; text-transform: uppercase;
@@ -184,7 +194,3 @@ a.bs-brief__head:hover { border-bottom-color: #f0a92a; }
 .av.fb img { display: none; }
 .av.fb b { display: flex; }
 
-@media (max-width: 600px) {
-  .bs-masthead__kicker span:last-child { display: none; }
-  .bs-cover img { height: 190px; }
-}

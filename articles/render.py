@@ -15,7 +15,7 @@ from seo.textutil import pct, signed
 
 from . import illustration
 
-_CSS_V = "3"
+_CSS_V = "4"
 _DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 _MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 ZONE_HEX = {"ascenso": "#2ec98a", "playoff": "#f3b23f", "descenso": "#ff556b"}
