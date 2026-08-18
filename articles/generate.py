@@ -35,6 +35,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 import traceback
 from datetime import datetime
@@ -47,7 +48,7 @@ from seo.textutil import pct
 from seo.tweets import _caption, _tg_send_message
 
 from . import grounding, layout_estimate, render, writer
-from .config import ARTICLE_LEAGUES, ARTICLES_OUT_DIR, DATA_DIR, STAT_ARTICLE_HOURS
+from .config import ARTICLE_LEAGUES, ARTICLES_OUT_DIR, DATA_DIR, STAT_ARTICLE_HOURS, STAT_KINDS
 
 _MADRID_TZ = ZoneInfo("Europe/Madrid")
 _FLAGGED_DIR = DATA_DIR / "articles_flagged"
@@ -120,22 +121,54 @@ def _write_latest_pointer(league_slug, fecha, title):
         {"url": render.url_for(league_slug, fecha), "title": title, "fecha": fecha}, ensure_ascii=False))
 
 
-def _record_article(league_slug, tipo, slug, title, url, fecha):
-    """data/articles/index.json: lista de TODOS los artículos publicados
-    (diario/partido/dato), para que /articulos (ver assets/articles.js) pueda
-    listarlos y filtrar por tipo sin tener que parsear el nombre de fichero
-    de cada HTML. Read-modify-write atómico; dedup por slug (idempotente si
-    un mismo artículo se re-registra) y acotado a los 300 más recientes
-    (autopodado, sin crecer sin límite)."""
-    path = DATA_DIR / "articles" / "index.json"
-    try:
-        items = json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
-    except (json.JSONDecodeError, OSError):
-        items = []
-    items = [it for it in items if it.get("slug") != slug]
-    items.append({"slug": slug, "tipo": tipo, "liga": league_slug, "title": title, "url": url, "fecha": fecha})
+_DIARIO_SLUG_RE = re.compile(r"^(?P<liga>[a-z0-9]+)-resumen-(?P<fecha>\d{4}-\d{2}-\d{2})$")
+_DATO_SLUG_RE = re.compile(
+    r"^(?P<liga>[a-z0-9]+)-dato-(?:" + "|".join(re.escape(k) for k in STAT_KINDS)
+    + r")-(?P<fecha>\d{4}-\d{2}-\d{2})-\d{2}$")
+_MATCH_SLUG_RE = re.compile(r"^(?P<liga>[a-z0-9]+)-.+-(?P<fecha>\d{4}-\d{2}-\d{2})$")
+_TITLE_RE = re.compile(r"<title>(.*?)</title>", re.S)
+
+
+def _article_meta_from_file(path):
+    """(tipo, liga, fecha, title) a partir del NOMBRE del fichero (patrón de
+    slug, ver render.py:slug_for/slug_for_match/slug_for_stat) y su <title>.
+    None si el nombre no encaja con ningún patrón conocido (p.ej. restos de
+    un sistema anterior) o su liga no está en ARTICLE_LEAGUES."""
+    stem = path.stem
+    for tipo, rx in (("diario", _DIARIO_SLUG_RE), ("dato", _DATO_SLUG_RE)):
+        m = rx.match(stem)
+        if m:
+            break
+    else:
+        # Crónica de partido: <liga>-<local>-<visitante>-<fecha> — los slugs
+        # de equipo no tienen un patrón fijo, así que se detecta por
+        # eliminación (no es diario ni dato, pero sí liga+fecha conocidas).
+        m = _MATCH_SLUG_RE.match(stem)
+        tipo = "partido"
+    if not m or m.group("liga") not in ARTICLE_LEAGUES:
+        return None
+    title_m = _TITLE_RE.search(path.read_text(encoding="utf-8"))
+    title = (title_m.group(1) if title_m else stem).replace(" | PredictMotion", "")
+    return tipo, m.group("liga"), m.group("fecha"), title
+
+
+def _write_articles_index():
+    """data/articles/index.json: TODOS los artículos publicados (diario/
+    partido/dato), para que /kiosco (assets/articles.js) los liste y filtre
+    por tipo. Self-healing — igual que _write_sitemap: se reconstruye entero
+    escaneando articulos/*.html, sin estado propio que pueda desincronizarse
+    (un artículo publicado antes de que existiera este índice, o cualquiera
+    republicado a mano, aparece igual sin necesitar un backfill)."""
+    items = []
+    for path in ARTICLES_OUT_DIR.glob("*.html"):
+        meta = _article_meta_from_file(path)
+        if not meta:
+            continue
+        tipo, liga, fecha, title = meta
+        items.append({"slug": path.stem, "tipo": tipo, "liga": liga, "title": title,
+                      "url": f"/articulos/{path.stem}", "fecha": fecha})
     items.sort(key=lambda it: (it["fecha"], it["slug"]), reverse=True)
-    _write_atomic(path, json.dumps(items[:300], ensure_ascii=False))
+    _write_atomic(DATA_DIR / "articles" / "index.json", json.dumps(items[:300], ensure_ascii=False))
 
 
 def _notify_telegram(league_slug, headline, cta, article_url):
@@ -235,7 +268,6 @@ def _run_match(league, snap, match, dry_run):
     _write_atomic(ARTICLES_OUT_DIR / f"{slug}.html", html)
     article_url = render.url_for_match(league_slug, payload["fecha"], l["nombre"], v["nombre"])
     print(f"{league_slug}: publicado {article_url}")
-    _record_article(league_slug, "partido", slug, headline, article_url, payload["fecha"])
 
     flag_id = _match_flag_id(league_slug, payload)
     _notify_telegram(league_slug, headline, _pick_tweet_cta(flag_id), SITE + article_url)
@@ -294,6 +326,7 @@ def _run_matches_only(league_slug, dry_run, date_override=None):
     _run_finished_matches(league, snap, finished, today, dry_run)
     if not dry_run:
         _write_sitemap()  # para que la crónica sea descubrible ya, sin esperar a las 23:59
+        _write_articles_index()
     return 0
 
 
@@ -380,8 +413,8 @@ def _run_stat(league_slug, dry_run, date_override=None):
     _write_atomic(ARTICLES_OUT_DIR / f"{slug}.html", html)
     article_url = render.url_for_stat(league_slug, fecha, hour, kind)
     print(f"{league_slug}: publicado {article_url}")
-    _record_article(league_slug, "dato", slug, headline, article_url, fecha)
     _write_sitemap()
+    _write_articles_index()
 
     flag_id = _stat_flag_id(league_slug, fecha, hour, kind)
     _notify_telegram(league_slug, headline, _pick_tweet_cta(flag_id), SITE + article_url)
@@ -486,9 +519,8 @@ def _run(league_slug, dry_run, date_override=None):
     )
     _write_atomic(ARTICLES_OUT_DIR / f"{render.slug_for(league_slug, today)}.html", html)
     _write_sitemap()
+    _write_articles_index()
     _write_latest_pointer(league_slug, today, headline)
-    _record_article(league_slug, "diario", render.slug_for(league_slug, today), headline,
-                     render.url_for(league_slug, today), today)
     print(f"{league_slug}: publicado {render.url_for(league_slug, today)}")
 
     _notify_telegram(league_slug, headline, _pick_tweet_cta(f"{league_slug}|{today}"),

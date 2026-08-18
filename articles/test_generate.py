@@ -3,6 +3,8 @@
 Uso: python3 -m articles.test_generate
 """
 
+import json
+
 from . import generate, grounding, illustration, layout_estimate, render, writer
 from .writer import validate_grounding
 
@@ -241,6 +243,40 @@ def demo():
         assert generate._stat_already_handled("hypermotion", "1999-01-01", 10, "colista")
     finally:
         probe_path.unlink()
+
+    # ── _article_meta_from_file / _write_articles_index: self-healing, se
+    # reconstruye escaneando articulos/*.html (sin estado propio) — así un
+    # artículo publicado antes de que existiera el índice aparece igual ──
+    from .config import DATA_DIR
+
+    def _write_probe(stem, title):
+        p = ARTICLES_OUT_DIR / f"{stem}.html"
+        p.write_text(f"<html><head><title>{title} | PredictMotion</title></head></html>", encoding="utf-8")
+        return p
+
+    probes = [
+        _write_probe("hypermotion-resumen-1999-01-01", "Resumen de prueba"),
+        _write_probe("hypermotion-dato-colista-1999-01-01-10", "Dato de prueba"),
+        _write_probe("hypermotion-equipoa-equipob-1999-01-01", "Crónica de prueba"),
+        _write_probe("hypermotion-jornada-1-recap", "Resto de un sistema viejo, sin fecha"),
+    ]
+    try:
+        assert generate._article_meta_from_file(probes[0]) == ("diario", "hypermotion", "1999-01-01", "Resumen de prueba")
+        assert generate._article_meta_from_file(probes[1]) == ("dato", "hypermotion", "1999-01-01", "Dato de prueba")
+        assert generate._article_meta_from_file(probes[2]) == ("partido", "hypermotion", "1999-01-01", "Crónica de prueba")
+        assert generate._article_meta_from_file(probes[3]) is None  # sin fecha final -> no encaja ningún patrón
+
+        generate._write_articles_index()
+        index = json.loads((DATA_DIR / "articles" / "index.json").read_text(encoding="utf-8"))
+        slugs_1999 = {it["slug"]: it["tipo"] for it in index if it["fecha"] == "1999-01-01"}
+        assert slugs_1999 == {
+            "hypermotion-resumen-1999-01-01": "diario",
+            "hypermotion-dato-colista-1999-01-01-10": "dato",
+            "hypermotion-equipoa-equipob-1999-01-01": "partido",
+        }
+    finally:
+        for p in probes:
+            p.unlink()
 
     print("articles.test_generate: OK")
 
