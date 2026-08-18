@@ -153,6 +153,17 @@ def write_headline(payload):
     return lines[0], lines[1]
 
 
+def split_explainer_paragraphs(body):
+    """(side_paras, note_paras) según el contrato de 3 párrafos de
+    _INSTRUCTIONS['explicador_probabilidad'] — los 2 primeros van en la
+    columna estrecha, el resto (normalmente 1) en la caja "Nota del
+    modelo". Si Gemini no respetó el contrato (<3 párrafos), todo va a la
+    columna estrecha y no hay nota. Única fuente: la usan tanto render.py
+    (maquetación) como layout_estimate.py (estimar altura de columna)."""
+    paras = [p.strip() for p in body.split("\n\n") if p.strip()]
+    return (paras[:2], paras[2:]) if len(paras) >= 3 else (paras, [])
+
+
 def write_article(payload):
     """Genera el cuerpo de un artículo a partir de un payload de hechos ya
     construido. Devuelve dict con title/description/body/status/flagged_values.

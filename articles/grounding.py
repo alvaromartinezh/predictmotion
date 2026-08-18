@@ -100,6 +100,16 @@ def ground_resumen_diario(league, snap, matches):
     }
 
 
+def explainer_best_zone(payload):
+    """(etiqueta, valor) de la zona con mayor probabilidad de un payload de
+    explicador — el mismo criterio de "mejor zona" que _best_band, aplicado
+    al payload ya aplanado (probabilidades_por_zona). Único sitio que lo
+    calcula: lo usan tanto render.py (titular en pantalla) como
+    layout_estimate.py (longitud del titular para estimar su altura)."""
+    zonas = payload["probabilidades_por_zona"]
+    return max(zonas.items(), key=lambda kv: kv[1] or 0)
+
+
 def ground_explainer(league, snap, team):
     bands = snap["bands"]
     prob = team["prob"]

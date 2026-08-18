@@ -3,7 +3,7 @@
 Uso: python3 -m articles.test_generate
 """
 
-from . import generate, render
+from . import generate, illustration, layout_estimate, render
 from .writer import validate_grounding
 
 _TEAM_A = {"nombre": "Eibar", "id": "3752", "logo": None, "posicion": 20,
@@ -68,6 +68,26 @@ def demo():
     assert "Nota del modelo" in html
     assert "Titular de prueba" in html and "Subtítulo de prueba" in html
     assert html.count("bs-brief__head") >= 2  # los 2 partidos como brief, no prosa degradada
+
+    # ── layout_estimate: una columna mucho más corta pide relleno ──
+    fillers = layout_estimate.plan_fillers(explainer_h=400, main_h=1200, side_h=0, has_side=False)
+    assert "explainer" in fillers and 0 < fillers["explainer"] <= layout_estimate.FILLER_MAX_H
+    assert layout_estimate.plan_fillers(explainer_h=1150, main_h=1200, side_h=0, has_side=False) == {}
+
+    # ── illustration.pick: mismo (fecha,variant) es determinista; avoid evita colisión ──
+    a = illustration.pick("2026-08-16", "cover")
+    assert illustration.pick("2026-08-16", "cover") == a
+    b = illustration.pick("2026-08-16", "explainer", avoid={a["file"]})
+    assert b["file"] != a["file"]
+
+    # ── render_broadsheet con filler: aparece una ilustración extra distinta de las demás ──
+    html_filled = render.render_broadsheet(
+        payload_resumen, two_paras, payload_explainer, explainer_body,
+        fecha="2026-08-16", league_logo=None, headline="Titular", subtitle="Subtítulo",
+        explainer_filler_h=250,
+    )
+    assert html_filled.count("<figure") == 3  # portada + explicador + hueco extra (2 partidos, sin lateral)
+    assert "height:250px" in html_filled
     print("articles.test_generate: OK")
 
 

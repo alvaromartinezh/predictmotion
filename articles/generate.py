@@ -28,9 +28,10 @@ from zoneinfo import ZoneInfo
 
 from seo import espn, notify
 from seo.config import SITE, league_by_slug
+from seo.textutil import pct
 from seo.tweets import _caption, _tg_send_message
 
-from . import grounding, render, writer
+from . import grounding, layout_estimate, render, writer
 from .config import ARTICLES_OUT_DIR, DATA_DIR
 
 _MADRID_TZ = ZoneInfo("Europe/Madrid")
@@ -168,10 +169,33 @@ def _run(dry_run, date_override=None):
         headline = resumen["title"].replace(" | PredictMotion", "")
         subtitle = render._teaser(payload_resumen["partidos"])
 
+    # Estimar si sobra espacio en alguna columna para un grabado extra (ver
+    # layout_estimate.py: viable porque la página fuerza un ancho de layout
+    # fijo). Puramente decorativo — si la estimación se equivoca, el peor
+    # caso es un hueco algo distinto del ideal, nunca un diseño roto.
+    pairs = render._split_briefs(resumen["body"], payload_resumen["partidos"])
+    has_side = pairs is not None and len(pairs) > 2
+    widths = layout_estimate.column_widths(has_side)
+    if pairs is not None:
+        lead_paras = [t for _, t in pairs[:2]]
+        side_paras_matches = [t for _, t in pairs[2:]]
+    else:
+        lead_paras, side_paras_matches = [resumen["body"]], []
+
+    ex_side_paras, ex_note_paras = writer.split_explainer_paragraphs(explainer["body"])
+    ex_top_zona, ex_top_val = grounding.explainer_best_zone(payload_explainer)
+    ex_headline_text = f'El modelo da al {team["name"]} un {pct(ex_top_val)} de {ex_top_zona.lower()}'
+
+    exp_h = layout_estimate.explainer_height(ex_headline_text, ex_side_paras, widths["explainer"])
+    main_h = layout_estimate.main_height(headline, subtitle, lead_paras, ex_note_paras, widths["main"])
+    side_h = layout_estimate.side_height(side_paras_matches, widths["side"]) if has_side else 0
+    fillers = layout_estimate.plan_fillers(exp_h, main_h, side_h, has_side)
+
     html = render.render_broadsheet(
         payload_resumen, resumen["body"], payload_explainer, explainer["body"],
         fecha=today, league_logo=snap.get("league_logo"),
         headline=headline, subtitle=subtitle,
+        explainer_filler_h=fillers.get("explainer"), side_filler_h=fillers.get("side"),
     )
     _write_atomic(ARTICLES_OUT_DIR / f"{render.slug_for(today)}.html", html)
     _write_sitemap()

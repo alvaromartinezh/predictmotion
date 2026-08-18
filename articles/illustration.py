@@ -25,12 +25,20 @@ ILLUSTRATIONS = [
     {"file": "melbourne-1875.jpg", "credit": "Hugh George, 1875", "source": "Wikimedia Commons (PD)"},
 ]
 
-def pick(fecha, variant):
-    """Ilustración determinista por (fecha, variant) — el broadsheet usa 3
-    huecos el mismo día ('cover'/'explainer'/'footer') y no deben coincidir."""
-    seed_str = f"hypermotion|{fecha}|{variant}"
-    idx = int(hashlib.md5(seed_str.encode()).hexdigest(), 16) % len(ILLUSTRATIONS)
-    return ILLUSTRATIONS[idx]
+def pick(fecha, variant, avoid=()):
+    """Ilustración determinista por (fecha, variant) — el broadsheet usa
+    hasta 4 huecos el mismo día ('cover'/'explainer'/'footer'/un hueco extra
+    si sobra espacio, ver layout_estimate.py) y no deben coincidir. `avoid`:
+    ficheros ya elegidos ese día para otro hueco — si el hash choca con uno
+    de ellos, reintenta con un sufijo hasta encontrar uno libre (o se rinde
+    y repite si el banco tiene menos imágenes que huecos)."""
+    for attempt in range(len(ILLUSTRATIONS) + 1):
+        seed_str = f"hypermotion|{fecha}|{variant}" + (f"#{attempt}" if attempt else "")
+        idx = int(hashlib.md5(seed_str.encode()).hexdigest(), 16) % len(ILLUSTRATIONS)
+        ill = ILLUSTRATIONS[idx]
+        if ill["file"] not in avoid:
+            return ill
+    return ill
 
 
 def url(ill):

@@ -13,7 +13,7 @@ from seo.chrome import COLOR_PALETTE, GTM_BODY, GTM_HEAD, avatar, esc, team_avat
 from seo.config import SITE
 from seo.textutil import pct, signed
 
-from . import illustration
+from . import grounding, illustration, writer
 
 _CSS_V = "6"
 _DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
@@ -159,10 +159,10 @@ def _prose_html(text):
     return '<div class="bs-prose">' + "".join(f"<p>{esc(p)}</p>" for p in paras) + "</div>"
 
 
-def _illo_html(fecha, variant, cls, caption_cls):
-    ill = illustration.pick(fecha, variant)
+def _illo_html(ill, cls, caption_cls, img_style=""):
+    style_attr = f' style="{img_style}"' if img_style else ""
     return (f'<figure class="{cls}">'
-            f'<img src="{illustration.url(ill)}" alt="" loading="lazy">'
+            f'<img src="{illustration.url(ill)}" alt="" loading="lazy"{style_attr}>'
             f'<figcaption class="{caption_cls}">{esc(ill["credit"])} · {esc(ill["source"])}</figcaption>'
             f'</figure>')
 
@@ -185,9 +185,16 @@ def _mentions_html(payload_resumen, league_name, league_logo):
 
 
 def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explainer_body,
-                       *, fecha, league_logo, headline, subtitle, status_label="Publicado"):
+                       *, fecha, league_logo, headline, subtitle, status_label="Publicado",
+                       explainer_filler_h=None, side_filler_h=None):
     partidos = payload_resumen["partidos"]
     n = len(partidos)
+    picked_files = set()
+
+    def pick_illo(variant):
+        ill = illustration.pick(fecha, variant, avoid=picked_files)
+        picked_files.add(ill["file"])
+        return ill
     title = f'{headline} | PredictMotion'
     description = subtitle
     canonical = SITE + url_for(fecha)
@@ -204,10 +211,9 @@ def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explaine
     }
 
     # ── Explicador (columna izquierda + nota del modelo) ──
-    ex_paras = [p.strip() for p in explainer_body.split("\n\n") if p.strip()]
-    side_paras, note_paras = (ex_paras[:2], ex_paras[2:]) if len(ex_paras) >= 3 else (ex_paras, [])
+    side_paras, note_paras = writer.split_explainer_paragraphs(explainer_body)
     zonas = payload_explainer["probabilidades_por_zona"]
-    top_zona, top_val = max(zonas.items(), key=lambda kv: kv[1] or 0)
+    top_zona, top_val = grounding.explainer_best_zone(payload_explainer)
     ex_headline = f'El modelo da al {esc(payload_explainer["equipo"])} un <span>{pct(top_val)}</span> de {esc(top_zona.lower())}'
 
     ZONE_ORDER = [("Ascenso directo", "#2ec98a"), ("Play-off de ascenso", "#f3b23f"), ("Descenso", "#ff556b")]
@@ -226,9 +232,12 @@ def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explaine
         f'<span class="bs-team-row__meta">{payload_explainer["posicion"]}º · {payload_explainer["puntos"]} pts</span></div>'
         f'<div class="bs-stats">{stats_html}</div>'
         + _prose_html("\n\n".join(side_paras)) +
-        _illo_html(fecha, "explainer", "bs-illo bs-illo--sm", "bs-illo__caption") +
-        '</div>'
+        _illo_html(pick_illo("explainer"), "bs-illo bs-illo--sm", "bs-illo__caption")
     )
+    if explainer_filler_h:
+        explainer_col += _illo_html(pick_illo("explainer_filler"), "bs-illo",
+                                     "bs-illo__caption", img_style=f"height:{explainer_filler_h:.0f}px")
+    explainer_col += '</div>'
 
     # ── Resumen del día (columna central) ──
     pairs = _split_briefs(resumen_body, partidos)
@@ -246,7 +255,7 @@ def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explaine
 
     main_col = (
         '<div class="bs-col-main">'
-        + _illo_html(fecha, "cover", "bs-cover", "bs-cover__caption") +
+        + _illo_html(pick_illo("cover"), "bs-cover", "bs-cover__caption") +
         '<div class="bs-main-label">Resumen del día</div>'
         f'<h2>{esc(headline)}</h2>'
         f'<div class="bs-teaser"><p>{esc(subtitle)}</p></div>'
@@ -260,9 +269,12 @@ def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explaine
             '<div class="bs-col-side">'
             '<div class="bs-section-label">Más resultados</div>'
             + side_html +
-            _illo_html(fecha, "footer", "bs-illo bs-illo--footer", "bs-illo__caption") +
-            '</div>'
+            _illo_html(pick_illo("footer"), "bs-illo bs-illo--footer", "bs-illo__caption")
         )
+        if side_filler_h:
+            side_col += _illo_html(pick_illo("side_filler"), "bs-illo",
+                                    "bs-illo__caption", img_style=f"height:{side_filler_h:.0f}px")
+        side_col += '</div>'
 
     grid = f'<div class="bs-grid">{explainer_col}{main_col}{side_col}</div>'
     mentions = _mentions_html(payload_resumen, payload_resumen["liga"], league_logo)
