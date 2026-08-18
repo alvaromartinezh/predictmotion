@@ -9,6 +9,9 @@ Best-effort: si no hay partidos hoy no pasa nada (día normal, sin alerta).
 Si Gemini falla o el validador de grounding no acepta el texto, NO se
 publica y se manda un email — mismo patrón que seo/generate_site.py.
 
+Al publicar, manda un aviso a Telegram (mismo bot que seo/tweets.py) con el
+titular y el enlace del artículo, para que el dueño lo tuitee a mano.
+
 Uso:
     python -m articles.generate            # lo que corre el cron
     python -m articles.generate --dry-run  # no llama a Gemini ni escribe
@@ -16,6 +19,7 @@ Uso:
 
 import argparse
 import json
+import os
 import sys
 import traceback
 from datetime import datetime
@@ -24,6 +28,7 @@ from zoneinfo import ZoneInfo
 
 from seo import espn, notify
 from seo.config import SITE, league_by_slug
+from seo.tweets import _caption, _tg_send_message
 
 from . import grounding, render, writer
 from .config import ARTICLES_OUT_DIR, DATA_DIR
@@ -69,6 +74,22 @@ def _write_latest_pointer(fecha, title):
     path = DATA_DIR / "articles" / "latest.json"
     _write_atomic(path, json.dumps({"url": render.url_for(fecha), "title": title, "fecha": fecha},
                                     ensure_ascii=False))
+
+
+def _notify_telegram(title, article_url):
+    """Best-effort: aviso a Telegram (mismo bot que seo/tweets.py) con el
+    titular + enlace del artículo recién publicado, para que el dueño lo
+    tuitee a mano — reusa _caption()/_tg_send_message() (texto + enlace
+    directo al compositor de X precargado), sin el teclado inline de los
+    tuits de jornada: esto es de un solo uso, no hay nada que regenerar."""
+    notify._load_env()
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+    if not os.environ.get("TELEGRAM_BOT_TOKEN") or not chat_id:
+        print("hypermotion: sin TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID, no se avisa a Telegram")
+        return
+    tweet_text = f"{title}\n{article_url}"
+    if not _tg_send_message(chat_id, _caption(tweet_text)):
+        print("hypermotion: aviso a Telegram no confirmado", file=sys.stderr)
 
 
 def _write_sitemap():
@@ -144,6 +165,9 @@ def _run(dry_run, date_override=None):
     _write_sitemap()
     _write_latest_pointer(today, resumen["title"])
     print(f"hypermotion: publicado {render.url_for(today)}")
+
+    headline = resumen["title"].replace(" | PredictMotion", "")
+    _notify_telegram(headline, SITE + render.url_for(today))
     return 0
 
 
