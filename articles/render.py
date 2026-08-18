@@ -15,7 +15,7 @@ from seo.textutil import pct, signed
 
 from . import illustration
 
-_CSS_V = "2"
+_CSS_V = "3"
 _DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 _MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 ZONE_HEX = {"ascenso": "#2ec98a", "playoff": "#f3b23f", "descenso": "#ff556b"}
@@ -268,7 +268,9 @@ def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explaine
     grid = f'<div class="bs-grid">{explainer_col}{main_col}{side_col}</div>'
     mentions = _mentions_html(payload_resumen, payload_resumen["liga"], league_logo)
 
-    body = f"""<div class="bs-page"><div class="bs-sheet">
+    body = f"""<div class="bs-page">
+<a class="bs-back" href="/hypermotion">← Volver a la clasificación</a>
+<div class="bs-sheet">
 <div class="bs-masthead">
 <div class="bs-masthead__kicker"><span>Simulación Monte Carlo</span><span>Datos oficiales · ESPN</span></div>
 <div class="bs-masthead__title"><span class="bs-masthead__dot"></span>
