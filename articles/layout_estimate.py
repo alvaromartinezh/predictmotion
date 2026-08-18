@@ -1,9 +1,11 @@
 """Estimador de alturas de columna del broadsheet, sin navegador real.
 
-Por qué es viable: la página fuerza un ancho de layout fijo
-(`<meta name="viewport" content="width=1180">`, ver render.py) para verse
-igual en móvil que en escritorio — así que hay UN solo ancho de columna que
-calcular. Sin ese truco, la altura real dependería del ancho de cada
+Por qué es viable: en ESCRITORIO el sheet mantiene un ancho de layout fijo
+(`max-width: 1180px` en .bs-sheet; las media queries de artículos-broadsheet.css
+solo apilan a ≤1020px) — así que hay UN solo ancho de columna que calcular
+para la vista de escritorio. En móvil las columnas se apilan y los grabados de
+relleno se ocultan por CSS, de modo que esta estimación solo decide el relleno
+de escritorio. Sin ese ancho fijo, la altura real dependería del ancho de cada
 pantalla y no habría un número único que estimar de antemano.
 
 Método: suma de bloques de altura fija (calibrados a mano contra

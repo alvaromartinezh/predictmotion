@@ -3,13 +3,15 @@
    mismo criterio que el cuadro UEFA: aquí el look "periódico bajo lámpara"
    es la identidad de la pieza, no una superficie que deba aclararse.
 
-   Sin media queries para móvil A PROPÓSITO: la maqueta de 3 columnas debe
-   verse IGUAL en móvil que en escritorio (a petición expresa), no apilada.
-   Se resuelve con el <meta name="viewport" content="width=1180"> del head
-   (articles/render.py) — el navegador móvil renderiza la página como si el
-   viewport tuviera 1180px y la escala para que quepa entera en pantalla; el
-   lector hace zoom manual si quiere leer de cerca. Si algún día esto cambia
-   a apilado real, es aquí y en ese meta donde hay que tocar. */
+   Responsive (2026-08-18): la maqueta de 3 columnas se apila a ≤1020px con
+   el resumen del día PRIMERO (.bs-col-main order:-1; la crónica de partido
+   mantiene su orden natural local→crónica→visitante). Los grabados de
+   relleno (.bs-illo--filler, los que igualan alturas de columna en
+   escritorio) solo se ven en escritorio; en móvil se ocultan por CSS. La
+   altura de columna se estima SOLO para escritorio (articles/layout_estimate.py),
+   donde el sheet sigue teniendo un ancho fijo (1180px) — en móvil no hay
+   huecos que equilibrar. Se resolvía antes con el <meta viewport width=1180>
+   (escala de todo el layout en móvil); ahora el meta es device-width estándar. */
 
 html, body { margin: 0; padding: 0; background: #060916; }
 * { box-sizing: border-box; }
@@ -251,4 +253,15 @@ a.bs-brief__head:hover::after { color: #f0a92a; transform: translateX(2px); }
 .bs-facts__label { font-family: 'Geist Mono', monospace; font-size: .6rem; letter-spacing: .18em; text-transform: uppercase; color: #66789c; padding-bottom: 9px; margin-bottom: 9px; border-bottom: 1px solid #14203a; }
 .bs-facts__row { display: flex; align-items: baseline; gap: 10px; padding: 5px 0; font-family: 'Geist Mono', monospace; font-size: .66rem; color: #66789c; }
 .bs-facts__row span:last-child { margin-left: auto; text-align: right; color: #e4ecfa; }
+
+/* ── Responsive (móvil) ─────────────────────────────────────────────────────
+   A ≤1020px las columnas se apilan: el resumen del día va PRIMERO (order:-1)
+   y los grabados de relleno que igualaban alturas en escritorio se ocultan.
+   La crónica de partido mantiene su orden local→crónica→visitante. */
+@media (max-width: 1020px) {
+  .bs-grid { grid-template-columns: 1fr; }
+  .bs-col-main, .bs-match-center { grid-column: auto; border-left: none; border-right: none; }
+  .bs-col-main { order: -1; }
+  .bs-illo--filler { display: none; }
+}
 

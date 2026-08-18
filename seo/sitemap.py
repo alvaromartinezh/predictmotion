@@ -14,6 +14,10 @@ def write_data_sitemap(root, urls):
     """urls: lista de (path, lastmod). Escribe <root>/sitemap-data.xml."""
     seen = {}
     for path, lastmod in urls:
+        # La jornada 0 (pretemporada) no se genera (ver render_table.render):
+        # filtro defensivo por si una URL de jornada 0 se colara por una regresión.
+        if path.rstrip("/").endswith("/0"):
+            continue
         seen[path] = lastmod  # dedup, último gana
     lines = ['<?xml version="1.0" encoding="UTF-8"?>',
              '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']

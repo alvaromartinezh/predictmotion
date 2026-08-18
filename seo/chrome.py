@@ -342,13 +342,25 @@ def sparkline(values, color="#3d8ef5", w=260, h=44):
 
 
 def crumbs(items):
-    """items: lista de (label, href|None)."""
+    """items: lista de (label, href|None). Migas visuales + BreadcrumbList
+    JSON-LD con los MISMOS niveles (el último, la página actual sin href, va
+    sin `item` — igual que el ejemplo oficial de Google)."""
     out = []
     for i, (label, href) in enumerate(items):
         out.append(f'<a href="{href}">{esc(label)}</a>' if href else f'<span>{esc(label)}</span>')
         if i < len(items) - 1:
             out.append('<span class="sep">/</span>')
-    return '<div class="crumbs">' + "".join(out) + "</div>"
+    elements = []
+    for i, (label, href) in enumerate(items):
+        item = {"@type": "ListItem", "position": i + 1, "name": label}
+        if href:
+            item["item"] = SITE + href
+        elements.append(item)
+    ld = {"@context": "https://schema.org", "@type": "BreadcrumbList",
+          "itemListElement": elements}
+    script = ('<script type="application/ld+json">'
+              + json.dumps(ld, ensure_ascii=False) + "</script>")
+    return '<div class="crumbs">' + "".join(out) + "</div>" + script
 
 
 def page(title, description, canonical_path, body, *, heading, logo=None, badge=None,

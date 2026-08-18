@@ -262,8 +262,10 @@ def _jornada_page(league, after, before, logo):
     # cron se salta una liga un día (403, caída), la serie salta de la 20 a la 22 y
     # /jornadas/<liga>/21 nunca se generó ni está en el sitemap. Enlazar j-1 le daba
     # un 404 interno al crawler; la prosa de arriba ya usa before["jornada"].
+    # La jornada 0 es el snapshot de PRETEMPORADA: no tiene página generada, así
+    # que no se enlaza atrás cuando el snapshot previo es la 0 (sería un 404).
     nav = (f'<a href="{L.jornada_url(slug, before["jornada"])}">'
-           f'← Jornada {before["jornada"]}</a>' if before else '')
+           f'← Jornada {before["jornada"]}</a>' if before and before["jornada"] > 0 else '')
     nav += (f'<a href="{L.jornadas_hub_url(slug)}">Todas las jornadas</a>'
             f'<a href="{L.teams_hub_url(slug)}">Equipos</a>')
 
@@ -296,7 +298,7 @@ def _jornada_page(league, after, before, logo):
 def _jornadas_hub(league, series, logo):
     slug = league["slug"]
     chips = "".join(f'<a href="{L.jornada_url(slug, j)}">Jornada {j} · {esc(s["date"])}</a>'
-                    for j, s in sorted(series, reverse=True))
+                    for j, s in sorted(series, reverse=True) if j > 0)
     if not chips:
         chips = '<span class="muted">Aún no hay jornadas registradas.</span>'
     body = (
@@ -321,12 +323,16 @@ def _historico(league, snaps, series, logo):
     for s in sorted(snaps, key=lambda x: x["date"], reverse=True):
         leader = min(s["teams"], key=lambda t: t["rank"])
         primary = s["bands"][0]
+        jn = s["jornada"]
+        # La jornada 0 (pretemporada) no tiene página: sin enlace "ver jornada".
+        ver = (f'<a class="tname" href="{L.jornada_url(slug, jn)}">ver jornada →</a>'
+               if jn > 0 else '<span class="muted">—</span>')
         rows += (f'<tr><td class="muted" style="font-family:Inconsolata,monospace;font-size:.82rem">{esc(s["date"])}</td>'
-                 f'<td>J{s["jornada"]}</td>'
+                 f'<td>J{jn}</td>'
                  f'<td><div class="tcell">{_av(leader, 24)}'
                  f'<a class="tname" href="{L.team_url(slug, leader["slug"])}">{esc(leader["name"])}</a></div></td>'
                  f'<td class="r ptsv">{pct(leader["prob"][primary["key"]])}</td>'
-                 f'<td class="r"><a class="tname" href="{L.jornada_url(slug, s["jornada"])}">ver jornada →</a></td></tr>')
+                 f'<td class="r">{ver}</td></tr>')
     table = (f'<div class="table-scroll"><table><thead><tr><th>Fecha</th><th>Jor.</th><th>Líder</th>'
              f'<th class="r">{esc(snaps[-1]["bands"][0]["label"])}</th><th></th></tr></thead>'
              f'<tbody>{rows}</tbody></table></div>')
@@ -367,7 +373,11 @@ def render(league, snaps, extras=None):
     for t in current["teams"]:
         add(_team_page(league, current, series, t, extras, logo), L.team_url(league["slug"], t["slug"]))
     add(_teams_hub(league, current, logo), L.teams_hub_url(league["slug"]))
+    # La jornada 0 (pretemporada, estado previo a cualquier partido) no se genera:
+    # ni fichero ni URL de sitemap — sin valor informativo ni SEO.
     for j, s in series:
+        if j == 0:
+            continue
         add(_jornada_page(league, s, _prev_jornada_snap(series, j), logo), L.jornada_url(league["slug"], j))
     add(_jornadas_hub(league, series, logo), L.jornadas_hub_url(league["slug"]))
     add(_historico(league, snaps, series, logo), L.historico_url(league["slug"]))

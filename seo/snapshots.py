@@ -171,7 +171,7 @@ def render_head_fragments(league, snap):
     desc = (f'Clasificación de {name} {season} con probabilidades en tiempo real: '
             f'{leader["name"]} lidera con {pct(pv)} de {zone.lower()} tras la '
             f'jornada {jornada}. Simulación Monte Carlo actualizada.')
-    image = snap.get("league_logo") or f'{SITE}/media/twitter_profile.png'
+    image = snap.get("league_logo") or f'{SITE}/media/og-default.png'
 
     top = sorted(teams, key=lambda t: t["prob"].get(primary["key"], 0), reverse=True)[:5]
     item_list = {

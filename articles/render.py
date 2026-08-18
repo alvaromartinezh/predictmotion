@@ -17,7 +17,7 @@ from seo.textutil import pct, signed, slugify
 
 from . import grounding, illustration, writer
 
-_CSS_V = "9"
+_CSS_V = "10"
 _DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 _MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 ZONE_HEX = {"ascenso": "#2ec98a", "ascenso_total": "#2ec98a", "playoff": "#f3b23f", "descenso": "#ff556b"}
@@ -240,7 +240,7 @@ def _page_html(title, description, canonical, league_logo, json_ld, body):
 <head>
 {GTM_HEAD}
 <meta charset="UTF-8">
-<meta name="viewport" content="width=1180">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{esc(title)}</title>
 <meta name="description" content="{esc(description)}">
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
@@ -321,7 +321,7 @@ def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explaine
         _illo_html(pick_illo("explainer"), "bs-illo bs-illo--sm")
     )
     if explainer_filler_h:
-        explainer_col += _illo_html(pick_illo("explainer_filler"), "bs-illo",
+        explainer_col += _illo_html(pick_illo("explainer_filler"), "bs-illo bs-illo--filler",
                                      img_style=f"height:{explainer_filler_h:.0f}px")
     explainer_col += '</div>'
 
@@ -358,7 +358,7 @@ def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explaine
             _illo_html(pick_illo("footer"), "bs-illo bs-illo--footer")
         )
         if side_filler_h:
-            side_col += _illo_html(pick_illo("side_filler"), "bs-illo",
+            side_col += _illo_html(pick_illo("side_filler"), "bs-illo bs-illo--filler",
                                     img_style=f"height:{side_filler_h:.0f}px")
         side_col += '</div>'
 

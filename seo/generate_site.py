@@ -29,7 +29,7 @@ for _stream in (sys.stdout, sys.stderr):
     except Exception:
         pass
 
-from . import espn, render_table, sitemap, predictions, zone_predictions, notify
+from . import espn, render_table, sitemap, predictions, zone_predictions, notify, links
 from .config import LEAGUES, ROOT, SIM_N_TABLE, league_by_slug
 from .snapshots import (build_table_snapshot, save_snapshot, load_all,
                         save_offseason_latest)
@@ -163,6 +163,11 @@ def _process_table(league, today, dry_run, ratings=None):
 
     files, urls = render_table.render(league, snaps, extras=extras)
     _write_files(files, dry_run)
+    # La jornada 0 (pretemporada) ya no se genera (render_table.render): borrar el
+    # fichero que quedó de pasadas anteriores para que no siga accesible como URL
+    # huérfana (sin sitemap ni enlaces, pero directa).
+    if not dry_run:
+        (ROOT / links.jornada_file(league["slug"], 0)).unlink(missing_ok=True)
     return snap, urls
 
 
