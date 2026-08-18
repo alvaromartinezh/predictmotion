@@ -7,6 +7,7 @@ explicador del equipo más destacado de la jornada.
 """
 
 import json
+import re
 from datetime import date, datetime, timezone
 
 from seo.chrome import COLOR_PALETTE, GTM_BODY, GTM_HEAD, avatar, esc, team_avatar
@@ -15,7 +16,7 @@ from seo.textutil import pct, signed
 
 from . import grounding, illustration, writer
 
-_CSS_V = "6"
+_CSS_V = "7"
 _DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 _MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 ZONE_HEX = {"ascenso": "#2ec98a", "playoff": "#f3b23f", "descenso": "#ff556b"}
@@ -83,6 +84,19 @@ def _teaser(partidos):
     bits = bits[:3]
     sentence = bits[0] if len(bits) == 1 else ", ".join(bits[:-1]) + " y " + bits[-1]
     return sentence[0].upper() + sentence[1:] + "."
+
+
+def _highlight_teams(text, team_names):
+    """Titular llamativo (texto libre de Gemini) con los nombres de equipo
+    que aparezcan resaltados en acento — mismo hueco visual que antes cubría
+    el <span> del titular determinista ("N partidos"), que desapareció al
+    pasar a un titular generado. Nombres más largos primero para que un
+    nombre corto no se coma parte de uno más largo que lo contiene."""
+    out = esc(text)
+    for name in sorted(set(team_names), key=len, reverse=True):
+        pattern = re.compile(r'\b' + re.escape(esc(name)) + r'\b')
+        out = pattern.sub(lambda m: f'<span>{m.group(0)}</span>', out, count=1)
+    return out
 
 
 def _delta(actual, antes):
@@ -159,11 +173,10 @@ def _prose_html(text):
     return '<div class="bs-prose">' + "".join(f"<p>{esc(p)}</p>" for p in paras) + "</div>"
 
 
-def _illo_html(ill, cls, caption_cls, img_style=""):
+def _illo_html(ill, cls, img_style=""):
     style_attr = f' style="{img_style}"' if img_style else ""
     return (f'<figure class="{cls}">'
             f'<img src="{illustration.url(ill)}" alt="" loading="lazy"{style_attr}>'
-            f'<figcaption class="{caption_cls}">{esc(ill["credit"])} · {esc(ill["source"])}</figcaption>'
             f'</figure>')
 
 
@@ -232,11 +245,11 @@ def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explaine
         f'<span class="bs-team-row__meta">{payload_explainer["posicion"]}º · {payload_explainer["puntos"]} pts</span></div>'
         f'<div class="bs-stats">{stats_html}</div>'
         + _prose_html("\n\n".join(side_paras)) +
-        _illo_html(pick_illo("explainer"), "bs-illo bs-illo--sm", "bs-illo__caption")
+        _illo_html(pick_illo("explainer"), "bs-illo bs-illo--sm")
     )
     if explainer_filler_h:
         explainer_col += _illo_html(pick_illo("explainer_filler"), "bs-illo",
-                                     "bs-illo__caption", img_style=f"height:{explainer_filler_h:.0f}px")
+                                     img_style=f"height:{explainer_filler_h:.0f}px")
     explainer_col += '</div>'
 
     # ── Resumen del día (columna central) ──
@@ -255,9 +268,9 @@ def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explaine
 
     main_col = (
         '<div class="bs-col-main">'
-        + _illo_html(pick_illo("cover"), "bs-cover", "bs-cover__caption") +
+        + _illo_html(pick_illo("cover"), "bs-cover") +
         '<div class="bs-main-label">Resumen del día</div>'
-        f'<h2>{esc(headline)}</h2>'
+        f'<h2>{_highlight_teams(headline, [t["nombre"] for m in partidos for t in (m["local"], m["visitante"])])}</h2>'
         f'<div class="bs-teaser"><p>{esc(subtitle)}</p></div>'
         + lead_html + note_html +
         '</div>'
@@ -269,11 +282,11 @@ def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explaine
             '<div class="bs-col-side">'
             '<div class="bs-section-label">Más resultados</div>'
             + side_html +
-            _illo_html(pick_illo("footer"), "bs-illo bs-illo--footer", "bs-illo__caption")
+            _illo_html(pick_illo("footer"), "bs-illo bs-illo--footer")
         )
         if side_filler_h:
             side_col += _illo_html(pick_illo("side_filler"), "bs-illo",
-                                    "bs-illo__caption", img_style=f"height:{side_filler_h:.0f}px")
+                                    img_style=f"height:{side_filler_h:.0f}px")
         side_col += '</div>'
 
     grid = f'<div class="bs-grid">{explainer_col}{main_col}{side_col}</div>'
