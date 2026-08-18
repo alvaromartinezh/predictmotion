@@ -84,14 +84,19 @@ def _write_sitemap():
     (ARTICLES_OUT_DIR.parent / "sitemap-articles.xml").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def _run(dry_run):
+def _run(dry_run, date_override=None):
     league = league_by_slug(_LEAGUE_SLUG)
     snap = grounding.load_snapshot(_LEAGUE_SLUG)
     if not snap:
         print("hypermotion: sin snapshot (offseason o el cron SEO no ha corrido aún)")
         return 0
 
-    today = datetime.now(_MADRID_TZ).strftime("%Y-%m-%d")
+    # El cron corre a las 23:59 hora de España, así que "hoy" en ese momento
+    # sigue siendo el día natural de los partidos. --date es solo para
+    # relanzar a mano un día concreto (p.ej. tras medianoche, cuando "hoy"
+    # ya habría rodado al día siguiente y los partidos de ayer quedarían
+    # invisibles).
+    today = date_override or datetime.now(_MADRID_TZ).strftime("%Y-%m-%d")
     compact = today.replace("-", "")
     events = espn.fetch_scoreboard_range(league["espn_code"], compact, compact)
     finished = [e for e in events if e["state"] == "post"]
@@ -145,9 +150,10 @@ def _run(dry_run):
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true", help="No llama a Gemini ni escribe, solo informa")
+    ap.add_argument("--date", help="YYYY-MM-DD — relanzar un día concreto en vez de 'hoy' (backfill manual)")
     args = ap.parse_args(argv)
     try:
-        return _run(args.dry_run)
+        return _run(args.dry_run, date_override=args.date)
     except Exception:
         tb = traceback.format_exc()
         print(tb, file=sys.stderr)
