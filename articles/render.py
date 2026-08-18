@@ -15,7 +15,7 @@ from seo.textutil import pct, signed
 
 from . import illustration
 
-_CSS_V = "4"
+_CSS_V = "5"
 _DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 _MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 ZONE_HEX = {"ascenso": "#2ec98a", "playoff": "#f3b23f", "descenso": "#ff556b"}
@@ -297,7 +297,7 @@ def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explaine
 <head>
 {GTM_HEAD}
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=1180">
 <title>{esc(title)}</title>
 <meta name="description" content="{esc(description)}">
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
