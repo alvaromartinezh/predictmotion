@@ -64,7 +64,6 @@ _TWEET_CTAS = [
     "Las probabilidades actualizadas, aquí:",
     "El modelo ha movido las opciones de varios equipos. Compruébalo.",
     "Con cifras y explicación, un clic más abajo.",
-    "¿Sube o baja cada equipo? Los números, en el enlace.",
     "Todo el análisis de probabilidades, en el artículo completo.",
     "¿Qué dice el modelo ahora? Descúbrelo aquí.",
 ]
