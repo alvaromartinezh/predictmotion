@@ -12,7 +12,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from seo.snapshots import load_all
-from .config import DATA_DIR, ASCENSO_TOTAL_SEASON_FRACTION
+from .config import DATA_DIR, ASCENSO_TOTAL_SEASON_FRACTION, STAT_KINDS
 
 _MADRID_TZ = ZoneInfo("Europe/Madrid")
 
@@ -200,6 +200,61 @@ def ground_explainer(league, snap, team):
         "rating_fuerza": team.get("strength"),
         "probabilidades_por_zona": {b["label"]: prob.get(b["key"]) for b in bands if prob.get(b["key"]) is not None},
         "vecinos_en_la_tabla": neighbors,
+    }
+
+
+def pick_stat_kind(hour):
+    """Alterna entre los STAT_KINDS por franja horaria — determinista (sin
+    estado que mantener): dos ejecuciones a la misma hora eligen lo mismo,
+    y ejecuciones consecutivas (cada 2h) no repiten kind."""
+    keys = list(STAT_KINDS)
+    return keys[(hour // 2) % len(keys)]
+
+
+def _dato_label(kind, n):
+    if STAT_KINDS[kind]["prob_key"] == "last":
+        return f"Probabilidad de ser {n}º"
+    return "Probabilidad de acabar 1º"
+
+
+def ground_stat(league, snap, kind, fecha, hour):
+    """payload de hechos del "dato curioso" (ver STAT_KINDS): el equipo con
+    más probabilidad, según la simulación YA calculada, de acabar en una
+    posición exacta que ningún dashboard muestra (colista/líder). None si
+    la liga no tiene suficientes equipos con ese dato (offseason/snapshot
+    recién creado sin prob)."""
+    info = STAT_KINDS[kind]
+    key = info["prob_key"]
+    n = snap.get("num_teams") or len(snap["teams"])
+    bands = snap["bands"]
+    candidates = [t for t in snap["teams"] if t["prob"].get(key) is not None]
+    if len(candidates) < 4:
+        return None
+    ranking = sorted(candidates, key=lambda t: t["prob"][key], reverse=True)[:6]
+
+    prior = _prior_snapshot(league["slug"], snap["season"], fecha)
+    prior_by_id = {str(t["id"]): t for t in (prior or {}).get("teams", [])}
+
+    def side(t):
+        pt = prior_by_id.get(str(t["id"]))
+        zone = _best_band(_effective_bands(snap, bands), t["prob"])
+        return {
+            "nombre": t["name"], "id": t["id"], "logo": t["logo"], "posicion": t["rank"],
+            "puntos": t["pts"], "pj": t.get("gp"), "rating_fuerza": t.get("strength"),
+            "valor": t["prob"][key],
+            "valor_antes": (pt["prob"].get(key) if pt else None),
+            "zona": zone["label"], "prob_zona": t["prob"].get(zone["key"]),
+        }
+
+    ranking_sides = [side(t) for t in ranking]
+    return {
+        "tipo": f"dato_{kind}", "kind": kind,
+        "liga": league["name"], "temporada": snap["season"], "jornada": snap["jornada"],
+        "fecha": fecha, "hour": hour, "num_equipos": n,
+        "dato_label": _dato_label(kind, n), "dato_verbo": info["verbo"],
+        "protagonista": ranking_sides[0],
+        "perseguidores": ranking_sides[1:4],
+        "ranking": ranking_sides,
     }
 
 

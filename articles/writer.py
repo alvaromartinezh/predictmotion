@@ -15,7 +15,7 @@ import re
 from seo.textutil import pct
 
 from . import grounding
-from .config import GROUNDING_TOLERANCE_PP
+from .config import GROUNDING_TOLERANCE_PP, STAT_KINDS
 from .gemini_client import GeminiError, generate
 
 _PCT_RE = re.compile(r"(\d+(?:[.,]\d+)?)\s*%")
@@ -94,6 +94,44 @@ _INSTRUCTIONS["match_cronica"] = (
     "Sin titular ni frase de apertura tipo 'En un partido...': empieza directo con el hecho."
 )
 
+# "Dato curioso" (articles/render.py:render_stat_broadsheet, ver STAT_KINDS en
+# config.py): 2 llamadas de contenido sobre el MISMO payload
+# (grounding.ground_stat) — el protagonista (DATOS.protagonista) y sus
+# perseguidores (DATOS.perseguidores, un párrafo por elemento, mismo
+# contrato que _ONE_PARA_PER_MATCH). Una instrucción por kind (registradas
+# más abajo con el verbo ya sustituido) para no obligar a Gemini a inferir
+# "acabar colista" vs "acabar líder" del resto del payload.
+_STAT_PROTAGONIST_INSTR = (
+    "Escribe sobre el dato curioso del día: el equipo con más probabilidad, según el "
+    "modelo, de {verb} (DATOS.protagonista es ese equipo). Explica el contraste entre su "
+    "situación real en la tabla (posición, puntos, forma) y lo que dice el modelo (compara "
+    "DATOS.protagonista.valor con DATOS.protagonista.valor_antes si existe), y qué papel "
+    "juega su rating de fuerza (DATOS.protagonista.rating_fuerza) en esa proyección a largo "
+    "plazo.\n\n"
+    "FORMATO OBLIGATORIO: escribe EXACTAMENTE 4 párrafos cortos (60-90 palabras cada uno) "
+    "separados por una línea en blanco. Sin introducción genérica ni cierre tipo 'en "
+    "resumen': cada párrafo aporta algo nuevo."
+)
+
+_STAT_CHASERS_INSTR = (
+    "Escribe sobre los otros candidatos a {verb}: DATOS.perseguidores es la lista de los "
+    "siguientes equipos con más probabilidad tras el protagonista, en orden. Un párrafo "
+    "breve por cada uno explicando por qué el modelo lo sitúa ahí.\n\n"
+    "FORMATO OBLIGATORIO: escribe EXACTAMENTE un párrafo por cada elemento de "
+    "DATOS.perseguidores, en el MISMO orden, separados por una línea en blanco (si hay 3 "
+    "elementos, 3 párrafos: ni uno más ni uno menos). Cada párrafo se publica junto al "
+    "nombre y el dato de ese equipo, así que no hace falta repetirlo como apertura forzada, "
+    "y no empieces con conectores que remitan al párrafo anterior."
+)
+
+
+def _compose_stat_head(payload):
+    p = payload["protagonista"]
+    title = f'{p["nombre"]}, el favorito a {payload["dato_verbo"]} en {payload["liga"]} | PredictMotion'
+    desc = (f'El modelo de PredictMotion da al {p["nombre"]} un {pct(p["valor"])} de probabilidad de '
+            f'{payload["dato_verbo"]} en {payload["liga"]} tras la jornada {payload["jornada"]}.')
+    return title, desc
+
 
 def build_prompt(payload):
     instr = _INSTRUCTIONS[payload["tipo"]].format(liga=payload["liga"])
@@ -149,6 +187,17 @@ _HEAD_BUILDERS = {
     "match_cronica": _compose_match_head,
 }
 
+# Un tipo "dato_<kind>_protagonista"/"dato_<kind>_perseguidores" por cada
+# STAT_KINDS, con el verbo ya sustituido (ver _STAT_PROTAGONIST_INSTR/
+# _STAT_CHASERS_INSTR arriba) — mismo patrón que match_local/visitante con
+# lado/campo ya sustituidos.
+for _stat_kind, _stat_info in STAT_KINDS.items():
+    _INSTRUCTIONS[f"dato_{_stat_kind}_protagonista"] = _STAT_PROTAGONIST_INSTR.format(verb=_stat_info["verbo_largo"])
+    _INSTRUCTIONS[f"dato_{_stat_kind}_perseguidores"] = _STAT_CHASERS_INSTR.format(verb=_stat_info["verbo_largo"])
+    _HEAD_BUILDERS[f"dato_{_stat_kind}_protagonista"] = _compose_stat_head
+    _HEAD_BUILDERS[f"dato_{_stat_kind}_perseguidores"] = _compose_stat_head
+del _stat_kind, _stat_info
+
 
 _HEADLINE_SYSTEM = (
     "Eres el redactor de titulares de PredictMotion, un sitio de predicciones de "
@@ -193,6 +242,26 @@ _MATCH_HEADLINE_INSTR = (
 )
 
 
+_STAT_HEADLINE_INSTR = (
+    "Escribe un titular llamativo para un artículo sobre el dato curioso del día: el equipo "
+    "con más probabilidad de {verb}, según el modelo (el objeto DATOS.protagonista). Sin dos "
+    "puntos, sin comillas. El TITULAR (la primera línea) es lo que se manda tal cual a "
+    "Telegram como titular del tuit, así que DEBE incluir el porcentaje real "
+    "DATOS.protagonista.valor (con el símbolo %) y el nombre del equipo tal cual aparece en "
+    "DATOS.protagonista.nombre. Y, en la línea siguiente, una entradilla corta y también "
+    "llamativa (1 frase) que enganche a seguir leyendo.\n\n"
+    "FORMATO OBLIGATORIO: EXACTAMENTE 2 líneas — primero el titular (CON el porcentaje y el "
+    "nombre del equipo), luego la entradilla — sin etiquetas ('Titular:'/'Entradilla:'), sin "
+    "numerarlas, sin nada más de texto. Usa siempre el nombre del equipo tal cual aparece en "
+    "DATOS.protagonista.nombre — NUNCA un gentilicio, apodo o ciudad: si no estás seguro de a "
+    "qué ciudad o afición corresponde, lo más probable es que te equivoques."
+)
+
+_STAT_HEADLINE_INSTR_BY_KIND = {
+    k: _STAT_HEADLINE_INSTR.format(verb=v["verbo_largo"]) for k, v in STAT_KINDS.items()
+}
+
+
 def write_headline(payload, instr=_HEADLINE_INSTR):
     """Titular + subtítulo llamativos (a petición expresa: deben "dar ganas
     de hacer clic"). Devuelve (titular, subtitulo) o None si Gemini falla,
@@ -225,6 +294,12 @@ def write_match_headline(payload):
     """write_headline() con las instrucciones del broadsheet de partido
     (titular + entradilla, marcador permitido en vez de vetado)."""
     return write_headline(payload, instr=_MATCH_HEADLINE_INSTR)
+
+
+def write_stat_headline(payload):
+    """write_headline() con las instrucciones del dato curioso (una por kind,
+    ver STAT_KINDS/_STAT_HEADLINE_INSTR_BY_KIND — el verbo ya sustituido)."""
+    return write_headline(payload, instr=_STAT_HEADLINE_INSTR_BY_KIND[payload["kind"]])
 
 
 def split_explainer_paragraphs(body):

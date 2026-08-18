@@ -213,11 +213,44 @@ a.bs-brief__head:hover::after { color: #f0a92a; transform: translateX(2px); }
 .bs-match-team__name { font-family: 'Saira Condensed', sans-serif; font-weight: 700; text-transform: uppercase; font-size: 1.25rem; letter-spacing: .03em; }
 .bs-match-team__meta { margin-left: auto; font-family: 'Geist Mono', monospace; font-size: .7rem; color: #66789c; }
 
-.bs-match-home h2, .bs-match-away h2 {
+/* ── Broadsheet de DATO CURIOSO (articles/render.py:render_stat_broadsheet) ──
+   Reusa .bs-page/.bs-sheet/.bs-back/.bs-masthead/.bs-edition/.bs-grid/
+   .bs-section-label/.bs-prose/.bs-illo/.bs-illo--fill/.bs-cover/.bs-note/
+   .bs-stats/.bs-facts/.bs-mentions/.bs-footer/.av/.bs-match-team (fila del
+   protagonista, mismo look que la del partido) y .bs-col-main (columna
+   central, idéntica a la del broadsheet diario: sin motivo para divergir).
+   Columnas laterales propias porque necesitan flex (la ilustración de
+   cierre rellena el hueco sobrante, igual que .bs-match-home/away). */
+.bs-stat-side, .bs-stat-chasers { padding: 22px 22px 26px; display: flex; flex-direction: column; }
+
+.bs-match-home h2, .bs-match-away h2, .bs-stat-side h2 {
   font-family: 'Saira Condensed', sans-serif; font-weight: 800; text-transform: uppercase; font-size: 1.5rem;
   line-height: 1.04; letter-spacing: .01em; margin: 14px 0 12px; color: #e4ecfa;
 }
-.bs-match-home h2 span, .bs-match-away h2 span { color: #f0a92a; }
+.bs-match-home h2 span, .bs-match-away h2 span, .bs-stat-side h2 span { color: #f0a92a; }
+
+/* Ranking (bs-col-main): barras de las N candidatas al dato, ordenadas */
+.bs-rankbox { border: 1px solid #1b2944; padding: 18px 18px 14px; margin-bottom: 20px; }
+.bs-rankbox__head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  font-family: 'Geist Mono', monospace; font-size: .6rem; letter-spacing: .16em; text-transform: uppercase;
+  color: #66789c; padding-bottom: 12px; margin-bottom: 14px; border-bottom: 1px solid #1b2944;
+}
+.bs-rankbox__n { color: #3d4d6e; }
+.bs-rank__row { display: flex; align-items: center; gap: 12px; padding: 7px 0; }
+.bs-rank__pos { font-family: 'Geist Mono', monospace; font-size: .62rem; color: #3d4d6e; width: 20px; flex: none; }
+.bs-rank__name { flex: none; width: 96px; font-family: 'Geist', sans-serif; font-weight: 600; font-size: .78rem; line-height: 1.2; overflow-wrap: anywhere; }
+.bs-rank__bar { flex: 1; min-width: 40px; height: 10px; background: #101a30; display: block; }
+.bs-rank__fill { display: block; height: 100%; }
+.bs-rank__val { flex: none; font-family: 'Geist Mono', monospace; font-size: .72rem; color: #e4ecfa; width: 46px; text-align: right; }
+
+/* Perseguidores (bs-stat-chasers) */
+.bs-chaser { padding: 14px 0; border-bottom: 1px solid #14203a; }
+.bs-chaser:last-of-type { border-bottom: none; }
+.bs-chaser__row { display: flex; align-items: center; gap: 9px; margin-bottom: 8px; }
+.bs-chaser__name { font-family: 'Saira Condensed', sans-serif; font-weight: 700; text-transform: uppercase; font-size: 1.1rem; letter-spacing: .02em; line-height: 1.05; }
+.bs-chaser__val { margin-left: auto; font-family: 'Geist Mono', monospace; font-size: .75rem; color: #f0a92a; }
+.bs-chaser p { font-family: 'Geist', sans-serif; font-size: .83rem; line-height: 1.6; color: #aab8d4; margin: 0; text-wrap: pretty; }
 
 .bs-stats__delta { margin-left: auto; font-family: 'Geist Mono', monospace; font-size: .64rem; }
 

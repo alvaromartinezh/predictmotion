@@ -30,6 +30,29 @@ ASCENSO_TOTAL_SEASON_FRACTION = 0.5
 GEMINI_MODEL = "gemini-3.5-flash-lite"
 GEMINI_MODEL_GROUNDED = "gemini-2.5-flash"
 
+# "Dato curioso": artículo corto sobre una probabilidad que la simulación YA
+# calcula (viene en data/<slug>/latest.json) pero que ningún dashboard
+# muestra. Registro único (grounding.py/writer.py/render.py lo comparten) —
+# añadir un kind aquí es lo único que hace falta para sumar un dato nuevo,
+# siempre que su prob ya esté en snap["teams"][i]["prob"][prob_key] (ver
+# seo/snapshots.py:build_table_snapshot, que persiste "first"/"last" igual
+# que las bandas de zona).
+STAT_KINDS = {
+    "colista": {
+        "prob_key": "last", "eyebrow": "Farolillo rojo", "verbo": "acabar colista",
+        "verbo_largo": "acabar colista (la última posición de la tabla)",
+    },
+    "lider": {
+        "prob_key": "first", "eyebrow": "Máximo favorito", "verbo": "acabar líder",
+        "verbo_largo": "acabar líder (la primera posición de la tabla)",
+    },
+}
+
+# Cron dedicado (ver CLAUDE.md): un dato curioso cada 2h, solo 10:00-20:00
+# hora de España -> 6 al día. `_run_stat` repite esta guarda en tiempo de
+# ejecución (defensa en profundidad si el cron se lanza fuera de horario).
+STAT_ARTICLE_HOURS = range(10, 21, 2)
+
 
 def gemini_endpoint(model):
     return f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"

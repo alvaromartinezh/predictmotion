@@ -85,6 +85,11 @@ def build_table_snapshot(league, rows, sim, sim_n, today, league_logo=None,
         # "Título") y no coincide con ninguna banda (Champions es 1-4). Inofensiva
         # para las ligas que no la muestran.
         prob["first"] = zone_prob(res["pos_hist"], 1, 1, sim_n)
+        # Prob. de acabar colista (última posición). Igual que "first": no
+        # coincide con ninguna banda, se calcula siempre (barato, ya se tiene
+        # pos_hist) y lo consume articles/grounding.py para el "dato curioso"
+        # (ver CLAUDE.md), no ningún dashboard.
+        prob["last"] = zone_prob(res["pos_hist"], n, n, sim_n)
         if league.get("playoff_top"):
             prob["pSemi"] = res["pSemi"]
             prob["pFinal"] = res["pFinal"]

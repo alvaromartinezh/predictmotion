@@ -41,6 +41,7 @@
     search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.2-3.2"/>',
     gear: '<circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.3l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2.2-1.3L14 2h-4l-.3 2.1a7 7 0 0 0-2.2 1.3l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .4 0 .9.1 1.3l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2.2 1.3L10 22h4l.3-2.1a7 7 0 0 0 2.2-1.3l2.4 1 2-3.4-2-1.6c.1-.4.1-.9.1-1.3Z"/>',
     bell: '<path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+    paper: '<path d="M4 4h13a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H4z" transform="translate(1 1)"/><path d="M6 8h9M6 12h9M6 16h5"/>',
     moon: '<path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8Z"/>',
     sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'
   };
@@ -51,6 +52,7 @@
     { id: 'home', label: 'Inicio', href: '/', icon: IC.home, ready: true },
     { id: 'follow', label: 'Siguiendo', href: '/siguiendo', icon: IC.star, ready: true },
     { id: 'matches', label: 'Partidos', href: '/partidos', icon: IC.ball, ready: true },
+    { id: 'articles', label: 'Artículos', href: '/kiosco', icon: IC.paper, ready: true },
     { id: 'search', label: 'Buscar', href: '/buscar', icon: IC.search, ready: true },
     { id: 'settings', label: 'Ajustes', href: '/ajustes', icon: IC.gear, ready: true }
   ];

@@ -187,6 +187,61 @@ def demo():
                   {"key": "descenso", "label": "Descenso", "zone": "relega"}]
     assert grounding._effective_bands({"total_md": 42, "jornada": 2}, bands_top1) == bands_top1
 
+    # ── grounding.pick_stat_kind: alterna por franja horaria, determinista ──
+    assert grounding.pick_stat_kind(10) != grounding.pick_stat_kind(12)
+    assert grounding.pick_stat_kind(10) == grounding.pick_stat_kind(14)  # misma paridad de franja
+
+    # ── grounding.ground_stat: protagonista = mayor prob["last"]/["first"] ──
+    bands_top1 = [{"key": "champions", "label": "Champions", "zone": "promo", "lo": 1, "hi": 4},
+                  {"key": "descenso", "label": "Descenso", "zone": "relega", "lo": 18, "hi": 20}]
+    snap_stat = {
+        "season": "2026-27", "jornada": 1, "num_teams": 4, "bands": bands_top1, "total_md": 6,
+        "teams": [
+            {"id": "1", "name": "Tenerife", "logo": None, "rank": 2, "pts": 3, "gp": 1, "strength": -1.74,
+             "prob": {"champions": 4.0, "descenso": 27.8, "first": 1.0, "last": 15.2}},
+            {"id": "2", "name": "Córdoba", "logo": None, "rank": 5, "pts": 1, "gp": 1, "strength": -0.9,
+             "prob": {"champions": 2.0, "descenso": 25.5, "first": 0.5, "last": 10.1}},
+            {"id": "3", "name": "Albacete", "logo": None, "rank": 3, "pts": 3, "gp": 1, "strength": 0.2,
+             "prob": {"champions": 10.0, "descenso": 20.6, "first": 3.0, "last": 8.4}},
+            {"id": "4", "name": "Eibar", "logo": None, "rank": 1, "pts": 4, "gp": 1, "strength": 0.6,
+             "prob": {"champions": 30.0, "descenso": 5.0, "first": 12.0, "last": 6.9}},
+        ],
+    }
+    league_stat = {"slug": "hypermotion-test", "name": "Liga de prueba"}
+    payload_stat = grounding.ground_stat(league_stat, snap_stat, "colista", "2026-08-19", 12)
+    assert payload_stat["protagonista"]["nombre"] == "Tenerife"
+    assert payload_stat["perseguidores"][0]["nombre"] == "Córdoba"
+    assert len(payload_stat["perseguidores"]) == 3
+    assert payload_stat["dato_verbo"] == "acabar colista"
+
+    # ── render_stat_broadsheet: smoke-test end-to-end sobre datos sintéticos ──
+    stat_body_4p = "Uno.\n\nDos.\n\nTres.\n\nCuatro."
+    stat_chasers_3p = "Uno.\n\nDos.\n\nTres."
+    html_stat = render.render_stat_broadsheet(
+        payload_stat, stat_body_4p, stat_chasers_3p,
+        league_slug="hypermotion", headline="Tenerife roza el 15% de acabar colista", teaser="Entradilla del dato",
+        league_logo=None,
+    )
+    assert "<!DOCTYPE html>" in html_stat
+    assert "Tenerife" in html_stat and "Córdoba" in html_stat
+    assert "Tenerife roza el 15%" in html_stat and "Entradilla del dato" in html_stat
+    assert "Ficha del dato" in html_stat and "Cómo se calcula" in html_stat
+    assert html_stat.count("bs-chaser__row") == 3
+
+    # ── slug_for_stat: determinista, namespaced por liga+kind+fecha+hora ──
+    assert render.slug_for_stat("hypermotion", "2026-08-19", 12, "colista") == "hypermotion-dato-colista-2026-08-19-12"
+
+    # ── _stat_already_handled: idempotencia sin red (existe HTML -> True) ──
+    probe_slug = render.slug_for_stat("hypermotion", "1999-01-01", 10, "colista")
+    probe_path = ARTICLES_OUT_DIR / f"{probe_slug}.html"
+    assert not generate._stat_already_handled("hypermotion", "1999-01-01", 10, "colista")
+    ARTICLES_OUT_DIR.mkdir(parents=True, exist_ok=True)
+    probe_path.write_text("<html></html>", encoding="utf-8")
+    try:
+        assert generate._stat_already_handled("hypermotion", "1999-01-01", 10, "colista")
+    finally:
+        probe_path.unlink()
+
     print("articles.test_generate: OK")
 
 

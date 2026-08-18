@@ -47,7 +47,7 @@ from seo.textutil import pct
 from seo.tweets import _caption, _tg_send_message
 
 from . import grounding, layout_estimate, render, writer
-from .config import ARTICLE_LEAGUES, ARTICLES_OUT_DIR, DATA_DIR
+from .config import ARTICLE_LEAGUES, ARTICLES_OUT_DIR, DATA_DIR, STAT_ARTICLE_HOURS
 
 _MADRID_TZ = ZoneInfo("Europe/Madrid")
 _FLAGGED_DIR = DATA_DIR / "articles_flagged"
@@ -118,6 +118,24 @@ def _write_latest_pointer(league_slug, fecha, title):
     path = DATA_DIR / "articles" / "latest.json"
     _write_atomic(path, json.dumps(
         {"url": render.url_for(league_slug, fecha), "title": title, "fecha": fecha}, ensure_ascii=False))
+
+
+def _record_article(league_slug, tipo, slug, title, url, fecha):
+    """data/articles/index.json: lista de TODOS los artículos publicados
+    (diario/partido/dato), para que /articulos (ver assets/articles.js) pueda
+    listarlos y filtrar por tipo sin tener que parsear el nombre de fichero
+    de cada HTML. Read-modify-write atómico; dedup por slug (idempotente si
+    un mismo artículo se re-registra) y acotado a los 300 más recientes
+    (autopodado, sin crecer sin límite)."""
+    path = DATA_DIR / "articles" / "index.json"
+    try:
+        items = json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
+    except (json.JSONDecodeError, OSError):
+        items = []
+    items = [it for it in items if it.get("slug") != slug]
+    items.append({"slug": slug, "tipo": tipo, "liga": league_slug, "title": title, "url": url, "fecha": fecha})
+    items.sort(key=lambda it: (it["fecha"], it["slug"]), reverse=True)
+    _write_atomic(path, json.dumps(items[:300], ensure_ascii=False))
 
 
 def _notify_telegram(league_slug, headline, cta, article_url):
@@ -217,6 +235,7 @@ def _run_match(league, snap, match, dry_run):
     _write_atomic(ARTICLES_OUT_DIR / f"{slug}.html", html)
     article_url = render.url_for_match(league_slug, payload["fecha"], l["nombre"], v["nombre"])
     print(f"{league_slug}: publicado {article_url}")
+    _record_article(league_slug, "partido", slug, headline, article_url, payload["fecha"])
 
     flag_id = _match_flag_id(league_slug, payload)
     _notify_telegram(league_slug, headline, _pick_tweet_cta(flag_id), SITE + article_url)
@@ -275,6 +294,97 @@ def _run_matches_only(league_slug, dry_run, date_override=None):
     _run_finished_matches(league, snap, finished, today, dry_run)
     if not dry_run:
         _write_sitemap()  # para que la crónica sea descubrible ya, sin esperar a las 23:59
+    return 0
+
+
+def _stat_flag_id(league_slug, fecha, hour, kind):
+    return f"{league_slug}-{fecha}-{hour:02d}-{kind}"
+
+
+def _stat_already_handled(league_slug, fecha, hour, kind):
+    """Mismo criterio que _match_already_handled: sin estado propio, mira si
+    ya existe el HTML publicado o un registro de cuarentena para esta franja
+    (liga+fecha+hora+kind ya determina el slug, así que dos disparos del
+    mismo cron en la misma hora no duplican ni gastan Gemini de más)."""
+    slug = render.slug_for_stat(league_slug, fecha, hour, kind)
+    if (ARTICLES_OUT_DIR / f"{slug}.html").exists():
+        return True
+    flag_id = _stat_flag_id(league_slug, fecha, hour, kind)
+    return any(_FLAGGED_DIR.glob(f"{league_slug}-stat-*-{flag_id}.json"))
+
+
+def _run_stat(league_slug, dry_run, date_override=None):
+    """Entry point del cron de "dato curioso" (cada 2h, 10:00-20:00 hora de
+    España -> 6 al día, ver CLAUDE.md y STAT_ARTICLE_HOURS). Un artículo
+    corto sobre una probabilidad que la simulación ya calcula pero que no
+    aparece en ningún dashboard (ver STAT_KINDS en config.py): colista
+    alterna con líder según la hora (grounding.pick_stat_kind), sin estado
+    que mantener. Best-effort igual que el resto: si el grounding marca
+    alguno de los 2 textos, no se publica y se avisa por email."""
+    league = league_by_slug(league_slug)
+    now = datetime.now(_MADRID_TZ)
+    hour = now.hour
+    if hour not in STAT_ARTICLE_HOURS:
+        return 0  # defensa en profundidad: el cron ya solo dispara 10-20h/2
+    snap = grounding.load_snapshot(league_slug)
+    if not snap:
+        return 0
+    fecha = date_override or now.strftime("%Y-%m-%d")
+    kind = grounding.pick_stat_kind(hour)
+    payload = grounding.ground_stat(league, snap, kind, fecha, hour)
+    if not payload:
+        print(f"{league_slug}: sin datos suficientes para el dato curioso ({kind})")
+        return 0
+
+    if _stat_already_handled(league_slug, fecha, hour, kind):
+        return 0
+
+    if dry_run:
+        print(f"{league_slug}: publicaría dato curioso {render.slug_for_stat(league_slug, fecha, hour, kind)}")
+        return 0
+
+    results = {
+        "protagonista": writer.write_article(dict(payload, tipo=f"dato_{kind}_protagonista")),
+        "perseguidores": writer.write_article(dict(payload, tipo=f"dato_{kind}_perseguidores")),
+    }
+    if any(r["status"] != "draft" for r in results.values()):
+        flag_id = _stat_flag_id(league_slug, fecha, hour, kind)
+        bad = []
+        for key, r in results.items():
+            if r["status"] != "draft":
+                _save_flagged(league_slug, flag_id, f"stat-{key}", payload, r)
+                bad += r["flagged_values"]
+        notify.send_alert(
+            f"[PredictMotion] dato curioso de {league['name']} sin publicar (grounding)",
+            f"El texto generado por Gemini para el dato '{kind}' del {fecha} {hour:02d}h citaba "
+            f"cifras que no están en los datos reales, así que no se publica: {bad}\n\n"
+            f"Detalle en {_FLAGGED_DIR}/{league_slug}-stat-*-{flag_id}.json (en el servidor).",
+            dedup_key=f"articles_stat_flagged_{league_slug}",
+        )
+        return 1
+
+    catchy = writer.write_stat_headline(payload)
+    if catchy:
+        headline, teaser = catchy
+    else:
+        print(f"{league_slug}: titular de dato curioso no disponible, cae al determinista")
+        p = payload["protagonista"]
+        headline = f'{p["nombre"]}, el más cerca de {payload["dato_verbo"]} en {payload["liga"]}'
+        teaser = results["protagonista"]["meta_description"]
+
+    html = render.render_stat_broadsheet(
+        payload, results["protagonista"]["body"], results["perseguidores"]["body"],
+        league_slug=league_slug, headline=headline, teaser=teaser, league_logo=snap.get("league_logo"),
+    )
+    slug = render.slug_for_stat(league_slug, fecha, hour, kind)
+    _write_atomic(ARTICLES_OUT_DIR / f"{slug}.html", html)
+    article_url = render.url_for_stat(league_slug, fecha, hour, kind)
+    print(f"{league_slug}: publicado {article_url}")
+    _record_article(league_slug, "dato", slug, headline, article_url, fecha)
+    _write_sitemap()
+
+    flag_id = _stat_flag_id(league_slug, fecha, hour, kind)
+    _notify_telegram(league_slug, headline, _pick_tweet_cta(flag_id), SITE + article_url)
     return 0
 
 
@@ -377,6 +487,8 @@ def _run(league_slug, dry_run, date_override=None):
     _write_atomic(ARTICLES_OUT_DIR / f"{render.slug_for(league_slug, today)}.html", html)
     _write_sitemap()
     _write_latest_pointer(league_slug, today, headline)
+    _record_article(league_slug, "diario", render.slug_for(league_slug, today), headline,
+                     render.url_for(league_slug, today), today)
     print(f"{league_slug}: publicado {render.url_for(league_slug, today)}")
 
     _notify_telegram(league_slug, headline, _pick_tweet_cta(f"{league_slug}|{today}"),
@@ -390,6 +502,8 @@ def main(argv=None):
     ap.add_argument("--date", help="YYYY-MM-DD — relanzar un día concreto en vez de 'hoy' (backfill manual)")
     ap.add_argument("--matches-only", action="store_true",
                      help="Solo crónicas de partido (cron frecuente); sin resumen diario ni explicador")
+    ap.add_argument("--stat-only", action="store_true",
+                     help="Solo el dato curioso de la franja (cron cada 2h, 10-20h); sin resumen ni crónicas")
     ap.add_argument("--league", choices=ARTICLE_LEAGUES, help="Solo esta liga (por defecto, todas ARTICLE_LEAGUES)")
     args = ap.parse_args(argv)
     rc = 0
@@ -397,6 +511,8 @@ def main(argv=None):
         try:
             if args.matches_only:
                 rc |= _run_matches_only(league_slug, args.dry_run, date_override=args.date)
+            elif args.stat_only:
+                rc |= _run_stat(league_slug, args.dry_run, date_override=args.date)
             else:
                 rc |= _run(league_slug, args.dry_run, date_override=args.date)
         except Exception:
