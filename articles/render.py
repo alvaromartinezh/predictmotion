@@ -16,7 +16,7 @@ from seo.textutil import pct, signed, slugify
 
 from . import grounding, illustration, writer
 
-_CSS_V = "8"
+_CSS_V = "9"
 _DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 _MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 ZONE_HEX = {"ascenso": "#2ec98a", "playoff": "#f3b23f", "descenso": "#ff556b"}
@@ -185,10 +185,14 @@ def _prose_html(text):
     return '<div class="bs-prose">' + "".join(f"<p>{esc(p)}</p>" for p in paras) + "</div>"
 
 
-def _illo_html(ill, cls, img_style=""):
+def _illo_html(ill, cls, img_style="", caption_cls=None):
     style_attr = f' style="{img_style}"' if img_style else ""
+    caption = ""
+    if caption_cls:
+        caption = f'<figcaption class="{caption_cls}">{esc(ill["credit"])} · {esc(ill["source"])}</figcaption>'
     return (f'<figure class="{cls}">'
             f'<img src="{illustration.url(ill)}" alt="" loading="lazy"{style_attr}>'
+            f'{caption}'
             f'</figure>')
 
 
@@ -414,7 +418,8 @@ def _match_stats_html(team):
     return f'<div class="bs-stats">{"".join(rows)}</div>'
 
 
-def _match_side_html(cls, label, team, body_text, illo, extra_html=""):
+def _match_side_html(cls, label, team, body_text, illo, extra_html="", illo_extra_cls="", illo_caption_cls=None):
+    illo_cls = "bs-illo bs-illo--fill" + (f" {illo_extra_cls}" if illo_extra_cls else "")
     return (
         f'<div class="{cls}">'
         f'<div class="bs-section-label">{esc(label)}</div>'
@@ -427,12 +432,12 @@ def _match_side_html(cls, label, team, body_text, illo, extra_html=""):
         f'{_match_stats_html(team)}'
         f'{_prose_html(body_text)}'
         f'{extra_html}'
-        f'{_illo_html(illo, "bs-illo bs-illo--fill")}'
+        f'{_illo_html(illo, illo_cls, caption_cls=illo_caption_cls)}'
         f'</div>'
     )
 
 
-def _scoreline_html(local, visitante, resultado, status_label):
+def _scoreline_html(local, visitante, resultado):
     return (
         '<div class="bs-scoreline">'
         '<div class="bs-scoreline__side">'
@@ -441,7 +446,7 @@ def _scoreline_html(local, visitante, resultado, status_label):
         '<span class="bs-scoreline__tag">Local</span></div>'
         '<div class="bs-scoreline__mid">'
         f'<span class="bs-scoreline__score">{resultado["local"]}–{resultado["visitante"]}</span>'
-        f'<span class="bs-scoreline__status">{esc(status_label)}</span></div>'
+        '<span class="bs-scoreline__status">Final</span></div>'
         '<div class="bs-scoreline__side">'
         f'{team_avatar(visitante.get("logo"), visitante["nombre"], _seed(visitante.get("id")), 46)}'
         f'<span class="bs-scoreline__name">{esc(visitante["nombre"])}</span>'
@@ -527,7 +532,8 @@ def render_match_broadsheet(payload, local_body, visitante_body, cronica_body,
         "url": canonical,
     }
 
-    home_col = _match_side_html("bs-match-home", "El local", local, local_body, pick_illo("home"))
+    home_col = _match_side_html("bs-match-home", "El local", local, local_body, pick_illo("home"),
+                                 illo_extra_cls="bs-illo--fill-lg", illo_caption_cls="bs-illo__caption")
     away_col = _match_side_html("bs-match-away", "El visitante", visitante, visitante_body, pick_illo("away"),
                                  extra_html=_facts_html(payload))
 
@@ -542,11 +548,11 @@ def render_match_broadsheet(payload, local_body, visitante_body, cronica_body,
     )
     center_col = (
         '<div class="bs-match-center">'
-        + _illo_html(pick_illo("cover"), "bs-cover") +
+        + _illo_html(pick_illo("cover"), "bs-cover", caption_cls="bs-cover__caption") +
         f'<div class="bs-main-label">Crónica de la jornada {payload["jornada"]}</div>'
         f'<h2>{_highlight_teams(headline, [local["nombre"], visitante["nombre"]])}</h2>'
         f'<div class="bs-teaser"><p>{esc(teaser)}</p></div>'
-        + _scoreline_html(local, visitante, resultado, status_label) +
+        + _scoreline_html(local, visitante, resultado) +
         _prose_html(cronica_body) + moves_html + reading_html +
         '</div>'
     )

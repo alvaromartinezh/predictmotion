@@ -226,6 +226,13 @@ a.bs-brief__head:hover::after { color: #f0a92a; transform: translateX(2px); }
    porque su columna lateral no es la última pieza del flex). */
 .bs-illo--fill { flex: 1; display: flex; flex-direction: column; min-height: 140px; }
 .bs-illo--fill img { flex: 1; width: 100%; min-height: 0; object-fit: cover; }
+.bs-illo--fill-lg { min-height: 170px; }
+
+/* Atribución bajo un grabado (banco PD/CC0 de Wikimedia Commons, ver
+   articles/illustration.py) — solo en los huecos "principales" (portada +
+   relleno de la columna local), igual que el broadsheet diario. */
+.bs-illo__caption { padding: 7px 10px; border-top: 1px solid #1b2944; font-family: 'Geist Mono', monospace; font-size: .58rem; color: #3d4d6e; line-height: 1.4; }
+.bs-cover__caption { padding: 8px 12px; border-top: 1px solid #1b2944; font-family: 'Geist Mono', monospace; font-size: .6rem; color: #3d4d6e; }
 
 .bs-scoreline { display: flex; align-items: center; justify-content: center; gap: 18px; border: 1px solid #1b2944; padding: 18px 16px; margin-bottom: 20px; }
 .bs-scoreline__side { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; min-width: 0; }
