@@ -339,21 +339,6 @@ def _run(args):
                 "[PredictMotion] players: excepción",
                 f"players.run() lanzó: {exc}", dedup_key="players_crash")
 
-    # Artículos editoriales (Gemini API, grounded en los snapshots recién
-    # generados). Rama experimental (feature/articulos-ia): run() siempre
-    # corre en modo preview (nunca --publish) hasta que se decida a mano
-    # activar la publicación — ver el plan de la feature. Best-effort, mismo
-    # patrón que player_cuts/players.
-    if not args.dry_run and not args.league:
-        try:
-            from articles import generate as articles_generate
-            articles_generate.run()
-        except Exception as exc:
-            print(f"  [SKIP] articles: {exc}", file=sys.stderr)
-            notify.send_alert(
-                "[PredictMotion] articles: excepción",
-                f"articles.generate.run() lanzó: {exc}", dedup_key="articles_crash")
-
     print(f"\nFin — {ok}/{len(leagues)} ligas generadas.")
 
     # Alerta por email si NINGUNA liga se generó. Solo en la ejecución real del

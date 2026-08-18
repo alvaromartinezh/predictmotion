@@ -6,4 +6,7 @@
   <sitemap>
     <loc>https://predictmotion.com/sitemap-data.xml</loc>
   </sitemap>
+  <sitemap>
+    <loc>https://predictmotion.com/sitemap-articles.xml</loc>
+  </sitemap>
 </sitemapindex>

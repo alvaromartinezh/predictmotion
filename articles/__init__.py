@@ -1,10 +1,5 @@
-"""Generador de artículos editoriales de PredictMotion (Gemini API).
+"""Generador del broadsheet diario de Hypermotion (ver articles/generate.py).
 
-Genera recaps de jornada, explicadores "por qué el modelo da a X un Y%" y
-análisis de carrera por el título, grounded en los snapshots reales que ya
-produce `seo/` (data/<slug>/latest.json). Solo stdlib (llamada a Gemini vía
-HTTP directo, sin SDK — ver articles/gemini_client.py).
-
-Por defecto NO publica nada (ver generate.py --publish): mientras se afina,
-escribe a data/articles_preview/ para revisión manual.
-"""
+Cron propio a las 23:59 hora de España: un artículo por día con los
+partidos de Hypermotion terminados esa jornada + un explicador del equipo
+más destacado del día. Sin cablear a otras ligas (de momento)."""

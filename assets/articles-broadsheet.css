@@ -1,0 +1,180 @@
+/* Broadsheet diario de Hypermotion (articles/render.py). Página autónoma,
+   fija en oscuro a propósito (no sigue el toggle claro/oscuro del sitio) —
+   mismo criterio que el cuadro UEFA: aquí el look "periódico bajo lámpara"
+   es la identidad de la pieza, no una superficie que deba aclararse. */
+
+.bs-page {
+  min-height: 100vh;
+  background: #060916;
+  background-image:
+    radial-gradient(60% 38% at 2% -4%, rgba(240,169,42,.06), transparent 60%),
+    radial-gradient(48% 40% at 100% 102%, rgba(74,144,255,.045), transparent 60%);
+  color: #e4ecfa;
+  font-family: 'Geist', sans-serif;
+  padding: 26px 18px 60px;
+}
+.bs-sheet {
+  max-width: 1180px;
+  margin: 0 auto;
+  background: #0b1124;
+  border: 1px solid #1b2944;
+  box-shadow: 0 24px 60px rgba(0,0,0,.55);
+}
+
+/* Masthead */
+.bs-masthead { border-top: 3px solid #f0a92a; border-bottom: 1px solid rgba(240,169,42,.42); padding: 18px 26px 14px; }
+.bs-masthead__kicker {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  font-family: 'Geist Mono', monospace; font-size: .6875rem; letter-spacing: .16em;
+  text-transform: uppercase; color: #66789c;
+}
+.bs-masthead__title { display: flex; align-items: baseline; justify-content: center; gap: 14px; margin: 10px 0 8px; }
+.bs-masthead__dot { width: 9px; height: 9px; border-radius: 50%; background: #f0a92a; box-shadow: 0 0 14px rgba(240,169,42,.5); }
+.bs-masthead h1 {
+  font-family: 'Saira Condensed', sans-serif; font-weight: 800; text-transform: uppercase;
+  font-size: clamp(2.4rem, 6.4vw, 4.4rem); line-height: .92; letter-spacing: .06em; margin: 0; color: #e4ecfa;
+}
+.bs-masthead h1 span { color: #f0a92a; }
+.bs-masthead__tagline {
+  text-align: center; font-family: 'Geist Mono', monospace; font-size: .6875rem;
+  letter-spacing: .24em; text-transform: uppercase; color: #66789c;
+}
+
+/* Edition bar */
+.bs-edition {
+  display: flex; flex-wrap: wrap; border-bottom: 3px double #1b2944; border-top: 1px solid #1b2944;
+  font-family: 'Geist Mono', monospace; font-size: .65rem; letter-spacing: .14em; text-transform: uppercase; color: #66789c;
+}
+.bs-edition__item { flex: 1 1 auto; padding: 9px 14px; border-right: 1px solid #14203a; white-space: nowrap; }
+.bs-edition__item:last-child { border-right: none; }
+.bs-edition__item--muted { color: #aab8d4; }
+.bs-edition__item--status { color: #f0a92a; }
+
+/* Grid */
+.bs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); }
+.bs-col-explainer { padding: 22px 22px 26px; }
+.bs-col-main { grid-column: span 2; padding: 22px 24px 26px; border-left: 1px solid #1b2944; border-right: 1px solid #1b2944; }
+.bs-col-side { padding: 22px 22px 26px; }
+@media (max-width: 760px) {
+  .bs-grid { grid-template-columns: 1fr; }
+  .bs-col-main { grid-column: span 1; border-left: none; border-right: none; border-top: 1px solid #1b2944; border-bottom: 1px solid #1b2944; }
+}
+
+.bs-section-label {
+  font-family: 'Geist Mono', monospace; font-size: .62rem; letter-spacing: .2em; text-transform: uppercase;
+  color: #f0a92a; padding-bottom: 8px; border-bottom: 1px solid #1b2944;
+}
+
+/* Explicador */
+.bs-col-explainer h2 {
+  font-family: 'Saira Condensed', sans-serif; font-weight: 800; text-transform: uppercase; font-size: 1.65rem;
+  line-height: 1.02; letter-spacing: .01em; margin: 14px 0 12px; color: #e4ecfa;
+}
+.bs-col-explainer h2 span { color: #f0a92a; }
+.bs-team-row {
+  display: flex; align-items: center; gap: 10px; padding: 10px 0;
+  border-top: 1px solid #14203a; border-bottom: 1px solid #14203a;
+}
+.bs-team-row__name { font-family: 'Saira Condensed', sans-serif; font-weight: 700; text-transform: uppercase; font-size: 1.05rem; letter-spacing: .03em; }
+.bs-team-row__meta { margin-left: auto; font-family: 'Geist Mono', monospace; font-size: .7rem; color: #66789c; }
+
+.bs-stats { display: flex; flex-direction: column; margin: 14px 0 16px; border: 1px solid #1b2944; }
+.bs-stats__row { display: flex; align-items: baseline; gap: 10px; padding: 10px 12px; border-bottom: 1px solid #14203a; }
+.bs-stats__row:last-child { border-bottom: none; }
+.bs-stats__value { font-family: 'Saira Condensed', sans-serif; font-weight: 800; font-size: 1.5rem; line-height: 1; }
+.bs-stats__label { font-family: 'Geist Mono', monospace; font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; color: #66789c; }
+
+.bs-prose p { font-family: 'Geist', sans-serif; font-size: .875rem; line-height: 1.62; color: #aab8d4; margin: 0 0 14px; text-wrap: pretty; }
+.bs-prose p:last-child { margin-bottom: 0; }
+
+/* Ilustraciones */
+.bs-illo { border: 1px solid #1b2944; }
+.bs-illo img { display: block; width: 100%; object-fit: cover; }
+.bs-illo--sm img { height: 130px; }
+.bs-illo--footer img { height: 120px; }
+.bs-illo__caption { padding: 7px 10px; border-top: 1px solid #1b2944; font-family: 'Geist Mono', monospace; font-size: .58rem; color: #3d4d6e; line-height: 1.4; }
+
+.bs-cover { border: 1px solid #1b2944; margin-bottom: 18px; }
+.bs-cover img { display: block; width: 100%; height: 250px; object-fit: cover; }
+.bs-cover__caption { padding: 8px 12px; border-top: 1px solid #1b2944; font-family: 'Geist Mono', monospace; font-size: .6rem; color: #3d4d6e; }
+
+/* Resumen del día (columna principal) */
+.bs-main-label { text-align: center; font-family: 'Geist Mono', monospace; font-size: .65rem; letter-spacing: .24em; text-transform: uppercase; color: #f0a92a; margin-bottom: 10px; }
+.bs-col-main h2 {
+  font-family: 'Saira Condensed', sans-serif; font-weight: 800; text-transform: uppercase; font-size: clamp(2rem, 3.6vw, 3rem);
+  line-height: .98; letter-spacing: .01em; text-align: center; margin: 0 0 16px; color: #e4ecfa;
+}
+.bs-col-main h2 span { color: #f0a92a; }
+.bs-teaser { border-top: 1px solid #1b2944; border-bottom: 3px double #1b2944; padding: 12px 0; margin-bottom: 20px; }
+.bs-teaser p { font-family: 'Geist', sans-serif; font-weight: 600; font-size: 1.0625rem; line-height: 1.45; text-align: center; color: #e4ecfa; margin: 0; text-wrap: pretty; }
+
+.bs-brief { break-inside: avoid; margin-bottom: 20px; }
+.bs-brief:last-child { margin-bottom: 0; }
+.bs-brief__head { display: flex; align-items: center; gap: 8px; padding-bottom: 7px; margin-bottom: 9px; border-bottom: 1px solid #1b2944; text-decoration: none; color: inherit; }
+a.bs-brief__head:hover { border-bottom-color: #f0a92a; }
+.bs-brief__name { flex: 1; font-family: 'Geist', sans-serif; font-weight: 600; font-size: .75rem; line-height: 1.2; }
+.bs-brief__name--away { text-align: right; }
+.bs-brief__score { font-family: 'Saira Condensed', sans-serif; font-weight: 800; font-size: 1.2rem; letter-spacing: .02em; white-space: nowrap; }
+.bs-brief p { font-family: 'Geist', sans-serif; font-size: .875rem; line-height: 1.62; color: #aab8d4; margin: 0 0 9px; text-wrap: pretty; }
+
+.bs-zone { padding: 4px 0 4px 9px; margin-top: 4px; border-left: 2px solid; font-family: 'Geist Mono', monospace; font-size: .66rem; color: #66789c; overflow-wrap: anywhere; }
+.bs-zone__row { display: flex; align-items: baseline; gap: 7px; }
+.bs-zone__team { color: #e4ecfa; font-weight: 600; min-width: 0; }
+.bs-zone__val { margin-left: auto; color: #e4ecfa; }
+.bs-zone__label { margin-top: 2px; font-size: .6rem; letter-spacing: .06em; text-transform: uppercase; color: #3d4d6e; }
+.bs-zone--sm { padding: 3px 0 3px 9px; font-size: .64rem; }
+
+.bs-note { border: 1px solid #1b2944; padding: 16px 18px; margin-top: 4px; }
+.bs-note__label { font-family: 'Geist Mono', monospace; font-size: .62rem; letter-spacing: .2em; text-transform: uppercase; color: #f0a92a; padding-bottom: 9px; margin-bottom: 11px; border-bottom: 1px solid #1b2944; }
+.bs-note p { font-family: 'Geist', sans-serif; font-size: .875rem; line-height: 1.62; color: #aab8d4; margin: 0; text-wrap: pretty; }
+
+/* Más resultados (columna lateral) */
+.bs-side-brief { padding: 14px 0; border-bottom: 1px solid #14203a; }
+.bs-side-brief:last-of-type { border-bottom: none; }
+.bs-side-brief h3 {
+  font-family: 'Saira Condensed', sans-serif; font-weight: 800; text-transform: uppercase; font-size: 1.25rem;
+  line-height: 1.04; letter-spacing: .02em; margin: 0 0 9px; color: #e4ecfa;
+}
+.bs-side-brief h3 span { color: #f0a92a; }
+.bs-side-brief__row { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+.bs-side-brief__cronica { font-family: 'Geist Mono', monospace; font-size: .6rem; letter-spacing: .12em; text-transform: uppercase; color: #3d4d6e; margin-left: auto; text-decoration: none; }
+.bs-side-brief__cronica:hover { color: #f0a92a; }
+.bs-side-brief p { font-family: 'Geist', sans-serif; font-size: .83rem; line-height: 1.6; color: #aab8d4; margin: 0 0 9px; text-wrap: pretty; }
+
+/* Deltas */
+.bs-delta-up { color: #2ec98a; }
+.bs-delta-down { color: #ff556b; }
+.bs-delta-eq { color: #66789c; }
+
+/* Equipos mencionados */
+.bs-mentions { border-top: 3px double #1b2944; padding: 18px 24px; }
+.bs-mentions__label { font-family: 'Geist Mono', monospace; font-size: .62rem; letter-spacing: .2em; text-transform: uppercase; color: #66789c; margin-bottom: 12px; }
+.bs-mentions__list { display: flex; flex-wrap: wrap; gap: 8px; }
+.bs-mentions__list a {
+  display: inline-flex; align-items: center; gap: 8px; font-family: 'Geist', sans-serif; font-size: .8125rem;
+  font-weight: 500; color: #e4ecfa; border: 1px solid #1b2944; padding: 7px 12px; text-decoration: none;
+}
+.bs-mentions__list a:hover { border-color: #f0a92a; color: #f0a92a; }
+
+/* Pie */
+.bs-footer {
+  border-top: 1px solid #1b2944; padding: 14px 24px 16px; display: flex; flex-wrap: wrap; gap: 12px;
+  justify-content: space-between; font-family: 'Geist Mono', monospace; font-size: .62rem; letter-spacing: .1em;
+  text-transform: uppercase; color: #3d4d6e;
+}
+.bs-footer a { color: #3d4d6e; text-decoration: none; }
+.bs-footer a:hover { color: #f0a92a; }
+
+/* Avatares de equipo (misma forma que seo/chrome.py:avatar(), estilos propios
+   porque esta página no carga el CSS de chrome.py). */
+.av { flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 4px; overflow: hidden; }
+.av img { width: 100%; height: 100%; object-fit: contain; }
+.av b { display: none; font-family: 'Saira Condensed', sans-serif; font-weight: 700; color: #fff; align-items: center; justify-content: center; width: 100%; height: 100%; letter-spacing: .02em; }
+.av.fb { background: var(--c, #333); }
+.av.fb img { display: none; }
+.av.fb b { display: flex; }
+
+@media (max-width: 600px) {
+  .bs-masthead__kicker span:last-child { display: none; }
+  .bs-cover img { height: 190px; }
+}

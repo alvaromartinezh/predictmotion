@@ -69,6 +69,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           <p class="lede">Titulares y resúmenes de la prensa deportiva española, etiquetados por liga y equipo. Cada noticia enlaza al medio original.</p>
         </section>
 
+        <!-- Broadsheet diario de Hypermotion (se rellena solo si hay uno publicado) -->
+        <div id="broadsheet-link"></div>
+
         <!-- Filtros por liga (se generan según las noticias disponibles) -->
         <div class="news-filters" id="news-filters" role="group" aria-label="Filtrar noticias por liga"></div>
 
@@ -121,6 +124,24 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <script>PMShell.chrome({ active: null });</script>
   <script src="/assets/news.js?v=20260816h"></script>
   <script>PMNews.init({ mount: '#news-mount', filters: '#news-filters' });</script>
+  <script>
+    fetch('/data/articles/latest.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(a => {
+      if (!a) return;
+      const link = document.createElement('a');
+      link.className = 'panel';
+      link.href = a.url;
+      link.style.cssText = 'display:block;margin-bottom:var(--sp-5);border-color:var(--accent-line);text-decoration:none';
+      const eyebrow = document.createElement('p');
+      eyebrow.className = 'eyebrow';
+      eyebrow.style.cssText = 'color:var(--accent);margin-bottom:var(--sp-1)';
+      eyebrow.textContent = 'Broadsheet diario · Liga Hypermotion';
+      const h2 = document.createElement('h2');
+      h2.style.cssText = 'font-family:var(--font-display);font-size:var(--fs-18);font-weight:700;color:var(--text)';
+      h2.textContent = (a.title || '').replace(' | PredictMotion', '');
+      link.append(eyebrow, h2);
+      document.getElementById('broadsheet-link').replaceChildren(link);
+    }).catch(() => {});
+  </script>
   <script src="/assets/nav.js?v=20260816h"></script>
 </body>
 </html>
