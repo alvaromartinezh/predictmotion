@@ -16,11 +16,10 @@ Gemini falla o el validador de grounding no acepta el texto, NO se publica
 y se manda un email — mismo patrón que seo/generate_site.py. Una excepción
 en un partido no aborta los demás.
 
-El resumen diario, al publicar, manda un aviso a Telegram (mismo bot que
-seo/tweets.py) con el titular, una frase de invitación a entrar
-(_TWEET_CTAS, determinista por fecha, SIN Gemini) y el enlace del artículo,
-para que el dueño lo tuitee a mano. Las crónicas de partido NO avisan por
-Telegram.
+Al publicar CUALQUIERA de los dos (resumen diario o crónica de partido), se
+manda un aviso a Telegram (mismo bot que seo/tweets.py) con el titular, una
+frase de invitación a entrar (_TWEET_CTAS, determinista por clave, SIN
+Gemini) y el enlace del artículo, para que el dueño lo tuitee a mano.
 
 Uso:
     python -m articles.generate                  # resumen diario (23:59) + red de seguridad
@@ -53,9 +52,11 @@ _FLAGGED_DIR = DATA_DIR / "articles_flagged"
 # Frase que anima a entrar al artículo, para el tweet — a propósito SIN
 # Gemini (el titular/subtítulo ya no llevan porcentajes, ver
 # writer._HEADLINE_INSTR, así que esta línea existe justo para señalar que
-# las cifras están dentro). Elegida a mano, determinista por fecha (mismo
-# patrón que illustration.pick) para que no haga falta gastar una llamada a
-# Gemini ni validarla — es solo una invitación a hacer clic, no un dato.
+# las cifras están dentro). Elegida a mano, determinista por clave (mismo
+# patrón que illustration.pick — fecha para el resumen diario,
+# _match_flag_id(payload) para cada crónica de partido, así dos artículos
+# del mismo día no repiten frase) para que no haga falta gastar una llamada
+# a Gemini ni validarla — es solo una invitación a hacer clic, no un dato.
 _TWEET_CTAS = [
     "Los porcentajes completos, en el artículo 👇",
     "¿Cuánto ha cambiado cada equipo? Entra a verlo.",
@@ -68,8 +69,8 @@ _TWEET_CTAS = [
 ]
 
 
-def _pick_tweet_cta(fecha):
-    idx = int(hashlib.md5(f"tweet-cta|{fecha}".encode()).hexdigest(), 16) % len(_TWEET_CTAS)
+def _pick_tweet_cta(key):
+    idx = int(hashlib.md5(f"tweet-cta|{key}".encode()).hexdigest(), 16) % len(_TWEET_CTAS)
     return _TWEET_CTAS[idx]
 
 
@@ -204,7 +205,11 @@ def _run_match(league, snap, match, dry_run):
     )
     slug = render.slug_for_match(payload["fecha"], l["nombre"], v["nombre"])
     _write_atomic(ARTICLES_OUT_DIR / f"{slug}.html", html)
-    print(f"hypermotion: publicado {render.url_for_match(payload['fecha'], l['nombre'], v['nombre'])}")
+    article_url = render.url_for_match(payload["fecha"], l["nombre"], v["nombre"])
+    print(f"hypermotion: publicado {article_url}")
+
+    flag_id = _match_flag_id(payload)
+    _notify_telegram(headline, _pick_tweet_cta(flag_id), SITE + article_url)
     return 0
 
 
