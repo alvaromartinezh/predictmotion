@@ -40,11 +40,11 @@
   <meta name="twitter:card" content="summary" />
   <meta name="twitter:image" content="https://predictmotion.com/media/twitter_profile.png" />
 
-  <link rel="stylesheet" href="/styles.css?v=20260816h" />
-  <link rel="stylesheet" href="/assets/shell.css?v=20260816h" />
-  <link rel="stylesheet" href="/assets/news.css?v=20260816h" />
-  <script src="/theme.js?v=20260816h"></script>
-  <script src="/assets/pm-leagues.js?v=20260816h"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260818c" />
+  <link rel="stylesheet" href="/assets/shell.css?v=20260818c" />
+  <link rel="stylesheet" href="/assets/news.css?v=20260818c" />
+  <script src="/theme.js?v=20260818c"></script>
+  <script src="/assets/pm-leagues.js?v=20260818c"></script>
 
   <!-- Google AdSense -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3055585323326983" crossorigin="anonymous"></script>
@@ -119,29 +119,48 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </div>
   <div id="shell-tabbar"></div>
 
-  <script src="/assets/account.js?v=20260816h"></script>
-  <script src="/assets/shell.js?v=20260816h"></script>
+  <script src="/assets/account.js?v=20260818c"></script>
+  <script src="/assets/shell.js?v=20260818c"></script>
   <script>PMShell.chrome({ active: null });</script>
-  <script src="/assets/news.js?v=20260816h"></script>
+  <script src="/assets/news.js?v=20260818c"></script>
   <script>PMNews.init({ mount: '#news-mount', filters: '#news-filters' });</script>
   <script>
     fetch('/data/articles/latest.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(a => {
       if (!a) return;
+      const slug = ((a.url || '').match(/articulos\/([a-z0-9]+)-resumen/) || [])[1] || '';
+      const league = (window.PM_LEAGUES || {})[slug] || {};
       const link = document.createElement('a');
-      link.className = 'panel';
+      link.className = 'card card--link bscard';
       link.href = a.url;
-      link.style.cssText = 'display:block;margin-bottom:var(--sp-5);border-color:var(--accent-line);text-decoration:none';
-      const eyebrow = document.createElement('p');
-      eyebrow.className = 'eyebrow';
-      eyebrow.style.cssText = 'color:var(--accent);margin-bottom:var(--sp-1)';
-      eyebrow.textContent = 'Broadsheet diario · Liga Hypermotion';
-      const h2 = document.createElement('h2');
-      h2.style.cssText = 'font-family:var(--font-display);font-size:var(--fs-18);font-weight:700;color:var(--text)';
-      h2.textContent = (a.title || '').replace(' | PredictMotion', '');
-      link.append(eyebrow, h2);
+      link.style.cssText = 'display:block;margin-bottom:var(--sp-5);text-decoration:none';
+      const top = document.createElement('div');
+      top.className = 'bscard__top';
+      const kicker = document.createElement('span');
+      kicker.className = 'bscard__kicker';
+      kicker.textContent = 'Broadsheet diario';
+      const lg = document.createElement('span');
+      lg.className = 'bscard__league';
+      lg.textContent = league.name || 'Liga Hypermotion';
+      top.append(kicker, lg);
+      const h = document.createElement('h3');
+      h.className = 'bscard__title';
+      h.textContent = (a.title || '').replace(' | PredictMotion', '');
+      const foot = document.createElement('div');
+      foot.className = 'bscard__foot';
+      const date = document.createElement('span');
+      date.className = 'bscard__date';
+      try {
+        const p = String(a.fecha || '').split('-');
+        date.textContent = new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+      } catch (e) { date.textContent = a.fecha || ''; }
+      const cta = document.createElement('span');
+      cta.className = 'bscard__cta';
+      cta.textContent = 'Leer la edición →';
+      foot.append(date, cta);
+      link.append(top, h, foot);
       document.getElementById('broadsheet-link').replaceChildren(link);
     }).catch(() => {});
   </script>
-  <script src="/assets/nav.js?v=20260816h"></script>
+  <script src="/assets/nav.js?v=20260818c"></script>
 </body>
 </html>

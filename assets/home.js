@@ -144,8 +144,7 @@
       + '</div>'
       + '<div class="winbar__legend"><b>' + esc(hn) + ' ' + wp.pHome + '%</b>'
       + '<span class="mid">Empate ' + wp.pDraw + '%</span>'
-      + '<b>' + esc(an) + ' ' + wp.pAway + '%</b></div>'
-      + (wp.note ? '<div class="winbar__note">' + esc(wp.note) + '</div>' : '') + '</div>';
+      + '<b>' + esc(an) + ' ' + wp.pAway + '%</b></div></div>';
   }
   function hero(m, pill, winbar) {
     var mid = m.state === 'pre' ? esc(kick(m.date)) : (m.state === 'in' ? esc(m.clock || 'EN VIVO') : ((m.home.score == null ? '' : m.home.score) + '–' + (m.away.score == null ? '' : m.away.score)));
@@ -186,15 +185,16 @@
       + (moreTxt ? '<a class="feed-sec__more" href="' + (moreHref || '#') + '">' + esc(moreTxt) + '</a>' : '') + '</div>';
   }
   function articleLeagueSlug(url) { var m = (url || '').match(/articulos\/([a-z0-9]+)-resumen/); return m ? m[1] : ''; }
+  function fechaLarga(iso) { try { var p = String(iso || '').split('-'); return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }); } catch (e) { return iso || ''; } }
   function articleCard(a) {
     if (!a || !a.url) return '';
     var slug = articleLeagueSlug(a.url), leagueName = lname(slug) || 'Hypermotion';
-    var fecha = a.fecha || '';
-    return '<a class="card card--link" href="' + esc(a.url) + '" style="display:block;text-decoration:none">'
-      + '<p class="eyebrow" style="color:var(--accent)">Broadsheet diario · ' + esc(leagueName) + '</p>'
-      + '<h3 style="font-family:var(--font-display);font-size:var(--fs-18);font-weight:700;color:var(--text);margin:var(--sp-1) 0 0">' + esc((a.title || '').replace(' \| PredictMotion', '')) + '</h3>'
-      + (fecha ? '<p style="color:var(--text-2);font-size:var(--fs-13);margin:var(--sp-2) 0 0">' + esc(fecha) + '</p>' : '')
-      + '</a>';
+    return '<a class="card card--link bscard" href="' + esc(a.url) + '">'
+      + '<div class="bscard__top"><span class="bscard__kicker">Broadsheet diario</span>'
+      + '<span class="bscard__league"><img src="' + esc(llogo(slug)) + '" alt="">' + esc(leagueName) + '</span></div>'
+      + '<h3 class="bscard__title">' + esc((a.title || '').replace(' | PredictMotion', '')) + '</h3>'
+      + '<div class="bscard__foot"><span class="bscard__date">' + esc(fechaLarga(a.fecha)) + '</span>'
+      + '<span class="bscard__cta">Leer la edición →</span></div></a>';
   }
 
   // ── builder PURO del feed logueado (sin fetch) ──

@@ -179,6 +179,21 @@ a.pm-item:hover::before, .pm-item:hover::before { transform: scaleY(1); }
 .chip--accent { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
 .time { font-family: var(--font-mono); font-size: var(--fs-11); color: var(--muted); letter-spacing: .04em; }
 
+/* ---- Tarjeta-promo del broadsheet diario (home logueada + /noticias) ----
+   Misma identidad que la hoja: filete de acento arriba, kicker en mono,
+   titular en display condensada y pie con fecha + CTA. */
+.bscard { border-top: 2px solid var(--accent); }
+.bscard__top { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--line-soft); }
+.bscard__kicker { display: flex; align-items: center; gap: var(--sp-2); font-family: var(--font-mono); font-size: var(--fs-11); letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+.bscard__kicker::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
+.bscard__league { display: flex; align-items: center; gap: 6px; font-size: var(--fs-12); font-weight: 600; color: var(--text-2); }
+.bscard__league img { width: 16px; height: 16px; object-fit: contain; }
+.bscard__title { margin: 0; padding: var(--sp-4); font-family: var(--font-display); font-weight: 800; text-transform: uppercase; font-size: var(--fs-22); line-height: 1.08; letter-spacing: .01em; color: var(--text); text-wrap: pretty; }
+.bscard__foot { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: 0 var(--sp-4) var(--sp-4); }
+.bscard__date { font-family: var(--font-mono); font-size: var(--fs-12); color: var(--muted); }
+.bscard__cta { font-size: var(--fs-13); font-weight: 600; color: var(--accent); white-space: nowrap; }
+.bscard:hover .bscard__cta { text-decoration: underline; }
+
 /* ---- Rail de seguidos ---- */
 .rail { display: flex; gap: var(--sp-3); overflow-x: auto; padding: var(--sp-1) var(--sp-4) var(--sp-2); scrollbar-width: none; }
 .rail::-webkit-scrollbar { display: none; }
@@ -208,7 +223,6 @@ a.hero-match:hover { border-color: var(--accent-line); }
 .winbar__legend { display: flex; justify-content: space-between; margin-top: var(--sp-2); font-family: var(--font-mono); font-size: var(--fs-12); color: var(--text-2); }
 .winbar__legend b { color: var(--text); font-weight: 600; }
 .winbar__legend .mid { color: var(--muted); }
-.winbar__note { text-align: center; margin-top: var(--sp-2); font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
 .hero-match__odds { display: grid; grid-template-columns: repeat(3,1fr); gap: var(--sp-2); margin-top: var(--sp-5); }
 .odds-cell { text-align: center; padding: var(--sp-3); border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--line); }
 .odds-cell .k { display: block; font-family: var(--font-mono); font-size: var(--fs-11); color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
