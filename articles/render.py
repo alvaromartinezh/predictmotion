@@ -255,13 +255,15 @@ def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explaine
         '</div>'
     )
 
-    side_col = (
-        '<div class="bs-col-side">'
-        '<div class="bs-section-label">Más resultados</div>'
-        + side_html +
-        (_illo_html(fecha, "footer", "bs-illo bs-illo--footer", "bs-illo__caption") if side_html else "") +
-        '</div>'
-    )
+    side_col = ""
+    if side_html:
+        side_col = (
+            '<div class="bs-col-side">'
+            '<div class="bs-section-label">Más resultados</div>'
+            + side_html +
+            _illo_html(fecha, "footer", "bs-illo bs-illo--footer", "bs-illo__caption") +
+            '</div>'
+        )
 
     grid = f'<div class="bs-grid">{explainer_col}{main_col}{side_col}</div>'
     mentions = _mentions_html(payload_resumen, payload_resumen["liga"], league_logo)
