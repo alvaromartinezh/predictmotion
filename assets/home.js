@@ -25,7 +25,7 @@
     if (!src) return '<div class="crest-ph ' + cls + '">' + ab + '</div>';
     return '<img class="crest ' + cls + '" loading="lazy" alt="" src="' + esc(src) + '" data-ab="' + ab + '" onerror="PMHomeCrestFallback(this)">';
   }
-  function pct(v) { if (v == null) return null; return Math.round(v <= 1 ? v * 100 : v); }
+  function pct(v) { if (v == null) return null; return Math.round(v); }
   function ago(iso) { var m = Math.max(0, (Date.now() - new Date(iso)) / 60000); return m < 60 ? Math.round(m) + ' min' : (m < 1440 ? Math.round(m / 60) + ' h' : Math.round(m / 1440) + ' d'); }
   function kick(iso) { try { return new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
   function lname(slug) { return (L[slug] || {}).name || slug; }
