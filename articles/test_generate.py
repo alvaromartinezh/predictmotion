@@ -127,6 +127,21 @@ def demo():
     assert html_match.count("<figure") == 3  # portada + local + visitante
     assert "1–3" in html_match
 
+    # ── _match_already_handled: idempotencia sin red (existe HTML -> True) ──
+    from .config import ARTICLES_OUT_DIR
+    probe_payload = {"fecha": "1999-01-01",
+                      "local": {"nombre": "EquipoTestA", "id": "1"},
+                      "visitante": {"nombre": "EquipoTestB", "id": "2"}}
+    probe_slug = render.slug_for_match("1999-01-01", "EquipoTestA", "EquipoTestB")
+    probe_path = ARTICLES_OUT_DIR / f"{probe_slug}.html"
+    assert not generate._match_already_handled(probe_payload)
+    ARTICLES_OUT_DIR.mkdir(parents=True, exist_ok=True)
+    probe_path.write_text("<html></html>", encoding="utf-8")
+    try:
+        assert generate._match_already_handled(probe_payload)
+    finally:
+        probe_path.unlink()
+
     # ── slug_for_match: determinista y sin acentos/mayúsculas ──
     assert render.slug_for_match("2026-08-16", "Eibar", "Tenerife") == "hypermotion-eibar-tenerife-2026-08-16"
 

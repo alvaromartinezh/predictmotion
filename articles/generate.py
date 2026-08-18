@@ -1,22 +1,31 @@
-"""Orquestador del broadsheet diario de Hypermotion.
+"""Orquestador de los artículos de Hypermotion: el resumen diario y la
+crónica de partido.
 
-Cron propio a las 23:59 hora de España (ver CLAUDE.md): un artículo con los
-partidos de Hypermotion terminados hoy + un explicador del equipo más
-destacado de la jornada, publicado en
-articulos/hypermotion-resumen-<fecha>.html.
+DOS entry points/cron (ver CLAUDE.md):
+- `--matches-only`, cada 5 min: publica la crónica de cada partido de
+  Hypermotion terminado hoy NADA MÁS TERMINAR (no espera a las 23:59).
+- sin flags, a las 23:59 hora de España: el resumen diario + explicador de
+  siempre, Y ADEMÁS vuelve a pasar por los partidos del día como red de
+  seguridad (si el cron frecuente se perdió alguno por lo que sea). Ambos
+  caminos llaman a `_run_match`, que es idempotente
+  (`_match_already_handled`): si el partido ya tiene HTML publicado o ya
+  quedó en cuarentena, no vuelve a gastar Gemini en él.
 
-Best-effort: si no hay partidos hoy no pasa nada (día normal, sin alerta).
-Si Gemini falla o el validador de grounding no acepta el texto, NO se
-publica y se manda un email — mismo patrón que seo/generate_site.py.
+Best-effort: si no hay partidos no pasa nada (día normal, sin alerta). Si
+Gemini falla o el validador de grounding no acepta el texto, NO se publica
+y se manda un email — mismo patrón que seo/generate_site.py. Una excepción
+en un partido no aborta los demás.
 
-Al publicar, manda un aviso a Telegram (mismo bot que seo/tweets.py) con el
-titular, una frase de invitación a entrar (_TWEET_CTAS, determinista por
-fecha, SIN Gemini) y el enlace del artículo, para que el dueño lo tuitee a
-mano.
+El resumen diario, al publicar, manda un aviso a Telegram (mismo bot que
+seo/tweets.py) con el titular, una frase de invitación a entrar
+(_TWEET_CTAS, determinista por fecha, SIN Gemini) y el enlace del artículo,
+para que el dueño lo tuitee a mano. Las crónicas de partido NO avisan por
+Telegram.
 
 Uso:
-    python -m articles.generate            # lo que corre el cron
-    python -m articles.generate --dry-run  # no llama a Gemini ni escribe
+    python -m articles.generate                  # resumen diario (23:59) + red de seguridad
+    python -m articles.generate --matches-only    # solo crónicas de partido (cron frecuente)
+    python -m articles.generate --dry-run         # no llama a Gemini ni escribe
 """
 
 import argparse
@@ -125,16 +134,35 @@ def _match_flag_id(payload):
     return f'{payload["fecha"]}-{l["id"]}-{v["id"]}'
 
 
+def _match_already_handled(payload):
+    """True si este partido ya tiene HTML publicado o ya quedó en
+    cuarentena (grounding fallido) en un intento anterior. Sin estado propio
+    que mantener (mismo criterio self-healing que _write_sitemap): con DOS
+    caminos llamando a _run_match (el cron frecuente y la red de seguridad
+    de las 23:59), esto evita generar dos veces el mismo partido y gastar
+    Gemini de más."""
+    l, v = payload["local"], payload["visitante"]
+    slug = render.slug_for_match(payload["fecha"], l["nombre"], v["nombre"])
+    if (ARTICLES_OUT_DIR / f"{slug}.html").exists():
+        return True
+    flag_id = _match_flag_id(payload)
+    return any(_FLAGGED_DIR.glob(f"match-*-{flag_id}.json"))
+
+
 def _run_match(league, snap, match, dry_run):
     """Crónica de UN partido terminado (broadsheet de partido, ver
     render.render_match_broadsheet). Best-effort igual que el resumen diario:
     si el grounding marca alguno de los 3 textos, no se publica y se avisa;
-    el llamador (el bucle de _run) además aísla las excepciones por partido
-    para que una jornada de varios partidos no se caiga entera por uno."""
+    el llamador (_run_finished_matches) además aísla las excepciones por
+    partido para que una jornada de varios partidos no se caiga entera por
+    uno."""
     payload = grounding.ground_match(league, snap, match)
     if not payload:
         return 0
     l, v = payload["local"], payload["visitante"]
+
+    if _match_already_handled(payload):
+        return 0
 
     if dry_run:
         print(f"hypermotion: publicaría crónica {render.slug_for_match(payload['fecha'], l['nombre'], v['nombre'])}")
@@ -193,6 +221,47 @@ def _write_sitemap():
     (ARTICLES_OUT_DIR.parent / "sitemap-articles.xml").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def _run_finished_matches(league, snap, finished, today, dry_run):
+    """Bucle best-effort sobre los partidos terminados de hoy — lo comparten
+    _run_matches_only (cron frecuente) y _run (red de seguridad de las
+    23:59). Una excepción en un partido no aborta los demás."""
+    for m in finished:
+        try:
+            _run_match(league, snap, m, dry_run)
+        except Exception:
+            tb = traceback.format_exc()
+            print(tb, file=sys.stderr)
+            if not dry_run:
+                notify.send_alert(
+                    "[PredictMotion] crónica de partido de Hypermotion cayó con una excepción",
+                    f"Partido {m.get('home', {}).get('name')}-{m.get('away', {}).get('name')} "
+                    f"({today}) abortó con una excepción:\n\n{tb}",
+                    dedup_key="articles_match_crash",
+                )
+
+
+def _run_matches_only(dry_run, date_override=None):
+    """Entry point del cron frecuente (cada 5 min, ver CLAUDE.md): publica la
+    crónica de cada partido de Hypermotion nada más terminar, en vez de
+    esperar al resumen diario de las 23:59. Sin resumen ni explicador —
+    _run_match es idempotente (_match_already_handled), así que no importa
+    si esta pasada y la red de seguridad de las 23:59 se solapan."""
+    league = league_by_slug(_LEAGUE_SLUG)
+    snap = grounding.load_snapshot(_LEAGUE_SLUG)
+    if not snap:
+        return 0
+    today = date_override or datetime.now(_MADRID_TZ).strftime("%Y-%m-%d")
+    compact = today.replace("-", "")
+    events = espn.fetch_scoreboard_range(league["espn_code"], compact, compact)
+    finished = [e for e in events if e["state"] == "post"]
+    if not finished:
+        return 0
+    _run_finished_matches(league, snap, finished, today, dry_run)
+    if not dry_run:
+        _write_sitemap()  # para que la crónica sea descubrible ya, sin esperar a las 23:59
+    return 0
+
+
 def _run(dry_run, date_override=None):
     league = league_by_slug(_LEAGUE_SLUG)
     snap = grounding.load_snapshot(_LEAGUE_SLUG)
@@ -218,19 +287,10 @@ def _run(dry_run, date_override=None):
         print("hypermotion: partidos de hoy sin equipo resoluble en el snapshot")
         return 0
 
-    for m in finished:
-        try:
-            _run_match(league, snap, m, dry_run)
-        except Exception:
-            tb = traceback.format_exc()
-            print(tb, file=sys.stderr)
-            if not dry_run:
-                notify.send_alert(
-                    "[PredictMotion] crónica de partido de Hypermotion cayó con una excepción",
-                    f"Partido {m.get('home', {}).get('name')}-{m.get('away', {}).get('name')} "
-                    f"({today}) abortó con una excepción:\n\n{tb}",
-                    dedup_key="articles_match_crash",
-                )
+    # Red de seguridad: por si el cron frecuente (--matches-only) se perdió
+    # algún partido. _run_match es idempotente, así que esto es gratis si ya
+    # están todos publicados.
+    _run_finished_matches(league, snap, finished, today, dry_run)
 
     team_id = _pick_highlight_team_id(payload_resumen["partidos"])
     team = grounding.team_by_id(snap, team_id)
@@ -311,8 +371,12 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true", help="No llama a Gemini ni escribe, solo informa")
     ap.add_argument("--date", help="YYYY-MM-DD — relanzar un día concreto en vez de 'hoy' (backfill manual)")
+    ap.add_argument("--matches-only", action="store_true",
+                     help="Solo crónicas de partido (cron frecuente); sin resumen diario ni explicador")
     args = ap.parse_args(argv)
     try:
+        if args.matches_only:
+            return _run_matches_only(args.dry_run, date_override=args.date)
         return _run(args.dry_run, date_override=args.date)
     except Exception:
         tb = traceback.format_exc()
