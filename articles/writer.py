@@ -46,7 +46,7 @@ _ONE_PARA_PER_MATCH = (
 
 _INSTRUCTIONS = {
     "resumen_diario": (
-        "Escribe un resumen de los partidos de Hypermotion que han terminado hoy: "
+        "Escribe un resumen de los partidos de {liga} que han terminado hoy: "
         "resultados y cómo cambia la probabilidad de zona de cada equipo implicado. "
         "Antes de cada partido el modelo daba a cada equipo la probabilidad "
         "'prob_zona_antes_del_partido' de su zona; compárala con 'prob_zona_actual' "
@@ -86,7 +86,7 @@ _MATCH_SIDE_INSTR_TMPL = (
 _INSTRUCTIONS["match_local"] = _MATCH_SIDE_INSTR_TMPL.format(lado="local", campo="local")
 _INSTRUCTIONS["match_visitante"] = _MATCH_SIDE_INSTR_TMPL.format(lado="visitante", campo="visitante")
 _INSTRUCTIONS["match_cronica"] = (
-    "Escribe la crónica central de este partido de Hypermotion: el resultado, qué explica "
+    "Escribe la crónica central de este partido de {liga}: el resultado, qué explica "
     "ese marcador y qué dice del nivel de cada equipo según el modelo. Usa el resultado y "
     "los datos de DATOS.local/DATOS.visitante — si no hay detalle de goles o jugadas, cíñete "
     "al marcador final, no inventes minutos ni autores.\n\n"
@@ -96,7 +96,7 @@ _INSTRUCTIONS["match_cronica"] = (
 
 
 def build_prompt(payload):
-    instr = _INSTRUCTIONS[payload["tipo"]]
+    instr = _INSTRUCTIONS[payload["tipo"]].format(liga=payload["liga"])
     return f"{_SYSTEM}\n\n{instr}\n\nDATOS:\n{grounding.to_prompt_json(payload)}"
 
 
@@ -159,7 +159,7 @@ _HEADLINE_SYSTEM = (
 
 _HEADLINE_INSTR = (
     "Escribe un titular llamativo para la portada de un resumen de los partidos de "
-    "Hypermotion de hoy (sin dos puntos, sin comillas, sin mencionar el número de "
+    "{liga} de hoy (sin dos puntos, sin comillas, sin mencionar el número de "
     "partidos jugados). El TITULAR (la primera línea) es lo que se manda tal cual a "
     "Telegram como titular del tuit, así que DEBE incluir al menos un porcentaje real "
     "de DATOS (una probabilidad de zona de algún equipo, con el símbolo %) — es el "
@@ -176,7 +176,7 @@ _HEADLINE_INSTR = (
 
 
 _MATCH_HEADLINE_INSTR = (
-    "Escribe un titular llamativo para la crónica de este partido de Hypermotion (sin dos "
+    "Escribe un titular llamativo para la crónica de este partido de {liga} (sin dos "
     "puntos, sin comillas). El TITULAR (la primera línea) es lo que se manda tal cual a "
     "Telegram como titular del tuit, así que DEBE incluir al menos un porcentaje real de "
     "DATOS.local o DATOS.visitante (una probabilidad de zona de alguno de los dos "
@@ -204,6 +204,7 @@ def write_headline(payload, instr=_HEADLINE_INSTR):
     vez de bloquear la publicación por un titular que solo es un adorno.
     `instr`: _HEADLINE_INSTR (resumen diario) por defecto; _MATCH_HEADLINE_INSTR
     para el broadsheet de partido."""
+    instr = instr.format(liga=payload["liga"])
     prompt = f"{_HEADLINE_SYSTEM}\n\n{instr}\n\nDATOS:\n{grounding.to_prompt_json(payload)}"
     try:
         text = generate(prompt, temperature=0.9)

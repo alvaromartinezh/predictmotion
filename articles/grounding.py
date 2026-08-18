@@ -12,7 +12,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from seo.snapshots import load_all
-from .config import DATA_DIR
+from .config import DATA_DIR, ASCENSO_TOTAL_SEASON_FRACTION
 
 _MADRID_TZ = ZoneInfo("Europe/Madrid")
 
@@ -62,16 +62,38 @@ def _best_band(bands, prob):
     return max(bands, key=lambda b: prob.get(b["key"]) or 0)
 
 
+def _effective_bands(snap, bands):
+    """Bandas a comparar para elegir la "mejor zona" que citan los artículos.
+    En la primera mitad de temporada (`ASCENSO_TOTAL_SEASON_FRACTION`),
+    ascenso directo y play-off se funden en un único "ascenso total": las
+    posiciones aún son muy volátiles y separar directo/play-off sería ruido,
+    no señal. Pasada esa fracción, se listan por separado (`bands` tal cual).
+    Solo aplica a ligas con play-off (`bands` trae 'ascenso' Y 'playoff' —
+    hoy, solo Hypermotion; el resto de artículos no se ve afectado)."""
+    keys = {b["key"] for b in bands}
+    if not {"ascenso", "playoff"} <= keys:
+        return bands
+    total_md, jornada = snap.get("total_md") or 0, snap.get("jornada") or 0
+    if total_md and jornada / total_md >= ASCENSO_TOTAL_SEASON_FRACTION:
+        return bands
+    merged = [b for b in bands if b["key"] not in ("ascenso", "playoff")]
+    merged.insert(0, {"key": "ascenso_total", "label": "Ascenso total",
+                       "color": "green", "zone": "promo"})
+    return merged
+
+
 def _match_side_summary(snap, bands, prior_by_id, team_id):
     """Nombre/zona/prob antes-y-después de UN equipo en UN partido, más el
     detalle de puntos/racha/fuerza y las 3 zonas completas (antes/actual) que
     necesita el broadsheet de partido (render.py:render_match_broadsheet) —
     el resumen diario solo usa el subconjunto zona-mejor de siempre, así que
-    los campos de más no le rompen nada (nunca los lee)."""
+    los campos de más no le rompen nada (nunca los lee). El campo "zonas"
+    completo NUNCA se funde (detalle real siempre disponible); solo la zona
+    "mejor" (zona/zona_key/prob_zona_*) pasa por `_effective_bands`."""
     t = team_by_id(snap, team_id)
     if not t:
         return None
-    zone = _best_band(bands, t["prob"])
+    zone = _best_band(_effective_bands(snap, bands), t["prob"])
     pt = prior_by_id.get(str(t["id"]))
     return {
         "nombre": t["name"], "id": t["id"], "logo": t["logo"], "posicion": t["rank"],
@@ -160,7 +182,7 @@ def explainer_best_zone(payload):
 
 
 def ground_explainer(league, snap, team):
-    bands = snap["bands"]
+    bands = _effective_bands(snap, snap["bands"])
     prob = team["prob"]
     neighbors = []
     for r in (team["rank"] - 1, team["rank"] + 1):

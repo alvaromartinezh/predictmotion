@@ -1,10 +1,11 @@
-"""Selección de ilustraciones para el broadsheet diario de Hypermotion.
+"""Selección de ilustraciones para los broadsheets de artículos.
 
 Banco de grabados vintage de dominio público (Wikimedia Commons), el mismo
 banco de 10 imágenes ya usado por el sistema de artículos anterior (retirado
 pero con las imágenes conservadas en assets/illustrations/). Selección
-determinista por (slug, tipo, fecha): el mismo artículo siempre muestra la
-misma imagen; dos tipos de artículo del mismo día no eligen la misma.
+determinista por (liga, fecha, variant): el mismo artículo siempre muestra la
+misma imagen; dos tipos de artículo del mismo día (o de dos ligas distintas)
+no eligen la misma.
 """
 
 import hashlib
@@ -25,15 +26,15 @@ ILLUSTRATIONS = [
     {"file": "melbourne-1875.jpg", "credit": "Hugh George, 1875", "source": "Wikimedia Commons (PD)"},
 ]
 
-def pick(fecha, variant, avoid=()):
-    """Ilustración determinista por (fecha, variant) — el broadsheet usa
+def pick(league_slug, fecha, variant, avoid=()):
+    """Ilustración determinista por (liga, fecha, variant) — el broadsheet usa
     hasta 4 huecos el mismo día ('cover'/'explainer'/'footer'/un hueco extra
     si sobra espacio, ver layout_estimate.py) y no deben coincidir. `avoid`:
     ficheros ya elegidos ese día para otro hueco — si el hash choca con uno
     de ellos, reintenta con un sufijo hasta encontrar uno libre (o se rinde
     y repite si el banco tiene menos imágenes que huecos)."""
     for attempt in range(len(ILLUSTRATIONS) + 1):
-        seed_str = f"hypermotion|{fecha}|{variant}" + (f"#{attempt}" if attempt else "")
+        seed_str = f"{league_slug}|{fecha}|{variant}" + (f"#{attempt}" if attempt else "")
         idx = int(hashlib.md5(seed_str.encode()).hexdigest(), 16) % len(ILLUSTRATIONS)
         ill = ILLUSTRATIONS[idx]
         if ill["file"] not in avoid:

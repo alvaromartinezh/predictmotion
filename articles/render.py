@@ -1,4 +1,5 @@
-"""HTML del broadsheet diario de Hypermotion.
+"""HTML de los broadsheets de artículos (resumen diario + crónica de
+partido), uno por liga en articles.config.ARTICLE_LEAGUES.
 
 Página autónoma (no usa seo/chrome.py:page() — paleta/tipografía distintas,
 ver assets/articles-broadsheet.css) que combina dos piezas generadas por
@@ -19,27 +20,27 @@ from . import grounding, illustration, writer
 _CSS_V = "9"
 _DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 _MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
-ZONE_HEX = {"ascenso": "#2ec98a", "playoff": "#f3b23f", "descenso": "#ff556b"}
+ZONE_HEX = {"ascenso": "#2ec98a", "ascenso_total": "#2ec98a", "playoff": "#f3b23f", "descenso": "#ff556b"}
 
 
-def slug_for(fecha):
-    return f"hypermotion-resumen-{fecha}"
+def slug_for(league_slug, fecha):
+    return f"{league_slug}-resumen-{fecha}"
 
 
-def url_for(fecha):
-    return f"/articulos/{slug_for(fecha)}"
+def url_for(league_slug, fecha):
+    return f"/articulos/{slug_for(league_slug, fecha)}"
 
 
-def file_for(fecha):
-    return f"articulos/{slug_for(fecha)}.html"
+def file_for(league_slug, fecha):
+    return f"articulos/{slug_for(league_slug, fecha)}.html"
 
 
-def slug_for_match(fecha, local_nombre, visitante_nombre):
-    return f"hypermotion-{slugify(local_nombre)}-{slugify(visitante_nombre)}-{fecha}"
+def slug_for_match(league_slug, fecha, local_nombre, visitante_nombre):
+    return f"{league_slug}-{slugify(local_nombre)}-{slugify(visitante_nombre)}-{fecha}"
 
 
-def url_for_match(fecha, local_nombre, visitante_nombre):
-    return f"/articulos/{slug_for_match(fecha, local_nombre, visitante_nombre)}"
+def url_for_match(league_slug, fecha, local_nombre, visitante_nombre):
+    return f"/articulos/{slug_for_match(league_slug, fecha, local_nombre, visitante_nombre)}"
 
 
 def _seed(team_id):
@@ -135,7 +136,7 @@ def _zone_block(t, size_cls="", show_before=False):
             f'<div class="bs-zone__label">{esc(t["zona"])}</div></div>')
 
 
-def _match_head(m, size=20):
+def _match_head(m, league_slug, size=20):
     l, v, r = m["local"], m["visitante"], m["resultado"]
     inner = (
         f'{team_avatar(l.get("logo"), l["nombre"], _seed(l.get("id")), size)}'
@@ -145,19 +146,19 @@ def _match_head(m, size=20):
         f'{team_avatar(v.get("logo"), v["nombre"], _seed(v.get("id")), size)}'
     )
     if m.get("event_id"):
-        href = f'/partido?league=hypermotion&id={m["event_id"]}'
+        href = f'/partido?league={league_slug}&id={m["event_id"]}'
         return f'<a class="bs-brief__head" href="{esc(href)}">{inner}</a>'
     return f'<div class="bs-brief__head">{inner}</div>'
 
 
-def _brief_html(m, text):
+def _brief_html(m, text, league_slug):
     zones = _zone_block(m["local"]) + _zone_block(m["visitante"])
-    return f'<div class="bs-brief">{_match_head(m)}<p>{esc(text)}</p>{zones}</div>'
+    return f'<div class="bs-brief">{_match_head(m, league_slug)}<p>{esc(text)}</p>{zones}</div>'
 
 
-def _side_brief_html(m, text):
+def _side_brief_html(m, text, league_slug):
     l, v, r = m["local"], m["visitante"], m["resultado"]
-    href = f'/partido?league=hypermotion&id={m["event_id"]}' if m.get("event_id") else None
+    href = f'/partido?league={league_slug}&id={m["event_id"]}' if m.get("event_id") else None
     cronica = f'<a class="bs-side-brief__cronica" href="{esc(href)}">Crónica</a>' if href else ""
     zones = _zone_block(l, "bs-zone--sm") + _zone_block(v, "bs-zone--sm")
     return (
@@ -196,16 +197,16 @@ def _illo_html(ill, cls, img_style="", caption_cls=None):
             f'</figure>')
 
 
-def _mentions_html(payload_resumen, league_name, league_logo):
+def _mentions_html(payload_resumen, league_name, league_logo, league_slug):
     seen, chips = set(), []
-    chips.append(f'<a href="/hypermotion">{avatar(league_logo, league_name, "#e11d48", 20)}{esc(league_name)}</a>')
+    chips.append(f'<a href="/{league_slug}">{avatar(league_logo, league_name, "#e11d48", 20)}{esc(league_name)}</a>')
     for m in payload_resumen["partidos"]:
         for t in (m["local"], m["visitante"]):
             if t["id"] in seen:
                 continue
             seen.add(t["id"])
             color = COLOR_PALETTE[_seed(t["id"]) % len(COLOR_PALETTE)]
-            href = f'/equipo?id={t["id"]}&name={esc(t["nombre"])}&league=hypermotion'
+            href = f'/equipo?id={t["id"]}&name={esc(t["nombre"])}&league={league_slug}'
             chips.append(f'<a href="{href}">{avatar(t.get("logo"), t["nombre"], color, 20)}{esc(t["nombre"])}</a>')
     return (
         '<div class="bs-mentions"><div class="bs-mentions__label">Equipos mencionados</div>'
@@ -269,19 +270,19 @@ def _page_html(title, description, canonical, league_logo, json_ld, body):
 
 
 def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explainer_body,
-                       *, fecha, league_logo, headline, subtitle, status_label="Publicado",
+                       *, league_slug, fecha, league_logo, headline, subtitle, status_label="Publicado",
                        explainer_filler_h=None, side_filler_h=None):
     partidos = payload_resumen["partidos"]
     n = len(partidos)
     picked_files = set()
 
     def pick_illo(variant):
-        ill = illustration.pick(fecha, variant, avoid=picked_files)
+        ill = illustration.pick(league_slug, fecha, variant, avoid=picked_files)
         picked_files.add(ill["file"])
         return ill
     title = f'{headline} | PredictMotion'
     description = subtitle
-    canonical = SITE + url_for(fecha)
+    canonical = SITE + url_for(league_slug, fecha)
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     json_ld = {
@@ -300,7 +301,8 @@ def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explaine
     top_zona, top_val = grounding.explainer_best_zone(payload_explainer)
     ex_headline = f'El modelo da al {esc(payload_explainer["equipo"])} un <span>{pct(top_val)}</span> de {esc(top_zona.lower())}'
 
-    ZONE_ORDER = [("Ascenso directo", "#2ec98a"), ("Play-off de ascenso", "#f3b23f"), ("Descenso", "#ff556b")]
+    ZONE_ORDER = [("Ascenso total", "#2ec98a"), ("Ascenso directo", "#2ec98a"),
+                  ("Play-off de ascenso", "#f3b23f"), ("Descenso", "#ff556b")]
     stats_html = "".join(
         f'<div class="bs-stats__row"><span class="bs-stats__value" style="color:{color}">{pct(zonas[label])}</span>'
         f'<span class="bs-stats__label">{esc(label)}</span></div>'
@@ -329,8 +331,8 @@ def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explaine
         lead_html, side_html = _prose_html(resumen_body), ""
     else:
         lead_pairs, side_pairs = pairs[:2], pairs[2:]
-        lead_html = "".join(_brief_html(m, t) for m, t in lead_pairs)
-        side_html = "".join(_side_brief_html(m, t) for m, t in side_pairs)
+        lead_html = "".join(_brief_html(m, t, league_slug) for m, t in lead_pairs)
+        side_html = "".join(_side_brief_html(m, t, league_slug) for m, t in side_pairs)
 
     note_html = ""
     if note_paras:
@@ -361,10 +363,10 @@ def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explaine
         side_col += '</div>'
 
     grid = f'<div class="bs-grid">{explainer_col}{main_col}{side_col}</div>'
-    mentions = _mentions_html(payload_resumen, payload_resumen["liga"], league_logo)
+    mentions = _mentions_html(payload_resumen, payload_resumen["liga"], league_logo, league_slug)
 
     body = f"""<div class="bs-page">
-<a class="bs-back" href="/hypermotion">← Volver a la clasificación</a>
+<a class="bs-back" href="/{league_slug}">← Volver a la clasificación</a>
 <div class="bs-sheet">
 {_masthead_html(f'{payload_resumen["liga"]} · El diario de las probabilidades')}
 <div class="bs-edition">
@@ -492,11 +494,11 @@ def _model_reading(jornada):
     )
 
 
-def _match_mentions_html(payload, league_name, league_logo):
-    chips = [f'<a href="/hypermotion">{avatar(league_logo, league_name, "#e11d48", 20)}{esc(league_name)}</a>']
+def _match_mentions_html(payload, league_name, league_logo, league_slug):
+    chips = [f'<a href="/{league_slug}">{avatar(league_logo, league_name, "#e11d48", 20)}{esc(league_name)}</a>']
     for t in (payload["local"], payload["visitante"]):
         color = COLOR_PALETTE[_seed(t.get("id")) % len(COLOR_PALETTE)]
-        href = f'/equipo?id={t["id"]}&name={esc(t["nombre"])}&league=hypermotion'
+        href = f'/equipo?id={t["id"]}&name={esc(t["nombre"])}&league={league_slug}'
         chips.append(f'<a href="{href}">{avatar(t.get("logo"), t["nombre"], color, 20)}{esc(t["nombre"])}</a>')
     return (
         '<div class="bs-mentions"><div class="bs-mentions__label">Equipos mencionados</div>'
@@ -505,19 +507,19 @@ def _match_mentions_html(payload, league_name, league_logo):
 
 
 def render_match_broadsheet(payload, local_body, visitante_body, cronica_body,
-                             *, headline, teaser, league_logo, status_label="Finalizado"):
+                             *, league_slug, headline, teaser, league_logo, status_label="Finalizado"):
     local, visitante, resultado = payload["local"], payload["visitante"], payload["resultado"]
     fecha = payload["fecha"]
     picked_files = set()
 
     def pick_illo(variant):
-        ill = illustration.pick(fecha, f'match-{payload.get("event_id")}-{variant}', avoid=picked_files)
+        ill = illustration.pick(league_slug, fecha, f'match-{payload.get("event_id")}-{variant}', avoid=picked_files)
         picked_files.add(ill["file"])
         return ill
 
     title = f'{headline} | PredictMotion'
     description = teaser
-    canonical = SITE + url_for_match(fecha, local["nombre"], visitante["nombre"])
+    canonical = SITE + url_for_match(league_slug, fecha, local["nombre"], visitante["nombre"])
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     json_ld = {
@@ -558,13 +560,13 @@ def render_match_broadsheet(payload, local_body, visitante_body, cronica_body,
     )
 
     grid = f'<div class="bs-grid">{home_col}{center_col}{away_col}</div>'
-    mentions = _match_mentions_html(payload, payload["liga"], league_logo)
+    mentions = _match_mentions_html(payload, payload["liga"], league_logo, league_slug)
 
     venue_bits = [b for b in (payload.get("estadio"), payload.get("hora")) if b]
     venue_txt = " · ".join(venue_bits) if venue_bits else "—"
 
     body = f"""<div class="bs-page">
-<a class="bs-back" href="/hypermotion">← Volver a la clasificación</a>
+<a class="bs-back" href="/{league_slug}">← Volver a la clasificación</a>
 <div class="bs-sheet">
 {_masthead_html(f'{payload["liga"]} · El diario de las probabilidades')}
 <div class="bs-edition">

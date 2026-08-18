@@ -3,7 +3,7 @@
 Uso: python3 -m articles.test_generate
 """
 
-from . import generate, illustration, layout_estimate, render, writer
+from . import generate, grounding, illustration, layout_estimate, render, writer
 from .writer import validate_grounding
 
 _TEAM_A = {"nombre": "Eibar", "id": "3752", "logo": None, "posicion": 20,
@@ -40,9 +40,9 @@ def demo():
     _orig_generate = writer.generate
     try:
         writer.generate = lambda prompt, temperature=0.9: "Titular sin cifra\nSubtítulo cualquiera"
-        assert writer.write_headline({"tipo": "resumen_diario"}) is None
+        assert writer.write_headline({"tipo": "resumen_diario", "liga": "Liga Hypermotion"}) is None
         writer.generate = lambda prompt, temperature=0.9: "El play-off sube al 33%\nSubtítulo cualquiera"
-        assert writer.write_headline({"tipo": "resumen_diario", "x": 33.0}) == (
+        assert writer.write_headline({"tipo": "resumen_diario", "liga": "Liga Hypermotion", "x": 33.0}) == (
             "El play-off sube al 33%", "Subtítulo cualquiera")
     finally:
         writer.generate = _orig_generate
@@ -79,7 +79,7 @@ def demo():
     explainer_body = ("Párrafo uno del explicador.\n\nPárrafo dos del explicador.\n\n"
                        "Párrafo tres, la nota del modelo.")
     html = render.render_broadsheet(payload_resumen, two_paras, payload_explainer, explainer_body,
-                                     fecha="2026-08-16", league_logo=None,
+                                     league_slug="hypermotion", fecha="2026-08-16", league_logo=None,
                                      headline="Titular de prueba", subtitle="Subtítulo de prueba")
     assert "<!DOCTYPE html>" in html
     assert "Castellón" in html and "Tenerife" in html
@@ -92,16 +92,16 @@ def demo():
     assert "explainer" in fillers and 0 < fillers["explainer"] <= layout_estimate.FILLER_MAX_H
     assert layout_estimate.plan_fillers(explainer_h=1150, main_h=1200, side_h=0, has_side=False) == {}
 
-    # ── illustration.pick: mismo (fecha,variant) es determinista; avoid evita colisión ──
-    a = illustration.pick("2026-08-16", "cover")
-    assert illustration.pick("2026-08-16", "cover") == a
-    b = illustration.pick("2026-08-16", "explainer", avoid={a["file"]})
+    # ── illustration.pick: mismo (liga,fecha,variant) es determinista; avoid evita colisión ──
+    a = illustration.pick("hypermotion", "2026-08-16", "cover")
+    assert illustration.pick("hypermotion", "2026-08-16", "cover") == a
+    b = illustration.pick("hypermotion", "2026-08-16", "explainer", avoid={a["file"]})
     assert b["file"] != a["file"]
 
     # ── render_broadsheet con filler: aparece una ilustración extra distinta de las demás ──
     html_filled = render.render_broadsheet(
         payload_resumen, two_paras, payload_explainer, explainer_body,
-        fecha="2026-08-16", league_logo=None, headline="Titular", subtitle="Subtítulo",
+        league_slug="hypermotion", fecha="2026-08-16", league_logo=None, headline="Titular", subtitle="Subtítulo",
         explainer_filler_h=250,
     )
     assert html_filled.count("<figure") == 3  # portada + explicador + hueco extra (2 partidos, sin lateral)
@@ -131,7 +131,7 @@ def demo():
     match_body_4p = "Uno.\n\nDos.\n\nTres.\n\nCuatro."
     html_match = render.render_match_broadsheet(
         payload_match, match_body_3p, match_body_3p, match_body_4p,
-        headline="Titular de partido", teaser="Entradilla de partido", league_logo=None,
+        league_slug="hypermotion", headline="Titular de partido", teaser="Entradilla de partido", league_logo=None,
     )
     assert "<!DOCTYPE html>" in html_match
     assert "Eibar" in html_match and "Tenerife" in html_match
@@ -145,24 +145,47 @@ def demo():
     probe_payload = {"fecha": "1999-01-01",
                       "local": {"nombre": "EquipoTestA", "id": "1"},
                       "visitante": {"nombre": "EquipoTestB", "id": "2"}}
-    probe_slug = render.slug_for_match("1999-01-01", "EquipoTestA", "EquipoTestB")
+    probe_slug = render.slug_for_match("hypermotion", "1999-01-01", "EquipoTestA", "EquipoTestB")
     probe_path = ARTICLES_OUT_DIR / f"{probe_slug}.html"
-    assert not generate._match_already_handled(probe_payload)
+    assert not generate._match_already_handled("hypermotion", probe_payload)
     ARTICLES_OUT_DIR.mkdir(parents=True, exist_ok=True)
     probe_path.write_text("<html></html>", encoding="utf-8")
     try:
-        assert generate._match_already_handled(probe_payload)
+        assert generate._match_already_handled("hypermotion", probe_payload)
     finally:
         probe_path.unlink()
 
-    # ── slug_for_match: determinista y sin acentos/mayúsculas ──
-    assert render.slug_for_match("2026-08-16", "Eibar", "Tenerife") == "hypermotion-eibar-tenerife-2026-08-16"
+    # ── slug_for_match: determinista, sin acentos/mayúsculas, namespaced por liga ──
+    assert render.slug_for_match("hypermotion", "2026-08-16", "Eibar", "Tenerife") == "hypermotion-eibar-tenerife-2026-08-16"
+    assert render.slug_for_match("laliga", "2026-08-16", "Eibar", "Tenerife") == "laliga-eibar-tenerife-2026-08-16"
 
     # ── _team_headline: sube/baja/sin histórico ──
     up = render._team_headline({"zona": "Play-off", "prob_zona_actual": 30.0, "prob_zona_antes_del_partido": 20.0})
     down = render._team_headline({"zona": "Play-off", "prob_zona_actual": 10.0, "prob_zona_antes_del_partido": 20.0})
     first = render._team_headline({"zona": "Play-off", "prob_zona_actual": 15.0, "prob_zona_antes_del_partido": None})
     assert "sube al" in up and "cae al" in down and "queda en el" in first
+
+    # ── _effective_bands / _match_side_summary: ascenso directo + play-off se
+    # funden en "ascenso total" en la primera mitad de temporada; pasada la
+    # mitad se listan por separado (política 2026-08-18) ──
+    bands_hyper = [
+        {"key": "ascenso", "label": "Ascenso directo", "zone": "promo"},
+        {"key": "playoff", "label": "Play-off de ascenso", "zone": "playoff"},
+        {"key": "descenso", "label": "Descenso", "zone": "relega"},
+    ]
+    team_mid = {"id": "9", "name": "Racing", "logo": None, "rank": 5, "pts": 10, "gp": 2,
+                "wins": 3, "draws": 1, "losses": 0, "strength": 0.1,
+                "prob": {"ascenso": 12.0, "playoff": 26.0, "descenso": 3.0, "ascenso_total": 38.0}}
+    early = grounding._match_side_summary({"teams": [team_mid], "total_md": 42, "jornada": 2}, bands_hyper, {}, "9")
+    late = grounding._match_side_summary({"teams": [team_mid], "total_md": 42, "jornada": 25}, bands_hyper, {}, "9")
+    assert early["zona_key"] == "ascenso_total" and early["prob_zona_actual"] == 38.0
+    assert late["zona_key"] == "playoff" and late["prob_zona_actual"] == 26.0
+    # "zonas" completas (detalle real) nunca se funde, aunque la zona "mejor" sí
+    assert {z["key"] for z in early["zonas"]} == {"ascenso", "playoff", "descenso"}
+    # ligas sin play-off (bands sin 'playoff'): _effective_bands no toca nada
+    bands_top1 = [{"key": "champions", "label": "Champions", "zone": "promo"},
+                  {"key": "descenso", "label": "Descenso", "zone": "relega"}]
+    assert grounding._effective_bands({"total_md": 42, "jornada": 2}, bands_top1) == bands_top1
 
     print("articles.test_generate: OK")
 

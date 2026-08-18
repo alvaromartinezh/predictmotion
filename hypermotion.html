@@ -228,6 +228,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
               <th scope="col">Pts</th>
               <th class="col-prob" scope="col">Ascenso</th>
               <th class="col-prob" scope="col">Play-off</th>
+              <th class="col-prob" scope="col">Ascenso total</th>
               <th class="col-prob" scope="col">Descenso</th>
             </tr>
           </thead>
@@ -526,6 +527,7 @@ function render(standings, results) {
       <td class="col-pts${t.live ? ' pts-live' : ''}"><span class="num">${t.pts}</span></td>
       ${probPill(res.top2,    'up',   'Ascenso')}
       ${probPill(res.playoff, 'po',   'Play-off')}
+      ${probPill(Math.min(100, (res.top2 || 0) + (res.pWin || 0)), 'up', 'Ascenso total')}
       ${probPill(res.relega,  'down', 'Descenso')}
     </tr>`;
   });
@@ -649,6 +651,7 @@ function renderSkeleton(n = cachedNumTeams) {
       </span></td>
       <td class="col-pj"><div class="skeleton" style="width:22px;height:14px;margin:0 auto"></div></td>
       <td class="col-pts"><div class="skeleton" style="width:24px;height:14px;margin:0 auto"></div></td>
+      <td class="col-prob"><div class="skeleton" style="width:64px;height:22px;border-radius:999px"></div></td>
       <td class="col-prob"><div class="skeleton" style="width:64px;height:22px;border-radius:999px"></div></td>
       <td class="col-prob"><div class="skeleton" style="width:64px;height:22px;border-radius:999px"></div></td>
       <td class="col-prob"><div class="skeleton" style="width:64px;height:22px;border-radius:999px"></div></td>

@@ -89,6 +89,9 @@ def build_table_snapshot(league, rows, sim, sim_n, today, league_logo=None,
             prob["pSemi"] = res["pSemi"]
             prob["pFinal"] = res["pFinal"]
             prob["pWin"] = res["pWin"]
+            # Ascenso total = directo + play-off ganado. Derivado, no una nueva
+            # simulación: ambos términos ya salen del mismo Monte Carlo.
+            prob["ascenso_total"] = round(min(100.0, prob["ascenso"] + res["pWin"]), 1)
         team = {
             "slug":   slugify(r["name"]),
             "rank":   r["rank"],
@@ -233,6 +236,7 @@ _PILLS = {
              ("descenso", "down", "Descenso")],
     "top2": [("ascenso", "up", "Ascenso"),
              ("playoff", "po", "Play-off"),
+             ("ascenso_total", "up", "Ascenso total"),
              ("descenso", "down", "Descenso")],
     "tier2": [("ascenso", "up", "Ascenso"),
               ("playoff", "po", "Play-off"),
