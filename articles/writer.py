@@ -1,9 +1,13 @@
 """Construcción del prompt, llamada a Gemini y validación de grounding.
 
-El título NUNCA lo escribe Gemini: se compone aquí de forma determinista a
-partir del mismo payload de hechos (igual que seo/snapshots.py hace para los
+El título/meta lo compone esta función de forma determinista a partir del
+mismo payload de hechos (igual que seo/snapshots.py hace para los
 dashboards), para no dejar la superficie SEO-crítica en manos de texto
-libre. Solo el cuerpo narrativo es generado, y se valida antes de aceptarlo.
+libre por defecto. Única excepción, a petición expresa: el titular+subtítulo
+"llamativos" del resumen diario (`write_headline`) SÍ los escribe Gemini —
+pero pasan por el mismo validador de grounding, y si fallan (API, formato,
+cifra inventada) el llamador cae al título determinista en vez de bloquear
+la publicación por esto.
 """
 
 import re
@@ -12,7 +16,7 @@ from seo.textutil import pct
 
 from . import grounding
 from .config import GROUNDING_TOLERANCE_PP
-from .gemini_client import generate
+from .gemini_client import GeminiError, generate
 
 _PCT_RE = re.compile(r"(\d+(?:[.,]\d+)?)\s*%")
 
@@ -82,7 +86,7 @@ def validate_grounding(body, payload):
 def _compose_resumen_head(payload):
     n = len(payload["partidos"])
     plural = "partidos" if n != 1 else "partido"
-    title = f'Resumen del día en {payload["liga"]}: {n} {plural} | PredictMotion'
+    title = f'Resumen del día en {payload["liga"]} | PredictMotion'
     desc = (f'Cómo han quedado hoy los {n} {plural} de {payload["liga"]} y cómo cambian las '
             f'probabilidades de zona según el modelo de PredictMotion.')
     return title, desc
@@ -103,6 +107,47 @@ _HEAD_BUILDERS = {
     "resumen_diario": _compose_resumen_head,
     "explicador_probabilidad": _compose_explainer_head,
 }
+
+
+_HEADLINE_SYSTEM = (
+    "Eres el redactor de titulares de PredictMotion, un sitio de predicciones de "
+    "fútbol basadas en simulación Monte Carlo. Español, tono periodístico con "
+    "gancho — el titular y el subtítulo deben dar ganas de hacer clic, sin caer en "
+    "el sensacionalismo vacío ni en inventar nada."
+)
+
+_HEADLINE_INSTR = (
+    "Escribe un titular llamativo para la portada de un resumen de los partidos de "
+    "Hypermotion de hoy (sin dos puntos, sin comillas, sin mencionar el número de "
+    "partidos jugados) y, en la línea siguiente, un subtítulo corto y también "
+    "llamativo que cuente cómo han quedado los equipos. Que no se repitan casi las "
+    "mismas palabras entre las dos líneas.\n\n"
+    "FORMATO OBLIGATORIO: EXACTAMENTE 2 líneas — primero el titular, luego el "
+    "subtítulo — sin etiquetas ('Titular:'/'Subtítulo:'), sin numerarlas, sin nada "
+    "más de texto. No menciones ningún porcentaje ni cifra: eso va en el cuerpo del "
+    "artículo, no aquí."
+)
+
+
+def write_headline(payload):
+    """Titular + subtítulo llamativos para el resumen del día (a petición
+    expresa: deben "dar ganas de hacer clic"). Devuelve (titular, subtitulo)
+    o None si Gemini falla, no respeta el formato de 2 líneas, o cuela una
+    cifra que no está en el payload — en cualquiera de esos casos el
+    llamador cae a la cabecera determinista en vez de bloquear la
+    publicación por un titular que solo es un adorno."""
+    prompt = f"{_HEADLINE_SYSTEM}\n\n{_HEADLINE_INSTR}\n\nDATOS:\n{grounding.to_prompt_json(payload)}"
+    try:
+        text = generate(prompt, temperature=0.9)
+    except GeminiError:
+        return None
+    lines = [l.strip(" \"'") for l in text.strip().split("\n") if l.strip()]
+    if len(lines) != 2:
+        return None
+    ok, _ = validate_grounding(text, payload)
+    if not ok:
+        return None
+    return lines[0], lines[1]
 
 
 def write_article(payload):

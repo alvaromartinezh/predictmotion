@@ -76,18 +76,18 @@ def _write_latest_pointer(fecha, title):
                                     ensure_ascii=False))
 
 
-def _notify_telegram(title, article_url):
+def _notify_telegram(headline, subtitle, article_url):
     """Best-effort: aviso a Telegram (mismo bot que seo/tweets.py) con el
-    titular + enlace del artículo recién publicado, para que el dueño lo
-    tuitee a mano — reusa _caption()/_tg_send_message() (texto + enlace
-    directo al compositor de X precargado), sin el teclado inline de los
-    tuits de jornada: esto es de un solo uso, no hay nada que regenerar."""
+    titular + subtítulo + enlace del artículo recién publicado, para que el
+    dueño lo tuitee a mano — reusa _caption()/_tg_send_message() (texto +
+    enlace directo al compositor de X precargado), sin el teclado inline de
+    los tuits de jornada: esto es de un solo uso, no hay nada que regenerar."""
     notify._load_env()
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
     if not os.environ.get("TELEGRAM_BOT_TOKEN") or not chat_id:
         print("hypermotion: sin TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID, no se avisa a Telegram")
         return
-    tweet_text = f"{title}\n{article_url}"
+    tweet_text = f"{headline}\n{subtitle}\n{article_url}"
     if not _tg_send_message(chat_id, _caption(tweet_text)):
         print("hypermotion: aviso a Telegram no confirmado", file=sys.stderr)
 
@@ -157,17 +157,28 @@ def _run(dry_run, date_override=None):
         )
         return 1
 
+    # Titular+subtítulo "llamativos" (a petición expresa) — best-effort: si
+    # Gemini falla el formato o cuela una cifra inventada, cae a la cabecera
+    # determinista de siempre en vez de bloquear la publicación por esto.
+    catchy = writer.write_headline(payload_resumen)
+    if catchy:
+        headline, subtitle = catchy
+    else:
+        print("hypermotion: titular llamativo no disponible, cae al determinista")
+        headline = resumen["title"].replace(" | PredictMotion", "")
+        subtitle = render._teaser(payload_resumen["partidos"])
+
     html = render.render_broadsheet(
         payload_resumen, resumen["body"], payload_explainer, explainer["body"],
         fecha=today, league_logo=snap.get("league_logo"),
+        headline=headline, subtitle=subtitle,
     )
     _write_atomic(ARTICLES_OUT_DIR / f"{render.slug_for(today)}.html", html)
     _write_sitemap()
-    _write_latest_pointer(today, resumen["title"])
+    _write_latest_pointer(today, headline)
     print(f"hypermotion: publicado {render.url_for(today)}")
 
-    headline = resumen["title"].replace(" | PredictMotion", "")
-    _notify_telegram(headline, SITE + render.url_for(today))
+    _notify_telegram(headline, subtitle, SITE + render.url_for(today))
     return 0
 
 

@@ -185,12 +185,11 @@ def _mentions_html(payload_resumen, league_name, league_logo):
 
 
 def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explainer_body,
-                       *, fecha, league_logo, status_label="Publicado"):
+                       *, fecha, league_logo, headline, subtitle, status_label="Publicado"):
     partidos = payload_resumen["partidos"]
     n = len(partidos)
-    title = f'Resumen del día en {payload_resumen["liga"]}: {n} {"partido" if n == 1 else "partidos"} | PredictMotion'
-    description = (f'Cómo han quedado hoy los {n} {"partido" if n == 1 else "partidos"} de '
-                    f'{payload_resumen["liga"]} y cómo cambian las probabilidades de zona según el modelo de PredictMotion.')
+    title = f'{headline} | PredictMotion'
+    description = subtitle
     canonical = SITE + url_for(fecha)
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -249,8 +248,8 @@ def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explaine
         '<div class="bs-col-main">'
         + _illo_html(fecha, "cover", "bs-cover", "bs-cover__caption") +
         '<div class="bs-main-label">Resumen del día</div>'
-        f'<h2>Resumen del día en {esc(payload_resumen["liga"])}: <span>{n} {"partido" if n == 1 else "partidos"}</span></h2>'
-        f'<div class="bs-teaser"><p>{esc(_teaser(partidos))}</p></div>'
+        f'<h2>{esc(headline)}</h2>'
+        f'<div class="bs-teaser"><p>{esc(subtitle)}</p></div>'
         + lead_html + note_html +
         '</div>'
     )

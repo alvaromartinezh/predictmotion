@@ -61,10 +61,12 @@ def demo():
     explainer_body = ("Párrafo uno del explicador.\n\nPárrafo dos del explicador.\n\n"
                        "Párrafo tres, la nota del modelo.")
     html = render.render_broadsheet(payload_resumen, two_paras, payload_explainer, explainer_body,
-                                     fecha="2026-08-16", league_logo=None)
+                                     fecha="2026-08-16", league_logo=None,
+                                     headline="Titular de prueba", subtitle="Subtítulo de prueba")
     assert "<!DOCTYPE html>" in html
     assert "Castellón" in html and "Tenerife" in html
     assert "Nota del modelo" in html
+    assert "Titular de prueba" in html and "Subtítulo de prueba" in html
     assert html.count("bs-brief__head") >= 2  # los 2 partidos como brief, no prosa degradada
     print("articles.test_generate: OK")
 
