@@ -27,7 +27,7 @@
   }
   function pct(v) { if (v == null) return null; return Math.round(v); }
   function ago(iso) { var m = Math.max(0, (Date.now() - new Date(iso)) / 60000); return m < 60 ? Math.round(m) + ' min' : (m < 1440 ? Math.round(m / 60) + ' h' : Math.round(m / 1440) + ' d'); }
-  function kick(iso) { try { return new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
+  function kick(iso) { try { var d = new Date(iso); var day = d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' }); var time = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }); return day + ' · ' + time; } catch (e) { return ''; } }
   function lname(slug) { return (L[slug] || {}).name || slug; }
   function llogo(slug) { return (L[slug] || {}).logo || ''; }
   function bandForRank(snap, rank) { return (((snap && snap.bands) || [])).filter(function (b) { return rank >= b.lo && rank <= b.hi; })[0] || null; }
@@ -185,12 +185,23 @@
     return '<div class="feed-sec"><h2 class="feed-sec__title">' + esc(title) + (tagHTML || '') + '</h2>'
       + (moreTxt ? '<a class="feed-sec__more" href="' + (moreHref || '#') + '">' + esc(moreTxt) + '</a>' : '') + '</div>';
   }
+  function articleLeagueSlug(url) { var m = (url || '').match(/articulos\/([a-z0-9]+)-resumen/); return m ? m[1] : ''; }
+  function articleCard(a) {
+    if (!a || !a.url) return '';
+    var slug = articleLeagueSlug(a.url), leagueName = lname(slug) || 'Hypermotion';
+    var fecha = a.fecha || '';
+    return '<a class="card card--link" href="' + esc(a.url) + '" style="display:block;text-decoration:none">'
+      + '<p class="eyebrow" style="color:var(--accent)">Broadsheet diario · ' + esc(leagueName) + '</p>'
+      + '<h3 style="font-family:var(--font-display);font-size:var(--fs-18);font-weight:700;color:var(--text);margin:var(--sp-1) 0 0">' + esc((a.title || '').replace(' \| PredictMotion', '')) + '</h3>'
+      + (fecha ? '<p style="color:var(--text-2);font-size:var(--fs-13);margin:var(--sp-2) 0 0">' + esc(fecha) + '</p>' : '')
+      + '</a>';
+  }
 
   // ── builder PURO del feed logueado (sin fetch) ──
   // Foco en el equipo FAVORITO: su partido más cercano (con probabilidades) + su
-  // clasificación (±2 y todas las zonas >10%) + su última noticia. Debajo, el resto
+  // clasificación (±2 y todas las probabilidades de zona >10%) + su última noticia. Debajo, el resto
   // de noticias de lo que sigue — sin más tablas ni partidos.
-  function buildUserHTML(f, matches, snaps, allNews, tables, liveMatchDetail) {
+  function buildUserHTML(f, matches, snaps, allNews, tables, liveMatchDetail, article) {
     matches = matches || {}; tables = tables || {};
     var teams = (f.teams || []).slice(0, 4), favId = f.favorite_team && String(f.favorite_team.espn_team_id);
     teams.sort(function (a, b) { return (String(b.espn_team_id) === favId) - (String(a.espn_team_id) === favId); });
@@ -223,6 +234,7 @@
       var teamNews = nextNews(function (it) { return (it.teams || []).some(function (x) { return String(x.id) === String(fav.espn_team_id); }); });
       if (teamNews) col.push(teamNews);
     }
+    if (article && fLeagues[articleLeagueSlug(article.url)]) col.push(articleCard(article));
 
     var rest = relNews.filter(function (it) { return !usedLinks[it.link]; });
     if (rest.length) { col.push(feedSec('Más noticias')); rest.slice(0, 8).forEach(function (it) { col.push(newsCard(it)); }); }
@@ -285,10 +297,10 @@
     var fav = teams[0], primary = fav ? fav.league_slug : (f.competitions || [])[0];
     // Solo el equipo favorito lleva partido/tabla en el feed: se pide únicamente
     // la liga y el equipo que realmente se van a pintar.
-    Promise.all([D.news(), primary ? D.snapshot(primary) : Promise.resolve(null)]).then(function (r) {
+    Promise.all([D.news(), D.articles(), primary ? D.snapshot(primary) : Promise.resolve(null)]).then(function (r) {
       if (my !== token) return;
-      var news = r[0] || [], snaps = {}; if (primary) snaps[primary] = r[1];
-      mount(buildUserHTML(f, {}, snaps, news, {}));
+      var news = r[0] || [], article = r[1], snaps = {}; if (primary) snaps[primary] = r[2];
+      mount(buildUserHTML(f, {}, snaps, news, {}, null, article));
       // Fase 2: partido del favorito (ESPN) + tabla en vivo de su liga.
       Promise.all([
         fav ? D.schedule(fav.league_slug, fav.espn_team_id).then(function (ev) { return D.pickTeamMatch(ev, fav.league_slug); }) : Promise.resolve(null),
@@ -297,13 +309,13 @@
           if (my !== token) return;
           var matches = {}; if (fav && r2[0]) matches[fav.espn_team_id] = r2[0];
           var tables = {}; if (primary && r2[1]) tables[primary] = r2[1];
-          mount(buildUserHTML(f, matches, snaps, news, tables));
+          mount(buildUserHTML(f, matches, snaps, news, tables, null, article));
           // Fase 3: probabilidad 1X2 + colores del partido del favorito (live_tracker).
           var favM = fav && matches[fav.espn_team_id];
           if (favM && favM.id) {
             D.liveMatch(fav.league_slug, favM.id).then(function (lm) {
               if (my !== token || !lm) return;
-              mount(buildUserHTML(f, matches, snaps, news, tables, lm));
+              mount(buildUserHTML(f, matches, snaps, news, tables, lm, article));
             });
           }
         }).catch(fail);

@@ -50,6 +50,13 @@
     });
   }
 
+  // ── broadsheet diario (pointer al último artículo publicado) ──
+  function articles() {
+    return memo('articles', function () {
+      return getJSON('/data/articles/latest.json');
+    });
+  }
+
   function ymd(iso) { var d = new Date(iso); return d.getFullYear() + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2); }
   // ── ESPN: TODOS los partidos de la temporada de una liga (rango del `calendar`
   // del scoreboard) — mismo patrón que assets/fixtures.js. Sirve de fallback cuando
@@ -204,7 +211,7 @@
 
   window.PMData = {
     L: L, codeOf: codeOf,
-    snapshot: snapshot, news: news, schedule: schedule, scoreboard: scoreboard,
+    snapshot: snapshot, news: news, articles: articles, schedule: schedule, scoreboard: scoreboard,
     liveTable: liveTable, liveMatch: liveMatch,
     parseEvent: parseEvent, pickTeamMatch: pickTeamMatch
   };

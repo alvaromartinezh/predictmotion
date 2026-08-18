@@ -32,7 +32,7 @@
   function ymd(d) { return d.getFullYear() + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2); }
   function ymdToInput(y) { return y.slice(0, 4) + '-' + y.slice(4, 6) + '-' + y.slice(6, 8); }   // YYYYMMDD → YYYY-MM-DD (input date)
   function humanDate(y) { try { return new Date(+y.slice(0, 4), +y.slice(4, 6) - 1, +y.slice(6, 8)).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }); } catch (e) { return 'este día'; } }
-  function kick(iso) { try { return new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
+  function kick(iso) { try { var d = new Date(iso); var day = d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' }); var time = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }); return day + ' · ' + time; } catch (e) { return ''; } }
   function lname(s) { return (L[s] || {}).name || s; }
   function llogo(s) { return (L[s] || {}).logo || ''; }
 
