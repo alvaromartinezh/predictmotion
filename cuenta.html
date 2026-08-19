@@ -48,6 +48,9 @@
   .msg { margin-top: var(--sp-4); font-size: var(--fs-13); font-family: var(--font-mono); color: var(--muted); }
   .msg.err { color: #ff7a7a; }
   #g_btn { margin-top: var(--sp-4); }
+  /* En la página de cuenta el propio panel ya muestra el estado de sesión;
+     ocultamos el widget de la topbar para no mostrar dos CTAs de login. */
+  #pm-account { display: none !important; }
   </style>
 </head>
 <body>
@@ -83,7 +86,7 @@
       <div id="g_btn"></div>
     </div>
 
-    <p class="msg" id="msg">Cargando…</p>
+    <p class="msg" id="msg">Comprobando tu sesión…</p>
   </div>
 </main>
 
@@ -159,7 +162,7 @@
   function onCredential(resp) {
     // Login como NAVEGACIÓN top-level (form POST), no fetch: la cookie de sesión
     // del Set-Cookie se commitea de forma fiable en todos los navegadores (móvil
-    // incluido). El backend responde 303 → /cuenta (o ?login=error si falla).
+    // incluido). El backend responde 303 → /siguiendo (o ?login=error si falla).
     say('Verificando…');
     var f = document.createElement('form');
     f.method = 'POST';
@@ -167,7 +170,7 @@
     var c = document.createElement('input');
     c.type = 'hidden'; c.name = 'credential'; c.value = resp.credential;
     var n = document.createElement('input');
-    n.type = 'hidden'; n.name = 'next'; n.value = location.origin + '/cuenta';
+    n.type = 'hidden'; n.name = 'next'; n.value = location.origin + '/siguiendo';
     f.appendChild(c); f.appendChild(n);
     document.body.appendChild(f);
     f.submit();

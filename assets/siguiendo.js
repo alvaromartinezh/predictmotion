@@ -44,8 +44,10 @@
     // shell. Al resolver (pm-account-ready) se re-renderiza con los follows.
     if (s.pending) return '';
     if (!s.on) {
-      col.push('<section class="cta-card"><h3>Sigue a los tuyos</h3><p>' + (s.avail ? 'Inicia sesión para seguir equipos y competiciones y verlos aquí y en tu portada.' : 'Las cuentas no están disponibles ahora mismo.') + '</p>'
-        + (s.avail ? '<div class="btns"><a class="btn btn--primary" href="/cuenta">Entrar</a><a class="btn btn--ghost" href="/buscar">Explorar</a></div>' : '') + '</section>');
+      var err = (new URLSearchParams(location.search)).get('login') === 'error';
+      col.push('<section class="cta-card"><h3>' + (err ? 'No se pudo iniciar sesión' : 'Sigue a los tuyos') + '</h3><p>'
+        + (err ? 'Inténtalo de nuevo o usa el inicio de sesión desde /cuenta.' : (s.avail ? 'Inicia sesión para seguir equipos y competiciones y verlos aquí y en tu portada.' : 'Las cuentas no están disponibles ahora mismo.')) + '</p>'
+        + (s.avail ? '<div class="btns"><a class="btn btn--primary" href="/cuenta">' + (err ? 'Volver a intentar' : 'Entrar') + '</a><a class="btn btn--ghost" href="/buscar">Explorar</a></div>' : '') + '</section>');
       return '<div class="feed"><div class="feed__col">' + col.join('') + '</div><div class="feed__rail"></div></div>';
     }
     var f = s.f, favId = f.favorite_team && String(f.favorite_team.espn_team_id);
