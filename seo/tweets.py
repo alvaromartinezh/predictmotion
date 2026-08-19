@@ -11,8 +11,8 @@ el resto de ligas del sitio está desactivado pero la infraestructura genérica
 reactivarlo en TWEET_LEAGUES):
   - laliga (LaLiga, 1ª): título, Champions, Europa League, Conference League,
     descenso.
-  - hypermotion (Liga Hypermotion, 2ª): ascenso directo, play-off de ascenso,
-    descenso.
+  - hypermotion (Liga Hypermotion, 2ª): ascenso total, ascenso directo,
+    play-off de ascenso, descenso.
 
 Datos: lee el precálculo del cron SEO `data/<slug>/latest.json` (NO simula).
 Estado anti-duplicado (una vez por jornada y liga) en `data/tweets_state.json`.
@@ -70,7 +70,8 @@ TWEET_LEAGUES = ["hypermotion", "laliga"]
 
 # Zonas por tipo de liga (claves de `prob` del snapshot, etiqueta corta del tweet):
 #   top1 (1as europeas) → 5 tuits, igual que LaLiga.
-#   top2/tier2 (2as)    → 3 tuits, igual que Hypermotion.
+#   top2/tier2 (2as)    → 4 tuits (ascenso total + directo + play-off +
+#                         descenso), igual que Hypermotion.
 ZONES_TOP1 = [
     ("first", "Título"),
     ("champions", "Champions"),
@@ -79,6 +80,7 @@ ZONES_TOP1 = [
     ("descenso", "Descenso"),
 ]
 ZONES_TIER2 = [
+    ("ascenso_total", "Ascenso total"),
     ("ascenso", "Ascenso directo"),
     ("playoff", "Play-off de ascenso"),
     ("descenso", "Descenso"),
@@ -220,10 +222,24 @@ def _fmt_pct(p):
     return f"{round(p)}%"
 
 
+def _team_prob(t, zone):
+    """Probabilidad de un equipo para una zona.
+
+    `ascenso_total` no siempre está en el snapshot: Hypermotion lo persiste
+    (ascenso directo + ganar el play-off). Para el resto de 2ªs se aproxima
+    sumando ascenso directo + llegar al play-off."""
+    prob = t.get("prob") or {}
+    if zone == "ascenso_total":
+        if "ascenso_total" in prob:
+            return prob["ascenso_total"]
+        return round(min(100.0, prob.get("ascenso", 0) + prob.get("playoff", 0)), 1)
+    return prob.get(zone)
+
+
 def _top_teams(snap, zone, k=6):
     rows = []
     for t in snap.get("teams", []):
-        p = (t.get("prob") or {}).get(zone)
+        p = _team_prob(t, zone)
         if p is None:
             continue
         rows.append((t["name"], t.get("logo"), p))
