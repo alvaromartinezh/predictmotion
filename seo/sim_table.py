@@ -15,7 +15,10 @@ import math
 
 from .config import (SIM_N_TABLE, STRENGTH_SCALE, STRENGTH_FADE_FRACTION,
                      USE_ABSOLUTE_RATING, STRENGTH_SCALE_ABS, DRAW_SHRINK_KAPPA,
-                     PROJECTION_HORIZON_FADE)
+                     PROJECTION_HORIZON_FADE, SCORE_MODEL,
+                     POISSON_K_ATT, POISSON_K_DEF, POISSON_HFA, POISSON_MAX_GOALS,
+                     POISSON_BASE_FALLBACK)
+from . import poisson
 from .prng import make_rng, standings_seed
 
 
@@ -36,6 +39,30 @@ def _two_legs(rng, p_home, p_draw, home, away):
         g = int(rng() * 2); h += g; a += g
     else:
         a += int(rng() * 2); h += int(rng() * 2) + 1 + int(rng() * 2)
+    if h > a:
+        return home
+    if a > h:
+        return away
+    return home if rng() < 0.5 else away
+
+
+def _two_legs_poisson(rng, adj, base, home, away, k_att=None, k_def=None, hfa=None):
+    """Eliminatoria a doble partido con marcadores Poisson (v3). Plena fuerza
+    (sin desvanecer dentro de la eliminatoria); empate en el agregado → penaltis.
+    k_att/k_def/hfa opcionales para el K por liga (poisson_k_att/k_def); None →
+    parámetros globales."""
+    k_att = k_att or POISSON_K_ATT
+    k_def = k_def or POISSON_K_DEF
+    hfa = POISSON_HFA if hfa is None else hfa
+    h = a = 0
+    lh, la = poisson.match_lambdas(adj, home, away, base, hfa,
+                                   k_att, k_def, 1.0)
+    h += poisson.sample(rng, poisson.cdf(lh, POISSON_MAX_GOALS))
+    a += poisson.sample(rng, poisson.cdf(la, POISSON_MAX_GOALS))
+    la, lh = poisson.match_lambdas(adj, away, home, base, hfa,
+                                   k_att, k_def, 1.0)
+    h += poisson.sample(rng, poisson.cdf(lh, POISSON_MAX_GOALS))
+    a += poisson.sample(rng, poisson.cdf(la, POISSON_MAX_GOALS))
     if h > a:
         return home
     if a > h:
@@ -142,13 +169,82 @@ def _match_ph_pd(sc, h, a, p_draw, w_md):
     return sc["m"] * s, p_draw
 
 
+def _match_poisson(snap, hid, aid, p_draw):
+    """Marginal 1X2 (ph, pd, pa) de la bivariada Poisson con las att/def QUE YA
+    PUBLICÓ el snapshot (desviaciones de la media de la liga). Misma fórmula que
+    corrió la simulación v3. Devuelve None si falta algún dato (→ el llamante no
+    emite; no inventa probabilidades con otra fórmula)."""
+    try:
+        teams = {str(t["id"]): t for t in snap.get("teams", [])}
+        th, ta = teams.get(str(hid)), teams.get(str(aid))
+        if th is None or ta is None or th.get("att") is None or ta.get("att") is None:
+            return None
+        adj = {
+            th["name"]: {"att": float(th["att"]), "def": float(th.get("def") or 0.0)},
+            ta["name"]: {"att": float(ta["att"]), "def": float(ta.get("def") or 0.0)},
+        }
+        base = float(snap.get("poisson_base") or POISSON_BASE_FALLBACK)
+        hfa = float(snap.get("poisson_hfa") or POISSON_HFA)
+        k_att = float(snap.get("poisson_k_att") or POISSON_K_ATT)
+        k_def = float(snap.get("poisson_k_def") or POISSON_K_DEF)
+        max_goals = int(snap.get("poisson_max_goals") or POISSON_MAX_GOALS)
+        total_md = int(snap.get("total_md") or 0)
+        w = fade_weight(int(snap.get("jornada") or 0), total_md) if total_md else 0.0
+        lam_h, lam_a = poisson.match_lambdas(adj, th["name"], ta["name"], base,
+                                             hfa, k_att, k_def, w)
+        ph, pd, pa = poisson.score_probs(lam_h, lam_a, max_goals)
+        return round(ph, 4), round(pd, 4), round(pa, 4)
+    except Exception:
+        return None
+
+
+def match_1x2(snap, hid, aid, p_home, p_draw):
+    """1X2 (ph, pd, pa) para un partido suelto, con el modelo que declara el
+    snapshot. Dispatcher central para predicciones y live_tracker: cualquier
+    consumidor nuevo del 1X2 debe usar ESTE helper, no reimplementar
+    `_match_ph_pd` ni la marginal Poisson.
+
+    - snap sin `strength_model` → uniforme de la liga (p_home, p_draw).
+    - `strength_model == 'v2'` → ruta legacy (snapshot_context + _match_ph_pd).
+    - `strength_model == 'v3'` → marginal de la bivariada Poisson (att/def del
+      snapshot, misma fórmula que corrió la simulación).
+    - modelo desconocido → None (mismo guard que PMEngine.canSimulate: el llamante
+      NO debe inventar probabilidades con otra fórmula).
+    """
+    model = snap.get("strength_model")
+    hid, aid = str(hid), str(aid)
+    if model is None:
+        return p_home, p_draw, round(1.0 - p_home - p_draw, 4)
+    if model == "v3":
+        return _match_poisson(snap, hid, aid, p_draw)
+    if model == "v2":
+        sc = snapshot_context(snap, p_home, p_draw)
+        if sc is None:
+            return None
+        ph, pd = _match_ph_pd(sc, hid, aid, p_draw, sc["w"])
+        return round(ph, 4), round(pd, 4), round(1.0 - ph - pd, 4)
+    return None
+
+
 def simulate(rows, p_home, p_draw, playoff_top=None, sim_n=SIM_N_TABLE, ratings=None,
-             matches_per_team=None):
+             matches_per_team=None, adj=None, base=None, score_model=SCORE_MODEL,
+             k_att=None, k_def=None, hfa=None):
     """Devuelve dict slug->resultados. rows: tabla de fetch_table().
 
-    ratings: {team_id: R} opcional (prior de fuerza de la temporada anterior). Se
-    aplica en pretemporada y se desvanece a media temporada; None/{} o temporada
-    avanzada → modelo uniforme de siempre.
+    ratings: {team_id: R} opcional (prior de fuerza de la temporada anterior, ruta
+    v2/legacy). adj: {name: {"att":…, "def":…}} DESVIACIONES de ataque/defensa ya
+    ajustadas a la media de la liga (poisson.league_adjust) para el modelo v3;
+    None → uniforme (solo base + hfa). base: goles/equipo/partido de la liga
+    (None → media real de los goles de `rows`).
+
+    score_model: 'poisson' (v3, activo por SCORE_MODEL) o 'legacy' (ruta v2
+    intacta, bit-idéntica — mecanismo de rollback).
+
+    k_att/k_def/hfa: parámetros de sensibilidad POR LIGA (v3). None → globales
+    POISSON_K_ATT/K_DEF/HFA. El K por liga está en `LEAGUES` (poisson_k_att/k_def)
+    para ligas cuyo mercado es más competitivo que lo que sugiere el blend (p. ej.
+    esp.2: K=0.15 frente a 0.7 global); se publica en el snapshot y el fallback JS
+    lo lee de ahí (misma fórmula que el cron).
 
     matches_per_team: nº de partidos que juega cada equipo en la temporada. None →
     doble round-robin `2·(n−1)` (ligas regulares). Se pasa explícito para formatos
@@ -187,6 +283,10 @@ def simulate(rows, p_home, p_draw, playoff_top=None, sim_n=SIM_N_TABLE, ratings=
         for idx, t in enumerate(ordered):
             pos_hist[t["name"]][idx] = sim_n
         return _finalize(names, pos_hist, psf, pf, pw, sim_n, finished=True)
+
+    if score_model == "poisson":
+        return _simulate_poisson(rows, playoff_top, sim_n, adj, base, total_md,
+                                 k_att=k_att, k_def=k_def, hfa=hfa)
 
     sc = _strength_context(rows, ratings, p_home, p_draw, total_md)
 
@@ -253,6 +353,106 @@ def simulate(rows, p_home, p_draw, playoff_top=None, sim_n=SIM_N_TABLE, ratings=
             w2 = _two_legs(rng, p_home, p_draw, sf2h, sf2a)
             pf[w1] += 1; pf[w2] += 1
             wf = _two_legs(rng, p_home, p_draw, w1, w2)
+            pw[wf] += 1
+
+    return _finalize(names, pos_hist, psf, pf, pw, sim_n, finished=False)
+
+
+def _simulate_poisson(rows, playoff_top, sim_n, adj, base, total_md,
+                      k_att=None, k_def=None, hfa=None):
+    """Monte Carlo v3: marcadores exactos con dos Poisson independientes.
+
+    `adj`: {name: {"att":…, "def":…}} desviaciones de la media de la liga
+    (poisson.league_adjust); None → uniforme (solo base + hfa). Las λ solo
+    dependen del par y del peso de desvanecimiento de la jornada proyectada, así
+    que los CDF se precomputan UNA vez por (jornada, par) antes del bucle: el
+    muestreo por partido son 2 rng + barrido corto (CPU ≈ la ruta legacy).
+    k_att/k_def/hfa: por-liga (None → globales).
+    """
+    k_att = k_att or POISSON_K_ATT
+    k_def = k_def or POISSON_K_DEF
+    hfa = POISSON_HFA if hfa is None else hfa
+    n = len(rows)
+    names = [r["name"] for r in rows]
+    team_gp = {r["name"]: r["gp"] for r in rows}
+    min_gp = min(r["gp"] for r in rows)
+    idx = {nm: i for i, nm in enumerate(names)}
+
+    pos_hist = {name: [0] * n for name in names}
+    psf = {name: 0 for name in names}
+    pf  = {name: 0 for name in names}
+    pw  = {name: 0 for name in names}
+
+    if base is None:
+        base = poisson.league_base(rows, POISSON_BASE_FALLBACK)
+
+    # Peso del prior: misma fórmula que la ruta legacy (fade + horizonte).
+    w0 = fade_weight(max(r["gp"] for r in rows), total_md)
+    horizon = PROJECTION_HORIZON_FADE if (USE_ABSOLUTE_RATING and PROJECTION_HORIZON_FADE) else 0
+    n_md = total_md - min_gp
+
+    def w_md(mi):
+        if horizon:
+            return w0 * max(0.0, 1.0 - mi / (horizon * total_md))
+        return w0
+
+    # CDF de Poisson por (jornada proyectada, par ordenado) — precomputado.
+    tables = []
+    for mi in range(n_md):
+        w = w_md(mi)
+        tab = []
+        for hi in range(n):
+            row = []
+            hname = names[hi]
+            for ai in range(n):
+                lam_h, lam_a = poisson.match_lambdas(adj, hname, names[ai], base,
+                                                     hfa, k_att, k_def, w)
+                row.append((poisson.cdf(lam_h, POISSON_MAX_GOALS),
+                            poisson.cdf(lam_a, POISSON_MAX_GOALS)))
+            tab.append(row)
+        tables.append(tab)
+
+    rng = make_rng(standings_seed(rows))
+    for _ in range(sim_n):
+        pts = {r["name"]: r["pts"] for r in rows}
+        gd  = {r["name"]: r["gf"] - r["gc"] for r in rows}
+        gf  = {r["name"]: r["gf"] for r in rows}
+
+        md_num = min_gp
+        for mi in range(n_md):
+            md_num += 1
+            tab = tables[mi]
+            order = _shuffle(rng, list(names))
+            for k in range(0, len(order) - 1, 2):
+                h, a = order[k], order[k + 1]
+                if team_gp[h] >= md_num or team_gp[a] >= md_num:
+                    continue
+                cdf_h, cdf_a = tab[idx[h]][idx[a]]
+                hg = poisson.sample(rng, cdf_h)
+                ag = poisson.sample(rng, cdf_a)
+                if hg > ag:
+                    hp, ap = 3, 0
+                elif hg == ag:
+                    hp = ap = 1
+                else:
+                    hp, ap = 0, 3
+                pts[h] += hp; pts[a] += ap
+                gd[h] += hg - ag; gd[a] += ag - hg
+                gf[h] += hg; gf[a] += ag
+
+        ranking = sorted(names, key=lambda nm: (pts[nm], gd[nm], gf[nm]), reverse=True)
+        for pidx, nm in enumerate(ranking):
+            pos_hist[nm][pidx] += 1
+
+        if playoff_top and len(ranking) >= playoff_top:
+            sf1h = ranking[2]; sf1a = ranking[playoff_top - 1]
+            sf2h = ranking[3]; sf2a = ranking[playoff_top - 2]
+            for t in (sf1h, sf1a, sf2h, sf2a):
+                psf[t] += 1
+            w1 = _two_legs_poisson(rng, adj, base, sf1h, sf1a, k_att, k_def, hfa)
+            w2 = _two_legs_poisson(rng, adj, base, sf2h, sf2a, k_att, k_def, hfa)
+            pf[w1] += 1; pf[w2] += 1
+            wf = _two_legs_poisson(rng, adj, base, w1, w2, k_att, k_def, hfa)
             pw[wf] += 1
 
     return _finalize(names, pos_hist, psf, pf, pw, sim_n, finished=False)

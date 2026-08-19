@@ -22,7 +22,8 @@ from pathlib import Path
 
 from . import sim_table
 from .config import (STRENGTH_SCALE, STRENGTH_FADE_FRACTION, USE_ABSOLUTE_RATING,
-                     STRENGTH_SCALE_ABS, DRAW_SHRINK_KAPPA, PROJECTION_HORIZON_FADE)
+                     STRENGTH_SCALE_ABS, DRAW_SHRINK_KAPPA, PROJECTION_HORIZON_FADE,
+                     POISSON_HFA, POISSON_K_ATT, POISSON_K_DEF, POISSON_MAX_GOALS)
 
 ROOT = Path(__file__).resolve().parent.parent
 SIM_N, P_HOME, P_DRAW, TOLERANCIA = 20000, 0.42, 0.27, 2.0   # puntos porcentuales
@@ -33,9 +34,25 @@ ROWS = [{"id": str(100 + i), "name": "Equipo %02d" % i, "rank": i + 1,
          "gp": 1, "pts": (i % 4), "gf": (i % 3), "gc": ((i + 1) % 3)}
         for i in range(22)]
 RATINGS = {r["id"]: -1.9 + 1.75 * (i / 21) for i, r in enumerate(ROWS)}
+# v3: desviaciones att/def (a favor crece, en contra decrece) para el mismo orden.
+ATT_DEF = {r["name"]: {"att": -0.9 + 1.8 * (i / 21), "def": 0.7 - 1.1 * (i / 21)}
+           for i, r in enumerate(ROWS)}
+SNAP_V3 = {
+    "total_md": 2 * (len(ROWS) - 1),
+    "strength_model": "v3",
+    "poisson_base": 1.35,
+    "poisson_hfa": POISSON_HFA,
+    "poisson_k_att": POISSON_K_ATT,
+    "poisson_k_def": POISSON_K_DEF,
+    "poisson_max_goals": POISSON_MAX_GOALS,
+    "strength_fade_fraction": STRENGTH_FADE_FRACTION,
+    "projection_horizon_fade": PROJECTION_HORIZON_FADE,
+    "teams": [{**r, "att": ATT_DEF[r["name"]]["att"], "def": ATT_DEF[r["name"]]["def"]}
+              for r in ROWS],
+}
 
 
-def _js(snapshot, standings):
+def _js(snapshot, standings, sim_n=None):
     """Corre el motor del navegador en node y devuelve {equipo: P(top2) en %}."""
     script = """
       const E = require(process.argv[1]);
@@ -47,7 +64,7 @@ def _js(snapshot, standings):
       console.log(JSON.stringify(out));
     """
     payload = json.dumps({"snapshot": snapshot, "standings": standings,
-                          "simN": SIM_N, "pHome": P_HOME, "pDraw": P_DRAW})
+                          "simN": sim_n or SIM_N, "pHome": P_HOME, "pDraw": P_DRAW})
     p = subprocess.run(["node", "-e", script, "--",
                         str(ROOT / "assets" / "league-engine.js"), payload],
                        capture_output=True, text=True, check=True)
@@ -78,8 +95,9 @@ def _consumidores_del_modelo():
     con ella cuando el cron pasó a v2: su fichero es append-only e inmutable, así
     que cada fila desde el 2026-08-10 mide un modelo que no existe — y su único
     propósito es calibrar el que sí. `live_tracker/strength.py` aplicaba la fórmula
-    compilada a cualquier snapshot sin mirar `strength_model`."""
-    from . import predictions
+    compilada a cualquier snapshot sin mirar `strength_model`. Ambos usan ahora el
+    dispatcher central `sim_table.match_1x2`: aquí se verifica que despacha según
+    `strength_model` y que para v2 devuelve EXACTAMENTE la fórmula de la sim."""
     from .config import league_by_slug
 
     lg = league_by_slug("laliga")
@@ -91,17 +109,37 @@ def _consumidores_del_modelo():
     }
     sc = sim_table.snapshot_context(snapshot, lg["p_home"], lg["p_draw"])
     esperado = sim_table._match_ph_pd(sc, "H", "A", lg["p_draw"], sc["w"])
-    ph, pd, _ = predictions._match_probs(sc, "H", "A", lg["p_home"], lg["p_draw"])
+    ph, pd, pa = sim_table.match_1x2(snapshot, "H", "A", lg["p_home"], lg["p_draw"])
     assert abs(ph - esperado[0]) < 1e-4 and abs(pd - esperado[1]) < 1e-4, (
-        "el registro de predicciones no usa la fórmula de la simulación "
+        "match_1x2 no usa la fórmula de la simulación en v2 "
         "(%.4f/%.4f vs %.4f/%.4f)" % (ph, pd, esperado[0], esperado[1]))
 
     # Modelo desconocido o snapshot de un cron anterior → sin contexto, nadie
     # multiplica ratings de una escala por la constante de otra.
     assert sim_table.snapshot_context(dict(snapshot, strength_model="v9"), .46, .26) is None
+    assert sim_table.match_1x2(dict(snapshot, strength_model="v9"), "H", "A",
+                               lg["p_home"], lg["p_draw"]) is None
     assert sim_table.snapshot_context({k: v for k, v in snapshot.items()
                                        if k != "strength_model"}, .46, .26) is None
-    print("consumidores del modelo: predictions y live_tracker usan _match_ph_pd")
+
+    # v3: la marginal 1X2 sale de la bivariada Poisson con las att/def del
+    # snapshot, NO de una copia de la fórmula v2.
+    snap3 = {
+        "jornada": 0, "total_md": 38, "strength_model": "v3",
+        "poisson_base": 1.35, "poisson_hfa": 0.25, "poisson_k_att": 0.7,
+        "poisson_k_def": 0.7, "poisson_max_goals": 8,
+        "teams": [{"id": "H", "name": "H", "att": 0.8, "def": -0.4},
+                  {"id": "A", "name": "A", "att": -0.5, "def": 0.3}],
+    }
+    m3 = sim_table.match_1x2(snap3, "H", "A", lg["p_home"], lg["p_draw"])
+    assert m3 is not None and all(0 <= x <= 1 for x in m3)
+    # Sin strength_model → uniforme de la liga.
+    mu = sim_table.match_1x2({k: v for k, v in snapshot.items()
+                              if k != "strength_model"}, "H", "A",
+                             lg["p_home"], lg["p_draw"])
+    assert mu == (lg["p_home"], lg["p_draw"],
+                  round(1.0 - lg["p_home"] - lg["p_draw"], 4))
+    print("consumidores del modelo: match_1x2 despacha v3/v2/uniforme/None")
 
 
 def _registros_cliente():
@@ -157,7 +195,8 @@ def main():
     if not shutil.which("node"):
         print("node no está en el PATH — prueba omitida")
         return 0
-    sim = sim_table.simulate(ROWS, P_HOME, P_DRAW, sim_n=SIM_N, ratings=RATINGS)
+    sim = sim_table.simulate(ROWS, P_HOME, P_DRAW, sim_n=SIM_N, ratings=RATINGS,
+                             score_model="legacy")
     py = {r["name"]: 100.0 * sum(sim[r["name"]]["pos_hist"][:2]) / SIM_N for r in ROWS}
 
     # Snapshot como el que publica seo/snapshots.py (parámetros del modelo ACTIVO).
@@ -203,6 +242,27 @@ def main():
     assert actual and sin_snap and not futuro_ok and not viejo_ok, \
         "canSimulate() no discrimina el modelo"
     print("canSimulate: modelo actual sí · desconocido no · snapshot viejo no · sin snapshot sí")
+
+    # v3 (Poisson): mismo test con el modelo de marcadores. Ambos motores
+    # intercalan baraja+muestreo por jornada proyectada, así que van los PRNG
+    # SINCRONIZADOS (diferencia observada ≈ 0,05 pp por redondeo de float). Con
+    # streams idénticos, N más bajo no pierde potencia de detección y la prueba
+    # sigue siendo rápida (la ruta v3 en Python puro cuesta ~7 s por 1000 sims).
+    SIM_N_V3 = 6000
+    sim3 = sim_table.simulate(ROWS, P_HOME, P_DRAW, sim_n=SIM_N_V3, adj=ATT_DEF, base=1.35)
+    py3 = {r["name"]: 100.0 * sum(sim3[r["name"]]["pos_hist"][:2]) / SIM_N_V3 for r in ROWS}
+    js3 = _js(SNAP_V3, ROWS, sim_n=SIM_N_V3)
+    peor, quien = 0.0, None
+    for r in ROWS:
+        d = abs(js3[r["name"]] - py3[r["name"]])
+        if d > peor:
+            peor, quien = d, r["name"]
+        print("  %-12s cron %5.1f%%   JS %5.1f%%" % (r["name"], py3[r["name"]], js3[r["name"]]))
+    print("\nmodelo v3 · mayor diferencia: %.1f puntos (%s)" % (peor, quien))
+    assert peor <= TOLERANCIA, (
+        "el fallback JS no reproduce el precálculo Poisson del cron (%.1f > %.1f "
+        "puntos en %s): ¿cambió seo/poisson.py sin portarlo a league-engine.js?"
+        % (peor, TOLERANCIA, quien))
     print("OK")
     return 0
 

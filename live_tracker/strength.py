@@ -1,12 +1,13 @@
 """Prior de fuerza para /partido — MISMO modelo que las ligas (seo/sim_table).
 
 El backend en vivo NO re-simula ni re-deriva fuerza: lee el MISMO precálculo que
-leen los dashboards (`data/<slug>/latest.json`, que genera el cron SEO) y aplica la
-misma fórmula 1X2 que la simulación por liga (`seo.sim_table._match_ph_pd` — modelo
-v2 ACTIVO: rating absoluto por diferencia de goles/partido + encogido del empate +
-desvanecimiento). Así la probabilidad pre-partido de /partido y las de la liga son
-coherentes entre sí: un favorito (p. ej. Madrid–Osasuna) no sale con la media plana
-de p_home (~47%) sino con su 1X2 de fuerza real.
+leen los dashboards (`data/<slug>/latest.json`, que genera el cron SEO) y aplica el
+mismo 1X2 que la simulación por liga vía `seo.sim_table.match_1x2` — el dispatcher
+central que despacha según `strength_model` del snapshot: v3 (marginal Poisson con
+att/def), v2 (rating absoluto + encogido del empate + desvanecimiento) o uniforme.
+Así la probabilidad pre-partido de /partido y las de la liga son coherentes entre
+sí: un favorito (p. ej. Madrid–Osasuna) no sale con la media plana de p_home (~47%)
+sino con su 1X2 real.
 
 Best-effort (Principio 2): si falta el snapshot, la fuerza, la liga o el import de
 `seo` falla, devuelve None → `InPlayStatsModel` cae a las medias planas de siempre
@@ -72,9 +73,7 @@ def pre_match_probs(league: str, home_id, away_id):
     if lg:
         p_home = float(lg.get("p_home") or p_home)
         p_draw = float(lg.get("p_draw") or p_draw)
-    sc = sim_table.snapshot_context(snap, p_home, p_draw)
-    # `in` sobre el defaultdict no dispara el default: exige fuerza REAL de ambos.
-    if sc is None or hid not in sc["strength"] or aid not in sc["strength"]:
-        return None
-    ph, pd = sim_table._match_ph_pd(sc, hid, aid, p_draw, sc["w"])
-    return (ph, pd, max(0.0, 1.0 - ph - pd))
+    # Dispatcher central del 1X2 (v3/v2/uniforme): misma función que usan la
+    # simulación y el registro de predicciones. None → el snapshot no permite
+    # este partido (modelo desconocido, o v3 sin att/def) → medias planas.
+    return sim_table.match_1x2(snap, hid, aid, p_home, p_draw)

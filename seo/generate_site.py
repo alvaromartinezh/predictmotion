@@ -30,10 +30,11 @@ for _stream in (sys.stdout, sys.stderr):
         pass
 
 from . import espn, render_table, sitemap, predictions, zone_predictions, notify, links
-from .config import LEAGUES, ROOT, SIM_N_TABLE, league_by_slug
+from .config import LEAGUES, ROOT, SIM_N_TABLE, league_by_slug, SCORE_MODEL
 from .snapshots import (build_table_snapshot, save_snapshot, load_all,
                         save_offseason_latest)
 from . import sim_table
+from . import poisson
 
 
 def _football_year(today):
@@ -105,7 +106,7 @@ def _process_offseason(league, meta, today, dry_run):
     return snap
 
 
-def _process_table(league, today, dry_run, ratings=None):
+def _process_table(league, today, dry_run, ratings=None, goal_strengths=None):
     meta = espn.fetch_league_meta(league["espn_code"])
     # Fuera de temporada (Principio 1): si ESPN aún sirve un ciclo ya terminado
     # (UEFA en agosto, antes del sorteo nuevo), NO congelamos la tabla final; se
@@ -133,12 +134,28 @@ def _process_table(league, today, dry_run, ratings=None):
     # para NO heredar un prior parcial e inconsistente (los clubes que además juegan
     # su liga doméstica activa sí estarían en `ratings`). Ver config.py / Fase 4.
     lg_ratings = None if league.get("use_strength") is False else ratings
+    # v3 (Poisson): las desviaciones de ataque/defensa se calculan aquí, en el
+    # worker, a partir de los blends multi-temporada (`goal_strengths`, uno por
+    # proceso). Se restan la media de la liga actual y se usa la base de goles
+    # real; sin `goal_strengths` → adj=None → la sim corre en modo uniforme
+    # (solo base + hfa) y el snapshot NO declara v3.
+    lg_adj = None
+    lg_base = None
+    if SCORE_MODEL == "poisson" and league.get("use_strength") is not False \
+            and goal_strengths:
+        lg_adj = poisson.league_adjust(goal_strengths, rows)
+        lg_base = poisson.league_base(rows)
     sim = sim_table.simulate(rows, league["p_home"], league["p_draw"],
                              playoff_top=league.get("playoff_top"), ratings=lg_ratings,
-                             matches_per_team=league.get("matches_per_team"))
+                             matches_per_team=league.get("matches_per_team"),
+                             adj=lg_adj, base=lg_base,
+                             k_att=league.get("poisson_k_att"),
+                             k_def=league.get("poisson_k_def"))
     snap = build_table_snapshot(league, rows, sim, SIM_N_TABLE, today,
                                 league_logo=meta["logo"], season=meta["season"],
-                                ratings=lg_ratings)
+                                ratings=lg_ratings, adj=lg_adj, base=lg_base,
+                                k_att=league.get("poisson_k_att"),
+                                k_def=league.get("poisson_k_def"))
     if not dry_run:
         save_snapshot(snap)
     # Solo la temporada VIVA (partición por temporada): no mezclar histórico de
@@ -181,11 +198,13 @@ def _process_table(league, today, dry_run, ratings=None):
 # comparte a los hijos vía initializer (no se re-descarga ni se re-pickle por
 # tarea).
 _RATINGS = None
+_GOAL_STRENGTHS = None
 
 
-def _pool_init(ratings):
-    global _RATINGS
+def _pool_init(ratings, goal_strengths=None):
+    global _RATINGS, _GOAL_STRENGTHS
     _RATINGS = ratings
+    _GOAL_STRENGTHS = goal_strengths
 
 
 def _worker(task):
@@ -206,7 +225,8 @@ def _worker(task):
     buf = io.StringIO()
     try:
         with contextlib.redirect_stdout(buf):
-            _snap, urls = _process_table(league, today, dry_run, ratings=_RATINGS)
+            _snap, urls = _process_table(league, today, dry_run, ratings=_RATINGS,
+                                         goal_strengths=_GOAL_STRENGTHS)
         return (slug, urls, None, buf.getvalue())
     except Exception as e:  # noqa: BLE001 — se reporta como fallo de liga
         return (slug, None, str(e), buf.getvalue())
@@ -243,6 +263,15 @@ def _run(args):
     print(f"Prior de fuerza: {len(ratings)} equipos con rating"
           f" (temporada previa {current_year - 1 if current_year else '??'})")
 
+    # v3 (Poisson): ataque/defensa multi-temporada, UNA vez en el padre y
+    # compartido a los workers (mismo patrón que `ratings`). Solo si el modelo
+    # activo es poisson; con SCORE_MODEL='legacy' (rollback) no se descarga nada.
+    goal_strengths = None
+    if SCORE_MODEL == "poisson":
+        goal_strengths = espn.build_attack_defense(current_year, active_codes)
+        print(f"Prior de goles (att/def): {len(goal_strengths)} equipos"
+              f" (v3, temporadas previas {current_year - 1 if current_year else '??'})")
+
     # Sin ratings, las 15 ligas simulan con el modelo UNIFORME (en pretemporada,
     # todos los equipos con el mismo %) y publican un snapshot sin `strength`. Como
     # las ligas sí se generan, `ok` sale 15 y no saltaba ninguna de las dos alertas:
@@ -259,6 +288,21 @@ def _run(args):
             "Revisar /home/ubuntu/seo_generate.log en el servidor.",
             dedup_key="generate_site_no_strength",
         )
+    # v3: sin ataque/defensa → TODAS las ligas que esperan prior simulan en
+    # uniforme (solo base + hfa) y publican snapshot sin `strength_model`; el
+    # modelo cambia en silencio. Mismo patrón de alerta que el de ratings.
+    if SCORE_MODEL == "poisson" and not goal_strengths \
+            and not args.dry_run and not args.league \
+            and any(lg.get("use_strength") is not False for lg in leagues):
+        notify.send_alert(
+            "[PredictMotion] generate_site: sin prior de goles (v3)",
+            "No se pudo construir el blend de ataque/defensa (temporadas previas "
+            "de ESPN), así que las ligas con prior han simulado en modo uniforme "
+            "y publican snapshot SIN strength_model=v3.\n\n"
+            f"Año de temporada detectado: {current_year or 'ninguno'}.\n\n"
+            "Revisar /home/ubuntu/seo_generate.log en el servidor.",
+            dedup_key="generate_site_no_goals",
+        )
 
     jobs = _resolve_jobs(args, len(leagues))
     tasks = [(lg["slug"], today, args.dry_run) for lg in leagues]
@@ -269,13 +313,13 @@ def _run(args):
     # orden porque luego reensamblamos siguiendo el orden de `leagues`.
     results = {}
     if jobs == 1:
-        _pool_init(ratings)
+        _pool_init(ratings, goal_strengths)
         for task in tasks:
             slug, urls, err, log = _worker(task)
             results[slug] = (urls, err, log)
     else:
         with mp.Pool(processes=jobs, initializer=_pool_init,
-                     initargs=(ratings,)) as pool:
+                     initargs=(ratings, goal_strengths)) as pool:
             for slug, urls, err, log in pool.imap_unordered(_worker, tasks):
                 results[slug] = (urls, err, log)
 

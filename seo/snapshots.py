@@ -14,7 +14,8 @@ from urllib.parse import quote
 from . import links as L
 from .config import (DATA_DIR, SITE, STRENGTH_SCALE, STRENGTH_FADE_FRACTION,
                      USE_ABSOLUTE_RATING, STRENGTH_SCALE_ABS, DRAW_SHRINK_KAPPA,
-                     PROJECTION_HORIZON_FADE)
+                     PROJECTION_HORIZON_FADE, POISSON_HFA, POISSON_K_ATT,
+                     POISSON_K_DEF, POISSON_MAX_GOALS, POISSON_BASE_FALLBACK)
 from .sim_table import zone_prob, resolve_strengths
 from .textutil import pct, slugify
 
@@ -61,7 +62,8 @@ def derive_bands_from_notes(bands, rows):
 
 
 def build_table_snapshot(league, rows, sim, sim_n, today, league_logo=None,
-                         season=None, ratings=None):
+                         season=None, ratings=None, adj=None, base=None,
+                         k_att=None, k_def=None, hfa=None):
     n = len(rows)
     bands = league["bands"](n)
     if league.get("bands_from_notes"):
@@ -110,6 +112,11 @@ def build_table_snapshot(league, rows, sim, sim_n, today, league_logo=None,
         }
         if strengths is not None:
             team["strength"] = round(strengths[r["id"]], 4)
+        # v3: desviaciones de ataque/defensa (media de la liga ya restada por
+        # poisson.league_adjust) — las mismas que usó la simulación.
+        if adj is not None and r["name"] in adj:
+            team["att"] = round(adj[r["name"]]["att"], 4)
+            team["def"] = round(adj[r["name"]]["def"], 4)
         teams.append(team)
 
     snap = {
@@ -143,6 +150,18 @@ def build_table_snapshot(league, rows, sim, sim_n, today, league_logo=None,
             snap["strength_scale_abs"] = STRENGTH_SCALE_ABS
             snap["draw_shrink_kappa"] = DRAW_SHRINK_KAPPA
             snap["projection_horizon_fade"] = PROJECTION_HORIZON_FADE
+    # v3 (Poisson): el snapshot publica las desviaciones att/def + los parámetros
+    # con los que se calculó, y declara `strength_model = "v3"`. Si el motor JS
+    # (o predictions/live_tracker) no conoce v3, NO re-simula ni inventa 1X2.
+    if adj is not None:
+        snap["strength_model"] = "v3"
+        snap["poisson_base"] = round(base or POISSON_BASE_FALLBACK, 4)
+        snap["poisson_hfa"] = POISSON_HFA if hfa is None else hfa
+        snap["poisson_k_att"] = k_att or POISSON_K_ATT
+        snap["poisson_k_def"] = k_def or POISSON_K_DEF
+        snap["poisson_max_goals"] = POISSON_MAX_GOALS
+        snap["strength_fade_fraction"] = STRENGTH_FADE_FRACTION
+        snap["projection_horizon_fade"] = PROJECTION_HORIZON_FADE
     # Filas de tabla servidas sin JS (Caddy inyecta rows.html en el tbody).
     snap["rows_html"] = render_rows_html(league, snap)
     # <head> dinámico (título/descripción/OG/JSON-LD) servido por el mismo

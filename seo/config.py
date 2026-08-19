@@ -97,7 +97,12 @@ USE_ABSOLUTE_RATING     = True    # master flag del modelo v2 (ACTIVO desde 2026
 STRENGTH_SCALE_ABS      = 1.5     # escala sobre la dif. de goles/partido (v2)
 STRENGTH_LEVEL_GAP_ABS  = 1.5     # offset de nivel entre divisiones, en goles/partido
 DRAW_SHRINK_KAPPA       = 0.15    # encoge el empate: p_draw·exp(-kappa·|Δlogit|)
-PROJECTION_HORIZON_FADE = 1.0     # el prior decae a 0 en N·temporada proyectada (None=frozen)
+PROJECTION_HORIZON_FADE = None    # (None=frozen) prior CONSTANTE durante la proyección, como v2.
+                                  # El fade de horizonte a 0 diluía a los dominantes (Barça 76.5% de
+                                  # Champions frente a ~98% real) porque a final de temporada el modelo
+                                  # simulaba a ciegas. El prior ya se desvanece con la jornada real
+                                  # (STRENGTH_FADE_FRACTION); el resto de la proyección lo sostienen los
+                                  # resultados simulados, que ya llevan la señal de fuerza.
 
 # ── Prior MULTI-TEMPORADA (H1) — validado 2026-08-10 (seo/backtest.py --multi) ──
 # El prior de UNA sola temporada previa es de alta varianza: un dominante perenne
@@ -115,6 +120,33 @@ PROJECTION_HORIZON_FADE = 1.0     # el prior decae a 0 en N·temporada proyectad
 # (el peso cae <10% pasada la 5ª temporada; el barrido ya satura en 3-4).
 PRIOR_SEASONS           = 3       # nº de temporadas previas a mezclar (1 = comportamiento antiguo)
 PRIOR_DECAY             = 0.6     # peso geométrico de cada temporada más antigua (decay**k)
+
+
+# ── Modelo de marcadores Poisson (v3) — núcleo del Monte Carlo ───────────────
+# El Monte Carlo deja de sortear W/D/L estático + goles 0/1/2 y simula marcadores
+# EXACTOS con dos Poisson independientes (λ_local/λ_visitante) desde fuerzas de
+# ATAQUE y DEFENSA por equipo (goles a favor/en contra por partido, blend
+# multi-temporada con el mismo PRIOR_DECAY y offset de nivel por división) + base
+# de goles de la liga + ventaja de campo. El marcador define los puntos y el
+# desempate pts→DG→GF; las marginales 1X2 emergen de la bivariada (agregación
+# cerrada, sin RNG) — ver seo/poisson.py.
+#
+# SCORE_MODEL es el mecanismo de ROLLBACK: 'poisson' (v3, activo) o 'legacy'
+# (ruta v2 intacta, bit-idéntica). Si v3 sale mal, una línea + push revierte y el
+# guard strength_model hace el resto (los snapshots v3 dejan de simularse en el
+# fallback JS, que no los conoce, hasta que el cron vuelve a emitir v2).
+SCORE_MODEL = "poisson"
+
+# Parámetros HEURÍSTICOS, PENDIENTES DE CALIBRAR. Anclas de mercado 2026-08-19:
+# Girona ~25% ascenso, Oviedo ~20%, Mallorca ~16,7%, Almería ~12,5% (esp.2);
+# Madrid/Barça/Atleti ≥ ~98% Champions (laliga); PSG ~88,9% título (ligue1).
+POISSON_K_ATT         = 0.70   # sensibilidad del ataque (dev. de gf/gp)
+POISSON_K_DEF         = 0.70   # sensibilidad de la defensa (dev. de gc/gp)
+POISSON_HFA           = 0.25   # ventaja de campo, en goles esperados
+POISSON_MAX_GOALS     = 8      # truncación de la cola de Poisson (como winprob)
+POISSON_LEVEL_GAP_ATT = 0.75   # reparto del gap de nivel en gf/gp (0.75+0.75=1.5)
+POISSON_LEVEL_GAP_DEF = 0.75   # idem en gc/gp
+POISSON_BASE_FALLBACK = 1.35   # base de goles/equipo/partido si la liga no tiene partidos
 
 
 def _table_bands(slots):
@@ -206,6 +238,17 @@ LEAGUES = [
         "p_home": 0.42,
         "p_draw": 0.27,
         "playoff_top": 6,
+        # K por liga (v3, Poisson): sensibilidad de las desviaciones att/def.
+        # Por defecto (None) se usa el global POISSON_K_ATT/K_DEF=0.70. Segunda
+        # es más competitiva que lo que sugiere el blend de goles (los recién
+        # descendidos de LaLiga salen 4σ sobre el campo), así que K=0.1 comprime
+        # hacia el mercado (favorito ~22% ascenso total frente a 25% de las
+        # casas; MAE ~7pp, los residuos son orden por plantilla, no del modelo).
+        # Las 1as divisiones llevan K=1.0 (laliga/ligue1 calibradas contra el
+        # mercado; premier/seriea/bundesliga/primeira/eredivisie heredan 0.70).
+        # Ver CLAUDE.md → v3.
+        "poisson_k_att": 0.1,
+        "poisson_k_def": 0.1,
         "bands": _table_bands([
             ("ascenso",  "Ascenso directo",     "green", lambda n: 1,     lambda n: 2),
             ("playoff",  "Play-off de ascenso", "blue",  lambda n: 3,     lambda n: 6),
@@ -227,6 +270,13 @@ LEAGUES = [
         "p_home": 0.46,
         "p_draw": 0.26,
         "playoff_top": None,
+        # K=1.0 (v3): prior constante (ver PROJECTION_HORIZON_FADE) + blend de
+        # goles a plena sensibilidad. Calibrado contra el mercado: Barça 99.7 /
+        # Madrid 98.8 / Atleti 84.4 (CL, casas ~98 los tres). Atleti queda corto
+        # por su perfil de pocos goles (grinda 1-0); el Poisson lo infravalora
+        # frente al mercado, mismo techo que v2 (64.6).
+        "poisson_k_att": 1.0,
+        "poisson_k_def": 1.0,
         # Cortes europeos derivados EN VIVO de las notas de ESPN (España tiene 5
         # plazas de Champions desde 2024-25; nada hardcodeado). Los lo/hi de abajo
         # son solo fallback si ESPN no trae notas (inicio de temporada). Ver
@@ -278,6 +328,10 @@ LEAGUES = [
         "dashboard_template": "top1", "subtitle": "Francia",
         "about": "La Ligue 1, máxima categoría del fútbol francés, reúne a 18 clubes que pelean por el título, las plazas de Champions League, Europa League y Conference League, y la permanencia. Los equipos que terminan en las últimas posiciones descienden a la Ligue 2. En PredictMotion se simula el resto de la temporada para estimar la probabilidad de cada equipo de clasificarse para Europa o descender.",
         "p_home": 0.45, "p_draw": 0.27, "playoff_top": None,
+        # K=1.0 (v3): calibrado contra el mercado (PSG 86.8% título frente a
+        # 88.9% de las casas; ligue1 no tiene un retador real en el blend).
+        "poisson_k_att": 1.0,
+        "poisson_k_def": 1.0,
         "bands_from_notes": True, "bands": euro_top1_bands(),
     },
     {

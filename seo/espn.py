@@ -281,6 +281,52 @@ def build_strength_ratings(current_year, active_codes=None):
     return ratings
 
 
+def build_attack_defense(current_year, active_codes=None):
+    """Fuerza de ataque/defensa por equipo (v3, Poisson).
+
+    {team_id: {"att": gf/partido, "def": gc/partido}} — blend multi-temporada real
+    con el MISMO bucle ladders/season que build_strength_ratings: por división,
+    offset de nivel (POISSON_LEVEL_GAP_ATT/DEF) para que un ascendido entre débil
+    en 1ª y un descendido fuerte en 2ª. `att`/`def` NO están centrados aquí: la
+    media de la liga actual se resta en poisson.league_adjust (los ratings son
+    absolutos, comparables solo tras el ajuste). PRIOR_SEASONS/PRIOR_DECAY igual
+    que v2.
+
+    Best-effort: una temporada/división que falle se salta; el resto sigue.
+    """
+    from .config import (STRENGTH_LADDERS, POISSON_LEVEL_GAP_ATT,
+                         POISSON_LEVEL_GAP_DEF, PRIOR_SEASONS, PRIOR_DECAY)
+
+    if not current_year:
+        return {}
+    prev = current_year - 1
+    att = {}
+    wsum = {}
+    for ladder in STRENGTH_LADDERS:
+        if active_codes is not None and not any(c in active_codes for c in ladder):
+            continue  # ninguna liga activa usa esta escalera → sin peticiones
+        for level, code in enumerate(ladder):
+            off_att = -level * POISSON_LEVEL_GAP_ATT
+            off_def = +level * POISSON_LEVEL_GAP_DEF
+            for k in range(PRIOR_SEASONS):
+                w = PRIOR_DECAY ** k
+                try:
+                    rows = fetch_table(code, season=prev - k)
+                except Exception:
+                    continue  # una temporada/división falla → se salta; el resto sigue
+                if len(rows) < 2:
+                    continue
+                for r in rows:
+                    gp = max(r["gp"], 1)
+                    a = r["gf"] / gp + off_att
+                    d = r["gc"] / gp + off_def
+                    wsum[r["id"]] = wsum.get(r["id"], 0.0) + w
+                    cur = att.get(r["id"])
+                    att[r["id"]] = (cur[0] + w * a, cur[1] + w * d) if cur else (w * a, w * d)
+    return {tid: {"att": att[tid][0] / wsum[tid], "def": att[tid][1] / wsum[tid]}
+            for tid in att}
+
+
 def fetch_remaining_schedule(espn_code, team_id):
     """Próximos partidos de un equipo (estado 'pre').
 

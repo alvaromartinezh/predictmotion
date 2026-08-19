@@ -55,19 +55,16 @@ def _append(path, obj):
         f.write(json.dumps(obj, ensure_ascii=False) + "\n")
 
 
-def _match_probs(sc, hid, aid, p_home, p_draw):
-    """1X2 del modelo para un partido. Delega en sim_table para que la fila
-    registrada mida EXACTAMENTE el modelo que corrió la simulación: tener aquí una
-    copia de la fórmula hizo que, desde el 2026-08-10, el cron simulara con v2
-    (rating absoluto) mientras este registro escribía v1 — y las filas son
-    inmutables, así que la calibración se estaba haciendo contra un modelo que no
-    existe. `sc` None → sin prior aplicable, modelo uniforme de la liga."""
-    if sc is None:
-        ph, pd = p_home, p_draw
-    else:
-        ph, pd = sim_table._match_ph_pd(sc, hid, aid, p_draw, sc["w"])
-    ph, pd = round(ph, 4), round(pd, 4)
-    return ph, pd, round(1.0 - ph - pd, 4)
+def _net_strengths(snap):
+    """{team_id: att − def} para las filas v3 (el campo `strength` del registro es
+    un único número por equipo; en v3 la fuerza es bidimensional, así que se guarda
+    la desviación neta como proxy informativo — lo que calibra el Brier son las
+    p_home/p_draw/p_away, no este campo)."""
+    out = {}
+    for t in snap.get("teams", []):
+        if t.get("att") is not None:
+            out[str(t["id"])] = float(t["att"]) - float(t.get("def") or 0.0)
+    return out
 
 
 def record_matchday(league, snap):
@@ -81,15 +78,18 @@ def record_matchday(league, snap):
 
     # Fuerza por equipo desde el snapshot (misma que usó la sim); default fondo.
     sc = sim_table.snapshot_context(snap, league["p_home"], league["p_draw"])
+    model = snap.get("strength_model")
     # El snapshot trae fuerza pero declara un modelo que este código no tiene
     # compilado → no se EMITEN predicciones nuevas. Las filas son INMUTABLES: mejor
     # ninguna que congelar para siempre probabilidades de una fórmula distinta de la
     # que simuló. Los resultados (paso 2) no dependen del modelo y sí se rellenan.
-    skip_emit = sc is None and bool(snap.get("strength_model"))
+    skip_emit = model not in (None, "v2", "v3")
     if skip_emit:
         print(f"[predictions] {slug}: strength_model="
-              f"{snap.get('strength_model')} desconocido, no se emiten predicciones")
-    w = sc["w"] if sc else 0.0
+              f"{model} desconocido, no se emiten predicciones")
+    total_md = int(snap.get("total_md") or 0)
+    w = sim_table.fade_weight(int(snap.get("jornada") or 0), total_md) if total_md else 0.0
+    net = _net_strengths(snap)
 
     today = datetime.now(timezone.utc).date()
     issued = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -104,9 +104,15 @@ def record_matchday(league, snap):
         if ev["state"] != "pre" or ev["event_id"] in logged:
             continue
         hid, aid = str(ev["home"]["id"]), str(ev["away"]["id"])
-        sh = sc["strength"][hid] if sc else 0.0
-        sa = sc["strength"][aid] if sc else 0.0
-        ph, pd, pa = _match_probs(sc, hid, aid, league["p_home"], league["p_draw"])
+        # Dispatcher central del 1X2 (v3/v2/uniforme). None → el snapshot no
+        # permite este partido (p. ej. un equipo sin att/def en v3): se salta el
+        # partido, no la emisión entera.
+        m1x2 = sim_table.match_1x2(snap, hid, aid, league["p_home"], league["p_draw"])
+        if m1x2 is None:
+            continue
+        ph, pd, pa = m1x2
+        sh = sc["strength"][hid] if sc else net.get(hid, 0.0)
+        sa = sc["strength"][aid] if sc else net.get(aid, 0.0)
         _append(pred_path, {
             "event_id": ev["event_id"], "issued_at": issued, "season": season,
             "league": slug, "kickoff": ev["date"],
@@ -117,7 +123,7 @@ def record_matchday(league, snap):
             # válida de una escrita con la fórmula equivocada exige arqueología de
             # fechas contra el git log (las del 2026-08-11 al 08-15 dicen v1 con el
             # cron ya en v2). La fila es inmutable: que se explique sola.
-            "model": snap.get("strength_model") or "uniform",
+            "model": model or "uniform",
         })
         logged.add(ev["event_id"])
         n_new += 1
