@@ -127,9 +127,21 @@ _STAT_CHASERS_INSTR = (
 
 def _compose_stat_head(payload):
     p = payload["protagonista"]
+    if payload.get("shape") == "partido":
+        title = f'{p["nombre"]}: el partido de la jornada en {payload["liga"]} | PredictMotion'
+        desc = (f'El modelo de PredictMotion señala el {p["nombre"]} como el partido de mayor '
+                f'nivel de la próxima jornada en {payload["liga"]} (jornada {payload["jornada"]}), '
+                f'con su 1X2 estimado: {pct(p["p_local"])} local, {pct(p["p_empate"])} empate, '
+                f'{pct(p["p_visita"])} visitante.')
+        return title, desc
     title = f'{p["nombre"]}, el favorito a {payload["dato_verbo"]} en {payload["liga"]} | PredictMotion'
-    desc = (f'El modelo de PredictMotion da al {p["nombre"]} un {pct(p["valor"])} de probabilidad de '
-            f'{payload["dato_verbo"]} en {payload["liga"]} tras la jornada {payload["jornada"]}.')
+    if STAT_KINDS[payload["kind"]].get("fmt") == "goles":
+        desc = (f'El modelo de PredictMotion sitúa al {p["nombre"]} como el más propenso a '
+                f'{payload["dato_verbo"]} en {payload["liga"]} (jornada {payload["jornada"]}): '
+                f'{grounding.format_val(payload["kind"], p["valor"])}.')
+    else:
+        desc = (f'El modelo de PredictMotion da al {p["nombre"]} un {pct(p["valor"])} de probabilidad de '
+                f'{payload["dato_verbo"]} en {payload["liga"]} tras la jornada {payload["jornada"]}.')
     return title, desc
 
 
@@ -257,8 +269,48 @@ _STAT_HEADLINE_INSTR = (
     "qué ciudad o afición corresponde, lo más probable es que te equivoques."
 )
 
+
+_STAT_HEADLINE_INSTR_EQUIPO = (
+    "Escribe un titular llamativo para un artículo sobre el dato curioso del día: el equipo "
+    "con más probabilidad de {verb}, según el modelo (el objeto DATOS.protagonista). Sin dos "
+    "puntos, sin comillas. El TITULAR (la primera línea) es lo que se manda tal cual a "
+    "Telegram como titular del tuit, así que DEBE incluir al menos un porcentaje real de "
+    "DATOS.protagonista.prob_zona (la probabilidad de zona del equipo, con el símbolo %) y el "
+    "nombre del equipo tal cual aparece en DATOS.protagonista.nombre. OJO: el valor principal "
+    "del protagonista (DATOS.protagonista.valor) NO es un porcentaje — es una diferencia de "
+    "goles por partido —, no lo pongas con '%'. Y, en la línea siguiente, una entradilla corta "
+    "y también llamativa (1 frase) que enganche a seguir leyendo.\n\n"
+    "FORMATO OBLIGATORIO: EXACTAMENTE 2 líneas — primero el titular (CON el porcentaje y el "
+    "nombre del equipo), luego la entradilla — sin etiquetas ('Titular:'/'Entradilla:'), sin "
+    "numerarlas, sin nada más de texto. Usa siempre el nombre del equipo tal cual aparece en "
+    "DATOS.protagonista.nombre — NUNCA un gentilicio, apodo o ciudad: si no estás seguro de a "
+    "qué ciudad o afición corresponde, lo más probable es que te equivoques."
+)
+
+
+_STAT_HEADLINE_INSTR_MATCH = (
+    "Escribe un titular llamativo para un artículo sobre el dato curioso del día: el partido "
+    "de la próxima jornada que destaca según el modelo — {verb} (el objeto DATOS.protagonista, "
+    "un partido 'Local vs Visitante'). Sin dos puntos, sin comillas. El TITULAR (la primera "
+    "línea) es lo que se manda tal cual a Telegram como titular del tuit, así que DEBE incluir "
+    "al menos un porcentaje real del partido — DATOS.protagonista.p_local, "
+    "DATOS.protagonista.p_empate o DATOS.protagonista.p_visita, la probabilidad 1X2 que da el "
+    "modelo, con el símbolo % — y el nombre del partido tal cual aparece en "
+    "DATOS.protagonista.nombre (los dos equipos con ' vs '). Y, en la línea siguiente, una "
+    "entradilla corta y también llamativa (1 frase) que enganche a seguir leyendo.\n\n"
+    "FORMATO OBLIGATORIO: EXACTAMENTE 2 líneas — primero el titular (CON el porcentaje y el "
+    "nombre del partido), luego la entradilla — sin etiquetas ('Titular:'/'Entradilla:'), sin "
+    "numerarlas, sin nada más de texto. Usa siempre el nombre de cada equipo tal cual aparece "
+    "en DATOS.protagonista.local.nombre / DATOS.protagonista.visitante.nombre — NUNCA un "
+    "gentilicio, apodo o ciudad: si no estás seguro de a qué ciudad o afición corresponde, lo "
+    "más probable es que te equivoques."
+)
+
 _STAT_HEADLINE_INSTR_BY_KIND = {
-    k: _STAT_HEADLINE_INSTR.format(verb=v["verbo_largo"]) for k, v in STAT_KINDS.items()
+    k: (_STAT_HEADLINE_INSTR_MATCH if v.get("shape") == "partido"
+        else _STAT_HEADLINE_INSTR_EQUIPO if v.get("fmt") == "goles"
+        else _STAT_HEADLINE_INSTR).format(verb=v["verbo_largo"])
+    for k, v in STAT_KINDS.items()
 }
 
 

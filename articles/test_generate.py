@@ -189,9 +189,13 @@ def demo():
                   {"key": "descenso", "label": "Descenso", "zone": "relega"}]
     assert grounding._effective_bands({"total_md": 42, "jornada": 2}, bands_top1) == bands_top1
 
-    # ── grounding.pick_stat_kind: alterna por franja horaria, determinista ──
-    assert grounding.pick_stat_kind(10) != grounding.pick_stat_kind(12)
-    assert grounding.pick_stat_kind(10) == grounding.pick_stat_kind(14)  # misma paridad de franja
+    # ── grounding.pick_stat_kind: alterna por franja horaria + día, determinista ──
+    assert grounding.pick_stat_kind(10, day=100) == grounding.pick_stat_kind(10, day=100)  # mismo día+hora -> mismo kind
+    assert grounding.pick_stat_kind(10, day=100) != grounding.pick_stat_kind(12, day=100)  # franjas seguidas no repiten
+    assert grounding.pick_stat_kind(10, day=100) != grounding.pick_stat_kind(10, day=101)  # mismo hora, día siguiente -> rota
+    # el offset del día es lo que evita que el ciclo de 6 franjas deje un kind fuera:
+    # a lo largo de los 7 días de la semana a una hora fija se recorren TODOS los kinds
+    assert {grounding.pick_stat_kind(10, day=100 + d) for d in range(7)} == set(grounding.STAT_KINDS)
 
     # ── grounding.ground_stat: protagonista = mayor prob["last"]/["first"] ──
     bands_top1 = [{"key": "champions", "label": "Champions", "zone": "promo", "lo": 1, "hi": 4},
@@ -216,6 +220,93 @@ def demo():
     assert len(payload_stat["perseguidores"]) == 3
     assert payload_stat["dato_verbo"] == "acabar colista"
 
+    # ── grounding.format_val: % por defecto, goles/partido con signo (fmt "goles") ──
+    assert grounding.format_val("colista", 15.2) == "15,2%"
+    assert grounding.format_val("muro", -0.5) == "-0,50 goles/partido"
+
+    # ── grounding._ground_equipo (kind "muro"): protagonista = menor def (blend) ──
+    snap_equipo = dict(snap_stat)
+    snap_equipo["teams"] = [
+        {"id": "1", "name": "Tenerife", "logo": None, "rank": 2, "pts": 3, "gp": 1, "strength": -1.74, "att": 0.3, "def": -0.5,
+         "prob": {"champions": 4.0, "descenso": 27.8, "first": 1.0, "last": 15.2}},
+        {"id": "2", "name": "Córdoba", "logo": None, "rank": 5, "pts": 1, "gp": 1, "strength": -0.9, "att": -0.2, "def": -0.1,
+         "prob": {"champions": 2.0, "descenso": 25.5, "first": 0.5, "last": 10.1}},
+        {"id": "3", "name": "Albacete", "logo": None, "rank": 3, "pts": 3, "gp": 1, "strength": 0.2, "att": 0.5, "def": 0.2,
+         "prob": {"champions": 10.0, "descenso": 20.6, "first": 3.0, "last": 8.4}},
+        {"id": "4", "name": "Eibar", "logo": None, "rank": 1, "pts": 4, "gp": 1, "strength": 0.6, "att": 0.8, "def": 0.4,
+         "prob": {"champions": 30.0, "descenso": 5.0, "first": 12.0, "last": 6.9}},
+    ]
+    payload_muro = grounding.ground_stat(league_stat, snap_equipo, "muro", "2026-08-19", 12)
+    assert payload_muro["protagonista"]["nombre"] == "Tenerife"  # def -0,5 = la más baja = muro
+    assert payload_muro["protagonista"]["valor"] == -0.5
+    assert len(payload_muro["ranking"]) == 4
+
+    # ── grounding._ground_jornada (kinds de la próxima jornada, modelo v3): la
+    # próxima jornada se resuelve con el MISMO modelo del snapshot. Sin fixtures
+    # (scoreboard vacío) no se publica (grounding, no inventar). ──
+    snap_v3 = dict(snap_stat)
+    snap_v3["strength_model"] = "v3"
+    snap_v3["poisson_base"] = 1.3
+    snap_v3["poisson_hfa"] = 0.25
+    snap_v3["poisson_k_att"] = 0.7
+    snap_v3["poisson_k_def"] = 0.7
+    snap_v3["poisson_max_goals"] = 6
+    snap_v3["teams"] = [
+        {"id": "1", "name": "Tenerife", "logo": None, "rank": 2, "pts": 3, "gp": 1, "strength": -1.74, "att": 0.4, "def": -0.3,
+         "prob": {"champions": 4.0, "descenso": 27.8, "first": 1.0, "last": 15.2}},
+        {"id": "2", "name": "Córdoba", "logo": None, "rank": 5, "pts": 1, "gp": 1, "strength": -0.9, "att": -0.2, "def": -0.1,
+         "prob": {"champions": 2.0, "descenso": 25.5, "first": 0.5, "last": 10.1}},
+        {"id": "3", "name": "Albacete", "logo": None, "rank": 3, "pts": 3, "gp": 1, "strength": 0.2, "att": 0.5, "def": 0.2,
+         "prob": {"champions": 10.0, "descenso": 20.6, "first": 3.0, "last": 8.4}},
+        {"id": "4", "name": "Eibar", "logo": None, "rank": 1, "pts": 4, "gp": 1, "strength": 0.6, "att": 0.8, "def": 0.4,
+         "prob": {"champions": 30.0, "descenso": 5.0, "first": 12.0, "last": 6.9}},
+    ]
+    league_jornada = {"slug": "hypermotion-test", "name": "Liga de prueba", "espn_code": "esp.2",
+                      "p_home": 0.45, "p_draw": 0.26}
+    real_fetch = grounding.espn.fetch_scoreboard_range
+
+    def fake_scoreboard(code, start, end):
+        assert code == "esp.2"
+        return [
+            {"event_id": "101", "date": "2026-08-25", "kickoff": "2026-08-25T19:00:00Z", "state": "pre",
+             "home": {"id": 1, "name": "Tenerife"}, "away": {"id": 3, "name": "Albacete"},
+             "home_score": None, "away_score": None, "venue": "Estadio"},
+            {"event_id": "102", "date": "2026-08-26", "kickoff": "2026-08-26T19:00:00Z", "state": "pre",
+             "home": {"id": 4, "name": "Eibar"}, "away": {"id": 2, "name": "Córdoba"},
+             "home_score": None, "away_score": None, "venue": "Estadio"},
+            {"event_id": "999", "date": "2026-08-24", "kickoff": "2026-08-24T17:00:00Z", "state": "post",
+             "home": {"id": 1, "name": "Tenerife"}, "away": {"id": 2, "name": "Córdoba"},
+             "home_score": 1, "away_score": 1, "venue": "Estadio"},
+        ]
+
+    try:
+        grounding.espn.fetch_scoreboard_range = fake_scoreboard
+
+        # sin fixtures: la próxima jornada no existe -> no se publica (None)
+        grounding.espn.fetch_scoreboard_range = lambda code, a, b: []
+        assert grounding.ground_stat(league_jornada, snap_v3, "goleado", "2026-08-19", 12) is None
+
+        grounding.espn.fetch_scoreboard_range = fake_scoreboard
+
+        payload_gol = grounding.ground_stat(league_jornada, snap_v3, "goleado", "2026-08-19", 12)
+        assert payload_gol is not None and payload_gol["shape"] == "team"
+        assert len(payload_gol["ranking"]) == 4
+        assert all(0 <= r["valor"] <= 100 for r in payload_gol["ranking"])
+
+        payload_fav = grounding.ground_stat(league_jornada, snap_v3, "favorito_jornada", "2026-08-19", 12)
+        assert payload_fav is not None
+        assert payload_fav["protagonista"]["nombre"] in {"Tenerife", "Córdoba", "Albacete", "Eibar"}
+
+        payload_nivel = grounding.ground_stat(league_jornada, snap_v3, "nivel_jornada", "2026-08-19", 12)
+        assert payload_nivel is not None and payload_nivel["shape"] == "partido"
+        prot = payload_nivel["protagonista"]
+        assert prot["tipo"] == "partido" and " vs " in prot["nombre"]
+        assert 0 <= prot["p_local"] <= 100 and 0 <= prot["p_visita"] <= 100
+        assert abs((prot["p_local"] + prot["p_empate"] + prot["p_visita"]) - 100) < 1
+        assert all(it["tipo"] == "partido" for it in payload_nivel["ranking"])
+    finally:
+        grounding.espn.fetch_scoreboard_range = real_fetch
+
     # ── render_stat_broadsheet: smoke-test end-to-end sobre datos sintéticos ──
     stat_body_4p = "Uno.\n\nDos.\n\nTres.\n\nCuatro."
     stat_chasers_3p = "Uno.\n\nDos.\n\nTres."
@@ -229,6 +320,15 @@ def demo():
     assert "Tenerife roza el 15%" in html_stat and "Entradilla del dato" in html_stat
     assert "Ficha del dato" in html_stat and "Cómo se calcula" in html_stat
     assert html_stat.count("bs-chaser__row") == 3
+
+    # render de un kind shape="partido": cabecera con los dos equipos + 1X2
+    html_match_stat = render.render_stat_broadsheet(
+        payload_nivel, stat_body_4p, stat_chasers_3p,
+        league_slug="hypermotion", headline="El partido de la jornada", teaser="Entradilla del dato",
+        league_logo=None,
+    )
+    assert " vs " in html_match_stat and "Ficha del dato" in html_match_stat
+    assert "1X2" in html_match_stat and "bs-rankbox" in html_match_stat
 
     # ── slug_for_stat: determinista, namespaced por liga+kind+fecha+hora ──
     assert render.slug_for_stat("hypermotion", "2026-08-19", 12, "colista") == "hypermotion-dato-colista-2026-08-19-12"

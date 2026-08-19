@@ -212,6 +212,12 @@ a.bs-brief__head:hover::after { color: #f0a92a; transform: translateX(2px); }
 .bs-match-team { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid #14203a; }
 .bs-match-team__name { font-family: 'Saira Condensed', sans-serif; font-weight: 700; text-transform: uppercase; font-size: 1.25rem; letter-spacing: .03em; }
 .bs-match-team__meta { margin-left: auto; font-family: 'Geist Mono', monospace; font-size: .7rem; color: #66789c; }
+/* Par de equipos (dato curioso con protagonista = PARTIDO): cada lado en su
+   fila, con el "vs" centrado entre ambos — no cabe en una sola fila del
+   lado estrecho (.bs-stat-side). */
+.bs-match-team--pair { flex-direction: column; align-items: stretch; gap: 6px; }
+.bs-match-team--pair .bs-match-team__side { display: flex; align-items: center; gap: 10px; }
+.bs-match-team--pair .bs-match-team__vs { text-align: center; font-family: 'Geist Mono', monospace; color: #66789c; font-size: .7rem; letter-spacing: .2em; }
 
 /* ── Broadsheet de DATO CURIOSO (articles/render.py:render_stat_broadsheet) ──
    Reusa .bs-page/.bs-sheet/.bs-back/.bs-masthead/.bs-edition/.bs-grid/

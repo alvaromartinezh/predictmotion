@@ -349,11 +349,14 @@ def _stat_already_handled(league_slug, fecha, hour, kind):
 def _run_stat(league_slug, dry_run, date_override=None):
     """Entry point del cron de "dato curioso" (cada 2h, 10:00-20:00 hora de
     España -> 6 al día, ver CLAUDE.md y STAT_ARTICLE_HOURS). Un artículo
-    corto sobre una probabilidad que la simulación ya calcula pero que no
-    aparece en ningún dashboard (ver STAT_KINDS en config.py): colista
-    alterna con líder según la hora (grounding.pick_stat_kind), sin estado
-    que mantener. Best-effort igual que el resto: si el grounding marca
-    alguno de los 2 textos, no se publica y se avisa por email."""
+    corto sobre un dato que el modelo/snapshot ya calcula pero que no
+    aparece en ningún dashboard (ver STAT_KINDS en config.py). El kind lo
+    elige grounding.pick_stat_kind(hour, day) — determinista, sin estado que
+    mantener: con 7 kinds y 6 franjas por día, el offset del día (YYYYMMDD)
+    desplaza la rotación para que cada franja del día siguiente caiga en un
+    kind distinto y ningún kind quede sistemáticamente fuera. Best-effort
+    igual que el resto: si el grounding marca alguno de los 2 textos, no se
+    publica y se avisa por email."""
     league = league_by_slug(league_slug)
     now = datetime.now(_MADRID_TZ)
     hour = now.hour
@@ -363,7 +366,8 @@ def _run_stat(league_slug, dry_run, date_override=None):
     if not snap:
         return 0
     fecha = date_override or now.strftime("%Y-%m-%d")
-    kind = grounding.pick_stat_kind(hour)
+    day = int(fecha.replace("-", ""))
+    kind = grounding.pick_stat_kind(hour, day=day)
     payload = grounding.ground_stat(league, snap, kind, fecha, hour)
     if not payload:
         print(f"{league_slug}: sin datos suficientes para el dato curioso ({kind})")

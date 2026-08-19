@@ -30,21 +30,67 @@ ASCENSO_TOTAL_SEASON_FRACTION = 0.5
 GEMINI_MODEL = "gemini-3.5-flash-lite"
 GEMINI_MODEL_GROUNDED = "gemini-2.5-flash"
 
-# "Dato curioso": artículo corto sobre una probabilidad que la simulación YA
-# calcula (viene en data/<slug>/latest.json) pero que ningún dashboard
-# muestra. Registro único (grounding.py/writer.py/render.py lo comparten) —
-# añadir un kind aquí es lo único que hace falta para sumar un dato nuevo,
-# siempre que su prob ya esté en snap["teams"][i]["prob"][prob_key] (ver
-# seo/snapshots.py:build_table_snapshot, que persiste "first"/"last" igual
-# que las bandas de zona).
+# "Dato curioso": artículo corto sobre una estadística que el modelo/snapshot YA
+# calcula pero que ningún dashboard muestra. Registro único
+# (grounding.py/writer.py/render.py lo comparten) — añadir un kind aquí es lo
+# único que hace falta para sumar un dato nuevo.
+#
+# Cada kind declara:
+#   - `tipo` (obligatorio), la familia de datos que usa:
+#       * "posicion": prob exacta de posición final (prob.first/last, ya en el
+#         snapshot). El protagonista es el equipo con mayor prob[prob_key].
+#       * "equipo": fuerza del blend v3 (att/def del snapshot) — sin simular
+#         nada nuevo, solo leer una desviación que el cron ya persiste.
+#       * "jornada": la próxima jornada (fixtures `pre` de ESPN) resuelta con el
+#         MISMO modelo v3 del snapshot (match_rates/match_1x2) — quién encaja
+#         más goles, quién es favorito, qué partido tiene más nivel. Todo
+#         grounding: si no hay fixtures o el snapshot no es v3, no se publica.
+#   - `shape` (opcional): "partido" si el protagonista es un PARTIDO (X vs Y) en
+#     vez de un equipo (por defecto "team"). La maquetación y los prompts se
+#     adaptan solos (ver grounding._match_item/render.py).
+#   - `eyebrow`/`verbo`/`verbo_largo` (prosa) y `dato_label` (cabecera del box de
+#     ranking). `fmt` (opcional): "goles" para valores en goles/partido con signo
+#     (los % por defecto van con pct()).
 STAT_KINDS = {
     "colista": {
-        "prob_key": "last", "eyebrow": "Farolillo rojo", "verbo": "acabar colista",
-        "verbo_largo": "acabar colista (la última posición de la tabla)",
+        "tipo": "posicion", "prob_key": "last", "eyebrow": "Farolillo rojo",
+        "verbo": "acabar colista", "verbo_largo": "acabar colista (la última posición de la tabla)",
+        "dato_label": "Probabilidad de ser el último",
     },
     "lider": {
-        "prob_key": "first", "eyebrow": "Máximo favorito", "verbo": "acabar líder",
-        "verbo_largo": "acabar líder (la primera posición de la tabla)",
+        "tipo": "posicion", "prob_key": "first", "eyebrow": "Máximo favorito",
+        "verbo": "acabar líder", "verbo_largo": "acabar líder (la primera posición de la tabla)",
+        "dato_label": "Probabilidad de acabar 1º",
+    },
+    "muro": {
+        "tipo": "equipo", "campo": "def", "sort": "min", "fmt": "goles",
+        "eyebrow": "Muro de la liga", "verbo": "tener la defensa más sólida de la liga",
+        "verbo_largo": "tener la defensa más sólida de la liga (menos goles en contra por partido)",
+        "dato_label": "Goles en contra por partido (desv. de la media)",
+    },
+    "ataque": {
+        "tipo": "equipo", "campo": "att", "sort": "max", "fmt": "goles",
+        "eyebrow": "Ataque más potente", "verbo": "tener el ataque más potente de la liga",
+        "verbo_largo": "tener el ataque más potente de la liga (más goles a favor por partido)",
+        "dato_label": "Goles a favor por partido (desv. de la media)",
+    },
+    "goleado": {
+        "tipo": "jornada", "eyebrow": "Goleada anunciada",
+        "verbo": "ser el más propenso a encajar una goleada en la próxima jornada",
+        "verbo_largo": "ser el más propenso a encajar una goleada (3 o más goles) en la próxima jornada",
+        "dato_label": "Probabilidad de encajar 3+ goles en su próximo partido",
+    },
+    "favorito_jornada": {
+        "tipo": "jornada", "eyebrow": "Favorito de la jornada",
+        "verbo": "ser el favorito para ganar su partido de la próxima jornada",
+        "verbo_largo": "ser el favorito para ganar su partido de la próxima jornada",
+        "dato_label": "Probabilidad de ganar su próximo partido",
+    },
+    "nivel_jornada": {
+        "tipo": "jornada", "shape": "partido", "eyebrow": "Partido de la jornada",
+        "verbo": "protagonizar el partido de mayor nivel de la próxima jornada",
+        "verbo_largo": "protagonizar el partido de mayor nivel de la próxima jornada (la mayor suma de fuerza de ataque y defensa de ambos equipos)",
+        "dato_label": "Nivel del partido (fuerza combinada del blend)",
     },
 }
 

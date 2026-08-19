@@ -169,11 +169,15 @@ def _match_ph_pd(sc, h, a, p_draw, w_md):
     return sc["m"] * s, p_draw
 
 
-def _match_poisson(snap, hid, aid, p_draw):
-    """Marginal 1X2 (ph, pd, pa) de la bivariada Poisson con las att/def QUE YA
-    PUBLICÓ el snapshot (desviaciones de la media de la liga). Misma fórmula que
-    corrió la simulación v3. Devuelve None si falta algún dato (→ el llamante no
-    emite; no inventa probabilidades con otra fórmula)."""
+def match_rates(snap, hid, aid):
+    """λ_local/λ_visita (marginales Poisson) y max_goals para un partido suelto,
+    leídos del snapshot v3 (misma fórmula que corrió la simulación). None si el
+    snapshot no es v3 o falta algún equipo con att/def (→ el llamante no emite;
+    no inventa tasas con otra fórmula). Separado de `match_1x2` para que los
+    consumidores que necesitan las tasas (p. ej. P(encajar ≥3 goles) del "dato
+    curioso") compartan UNA lectura del snapshot con la marginal 1X2."""
+    if snap.get("strength_model") != "v3":
+        return None
     try:
         teams = {str(t["id"]): t for t in snap.get("teams", [])}
         th, ta = teams.get(str(hid)), teams.get(str(aid))
@@ -192,10 +196,22 @@ def _match_poisson(snap, hid, aid, p_draw):
         w = fade_weight(int(snap.get("jornada") or 0), total_md) if total_md else 0.0
         lam_h, lam_a = poisson.match_lambdas(adj, th["name"], ta["name"], base,
                                              hfa, k_att, k_def, w)
-        ph, pd, pa = poisson.score_probs(lam_h, lam_a, max_goals)
-        return round(ph, 4), round(pd, 4), round(pa, 4)
+        return round(lam_h, 4), round(lam_a, 4), max_goals
     except Exception:
         return None
+
+
+def _match_poisson(snap, hid, aid, p_draw):
+    """Marginal 1X2 (ph, pd, pa) de la bivariada Poisson con las att/def QUE YA
+    PUBLICÓ el snapshot (desviaciones de la media de la liga). Misma fórmula que
+    corrió la simulación v3. Devuelve None si falta algún dato (→ el llamante no
+    emite; no inventa probabilidades con otra fórmula)."""
+    rates = match_rates(snap, hid, aid)
+    if rates is None:
+        return None
+    lam_h, lam_a, max_goals = rates
+    ph, pd, pa = poisson.score_probs(lam_h, lam_a, max_goals)
+    return round(ph, 4), round(pd, 4), round(pa, 4)
 
 
 def match_1x2(snap, hid, aid, p_home, p_draw):
