@@ -64,6 +64,24 @@
   .team-link:hover { color: var(--accent); }
   .col-pts.pts-live .num { color: var(--accent); }
 
+  /* Ascenso directo (azul) — distinguido del Ascenso total (verde) */
+  .prob.blue { background: rgba(74,144,255,.12); border-color: rgba(74,144,255,.25); color: #4a90ff; }
+  .prob.blue .prob__fill { background: linear-gradient(90deg, rgba(74,144,255,.30), rgba(74,144,255,.10)); }
+  .prob.blue.is-lock { color: #03101f; background: #4a90ff; }
+  html[data-theme="light"] .prob.blue.is-lock { color: #fff; }
+  /* La ZONA de ascenso directo (marcador de fila + leyenda) también en azul:
+     mismo color que su columna, igual que en top1 la Champions comparte color
+     entre columna y zona. El resto (play-off, descenso) mantiene su color. */
+  tr[data-zone="up"] .col-pos::before { background: #4a90ff; }
+  tr[data-zone="up"] .pos-badge { color: #4a90ff; }
+  .prob-legend .up i { background: #4a90ff; }
+
+  /* Cabeceras ordenables: clic = ordenar por esa estadística */
+  th[data-sort] { cursor: pointer; user-select: none; }
+  th[data-sort]::after { content: ""; display: inline-block; width: 0; height: 0; margin-left: 5px; border-left: 4px solid transparent; border-right: 4px solid transparent; vertical-align: middle; opacity: .35; }
+  th[data-sort].sort-asc::after { border-bottom: 5px solid currentColor; opacity: 1; }
+  th[data-sort].sort-desc::after { border-top: 5px solid currentColor; opacity: 1; }
+
   /* Skeleton */
   .skeleton { animation: shimmer 1.4s infinite; background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%); background-size: 400% 100%; border-radius: var(--r-xs); }
   @keyframes shimmer { to { background-position: -400% 0; } }
@@ -222,14 +240,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <table class="table-clasif" aria-label="Clasificación con probabilidades">
           <thead>
             <tr>
-              <th class="col-pos" scope="col">#</th>
-              <th class="col-team" scope="col">Equipo</th>
-              <th class="col-pj" scope="col">PJ</th>
-              <th scope="col">Pts</th>
-              <th class="col-prob" scope="col">Ascenso</th>
-              <th class="col-prob" scope="col">Play-off</th>
-              <th class="col-prob" scope="col">Ascenso total</th>
-              <th class="col-prob" scope="col">Descenso</th>
+              <th class="col-pos" scope="col" data-sort="rank" title="Ordenar por posición">#</th>
+              <th class="col-team" scope="col" data-sort="name" title="Ordenar por nombre">Equipo</th>
+              <th class="col-pj" scope="col" data-sort="gp" title="Ordenar por partidos jugados">PJ</th>
+              <th scope="col" data-sort="pts" title="Ordenar por puntos">Pts</th>
+              <th class="col-prob" scope="col" data-sort="total" title="Ordenar por ascenso total">Ascenso total</th>
+              <th class="col-prob" scope="col" data-sort="top2" title="Ordenar por ascenso directo">Ascenso directo</th>
+              <th class="col-prob" scope="col" data-sort="playoff" title="Ordenar por play-off">Play-off</th>
+              <th class="col-prob" scope="col" data-sort="relega" title="Ordenar por descenso">Descenso</th>
             </tr>
           </thead>
           <tbody id="tbody">{{if fileExists "/data/{{SLUG}}/rows.html"}}{{readFile "/data/{{SLUG}}/rows.html"}}{{end}}</tbody>
@@ -499,7 +517,72 @@ function initials(name) {
   return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
 }
 
+// ─── Ordenación por columna ───────────────────────────────────────────────
+// Clic en la cabecera → ordena por esa estadística de mayor a menor; otro clic
+// alterna la dirección. La posición (#) mostrada es la REAL (rank), solo cambia
+// el orden de las filas.
+let sortKey  = null;
+let sortDir  = -1;   // -1 = mayor→menor, 1 = menor→mayor
+let lastStandings = [];
+let lastResults    = {};
+
+function sortValue(t, res, key) {
+  switch (key) {
+    case 'rank':    return t.rank;
+    case 'name':    return t.name.toLowerCase();
+    case 'gp':      return t.gp;
+    case 'pts':     return t.pts;
+    case 'total':   return Math.min(100, (res.top2 || 0) + (res.pWin || 0));
+    case 'top2':    return res.top2 || 0;
+    case 'playoff': return res.playoff || 0;
+    case 'relega':  return res.relega || 0;
+  }
+  return 0;
+}
+
+function applySort(standings, results) {
+  if (!sortKey) return standings;
+  return standings.slice().sort((a, b) => {
+    const resA = results[a.name] || {};
+    const resB = results[b.name] || {};
+    const va = sortValue(a, resA, sortKey);
+    const vb = sortValue(b, resB, sortKey);
+    if (va === vb) return a.rank - b.rank;   // desempate: posición real
+    return (va > vb ? 1 : -1) * sortDir;
+  });
+}
+
+function updateSortIndicators() {
+  document.querySelectorAll('th[data-sort]').forEach(th => {
+    th.classList.remove('sort-asc', 'sort-desc');
+    th.removeAttribute('aria-sort');
+    if (th.dataset.sort === sortKey) {
+      th.classList.add(sortDir === -1 ? 'sort-desc' : 'sort-asc');
+      th.setAttribute('aria-sort', sortDir === -1 ? 'descending' : 'ascending');
+    }
+  });
+}
+
+function wireSort() {
+  document.querySelectorAll('th[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.sort;
+      if (sortKey === key) {
+        sortDir = sortDir === -1 ? 1 : -1;   // alternar asc/desc
+      } else {
+        sortKey = key;
+        sortDir = -1;                        // por defecto: mayor a menor
+      }
+      updateSortIndicators();
+      render(lastStandings, lastResults);
+    });
+  });
+}
+
 function render(standings, results) {
+  lastStandings = standings;
+  lastResults   = results;
+  standings = applySort(standings, results);
   const numTeams = standings.length;
   const tbody = document.getElementById('tbody');
   let html = '';
@@ -525,9 +608,9 @@ function render(standings, results) {
       </td>
       <td class="col-pj col-dim"><span class="num">${t.gp}</span></td>
       <td class="col-pts${t.live ? ' pts-live' : ''}"><span class="num">${t.pts}</span></td>
-      ${probPill(res.top2,    'up',   'Ascenso')}
-      ${probPill(res.playoff, 'po',   'Play-off')}
       ${probPill(Math.min(100, (res.top2 || 0) + (res.pWin || 0)), 'up', 'Ascenso total')}
+      ${probPill(res.top2,    'blue', 'Ascenso directo')}
+      ${probPill(res.playoff, 'po',   'Play-off')}
       ${probPill(res.relega,  'down', 'Descenso')}
     </tr>`;
   });
@@ -786,6 +869,7 @@ async function updateSeason() {
 
 // ─── Boot ─────────────────────────────────────────────────────────────────
 if (!document.getElementById('tbody').children.length) renderSkeleton();
+wireSort();
 triggerUpdate();
 updateSeason();
 </script>
