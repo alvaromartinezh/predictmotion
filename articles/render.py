@@ -22,8 +22,14 @@ _CSS_V = "12"
 _DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 _MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 ZONE_HEX = {"ascenso": "#2ec98a", "ascenso_total": "#2ec98a", "playoff": "#f3b23f", "descenso": "#ff556b"}
-STAT_HEX = {"colista": "#ff556b", "lider": "#2ec98a", "muro": "#2ec98a", "ataque": "#f3b23f",
-            "goleado": "#ff556b", "favorito_jornada": "#2ec98a", "nivel_jornada": "#7c5cff"}
+STAT_HEX = {"colista": "#ff556b", "lider": "#2ec98a", "tapado": "#7c5cff",
+            "muro": "#2ec98a", "ataque": "#f3b23f",
+            "goleado": "#ff556b", "porteria_cero": "#2ec98a", "favorito_jornada": "#2ec98a",
+            "goleador": "#f3b23f", "invicto_jornada": "#2ec98a", "derrota_jornada": "#ff556b",
+            "nivel_jornada": "#7c5cff", "empate_jornada": "#7c5cff", "goles_jornada": "#f3b23f",
+            "over_25": "#f3b23f", "ambos_marcan": "#f3b23f", "sorpresa_jornada": "#7c5cff",
+            "marcador_jornada": "#7c5cff",
+            "subida_zona": "#2ec98a", "caida_zona": "#ff556b", "sorpresa_temporada": "#7c5cff"}
 
 
 def slug_for(league_slug, fecha):
@@ -600,14 +606,19 @@ def render_match_broadsheet(payload, local_body, visitante_body, cronica_body,
 def _stat_side_headline(protagonista, kind):
     """H2 de la columna del protagonista — determinista (mismo criterio que
     _team_headline: la cifra la compone Python, nunca Gemini). Adaptado al
-    shape del kind: partido (1X2), blend en goles o probabilidad."""
+    shape del kind: partido (1X2), blend en goles, delta en pp o probabilidad."""
     verb = STAT_KINDS[kind]["verbo"]
     if protagonista.get("tipo") == "partido":
+        marc = protagonista.get("marcador")
+        if marc:
+            return (f'El modelo señala este <span>{protagonista["nombre"]}</span> como el '
+                    f'que {verb}, con <span>{esc(marc)}</span> y un '
+                    f'<span>{pct(protagonista["valor"])}</span> de probabilidad exacta')
         return (f'El modelo señala este <span>{protagonista["nombre"]}</span> como el '
                 f'que {verb}, con <span>{pct(protagonista["p_local"])}</span> de victoria local, '
                 f'<span>{pct(protagonista["p_empate"])}</span> de empate y '
                 f'<span>{pct(protagonista["p_visita"])}</span> de victoria visitante')
-    if STAT_KINDS[kind].get("fmt") == "goles":
+    if STAT_KINDS[kind].get("fmt") in ("goles", "pp"):
         return (f'{protagonista["posicion"]}º en la tabla real, con '
                 f'<span>{grounding.format_val(kind, protagonista["valor"])}</span> de {verb}')
     return (f'{protagonista["posicion"]}º en la tabla real, con el '
@@ -621,13 +632,16 @@ def _stat_rank_html(ranking, kind, dato_label):
     for i, r in enumerate(ranking, start=1):
         width = max(4, round(abs(r["valor"] or 0) / base * 100))
         logo = r.get("logo") or (r["local"].get("logo") if r.get("tipo") == "partido" else None)
+        val = grounding.format_val(kind, r["valor"])
+        if r.get("marcador"):
+            val = f'{esc(r["marcador"])} · {val}'
         rows.append(
             '<div class="bs-rank__row">'
             f'<span class="bs-rank__pos">{i}.</span>'
             f'{team_avatar(logo, r["nombre"], _seed(r.get("id") or (r["local"].get("id") if r.get("tipo") == "partido" else None)), 22)}'
             f'<span class="bs-rank__name">{esc(r["nombre"])}</span>'
             f'<span class="bs-rank__bar"><span class="bs-rank__fill" style="width:{width}%;background:{color}"></span></span>'
-            f'<b class="bs-rank__val">{grounding.format_val(kind, r["valor"])}</b></div>'
+            f'<b class="bs-rank__val">{val}</b></div>'
         )
     sim_n = f"{SIM_N_TABLE:,}".replace(",", ".")
     return (
@@ -639,7 +653,8 @@ def _stat_rank_html(ranking, kind, dato_label):
 
 def _stat_methodology_html(payload):
     sim_n = f"{SIM_N_TABLE:,}".replace(",", ".")
-    tipo = STAT_KINDS[payload["kind"]]["tipo"]
+    kind = payload["kind"]
+    tipo = STAT_KINDS[kind]["tipo"]
     if tipo == "equipo":
         text = (
             f"El rating de fuerza de cada plantilla sale del blend de ataque y defensa de la "
@@ -655,6 +670,25 @@ def _stat_methodology_html(payload):
             f"completa ({sim_n} repeticiones). Este dato sale de la probabilidad de marcador "
             "(distribución de Poisson) que el modelo ya calcula para cada partido, no de una "
             "simulación extra."
+        )
+    elif tipo == "zona":
+        up = kind == "subida_zona"
+        direction = "subir" if up else "caer"
+        above_below = "por encima" if up else "por debajo"
+        text = (
+            f"El modelo juega {sim_n} veces la temporada completa y en cada repetición ordena la "
+            "tabla final. La banda actual de cada equipo es la que ocupa por su posición real "
+            f"hoy; la probabilidad de {direction} de zona es la suma de las "
+            f"frecuencias de todas las bandas {above_below} de la "
+            "suya, dividida entre el total. No es una predicción de un partido: es la lectura "
+            "de la tabla proyectada por el modelo."
+        )
+    elif tipo == "temporada":
+        text = (
+            f"El modelo juega {sim_n} veces la temporada completa y guarda la probabilidad de "
+            "la mejor zona de cada equipo en el primer snapshot del curso. Este dato compara "
+            "esa probabilidad inicial con la de hoy: la diferencia es la mejora acumulada, en "
+            "puntos porcentuales, del equipo que más ha progresado según el modelo."
         )
     else:
         text = (
@@ -701,6 +735,8 @@ def _stat_facts_html(payload):
             ("Partido", p["nombre"]),
             ("1X2", f'{pct(p["p_local"])} · {pct(p["p_empate"])} · {pct(p["p_visita"])}'),
         ]
+        if p.get("marcador"):
+            rows += [("Marcador", p["marcador"])]
     else:
         rows += [("Equipo", p["nombre"])]
     rows += [

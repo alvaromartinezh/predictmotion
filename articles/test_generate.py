@@ -193,7 +193,7 @@ def demo():
     assert grounding.pick_stat_kind(10, day=100) == grounding.pick_stat_kind(10, day=100)  # mismo día+hora -> mismo kind
     assert grounding.pick_stat_kind(10, day=100) != grounding.pick_stat_kind(12, day=100)  # franjas seguidas no repiten
     assert grounding.pick_stat_kind(10, day=100) != grounding.pick_stat_kind(10, day=101)  # mismo hora, día siguiente -> rota
-    # el offset del día es lo que evita que el ciclo de 6 franjas deje un kind fuera:
+    # el offset del día es lo que evita que el ciclo de 7 franjas deje kinds fuera:
     # a lo largo de len(STAT_KINDS) días a una hora fija se recorren TODOS los kinds
     n_kinds = len(grounding.STAT_KINDS)
     assert {grounding.pick_stat_kind(10, day=100 + d) for d in range(n_kinds)} == set(grounding.STAT_KINDS)
@@ -212,6 +212,8 @@ def demo():
              "prob": {"champions": 10.0, "descenso": 20.6, "first": 3.0, "last": 8.4}},
             {"id": "4", "name": "Eibar", "logo": None, "rank": 1, "pts": 4, "gp": 1, "strength": 0.6,
              "prob": {"champions": 30.0, "descenso": 5.0, "first": 12.0, "last": 6.9}},
+            {"id": "5", "name": "Oviedo", "logo": None, "rank": 6, "pts": 1, "gp": 1, "strength": -0.3,
+             "prob": {"champions": 1.0, "descenso": 28.0, "first": 0.2, "last": 9.5}},
         ],
     }
     league_stat = {"slug": "hypermotion-test", "name": "Liga de prueba"}
@@ -221,9 +223,70 @@ def demo():
     assert len(payload_stat["perseguidores"]) == 3
     assert payload_stat["dato_verbo"] == "acabar colista"
 
-    # ── grounding.format_val: % por defecto, goles/partido con signo (fmt "goles") ──
+    # ── grounding.format_val: % por defecto, goles/partido con signo (fmt "goles"),
+    # goles esperados (fmt "goles_abs") y delta en pp (fmt "pp") ──
     assert grounding.format_val("colista", 15.2) == "15,2%"
     assert grounding.format_val("muro", -0.5) == "-0,50 goles/partido"
+    assert grounding.format_val("sorpresa_temporada", 15.0) == "+15,0 pp"
+
+    # ── grounding._ground_posicion con exclude_rank_1: tapado salta al líder actual ──
+    payload_tapado = grounding.ground_stat(league_stat, snap_stat, "tapado", "2026-08-19", 12)
+    assert payload_tapado["protagonista"]["nombre"] != "Eibar"  # Eibar es líder (rank 1)
+    assert payload_tapado["protagonista"]["posicion"] != 1
+
+    # ── grounding._ground_zona: suma de probabilidades de bandas mejores/peores ──
+    bands_zona = [
+        {"key": "ascenso", "label": "Ascenso directo", "zone": "promo", "lo": 1, "hi": 2},
+        {"key": "playoff", "label": "Play-off", "zone": "playoff", "lo": 3, "hi": 6},
+        {"key": "permanencia", "label": "Permanencia", "zone": None, "lo": 7, "hi": 18},
+        {"key": "descenso", "label": "Descenso", "zone": "relega", "lo": 19, "hi": 22},
+    ]
+    snap_zona = {
+        "season": "2026-27", "jornada": 10, "num_teams": 22, "bands": bands_zona, "total_md": 42,
+        "teams": [
+            {"id": "1", "name": "Líder", "logo": None, "rank": 1, "pts": 25, "gp": 10,
+             "prob": {"ascenso": 75.0, "playoff": 20.0, "permanencia": 4.0, "descenso": 0.5}},
+            {"id": "2", "name": "Playoff", "logo": None, "rank": 4, "pts": 18, "gp": 10,
+             "prob": {"ascenso": 30.0, "playoff": 55.0, "permanencia": 10.0, "descenso": 1.0}},
+            {"id": "3", "name": "Permanencia", "logo": None, "rank": 10, "pts": 14, "gp": 10,
+             "prob": {"ascenso": 5.0, "playoff": 25.0, "permanencia": 45.0, "descenso": 20.0}},
+            {"id": "4", "name": "Descenso", "logo": None, "rank": 20, "pts": 8, "gp": 10,
+             "prob": {"ascenso": 1.0, "playoff": 5.0, "permanencia": 20.0, "descenso": 70.0}},
+            {"id": "5", "name": "Castellón", "logo": None, "rank": 8, "pts": 13, "gp": 10,
+             "prob": {"ascenso": 2.0, "playoff": 10.0, "permanencia": 60.0, "descenso": 5.0}},
+        ],
+    }
+    league_zona = {"slug": "hypermotion-test", "name": "Liga de prueba"}
+    payload_subida = grounding.ground_stat(league_zona, snap_zona, "subida_zona", "2026-08-19", 12)
+    assert payload_subida is not None
+    # Permanencia (rank 10) tiene mejor zona ascenso+playoff = 30; Playoff tiene ascenso = 30; Descenso = 6
+    assert payload_subida["protagonista"]["nombre"] in {"Permanencia", "Playoff"}
+    payload_caida = grounding.ground_stat(league_zona, snap_zona, "caida_zona", "2026-08-19", 12)
+    assert payload_caida is not None
+    # Líder tiene abajo playoff+descenso = 20.5; Playoff tiene descenso = 1.0
+    assert payload_caida["protagonista"]["nombre"] == "Líder"
+
+    # ── grounding._ground_temporada: mejora de mejor zona vs primer snapshot (fmt "pp") ──
+    first_snap = {
+        "season": "2026-27", "date": "2026-08-01", "jornada": 0, "num_teams": 5,
+        "bands": bands_top1, "total_md": 6,
+        "teams": [
+            {"id": "1", "name": "Tenerife", "prob": {"champions": 5.0, "descenso": 25.0, "first": 1.0, "last": 15.0}},
+            {"id": "2", "name": "Córdoba", "prob": {"champions": 5.0, "descenso": 25.0, "first": 1.0, "last": 15.0}},
+            {"id": "3", "name": "Albacete", "prob": {"champions": 5.0, "descenso": 25.0, "first": 1.0, "last": 15.0}},
+            {"id": "4", "name": "Eibar", "prob": {"champions": 5.0, "descenso": 25.0, "first": 1.0, "last": 15.0}},
+            {"id": "5", "name": "Oviedo", "prob": {"champions": 5.0, "descenso": 25.0, "first": 1.0, "last": 15.0}},
+        ],
+    }
+    real_load_all = grounding.load_all
+    grounding.load_all = lambda slug, season: [first_snap]
+    try:
+        payload_temp = grounding.ground_stat(league_stat, snap_stat, "sorpresa_temporada", "2026-08-19", 12)
+        assert payload_temp is not None
+        assert payload_temp["protagonista"]["valor"] > 0
+        assert grounding.format_val("sorpresa_temporada", payload_temp["protagonista"]["valor"]).endswith(" pp")
+    finally:
+        grounding.load_all = real_load_all
 
     # ── grounding._ground_equipo (kind "muro"): protagonista = menor def (blend) ──
     snap_equipo = dict(snap_stat)
@@ -317,6 +380,32 @@ def demo():
         payload_gol = grounding.ground_stat(league_jornada, snap_v3, "goles_jornada", "2026-08-19", 12)
         assert payload_gol is not None and payload_gol["shape"] == "partido"
         assert payload_gol["protagonista"]["valor"] > 0
+
+        # nuevos kinds de partido y equipo de la próxima jornada
+        payload_over = grounding.ground_stat(league_jornada, snap_v3, "over_25", "2026-08-19", 12)
+        assert payload_over is not None and payload_over["shape"] == "partido"
+        assert all(0 <= it["valor"] <= 100 for it in payload_over["ranking"])
+
+        payload_btts = grounding.ground_stat(league_jornada, snap_v3, "ambos_marcan", "2026-08-19", 12)
+        assert payload_btts is not None and payload_btts["shape"] == "partido"
+
+        payload_sorp = grounding.ground_stat(league_jornada, snap_v3, "sorpresa_jornada", "2026-08-19", 12)
+        assert payload_sorp is not None and payload_sorp["shape"] == "partido"
+
+        payload_marc = grounding.ground_stat(league_jornada, snap_v3, "marcador_jornada", "2026-08-19", 12)
+        assert payload_marc is not None and payload_marc["shape"] == "partido"
+        assert payload_marc["protagonista"].get("marcador") is not None
+        assert "-" in payload_marc["protagonista"]["marcador"]
+
+        payload_goleador = grounding.ground_stat(league_jornada, snap_v3, "goleador", "2026-08-19", 12)
+        assert payload_goleador is not None and payload_goleador["shape"] == "team"
+        assert all(0 <= r["valor"] <= 100 for r in payload_goleador["ranking"])
+
+        payload_inv = grounding.ground_stat(league_jornada, snap_v3, "invicto_jornada", "2026-08-19", 12)
+        assert payload_inv is not None and payload_inv["shape"] == "team"
+
+        payload_der = grounding.ground_stat(league_jornada, snap_v3, "derrota_jornada", "2026-08-19", 12)
+        assert payload_der is not None and payload_der["shape"] == "team"
     finally:
         grounding.espn.fetch_scoreboard_range = real_fetch
 

@@ -110,12 +110,106 @@ STAT_KINDS = {
         "verbo_largo": "acumular más goles esperados en la próxima jornada (la mayor suma de goles esperados de ambos equipos)",
         "dato_label": "Goles esperados del partido (λ local + λ visitante)",
     },
+    # ── Tipos de partido de la próxima jornada (shape 'partido') — los 4
+    # salen del MISMO modelo v3 (match_rates/match_1x2) que ya usan los de
+    # arriba: over_25 = P(total ≥ 3 goles) de la bivariada Poisson, ambos_marcan
+    # = P(gol del local Y gol del visitante), sorpresa_jornada = el cruce con
+    # más P de victoria del menos favorito (min(p_local, p_visita)), y
+    # marcador_jornada = el marcador exacto más probable (la celda máxima de la
+    # matriz de marcadores). ──
+    "over_25": {
+        "tipo": "jornada", "shape": "partido",
+        "eyebrow": "Lluvia de goles", "verbo": "superar los 2,5 goles en la próxima jornada",
+        "verbo_largo": "superar los 2,5 goles en la próxima jornada (la mayor probabilidad de 3 o más goles según el modelo)",
+        "dato_label": "Probabilidad de más de 2,5 goles",
+    },
+    "ambos_marcan": {
+        "tipo": "jornada", "shape": "partido",
+        "eyebrow": "Sin porterías a cero", "verbo": "terminar con gol de ambos equipos en la próxima jornada",
+        "verbo_largo": "terminar con gol de ambos equipos en la próxima jornada (la mayor probabilidad de 'ambos marcan' según el modelo)",
+        "dato_label": "Probabilidad de que marquen los dos",
+    },
+    "sorpresa_jornada": {
+        "tipo": "jornada", "shape": "partido",
+        "eyebrow": "Sorpresa a la vista", "verbo": "ser el partido con más opciones de sorpresa de la próxima jornada",
+        "verbo_largo": "ser el partido con más opciones de sorpresa de la próxima jornada (la mayor probabilidad de victoria del menos favorito según el modelo)",
+        "dato_label": "Probabilidad de sorpresa (victoria del menos favorito)",
+    },
+    "marcador_jornada": {
+        "tipo": "jornada", "shape": "partido",
+        "eyebrow": "Marcador más probable", "verbo": "acabar con el marcador más probable de la próxima jornada",
+        "verbo_largo": "acabar con el marcador más probable de la próxima jornada (la combinación de goles que el modelo ve más factible)",
+        "dato_label": "Probabilidad del marcador exacto",
+    },
+    # ── Tipos de equipo de la próxima jornada (shape 'team') — complementan a
+    # los de arriba con la cara positiva/negativa del mismo 1X2: goleador = P
+    # de marcar 3+ goles, invicto_jornada = P de no perder (ganar o empatar) y
+    # derrota_jornada = P de perder. ──
+    "goleador": {
+        "tipo": "jornada",
+        "eyebrow": "Pólvora de la jornada", "verbo": "marcar 3 o más goles en la próxima jornada",
+        "verbo_largo": "marcar 3 o más goles en la próxima jornada (la mayor probabilidad de golear según el modelo)",
+        "dato_label": "Probabilidad de marcar 3+ goles",
+    },
+    "invicto_jornada": {
+        "tipo": "jornada",
+        "eyebrow": "A prueba de derrotas", "verbo": "no perder su partido de la próxima jornada",
+        "verbo_largo": "no perder en la próxima jornada (la mayor probabilidad de ganar o empatar según el modelo)",
+        "dato_label": "Probabilidad de no perder (ganar o empatar)",
+    },
+    "derrota_jornada": {
+        "tipo": "jornada",
+        "eyebrow": "En la cuerda floja", "verbo": "perder su partido de la próxima jornada",
+        "verbo_largo": "perder su partido de la próxima jornada (la mayor probabilidad de derrota según el modelo)",
+        "dato_label": "Probabilidad de perder su próximo partido",
+    },
+    # ── Tipos de zona: la PROBABILIDAD de moverse de zona, no de una posición
+    # concreta. subida_zona = P de acabar en una banda MEJOR que la actual (suma
+    # de las bandas por encima); caida_zona = P de acabar en una banda PEOR
+    # (suma de las bandas por debajo). Usan las bandas del snapshot (las mismas
+    # que pintan los dashboards) y la posición actual del equipo para saber cuál
+    # es "su" zona. ──
+    "subida_zona": {
+        "tipo": "zona", "sort": "desc",
+        "eyebrow": "Con hambre de subir", "verbo": "subir de zona en la tabla",
+        "verbo_largo": "acabar la temporada en una zona superior a la actual (la mayor probabilidad de ascenso acumulado según el modelo)",
+        "dato_label": "Probabilidad de acabar en una zona superior",
+    },
+    "caida_zona": {
+        "tipo": "zona", "sort": "desc",
+        "eyebrow": "En la cuerda floja", "verbo": "caer de zona en la tabla",
+        "verbo_largo": "acabar la temporada en una zona inferior a la actual (la mayor probabilidad de descenso acumulado según el modelo)",
+        "dato_label": "Probabilidad de acabar en una zona inferior",
+    },
+    # ── La revelación de la temporada: el equipo que más ha MEJORADO la
+    # probabilidad de su mejor zona desde el PRIMER snapshot de la temporada
+    # hasta hoy. `fmt: "pp"` → el valor se muestra como puntos porcentuales con
+    # signo (+15,0 pp), no como un % (es una diferencia, no una probabilidad). ──
+    "sorpresa_temporada": {
+        "tipo": "temporada", "fmt": "pp",
+        "eyebrow": "La revelación del curso", "verbo": "ser la revelación de la temporada",
+        "verbo_largo": "ser la revelación de la temporada (el equipo que más ha mejorado su probabilidad de zona desde el arranque)",
+        "dato_label": "Mejora de probabilidad de zona desde el arranque",
+    },
+    # ── El tapado: la mayor probabilidad de acabar 1º entre los que NO lideran
+    # hoy (el 'lider' de siempre es el que más prob de 1º tiene, y casi siempre
+    # es el propio líder actual; este kind se salta al líder para enseñar al
+    # perseguidor con más opciones reales de título). ──
+    "tapado": {
+        "tipo": "posicion", "prob_key": "first", "exclude_rank_1": True,
+        "eyebrow": "El tapado", "verbo": "amenazar el título sin ser líder",
+        "verbo_largo": "amenazar el título sin ser el líder actual (la mayor probabilidad de acabar 1º entre los que no mandan)",
+        "dato_label": "Probabilidad de acabar 1º (sin ser líder)",
+    },
 }
 
-# Cron dedicado (ver CLAUDE.md): un dato curioso cada 2h, solo 10:00-20:00
-# hora de España -> 6 al día. `_run_stat` repite esta guarda en tiempo de
+# Cron dedicado (ver CLAUDE.md): un dato curioso cada 2h, de 10:00 a 22:00
+# hora de España -> 7 al día. `_run_stat` repite esta guarda en tiempo de
 # ejecución (defensa en profundidad si el cron se lanza fuera de horario).
-STAT_ARTICLE_HOURS = range(10, 21, 2)
+# ⚠️ El cron del servidor dispara CADA HORA en UTC (CRON_TZ no se aplica en ese
+# cron; ver CLAUDE.md) y el script filtra por hora de Madrid — así sobrevive al
+# cambio de hora de verano/invierno sin tocar el cron a mano.
+STAT_ARTICLE_HOURS = range(10, 23, 2)
 
 
 def gemini_endpoint(model):

@@ -347,14 +347,14 @@ def _stat_already_handled(league_slug, fecha, hour, kind):
 
 
 def _run_stat(league_slug, dry_run, date_override=None):
-    """Entry point del cron de "dato curioso" (cada 2h, 10:00-20:00 hora de
-    España -> 6 al día, ver CLAUDE.md y STAT_ARTICLE_HOURS). Un artículo
+    """Entry point del cron de "dato curioso" (cada 2h, 10:00-22:00 hora de
+    España -> 7 al día, ver CLAUDE.md y STAT_ARTICLE_HOURS). Un artículo
     corto sobre un dato que el modelo/snapshot ya calcula pero que no
     aparece en ningún dashboard (ver STAT_KINDS en config.py). El kind lo
     elige grounding.pick_stat_kind(hour, day) — determinista, sin estado que
-    mantener: con 7 kinds y 6 franjas por día, el offset del día (YYYYMMDD)
-    desplaza la rotación para que cada franja del día siguiente caiga en un
-    kind distinto y ningún kind quede sistemáticamente fuera. Best-effort
+    mantener: con 7 franjas por día y más kinds que franjas, el offset del día
+    (YYYYMMDD) desplaza la rotación para que cada franja del día siguiente caiga
+    en un kind distinto y ningún kind quede sistemáticamente fuera. Best-effort
     igual que el resto: si el grounding marca alguno de los 2 textos, no se
     publica y se avisa por email."""
     league = league_by_slug(league_slug)
@@ -539,7 +539,7 @@ def main(argv=None):
     ap.add_argument("--matches-only", action="store_true",
                      help="Solo crónicas de partido (cron frecuente); sin resumen diario ni explicador")
     ap.add_argument("--stat-only", action="store_true",
-                     help="Solo el dato curioso de la franja (cron cada 2h, 10-20h); sin resumen ni crónicas")
+                     help="Solo el dato curioso de la franja (cron cada hora UTC, filtra 10-22h Madrid); sin resumen ni crónicas")
     ap.add_argument("--league", choices=ARTICLE_LEAGUES, help="Solo esta liga (por defecto, todas ARTICLE_LEAGUES)")
     args = ap.parse_args(argv)
     rc = 0

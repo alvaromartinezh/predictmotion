@@ -135,7 +135,7 @@ def _compose_stat_head(payload):
                 f'{pct(p["p_visita"])} visitante.')
         return title, desc
     title = f'{p["nombre"]}, el favorito a {payload["dato_verbo"]} en {payload["liga"]} | PredictMotion'
-    if STAT_KINDS[payload["kind"]].get("fmt") == "goles":
+    if STAT_KINDS[payload["kind"]].get("fmt") in ("goles", "pp"):
         desc = (f'El modelo de PredictMotion sitúa al {p["nombre"]} como el más propenso a '
                 f'{payload["dato_verbo"]} en {payload["liga"]} (jornada {payload["jornada"]}): '
                 f'{grounding.format_val(payload["kind"], p["valor"])}.')
@@ -277,9 +277,9 @@ _STAT_HEADLINE_INSTR_EQUIPO = (
     "Telegram como titular del tuit, así que DEBE incluir al menos un porcentaje real de "
     "DATOS.protagonista.prob_zona (la probabilidad de zona del equipo, con el símbolo %) y el "
     "nombre del equipo tal cual aparece en DATOS.protagonista.nombre. OJO: el valor principal "
-    "del protagonista (DATOS.protagonista.valor) NO es un porcentaje — es una diferencia de "
-    "goles por partido —, no lo pongas con '%'. Y, en la línea siguiente, una entradilla corta "
-    "y también llamativa (1 frase) que enganche a seguir leyendo.\n\n"
+    "del protagonista (DATOS.protagonista.valor) NO es un porcentaje — es una diferencia (de "
+    "goles por partido o de puntos porcentuales) —, no lo pongas con '%'. Y, en la línea siguiente, "
+    "una entradilla corta y también llamativa (1 frase) que enganche a seguir leyendo.\n\n"
     "FORMATO OBLIGATORIO: EXACTAMENTE 2 líneas — primero el titular (CON el porcentaje y el "
     "nombre del equipo), luego la entradilla — sin etiquetas ('Titular:'/'Entradilla:'), sin "
     "numerarlas, sin nada más de texto. Usa siempre el nombre del equipo tal cual aparece en "
@@ -308,7 +308,7 @@ _STAT_HEADLINE_INSTR_MATCH = (
 
 _STAT_HEADLINE_INSTR_BY_KIND = {
     k: (_STAT_HEADLINE_INSTR_MATCH if v.get("shape") == "partido"
-        else _STAT_HEADLINE_INSTR_EQUIPO if v.get("fmt") == "goles"
+        else _STAT_HEADLINE_INSTR_EQUIPO if v.get("fmt") in ("goles", "pp")
         else _STAT_HEADLINE_INSTR).format(verb=v["verbo_largo"])
     for k, v in STAT_KINDS.items()
 }

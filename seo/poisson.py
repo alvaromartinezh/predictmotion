@@ -112,3 +112,36 @@ def score_probs(lam_h, lam_a, max_goals=8):
                 pa += p
     tot = ph + pd + pa or 1.0
     return ph / tot, pd / tot, pa / tot
+
+
+def p_over(lam_h, lam_a, max_goals=8, line=2.5):
+    """P(total de goles > line) de la bivariada Poisson — agregación cerrada,
+    sin RNG. Lo usa el "dato curioso" kind=over_25 del generador de artículos."""
+    hp = [pmf(i, lam_h) for i in range(max_goals + 1)]
+    ap = [pmf(j, lam_a) for j in range(max_goals + 1)]
+    return sum(
+        hp[i] * ap[j]
+        for i in range(max_goals + 1)
+        for j in range(max_goals + 1)
+        if i + j > line
+    )
+
+
+def p_btts(lam_h, lam_a):
+    """P(gol del local Y gol del visitante) = (1−P_h(0))·(1−P_a(0)) — Poisson
+    independientes (misma hipótesis que el Monte Carlo). kind=ambos_marcan."""
+    return (1.0 - pmf(0, lam_h)) * (1.0 - pmf(0, lam_a))
+
+
+def top_score(lam_h, lam_a, max_goals=8):
+    """(marcador, prob) exacto más probable de la bivariada — la celda de mayor
+    masa conjunta (p. ej. (1, 0), (0, 0)…). Lo usa kind=marcador_jornada."""
+    hp = [pmf(i, lam_h) for i in range(max_goals + 1)]
+    ap = [pmf(j, lam_a) for j in range(max_goals + 1)]
+    best, best_p = (0, 0), 0.0
+    for i in range(max_goals + 1):
+        for j in range(max_goals + 1):
+            p = hp[i] * ap[j]
+            if p > best_p:
+                best, best_p = (i, j), p
+    return best, best_p
