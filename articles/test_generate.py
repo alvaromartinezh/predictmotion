@@ -194,8 +194,9 @@ def demo():
     assert grounding.pick_stat_kind(10, day=100) != grounding.pick_stat_kind(12, day=100)  # franjas seguidas no repiten
     assert grounding.pick_stat_kind(10, day=100) != grounding.pick_stat_kind(10, day=101)  # mismo hora, día siguiente -> rota
     # el offset del día es lo que evita que el ciclo de 6 franjas deje un kind fuera:
-    # a lo largo de los 7 días de la semana a una hora fija se recorren TODOS los kinds
-    assert {grounding.pick_stat_kind(10, day=100 + d) for d in range(7)} == set(grounding.STAT_KINDS)
+    # a lo largo de len(STAT_KINDS) días a una hora fija se recorren TODOS los kinds
+    n_kinds = len(grounding.STAT_KINDS)
+    assert {grounding.pick_stat_kind(10, day=100 + d) for d in range(n_kinds)} == set(grounding.STAT_KINDS)
 
     # ── grounding.ground_stat: protagonista = mayor prob["last"]/["first"] ──
     bands_top1 = [{"key": "champions", "label": "Champions", "zone": "promo", "lo": 1, "hi": 4},
@@ -304,6 +305,18 @@ def demo():
         assert 0 <= prot["p_local"] <= 100 and 0 <= prot["p_visita"] <= 100
         assert abs((prot["p_local"] + prot["p_empate"] + prot["p_visita"]) - 100) < 1
         assert all(it["tipo"] == "partido" for it in payload_nivel["ranking"])
+
+        payload_pc = grounding.ground_stat(league_jornada, snap_v3, "porteria_cero", "2026-08-19", 12)
+        assert payload_pc is not None and payload_pc["shape"] == "team"
+        assert all(0 <= r["valor"] <= 100 for r in payload_pc["ranking"])
+
+        payload_emp = grounding.ground_stat(league_jornada, snap_v3, "empate_jornada", "2026-08-19", 12)
+        assert payload_emp is not None and payload_emp["shape"] == "partido"
+        assert abs(payload_emp["protagonista"]["valor"] - payload_emp["protagonista"]["p_empate"]) < 0.1
+
+        payload_gol = grounding.ground_stat(league_jornada, snap_v3, "goles_jornada", "2026-08-19", 12)
+        assert payload_gol is not None and payload_gol["shape"] == "partido"
+        assert payload_gol["protagonista"]["valor"] > 0
     finally:
         grounding.espn.fetch_scoreboard_range = real_fetch
 

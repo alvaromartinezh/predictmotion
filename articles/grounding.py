@@ -226,12 +226,17 @@ def _dato_label(kind, n):
 
 def format_val(kind, v):
     """'64,2%' para probabilidades; '−0,50 goles/partido' para el blend (fmt
-    "goles"). Formateo ÚNICO del valor de un kind — lo usan render.py (box de
-    ranking, columna lateral) y el titular determinista de writer.py."""
+    "goles", con signo); '3,80 goles esperados' para magnitudes absolutas
+    (fmt "goles_abs"). Formateo ÚNICO del valor de un kind — lo usan
+    render.py (box de ranking, columna lateral) y el titular determinista de
+    writer.py."""
     if v is None:
         return "—"
-    if STAT_KINDS[kind].get("fmt") == "goles":
+    fmt = STAT_KINDS[kind].get("fmt")
+    if fmt == "goles":
         return f"{v:+.2f}".replace(".", ",") + " goles/partido"
+    if fmt == "goles_abs":
+        return f"{v:.2f}".replace(".", ",") + " goles esperados"
     return pct(v)
 
 
@@ -347,9 +352,13 @@ def _match_item(snap, bands, prior_by_id, th, ta, valor, ph, pd, pa, kickoff):
 
 def _ground_jornada(league, snap, kind, fecha, hour):
     """Próxima jornada resuelta con el MISMO modelo v3 del snapshot
-    (match_rates/match_1x2): goleado (P encajar ≥3, de la λ que concede el
-    rival), favorito_jornada (P de ganar) o nivel_jornada (partido con más
-    fuerza combinada att−def, shape 'partido' con 1X2)."""
+    (match_rates/match_1x2):
+      - goleado: P encajar ≥3 (de la λ que concede el rival)
+      - porteria_cero: P de dejar la portería a cero (la λ que concede el rival)
+      - favorito_jornada: P de ganar
+      - nivel_jornada / empate_jornada / goles_jornada: shape 'partido' (el
+        cruce con más fuerza combinada att−def / más P de empate / más goles
+        esperados λ_local+λ_visita), cada item con su 1X2 del modelo."""
     info = STAT_KINDS[kind]
     bands = snap["bands"]
     n = snap.get("num_teams") or len(snap["teams"])
@@ -361,19 +370,34 @@ def _ground_jornada(league, snap, kind, fecha, hour):
     p_home = league.get("p_home", 0.45)
     p_draw = league.get("p_draw", 0.26)
 
+    def _match_model(m):
+        th, ta = team_by_id(snap, m["home"]["id"]), team_by_id(snap, m["away"]["id"])
+        if not th or not ta:
+            return None, None, None
+        rates = match_rates(snap, th["id"], ta["id"])
+        probs = match_1x2(snap, th["id"], ta["id"], p_home, p_draw)
+        if rates is None or probs is None:
+            return None, None, None
+        return (th, ta), rates, probs
+
     if info.get("shape") == "partido":
         items = []
         for m in matches:
-            th, ta = team_by_id(snap, m["home"]["id"]), team_by_id(snap, m["away"]["id"])
-            if not th or not ta:
+            pair, rates, probs = _match_model(m)
+            if pair is None:
                 continue
-            nivel = ((th.get("att") or 0) - (th.get("def") or 0)
-                     + (ta.get("att") or 0) - (ta.get("def") or 0))
-            probs = match_1x2(snap, th["id"], ta["id"], p_home, p_draw)
-            if probs is None:
-                continue
-            items.append(_match_item(snap, bands, prior_by_id, th, ta, nivel,
-                                     probs[0], probs[1], probs[2], m.get("kickoff")))
+            th, ta = pair
+            lam_h, lam_a, max_goals = rates
+            ph, pd, pa = probs
+            if kind == "nivel_jornada":
+                valor = ((th.get("att") or 0) - (th.get("def") or 0)
+                         + (ta.get("att") or 0) - (ta.get("def") or 0))
+            elif kind == "empate_jornada":
+                valor = pd * 100
+            else:  # goles_jornada
+                valor = lam_h + lam_a
+            items.append(_match_item(snap, bands, prior_by_id, th, ta, valor,
+                                     ph, pd, pa, m.get("kickoff")))
         if len(items) < 2:
             return None
         items.sort(key=lambda it: it["valor"], reverse=True)
@@ -382,22 +406,21 @@ def _ground_jornada(league, snap, kind, fecha, hour):
 
     per_team = {}
     for m in matches:
-        th, ta = team_by_id(snap, m["home"]["id"]), team_by_id(snap, m["away"]["id"])
-        if not th or not ta:
+        pair, rates, probs = _match_model(m)
+        if pair is None:
             continue
+        th, ta = pair
+        lam_h, lam_a, max_goals = rates
+        ph, pd, pa = probs
         if kind == "goleado":
-            rates = match_rates(snap, th["id"], ta["id"])
-            if rates is None:
-                continue
-            lam_h, lam_a, max_goals = rates
             per_team.setdefault(str(th["id"]), 100.0 * (1 - poisson_cdf(lam_a, max_goals)[2]))
             per_team.setdefault(str(ta["id"]), 100.0 * (1 - poisson_cdf(lam_h, max_goals)[2]))
+        elif kind == "porteria_cero":
+            per_team.setdefault(str(th["id"]), 100.0 * poisson_cdf(lam_a, max_goals)[0])
+            per_team.setdefault(str(ta["id"]), 100.0 * poisson_cdf(lam_h, max_goals)[0])
         else:  # favorito_jornada
-            probs = match_1x2(snap, th["id"], ta["id"], p_home, p_draw)
-            if probs is None:
-                continue
-            per_team.setdefault(str(th["id"]), 100.0 * probs[0])
-            per_team.setdefault(str(ta["id"]), 100.0 * probs[2])
+            per_team.setdefault(str(th["id"]), 100.0 * ph)
+            per_team.setdefault(str(ta["id"]), 100.0 * pa)
     if len(per_team) < 4:
         return None
 

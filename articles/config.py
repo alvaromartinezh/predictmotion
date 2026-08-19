@@ -80,6 +80,12 @@ STAT_KINDS = {
         "verbo_largo": "ser el más propenso a encajar una goleada (3 o más goles) en la próxima jornada",
         "dato_label": "Probabilidad de encajar 3+ goles en su próximo partido",
     },
+    "porteria_cero": {
+        "tipo": "jornada", "eyebrow": "Muro de la jornada",
+        "verbo": "dejar su portería a cero en la próxima jornada",
+        "verbo_largo": "dejar su portería a cero en la próxima jornada",
+        "dato_label": "Probabilidad de dejar su portería a cero en su próximo partido",
+    },
     "favorito_jornada": {
         "tipo": "jornada", "eyebrow": "Favorito de la jornada",
         "verbo": "ser el favorito para ganar su partido de la próxima jornada",
@@ -91,6 +97,18 @@ STAT_KINDS = {
         "verbo": "protagonizar el partido de mayor nivel de la próxima jornada",
         "verbo_largo": "protagonizar el partido de mayor nivel de la próxima jornada (la mayor suma de fuerza de ataque y defensa de ambos equipos)",
         "dato_label": "Nivel del partido (fuerza combinada del blend)",
+    },
+    "empate_jornada": {
+        "tipo": "jornada", "shape": "partido", "eyebrow": "Empate cantado",
+        "verbo": "terminar en empate según el modelo de la próxima jornada",
+        "verbo_largo": "terminar en empate en la próxima jornada (la mayor probabilidad de empate del modelo)",
+        "dato_label": "Probabilidad de empate (1X2 del modelo)",
+    },
+    "goles_jornada": {
+        "tipo": "jornada", "shape": "partido", "fmt": "goles_abs",
+        "eyebrow": "Gol esperado", "verbo": "acumular más goles esperados en la próxima jornada",
+        "verbo_largo": "acumular más goles esperados en la próxima jornada (la mayor suma de goles esperados de ambos equipos)",
+        "dato_label": "Goles esperados del partido (λ local + λ visitante)",
     },
 }
 
