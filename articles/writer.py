@@ -21,14 +21,38 @@ from .gemini_client import GeminiError, generate
 _PCT_RE = re.compile(r"(\d+(?:[.,]\d+)?)\s*%")
 
 _SYSTEM = (
-    "Eres redactor deportivo de PredictMotion, un sitio de predicciones de fútbol "
-    "basadas en simulación Monte Carlo. Escribe en español, tono periodístico y "
-    "cercano, SIN titulares, SIN encabezados markdown, SIN listas — solo párrafos "
-    "de prosa.\n\n"
+    "Eres redactor deportivo de PredictMotion, un sitio de predicciones de fútbol. "
+    "Escribe en español, tono directo, cercano y fácil de leer. SIN titulares, "
+    "SIN encabezados markdown, SIN listas — solo párrafos de prosa.\n\n"
     "REGLA INQUEBRANTABLE: usa ÚNICAMENTE los datos numéricos del bloque DATOS de "
     "abajo. No inventes estadísticas, porcentajes, lesionados, fichajes, resultados "
     "de partidos ni cifras que no estén ahí. Si te falta contexto, exprésalo en "
-    "términos generales sin inventar ningún número."
+    "términos generales sin inventar ningún número.\n\n"
+    "REGLAS DE ESTILO (obligatorias):\n"
+    "- Frases cortas: máximo 20-25 palabras. Una idea por frase.\n"
+    "- Un adjetivo por sustantivo. Si dos adjetivos dicen lo mismo, quita el más pomposo. "
+    "Evita acumulaciones como 'importante y decisivo', 'notable y sobresaliente'.\n"
+    "- Vocabulario sencillo, de aficionado al fútbol. NO uses estas palabras: "
+    "'simulación Monte Carlo', 'rating de fuerza', 'proyección a largo plazo', "
+    "'escenario', 'contendiente', 'envergadura', 'exhaustivo', 'foco analítico', "
+    "'pulso táctico', 'compromiso destacado'. En su lugar usa: 'modelo', 'fuerza del equipo', "
+    "'previsión', 'resultado', 'equipo', 'dato', 'partido'.\n"
+    "- No uses relleno: evita 'es importante destacar que', 'en cuanto a', 'de acuerdo con', "
+    "'más allá de', 'tiene el honor de', 'se alinea directamente con'. Ve directo al dato.\n"
+    "- Primero la cifra, luego qué significa en una frase corta.\n"
+    "- Si un número no cambia la idea principal, no lo menciones.\n\n"
+    "EJEMPLO DE LO QUE NO HACER vs LO QUE SÍ HACER:\n\n"
+    "NO: \"Arranca una nueva temporada en LaLiga y los modelos predictivos basados en "
+    "simulación Monte Carlo ya han empezado a procesar todos los escenarios posibles para "
+    "la jornada inaugural.\"\n"
+    "SÍ: \"Empieza la temporada en LaLiga y el modelo de PredictMotion ya ha calculado todos "
+    "los resultados posibles de la jornada.\"\n\n"
+    "NO: \"Las proyecciones de nuestro sistema señalan que este duelo tiene el honor de "
+    "protagonizar el partido de mayor nivel de la próxima jornada.\"\n"
+    "SÍ: \"El modelo dice que este es el partido más igualado de la jornada.\"\n\n"
+    "NO: \"Un examen exhaustivo que confirma por qué este pulso acapara todos los focos "
+    "analíticos del arranque liguero.\"\n"
+    "SÍ: \"Por eso es el partido que más llama la atención en el inicio de liga.\""
 )
 
 # render.py MAQUETA por partido (un breve por partido, ver _briefs_html): si
@@ -47,19 +71,18 @@ _ONE_PARA_PER_MATCH = (
 _INSTRUCTIONS = {
     "resumen_diario": (
         "Escribe un resumen de los partidos de {liga} que han terminado hoy: "
-        "resultados y cómo cambia la probabilidad de zona de cada equipo implicado. "
-        "Antes de cada partido el modelo daba a cada equipo la probabilidad "
-        "'prob_zona_antes_del_partido' de su zona; compárala con 'prob_zona_actual' "
-        "para explicar qué cambió con el resultado." + _ONE_PARA_PER_MATCH
+        "resultado y cómo cambia la probabilidad de zona de cada equipo. "
+        "Para cada partido compara la probabilidad de zona 'antes' con la de 'ahora' "
+        "y di, en una frase, qué ha cambiado." + _ONE_PARA_PER_MATCH
     ),
     "explicador_probabilidad": (
         "Explica por qué el modelo le da a este equipo esas probabilidades: "
-        "compáralo con sus vecinos de tabla y con su rating de fuerza.\n\n"
+        "compáralo con los equipos que tiene cerca en la tabla y con su fuerza (ataque/defensa).\n\n"
         "FORMATO OBLIGATORIO: escribe EXACTAMENTE 3 párrafos separados por una línea "
         "en blanco. Los dos primeros son cortos (60-90 palabras cada uno) y van en una "
         "columna estrecha: sitúan al equipo (posición, puntos, forma) y comparan con "
         "sus vecinos de tabla. El tercero es una nota de cierre (70-100 palabras) que "
-        "explica el papel del rating de fuerza en las probabilidades del modelo — se "
+        "explica qué papel juega la fuerza del equipo en las probabilidades del modelo — se "
         "publica aparte como 'Nota del modelo', así que tiene que sostenerse solo, sin "
         "frases que remitan a los párrafos anteriores."
     ),
@@ -72,11 +95,10 @@ _INSTRUCTIONS = {
 # tres textos comparten pool de hechos válidos para el validador de
 # grounding, en vez de tener payloads recortados por texto.
 _MATCH_SIDE_INSTR_TMPL = (
-    "Analiza el partido desde la perspectiva del equipo {lado} (el objeto DATOS.{campo}): "
-    "cómo le afecta el resultado, cómo cambia la probabilidad de su zona actual (compara "
-    "'antes' con 'actual' en DATOS.{campo}.zonas) y su situación en la tabla (posición, "
-    "puntos). Si DATOS.{campo}.rating_fuerza está presente, puedes usarlo como el "
-    "argumento de fondo del modelo para sus opciones a más largo plazo.\n\n"
+    "Escribe desde la perspectiva del equipo {lado} (DATOS.{campo}): "
+    "cómo le afecta el resultado, cómo cambia su probabilidad de zona (compara "
+    "'antes' con 'ahora') y dónde queda en la tabla. Si DATOS.{campo} tiene fuerza "
+    "(ataque/defensa), úsala para explicar por qué el modelo ve esas opciones.\n\n"
     "FORMATO OBLIGATORIO: escribe EXACTAMENTE 3 párrafos cortos (50-80 palabras cada uno) "
     "separados por una línea en blanco. Sin introducción ni cierre genérico: cada párrafo "
     "aporta algo nuevo (el efecto inmediato del resultado / cómo lo lee el modelo / qué "
@@ -103,20 +125,19 @@ _INSTRUCTIONS["match_cronica"] = (
 # "acabar colista" vs "acabar líder" del resto del payload.
 _STAT_PROTAGONIST_INSTR = (
     "Escribe sobre el dato curioso del día: el equipo con más probabilidad, según el "
-    "modelo, de {verb} (DATOS.protagonista es ese equipo). Explica el contraste entre su "
-    "situación real en la tabla (posición, puntos, forma) y lo que dice el modelo (compara "
-    "DATOS.protagonista.valor con DATOS.protagonista.valor_antes si existe), y qué papel "
-    "juega su rating de fuerza (DATOS.protagonista.rating_fuerza) en esa proyección a largo "
-    "plazo.\n\n"
+    "modelo, de {verb} (DATOS.protagonista es ese equipo). Explica en qué lugar está en "
+    "la tabla (posición, puntos) y qué dice el modelo (compara DATOS.protagonista.valor con "
+    "DATOS.protagonista.valor_antes si existe). Si tiene sentido, menciona su fuerza "
+    "(ataque/defensa) para explicar por qué el modelo lo ve así.\n\n"
     "FORMATO OBLIGATORIO: escribe EXACTAMENTE 4 párrafos cortos (60-90 palabras cada uno) "
     "separados por una línea en blanco. Sin introducción genérica ni cierre tipo 'en "
     "resumen': cada párrafo aporta algo nuevo."
 )
 
 _STAT_CHASERS_INSTR = (
-    "Escribe sobre los otros candidatos a {verb}: DATOS.perseguidores es la lista de los "
-    "siguientes equipos con más probabilidad tras el protagonista, en orden. Un párrafo "
-    "breve por cada uno explicando por qué el modelo lo sitúa ahí.\n\n"
+    "Escribe sobre los otros equipos con más probabilidad de {verb}: DATOS.perseguidores es la lista "
+    "de los siguientes equipos tras el protagonista, en orden. Un párrafo breve por cada uno "
+    "explicando por qué el modelo lo sitúa ahí.\n\n"
     "FORMATO OBLIGATORIO: escribe EXACTAMENTE un párrafo por cada elemento de "
     "DATOS.perseguidores, en el MISMO orden, separados por una línea en blanco (si hay 3 "
     "elementos, 3 párrafos: ni uno más ni uno menos). Cada párrafo se publica junto al "
@@ -213,9 +234,9 @@ del _stat_kind, _stat_info
 
 _HEADLINE_SYSTEM = (
     "Eres el redactor de titulares de PredictMotion, un sitio de predicciones de "
-    "fútbol basadas en simulación Monte Carlo. Español, tono periodístico con "
-    "gancho — el titular y el subtítulo deben dar ganas de hacer clic, sin caer en "
-    "el sensacionalismo vacío ni en inventar nada."
+    "fútbol. Español, tono directo con gancho — el titular y el subtítulo deben dar "
+    "ganas de hacer clic, sin caer en el sensacionalismo vacío ni en inventar nada. "
+    "Frases cortas y sin adjetivos de más."
 )
 
 _HEADLINE_INSTR = (

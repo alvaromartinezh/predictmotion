@@ -19,6 +19,7 @@ from . import grounding, illustration, writer
 from .config import STAT_KINDS
 
 _CSS_V = "12"
+_SITE_LOGO = SITE + "/media/twitter_profile.png"
 _DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 _MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 ZONE_HEX = {"ascenso": "#2ec98a", "ascenso_total": "#2ec98a", "playoff": "#f3b23f", "descenso": "#ff556b"}
@@ -267,11 +268,13 @@ def _page_html(title, description, canonical, league_logo, json_ld, body):
 <meta property="og:title" content="{esc(title)}">
 <meta property="og:description" content="{esc(description)}">
 <meta property="og:url" content="{canonical}">
-<meta property="og:image" content="{esc(league_logo or '')}">
+<meta property="og:image" content="{_SITE_LOGO}">
 <meta property="og:locale" content="es_ES">
 <meta property="og:site_name" content="PredictMotion">
 <meta name="twitter:card" content="summary">
-<link rel="icon" type="image/png" href="{esc(league_logo or '')}">
+<meta name="twitter:image" content="{_SITE_LOGO}">
+<link rel="icon" type="image/png" href="/media/twitter_profile.png">
+<link rel="apple-touch-icon" href="/media/twitter_profile.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="dns-prefetch" href="https://a.espncdn.com">
