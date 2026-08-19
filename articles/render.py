@@ -18,17 +18,17 @@ from seo.textutil import pct, signed, slugify
 from . import grounding, illustration, writer
 from .config import STAT_KINDS
 
-_CSS_V = "12"
+_CSS_V = "13"
 _SITE_LOGO = SITE + "/media/twitter_profile.png"
 _DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 _MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
-ZONE_HEX = {"ascenso": "#2ec98a", "ascenso_total": "#2ec98a", "playoff": "#f3b23f", "descenso": "#ff556b"}
+ZONE_HEX = {"ascenso": "#2ec98a", "ascenso_total": "#2ec98a", "playoff": "#24d08a", "descenso": "#ff556b"}
 STAT_HEX = {"colista": "#ff556b", "lider": "#2ec98a", "tapado": "#7c5cff",
-            "muro": "#2ec98a", "ataque": "#f3b23f",
+            "muro": "#2ec98a", "ataque": "#24d08a",
             "goleado": "#ff556b", "porteria_cero": "#2ec98a", "favorito_jornada": "#2ec98a",
-            "goleador": "#f3b23f", "invicto_jornada": "#2ec98a", "derrota_jornada": "#ff556b",
-            "nivel_jornada": "#7c5cff", "empate_jornada": "#7c5cff", "goles_jornada": "#f3b23f",
-            "over_25": "#f3b23f", "ambos_marcan": "#f3b23f", "sorpresa_jornada": "#7c5cff",
+            "goleador": "#24d08a", "invicto_jornada": "#2ec98a", "derrota_jornada": "#ff556b",
+            "nivel_jornada": "#7c5cff", "empate_jornada": "#7c5cff", "goles_jornada": "#24d08a",
+            "over_25": "#24d08a", "ambos_marcan": "#24d08a", "sorpresa_jornada": "#7c5cff",
             "marcador_jornada": "#7c5cff",
             "subida_zona": "#2ec98a", "caida_zona": "#ff556b", "sorpresa_temporada": "#7c5cff"}
 
@@ -322,7 +322,7 @@ def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explaine
     ex_headline = f'El modelo da al {esc(payload_explainer["equipo"])} un <span>{pct(top_val)}</span> de {esc(top_zona.lower())}'
 
     ZONE_ORDER = [("Ascenso total", "#2ec98a"), ("Ascenso directo", "#2ec98a"),
-                  ("Play-off de ascenso", "#f3b23f"), ("Descenso", "#ff556b")]
+                  ("Play-off de ascenso", "#24d08a"), ("Descenso", "#ff556b")]
     stats_html = "".join(
         f'<div class="bs-stats__row"><span class="bs-stats__value" style="color:{color}">{pct(zonas[label])}</span>'
         f'<span class="bs-stats__label">{esc(label)}</span></div>'
@@ -629,7 +629,7 @@ def _stat_side_headline(protagonista, kind):
 
 
 def _stat_rank_html(ranking, kind, dato_label):
-    color = STAT_HEX.get(kind, "#f3b23f")
+    color = STAT_HEX.get(kind, "#24d08a")
     base = max((abs(r["valor"] or 0) for r in ranking), default=0) or 1
     rows = []
     for i, r in enumerate(ranking, start=1):
@@ -805,7 +805,7 @@ def render_stat_broadsheet(payload, protagonist_body, perseguidores_body, *,
     # lateral y 2 para el cuerpo de la columna central.
     side_paras, body_paras = writer.split_explainer_paragraphs(protagonist_body)
 
-    color = STAT_HEX.get(kind, "#f3b23f")
+    color = STAT_HEX.get(kind, "#24d08a")
     if protagonista.get("tipo") == "partido":
         stats_rows = [
             (grounding.format_val(kind, protagonista["valor"]), payload["dato_label"]),
