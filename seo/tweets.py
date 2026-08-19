@@ -11,7 +11,7 @@ el resto de ligas del sitio está desactivado pero la infraestructura genérica
 reactivarlo en TWEET_LEAGUES):
   - laliga (LaLiga, 1ª): título, Champions, Europa League, Conference League,
     descenso.
-  - hypermotion (Liga Hypermotion, 2ª): ascenso total, ascenso directo,
+  - hypermotion (Liga Hypermotion, 2ª): ascenso, ascenso directo,
     play-off de ascenso, descenso.
 
 Datos: lee el precálculo del cron SEO `data/<slug>/latest.json` (NO simula).
@@ -70,8 +70,8 @@ TWEET_LEAGUES = ["hypermotion", "laliga"]
 
 # Zonas por tipo de liga (claves de `prob` del snapshot, etiqueta corta del tweet):
 #   top1 (1as europeas) → 5 tuits, igual que LaLiga.
-#   top2/tier2 (2as)    → 4 tuits (ascenso total + directo + play-off +
-#                         descenso), igual que Hypermotion.
+#   top2/tier2 (2as)    → 4 tuits (ascenso + directo + play-off + descenso),
+#                         igual que Hypermotion.
 ZONES_TOP1 = [
     ("first", "Título"),
     ("champions", "Champions"),
@@ -80,7 +80,7 @@ ZONES_TOP1 = [
     ("descenso", "Descenso"),
 ]
 ZONES_TIER2 = [
-    ("ascenso_total", "Ascenso total"),
+    ("ascenso_total", "Ascenso"),
     ("ascenso", "Ascenso directo"),
     ("playoff", "Play-off de ascenso"),
     ("descenso", "Descenso"),
