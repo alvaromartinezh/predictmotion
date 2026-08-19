@@ -10,15 +10,19 @@
   window.PMSigCrestFallback = function (img) { var d = document.createElement('div'); d.className = 'crest-ph'; d.textContent = img.getAttribute('data-ab') || '?'; img.parentNode.replaceChild(d, img); };
   function teamCrest(id, name) { var ab = initials(name); if (!id) return '<div class="crest-ph">' + ab + '</div>'; var sid = String(id); var src = (window.PM_TEAM_LOGOS && window.PM_TEAM_LOGOS[sid]) || 'https://a.espncdn.com/i/teamlogos/soccer/500/' + sid + '.png'; return '<img class="crest" loading="lazy" alt="" src="' + src + '" data-ab="' + ab + '" onerror="PMSigCrestFallback(this)">'; }
   function lname(s) { return (L[s] || {}).name || s; }
+  // Si venimos justo de /cuenta tras un login exitoso, forzamos a esperar a que
+  // /api/me resuelva antes de pintar anónimo: evita el flash "Sigue a los tuyos"
+  // cuando la cookie de sesión aún no se ve en el primer paint.
+  var LOGIN_OK = (new URLSearchParams(location.search)).get('login') === 'ok';
+
   function acct() {
     var a = window.PMAccount, empty = { competitions: [], teams: [], favorite_team: null };
     if (!a) return { avail: false, on: false, pending: false, f: empty };
     if (a.isReady && !a.isReady()) {
-      // Estado aún por resolver (/api/me). Con sesión probable (cookie hint) NO pintar
-      // el estado anónimo (flash "Sigue a los tuyos"): cargando. Anónimo probable → se
-      // pinta ya (es su estado final), asumiendo cuentas activas.
-      if (a.pending && a.pending()) return { avail: true, on: false, pending: true, f: empty };
-      return { avail: true, on: false, pending: false, f: empty };
+      // Estado aún por resolver (/api/me). Con sesión probable (cookie hint) o
+      // viniendo de login forzamos a esperar; anónimo probable → se pinta ya.
+      if ((a.pending && a.pending()) || LOGIN_OK) return { avail: true, on: false, pending: true, f: empty };
+      return { avail: true, on: false, pending: false, user: null, f: empty };
     }
     if (a.isEnabled && !a.isEnabled()) return { avail: false, on: false, pending: false, f: empty };
     return { avail: true, on: !!(a.isLoggedIn && a.isLoggedIn()), pending: false, f: (a.follows && a.follows()) || empty };
@@ -37,16 +41,16 @@
       + '<span class="pm-item__end"><button class="set-unfollow" data-unfollow-team="' + esc(t.espn_team_id) + '" type="button">Dejar de seguir</button></span></div>';
   }
 
-  function mainHTML(s) {
+  function mainHTML(s, retrying) {
     var col = ['<div class="feed-sec" style="margin-top:var(--sp-2)"><h2 class="feed-sec__title">Siguiendo</h2></div>'];
-    // Mientras PMAccount no resuelve /api/me pero la cookie hint dice que hay
-    // sesión, NO pintar NADA en el main (ni siquiera "Cargando…"): solo se ve el
-    // shell. Al resolver (pm-account-ready) se re-renderiza con los follows.
-    if (s.pending) return '';
+    // Mientras PMAccount no resuelve /api/me (o estamos reintentando tras login),
+    // mostramos un estado de carga para no flashear "Sigue a los tuyos".
+    if (s.pending || retrying) return '<article class="card"><div style="padding:var(--sp-7) var(--sp-5);text-align:center;color:var(--text-2)">Cargando tu cuenta…</div></article>';
     if (!s.on) {
-      var err = (new URLSearchParams(location.search)).get('login') === 'error';
+      var qsLogin = (new URLSearchParams(location.search)).get('login');
+      var err = qsLogin === 'error' || (LOGIN_OK && qsLogin === 'ok');
       col.push('<section class="cta-card"><h3>' + (err ? 'No se pudo iniciar sesión' : 'Sigue a los tuyos') + '</h3><p>'
-        + (err ? 'Inténtalo de nuevo o usa el inicio de sesión desde /cuenta.' : (s.avail ? 'Inicia sesión para seguir equipos y competiciones y verlos aquí y en tu portada.' : 'Las cuentas no están disponibles ahora mismo.')) + '</p>'
+        + (err ? 'La sesión no se ha podido confirmar. Vuelve a intentarlo desde /cuenta.' : (s.avail ? 'Inicia sesión para seguir equipos y competiciones y verlos aquí y en tu portada.' : 'Las cuentas no están disponibles ahora mismo.')) + '</p>'
         + (s.avail ? '<div class="btns"><a class="btn btn--primary" href="/cuenta">' + (err ? 'Volver a intentar' : 'Entrar') + '</a><a class="btn btn--ghost" href="/buscar">Explorar</a></div>' : '') + '</section>');
       return '<div class="feed"><div class="feed__col">' + col.join('') + '</div><div class="feed__rail"></div></div>';
     }
@@ -75,7 +79,27 @@
     (p || Promise.resolve()).catch(function () { btn.disabled = false; });
   });
 
-  function render() { window.PMShell.mount({ active: 'follow', main: mainHTML(acct()) }); }
+  var urlCleaned = false, loginRetried = false;
+  function render() {
+    var s = acct();
+    var retrying = LOGIN_OK && !s.pending && !s.on && !loginRetried;
+    window.PMShell.mount({ active: 'follow', main: mainHTML(s, retrying) });
+    // Si venimos de login y /api/me dice anónimo, puede haber un retraso en la
+    // commit de la cookie (sobre todo en móvil/Safari). Reintentamos una vez.
+    if (retrying && window.PMAccount) {
+      loginRetried = true;
+      setTimeout(function () { window.PMAccount.refresh(); }, 800);
+      return;
+    }
+    // Limpiar ?login=ok de la URL una vez resuelto el estado, para que un F5
+    // posterior no vuelva a forzar el modo "esperando".
+    if (!urlCleaned && !s.pending && LOGIN_OK && history.replaceState) {
+      urlCleaned = true;
+      var u = new URL(location.href);
+      u.searchParams.delete('login');
+      history.replaceState({}, '', u.toString());
+    }
+  }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render); else render();
   document.addEventListener('pm-account-ready', render);
   document.addEventListener('pm-follows-changed', render);

@@ -170,7 +170,7 @@
     var c = document.createElement('input');
     c.type = 'hidden'; c.name = 'credential'; c.value = resp.credential;
     var n = document.createElement('input');
-    n.type = 'hidden'; n.name = 'next'; n.value = location.origin + '/siguiendo';
+    n.type = 'hidden'; n.name = 'next'; n.value = location.origin + '/siguiendo?login=ok';
     f.appendChild(c); f.appendChild(n);
     document.body.appendChild(f);
     f.submit();
