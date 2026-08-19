@@ -1,4 +1,4 @@
-/* PMNews — sección de noticias (/noticias).
+/* PMNews — tarjetas de noticias (consumidas por /kiosco y /equipo).
  *
  * Lee /data/news/latest.json (lo genera el cron `python -m news.aggregate`) y
  * pinta tarjetas con título, resumen corto, fuente (atribución) y etiquetas por

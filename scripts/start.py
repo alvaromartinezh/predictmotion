@@ -36,6 +36,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             seg = path.rstrip('/').rsplit('/', 1)[-1]
             if seg in ('news', 'stats', 'matches', 'players'):
                 self.path = '/equipo.html' + ('?' + query if query else '')
+        # URL limpia /kiosco → /kiosco.html (igual que Caddy try_files en prod).
+        if path == '/kiosco':
+            self.path = '/kiosco.html' + ('?' + query if query else '')
         super().do_GET()
 
     def log_message(self, *args): pass  # silencia el log

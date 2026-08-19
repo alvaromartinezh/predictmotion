@@ -93,7 +93,7 @@ LEAGUES = {
 # ── Límites ──────────────────────────────────────────────────────────────────
 SUMMARY_MAXLEN = 220     # resumen CORTO: se trunca aquí pase lo que pase (legal)
 PER_FEED_LIMIT = 40      # tope de ítems por feed (MD sirve ~100; no lo dejamos dominar)
-MAX_ITEMS      = 90      # tope de latest.json (página global /noticias) por fecha desc
+MAX_ITEMS      = 90      # tope de latest.json (feed global /kiosco) por fecha desc
 PER_SLUG_MAX   = 40      # tope de cada data/news/<slug>.json (del set COMPLETO, no del
                          # top-90 global, para que las ligas europeas tengan noticias)
 MAX_AGE_DAYS   = 12      # se descartan noticias más viejas (esto son "noticias")

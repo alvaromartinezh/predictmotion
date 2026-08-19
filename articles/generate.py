@@ -110,12 +110,12 @@ def _save_flagged(league_slug, fecha, kind, payload, article):
 
 def _write_latest_pointer(league_slug, fecha, title):
     """data/articles/latest.json: puntero al broadsheet más reciente (de
-    cualquier liga), para que /noticias pueda enlazarlo sin hardcodear una
-    fecha en un HTML estático. Un solo puntero global (no por liga): el
-    frontend (noticias.html) ya deriva la liga del propio slug de la URL, así
-    que solo hace falta el más reciente — con varias ligas, cada una lo
-    sobrescribe al publicar, y la tarjeta de /noticias enseña el último
-    broadsheet publicado en el sitio, no uno fijo por liga."""
+    cualquier liga), para que el feed /kiosco pueda destacarlo sin hardcodear
+    una fecha en un HTML estático. Un solo puntero global (no por liga): el
+    frontend ya deriva la liga del propio slug de la URL, así que solo hace
+    falta el más reciente — con varias ligas, cada una lo sobrescribe al
+    publicar, y el feed enseña el último broadsheet publicado en el sitio,
+    no uno fijo por liga."""
     path = DATA_DIR / "articles" / "latest.json"
     _write_atomic(path, json.dumps(
         {"url": render.url_for(league_slug, fecha), "title": title, "fecha": fecha}, ensure_ascii=False))
@@ -123,10 +123,11 @@ def _write_latest_pointer(league_slug, fecha, title):
 
 _DIARIO_SLUG_RE = re.compile(r"^(?P<liga>[a-z0-9]+)-resumen-(?P<fecha>\d{4}-\d{2}-\d{2})$")
 _DATO_SLUG_RE = re.compile(
-    r"^(?P<liga>[a-z0-9]+)-dato-(?:" + "|".join(re.escape(k) for k in STAT_KINDS)
+    r"^(?P<liga>[a-z0-9]+)-dato-(?P<kind>" + "|".join(re.escape(k) for k in STAT_KINDS)
     + r")-(?P<fecha>\d{4}-\d{2}-\d{2})-\d{2}$")
 _MATCH_SLUG_RE = re.compile(r"^(?P<liga>[a-z0-9]+)-.+-(?P<fecha>\d{4}-\d{2}-\d{2})$")
 _TITLE_RE = re.compile(r"<title>(.*?)</title>", re.S)
+_STAT_KINDS_STATE_PATH = DATA_DIR / "articles" / "stat_kinds_used.json"
 
 
 def _article_meta_from_file(path):
@@ -346,17 +347,81 @@ def _stat_already_handled(league_slug, fecha, hour, kind):
     return any(_FLAGGED_DIR.glob(f"{league_slug}-stat-*-{flag_id}.json"))
 
 
+def _load_stat_kinds_state():
+    if _STAT_KINDS_STATE_PATH.exists():
+        return json.loads(_STAT_KINDS_STATE_PATH.read_text(encoding="utf-8"))
+    return {}
+
+
+def _save_stat_kinds_state(state):
+    _STAT_KINDS_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _write_atomic(_STAT_KINDS_STATE_PATH, json.dumps(state, ensure_ascii=False, indent=1))
+
+
+def _snapshot_jornada_for_date(league_slug, fecha):
+    """Devuelve (season, jornada) del snapshot diario de `fecha` para la liga,
+    o (None, None) si no se encuentra. Usado para reconstruir self-healing el
+    registro de kinds usados por jornada."""
+    from seo.snapshots import load_all
+    seasons_dir = DATA_DIR / league_slug
+    if not seasons_dir.exists():
+        return None, None
+    for season_dir in seasons_dir.iterdir():
+        if not season_dir.is_dir() or not (season_dir / "snapshots").exists():
+            continue
+        for s in load_all(league_slug, season_dir.name):
+            if s.get("date") == fecha:
+                return season_dir.name, s.get("jornada")
+    return None, None
+
+
+def _rebuild_stat_kinds_state(league_slug):
+    """Reconstruye el registro de kinds usados por jornada a partir de los
+    artículos publicados (self-healing). Así no hace falta mantener un estado
+    propio: si se pierde el JSON, se regenera escaneando los HTML y los
+    snapshots diarios."""
+    state = _load_stat_kinds_state()
+    league_state = {}
+    for path in ARTICLES_OUT_DIR.glob(f"{league_slug}-dato-*.html"):
+        m = _DATO_SLUG_RE.match(path.stem)
+        if not m:
+            continue
+        kind, fecha = m.group("kind"), m.group("fecha")
+        season, jornada = _snapshot_jornada_for_date(league_slug, fecha)
+        if season is None or jornada is None:
+            continue
+        key = f"{season}|{jornada}"
+        league_state.setdefault(key, [])
+        if kind not in league_state[key]:
+            league_state[key].append(kind)
+    state[league_slug] = league_state
+    _save_stat_kinds_state(state)
+    return league_state
+
+
+def _stat_kinds_used_for_matchday(league_slug, season, jornada):
+    """Kinds ya usados para esta liga+temporada+jornada. Carga el estado y,
+    si no existe la entrada de la liga, lo reconstruye desde los artículos
+    publicados."""
+    state = _load_stat_kinds_state()
+    league_state = state.get(league_slug)
+    if league_state is None:
+        league_state = _rebuild_stat_kinds_state(league_slug)
+    key = f"{season}|{jornada}"
+    return league_state.get(key, [])
+
+
 def _run_stat(league_slug, dry_run, date_override=None):
     """Entry point del cron de "dato curioso" (cada 2h, 10:00-22:00 hora de
     España -> 7 al día, ver CLAUDE.md y STAT_ARTICLE_HOURS). Un artículo
     corto sobre un dato que el modelo/snapshot ya calcula pero que no
-    aparece en ningún dashboard (ver STAT_KINDS en config.py). El kind lo
-    elige grounding.pick_stat_kind(hour, day) — determinista, sin estado que
-    mantener: con 7 franjas por día y más kinds que franjas, el offset del día
-    (YYYYMMDD) desplaza la rotación para que cada franja del día siguiente caiga
-    en un kind distinto y ningún kind quede sistemáticamente fuera. Best-effort
-    igual que el resto: si el grounding marca alguno de los 2 textos, no se
-    publica y se avisa por email."""
+    aparece en ningún dashboard (ver STAT_KINDS en config.py). El kind base lo
+    elige grounding.pick_stat_kind(hour, day), pero se evitan los kinds ya
+    usados en la misma jornada de competición (season+jornada) para que los
+    artículos de una jornada no repitan tipo. El registro de kinds usados se
+    deriva de los artículos publicados (self-healing). Best-effort igual que el
+    resto: si el grounding marca alguno de los 2 textos, no se publica y se
+    avisa por email."""
     league = league_by_slug(league_slug)
     now = datetime.now(_MADRID_TZ)
     hour = now.hour
@@ -367,7 +432,10 @@ def _run_stat(league_slug, dry_run, date_override=None):
         return 0
     fecha = date_override or now.strftime("%Y-%m-%d")
     day = int(fecha.replace("-", ""))
-    kind = grounding.pick_stat_kind(hour, day=day)
+    season = snap.get("season")
+    jornada = snap.get("jornada")
+    used = _stat_kinds_used_for_matchday(league_slug, season, jornada)
+    kind = grounding.pick_stat_kind(hour, day=day, used=used)
     payload = grounding.ground_stat(league, snap, kind, fecha, hour)
     if not payload:
         print(f"{league_slug}: sin datos suficientes para el dato curioso ({kind})")
@@ -419,6 +487,17 @@ def _run_stat(league_slug, dry_run, date_override=None):
     print(f"{league_slug}: publicado {article_url}")
     _write_sitemap()
     _write_articles_index()
+
+    # Registrar el kind como usado para esta jornada, para que la siguiente
+    # franja horaria de la misma jornada deportiva no repita el mismo tipo.
+    if season is not None and jornada is not None:
+        state = _load_stat_kinds_state()
+        league_state = state.setdefault(league_slug, {})
+        key = f"{season}|{jornada}"
+        kinds_used = league_state.setdefault(key, [])
+        if kind not in kinds_used:
+            kinds_used.append(kind)
+            _save_stat_kinds_state(state)
 
     flag_id = _stat_flag_id(league_slug, fecha, hour, kind)
     _notify_telegram(league_slug, headline, _pick_tweet_cta(flag_id), SITE + article_url)

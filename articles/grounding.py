@@ -207,15 +207,29 @@ def ground_explainer(league, snap, team):
     }
 
 
-def pick_stat_kind(hour, day=0):
+def pick_stat_kind(hour, day=0, used=None):
     """Alterna entre los STAT_KINDS por franja horaria + día — determinista (sin
     estado que mantener): dos ejecuciones a la misma hora del mismo día eligen lo
     mismo. `day` es un entero arbitrario (p. ej. el YYYYMMDD de la fecha del
     artículo) que desplaza la rotación: con 7 franjas por día y más kinds que
     franjas, sin el offset el ciclo de franjas dejaría siempre los mismos kinds
-    fuera."""
+    fuera.
+
+    Si `used` es un conjunto/lista de kinds ya publicados en la misma jornada,
+    se desplaza circularmente por `keys` hasta encontrar el primer kind no usado.
+    Así un artículo de datos no repite tipo dentro de una misma jornada de
+    competición. Si todos los kinds están usados, cae al kind base (la repetición
+    es inevitable)."""
     keys = list(STAT_KINDS)
-    return keys[(hour // 2 + day) % len(keys)]
+    base_idx = (hour // 2 + day) % len(keys)
+    if not used:
+        return keys[base_idx]
+    used_set = set(used)
+    for offset in range(len(keys)):
+        kind = keys[(base_idx + offset) % len(keys)]
+        if kind not in used_set:
+            return kind
+    return keys[base_idx]
 
 
 def _dato_label(kind, n):
@@ -241,6 +255,8 @@ def format_val(kind, v):
         return f"{v:.2f}".replace(".", ",") + " goles esperados"
     if fmt == "pp":
         return f"{v:+.1f}".replace(".", ",") + " pp"
+    if fmt == "pos":
+        return f"{v:+.1f}".replace(".", ",") + " posiciones"
     return pct(v)
 
 
@@ -292,16 +308,32 @@ def _ground_posicion(league, snap, kind, fecha, hour):
                          [side(t) for t in ranking])
 
 
+def _equipo_virtual_val(t, campo):
+    """Campos virtuales derivados de att/def del blend v3."""
+    if campo in t:
+        return t[campo]
+    att = t.get("att")
+    def_ = t.get("def")
+    if att is None or def_ is None:
+        return None
+    if campo == "balance":
+        return att - def_
+    if campo == "imbalance":
+        return abs(att - def_)
+    return None
+
+
 def _ground_equipo(league, snap, kind, fecha, hour):
     """Fuerza del blend v3 (att/def del snapshot, muro/ataque): leer una
-    desviación que el cron YA persiste por equipo — sin simular nada nuevo."""
+    desviación que el cron YA persiste por equipo — sin simular nada nuevo.
+    Soporta campos virtuales 'balance' e 'imbalance'."""
     info = STAT_KINDS[kind]
     campo = info["campo"]
     descend = info.get("sort", "max") == "max"
-    candidates = [t for t in snap["teams"] if t.get(campo) is not None]
+    candidates = [t for t in snap["teams"] if _equipo_virtual_val(t, campo) is not None]
     if len(candidates) < 4:
         return None
-    ranking = sorted(candidates, key=lambda t: t[campo], reverse=descend)[:6]
+    ranking = sorted(candidates, key=lambda t: _equipo_virtual_val(t, campo), reverse=descend)[:6]
     n = snap.get("num_teams") or len(snap["teams"])
     bands = snap["bands"]
 
@@ -314,8 +346,96 @@ def _ground_equipo(league, snap, kind, fecha, hour):
         return {
             "nombre": t["name"], "id": t["id"], "logo": t["logo"], "posicion": t["rank"],
             "puntos": t["pts"], "pj": t.get("gp"), "rating_fuerza": t.get("strength"),
-            "valor": round(t[campo], 2),
-            "valor_antes": (round(pt[campo], 2) if pt and pt.get(campo) is not None else None),
+            "valor": round(_equipo_virtual_val(t, campo), 2),
+            "valor_antes": (round(_equipo_virtual_val(pt, campo), 2)
+                            if pt and _equipo_virtual_val(pt, campo) is not None else None),
+            "zona": zone["label"], "prob_zona": t["prob"].get(zone["key"]),
+        }
+
+    return _stat_payload(league, snap, kind, fecha, hour, n,
+                         [side(t) for t in ranking])
+
+
+def _ground_goles(league, snap, kind, fecha, hour):
+    """Estadísticas de goles REALES ya anotadas (gf/gc/pts por partido):
+    goleador_real, coladero_real, efectividad. Sin simular nada nuevo."""
+    info = STAT_KINDS[kind]
+    campo = info["campo"]
+    descend = info.get("sort", "max") == "max"
+    bands = snap["bands"]
+    n = snap.get("num_teams") or len(snap["teams"])
+
+    def goles_val(t):
+        gp = t.get("gp") or 0
+        if gp == 0:
+            return None
+        if campo == "gf_por_partido":
+            return t.get("gf", 0) / gp
+        if campo == "gc_por_partido":
+            return t.get("gc", 0) / gp
+        if campo == "efectividad":
+            gf = t.get("gf") or 0
+            if gf == 0:
+                return None
+            return t.get("pts", 0) / gf
+        return None
+
+    candidates = [t for t in snap["teams"] if goles_val(t) is not None]
+    if len(candidates) < 4:
+        return None
+    ranking = sorted(candidates, key=lambda t: goles_val(t), reverse=descend)[:6]
+
+    prior = _prior_snapshot(league["slug"], snap["season"], fecha)
+    prior_by_id = {str(t["id"]): t for t in (prior or {}).get("teams", [])}
+
+    def side(t):
+        pt = prior_by_id.get(str(t["id"]))
+        zone = _best_band(_effective_bands(snap, bands), t["prob"])
+        return {
+            "nombre": t["name"], "id": t["id"], "logo": t["logo"], "posicion": t["rank"],
+            "puntos": t["pts"], "pj": t.get("gp"), "rating_fuerza": t.get("strength"),
+            "valor": round(goles_val(t), 2),
+            "valor_antes": (round(goles_val(pt), 2) if pt else None),
+            "zona": zone["label"], "prob_zona": t["prob"].get(zone["key"]),
+        }
+
+    return _stat_payload(league, snap, kind, fecha, hour, n,
+                         [side(t) for t in ranking])
+
+
+def _ground_zona_especifica(league, snap, kind, fecha, hour):
+    """Probabilidad de una zona concreta del snapshot (descenso, ascenso directo,
+    playoff, Champions, Europa). Si la liga no tiene esa banda, no se publica."""
+    info = STAT_KINDS[kind]
+    zone_type = info["zone_type"]
+    bands = snap["bands"]
+    n = snap.get("num_teams") or len(snap["teams"])
+
+    target_band = None
+    for b in bands:
+        if b.get("zone") == zone_type or b.get("key") == zone_type:
+            target_band = b
+            break
+    if target_band is None:
+        return None
+
+    key = target_band["key"]
+    candidates = [t for t in snap["teams"] if t["prob"].get(key) is not None]
+    if len(candidates) < 4:
+        return None
+    ranking = sorted(candidates, key=lambda t: t["prob"][key], reverse=True)[:6]
+
+    prior = _prior_snapshot(league["slug"], snap["season"], fecha)
+    prior_by_id = {str(t["id"]): t for t in (prior or {}).get("teams", [])}
+
+    def side(t):
+        pt = prior_by_id.get(str(t["id"]))
+        zone = _best_band(_effective_bands(snap, bands), t["prob"])
+        return {
+            "nombre": t["name"], "id": t["id"], "logo": t["logo"], "posicion": t["rank"],
+            "puntos": t["pts"], "pj": t.get("gp"), "rating_fuerza": t.get("strength"),
+            "valor": t["prob"][key],
+            "valor_antes": (pt["prob"].get(key) if pt else None),
             "zona": zone["label"], "prob_zona": t["prob"].get(zone["key"]),
         }
 
@@ -373,11 +493,10 @@ def _ground_zona(league, snap, kind, fecha, hour):
 
 
 def _ground_temporada(league, snap, kind, fecha, hour):
-    """La revelación de la temporada: el equipo que más ha MEJORADO la
-    probabilidad de su mejor zona entre el PRIMER snapshot de la temporada y el
-    actual. Requiere histórico (el cron lo persiste por día) — sin él no se
-    publica. valor = delta en puntos porcentuales (fmt "pp"), no un %."""
+    """Tendencia de la probabilidad de mejor zona entre el PRIMER snapshot de la
+    temporada y el actual. Soporta 'better' (default), 'worse' y 'stable'."""
     info = STAT_KINDS[kind]
+    direction = info.get("direction", "better")
     all_snaps = load_all(league["slug"], snap["season"])
     if not all_snaps:
         return None
@@ -400,12 +519,20 @@ def _ground_temporada(league, snap, kind, fecha, hour):
         if cur_val is None or before is None:
             continue
         delta = cur_val - before
-        if delta <= 0:
+        if direction == "better" and delta <= 0:
+            continue
+        if direction == "worse" and delta >= 0:
             continue
         candidates.append((t, delta))
     if len(candidates) < 4:
         return None
-    ranking = sorted(candidates, key=lambda x: x[1], reverse=True)[:6]
+
+    if direction == "stable":
+        ranking = sorted(candidates, key=lambda x: abs(x[1]), reverse=False)[:6]
+    elif direction == "worse":
+        ranking = sorted(candidates, key=lambda x: x[1], reverse=False)[:6]
+    else:
+        ranking = sorted(candidates, key=lambda x: x[1], reverse=True)[:6]
 
     def side(t, delta):
         zone = _best_band(bands, t["prob"])
@@ -419,6 +546,54 @@ def _ground_temporada(league, snap, kind, fecha, hour):
 
     return _stat_payload(league, snap, kind, fecha, hour, n,
                          [side(t, d) for t, d in ranking])
+
+
+def _ground_ranking_vs_prob(league, snap, kind, fecha, hour):
+    """Diferencia entre la posición real en tabla y la posición esperada por el
+    modelo (centróide de las bandas ponderado por probabilidad). Un valor
+    positivo alto indica un equipo 'subrepresentado': el modelo cree que debería
+    estar más arriba de lo que está."""
+    info = STAT_KINDS[kind]
+    descend = info.get("sort", "max") == "max"
+    bands = snap["bands"]
+    n = snap.get("num_teams") or len(snap["teams"])
+
+    def expected_rank(t):
+        exp, total = 0, 0
+        for b in bands:
+            p = t["prob"].get(b["key"]) or 0
+            if p:
+                exp += ((b["lo"] + b["hi"]) / 2) * p
+                total += p
+        return exp / total if total else None
+
+    def rv_val(t):
+        er = expected_rank(t)
+        if er is None:
+            return None
+        return er - t["rank"]
+
+    candidates = [t for t in snap["teams"] if rv_val(t) is not None]
+    if len(candidates) < 4:
+        return None
+    ranking = sorted(candidates, key=lambda t: rv_val(t), reverse=descend)[:6]
+
+    prior = _prior_snapshot(league["slug"], snap["season"], fecha)
+    prior_by_id = {str(t["id"]): t for t in (prior or {}).get("teams", [])}
+
+    def side(t):
+        pt = prior_by_id.get(str(t["id"]))
+        zone = _best_band(_effective_bands(snap, bands), t["prob"])
+        return {
+            "nombre": t["name"], "id": t["id"], "logo": t["logo"], "posicion": t["rank"],
+            "puntos": t["pts"], "pj": t.get("gp"), "rating_fuerza": t.get("strength"),
+            "valor": round(rv_val(t), 1),
+            "valor_antes": (round(rv_val(pt), 1) if pt else None),
+            "zona": zone["label"], "prob_zona": t["prob"].get(zone["key"]),
+        }
+
+    return _stat_payload(league, snap, kind, fecha, hour, n,
+                         [side(t) for t in ranking])
 
 
 def _next_matchday(league, snap, today):
@@ -495,6 +670,8 @@ def _ground_jornada(league, snap, kind, fecha, hour):
             return None, None, None
         return (th, ta), rates, probs
 
+    descend = info.get("sort", "max") == "max"
+
     if info.get("shape") == "partido":
         items = []
         for m in matches:
@@ -520,6 +697,12 @@ def _ground_jornada(league, snap, kind, fecha, hour):
                 (mh, ma), mp = top_score(lam_h, lam_a, max_goals)
                 valor = 100.0 * mp
                 marcador = f"{mh}-{ma}"
+            elif kind == "under_25":
+                valor = 100.0 * (1 - p_over(lam_h, lam_a, max_goals))
+            elif kind == "local_claro":
+                valor = 100.0 * ph
+            elif kind == "visitante_claro":
+                valor = 100.0 * pa
             else:  # goles_jornada
                 valor = lam_h + lam_a
             items.append(_match_item(snap, bands, prior_by_id, th, ta, valor,
@@ -527,7 +710,7 @@ def _ground_jornada(league, snap, kind, fecha, hour):
                                      marcador=marcador))
         if len(items) < 2:
             return None
-        items.sort(key=lambda it: it["valor"], reverse=True)
+        items.sort(key=lambda it: it["valor"], reverse=descend)
         return _stat_payload(league, snap, kind, fecha, hour, n,
                              items[:6], shape="partido")
 
@@ -554,6 +737,15 @@ def _ground_jornada(league, snap, kind, fecha, hour):
         elif kind == "derrota_jornada":
             per_team.setdefault(str(th["id"]), 100.0 * pa)
             per_team.setdefault(str(ta["id"]), 100.0 * ph)
+        elif kind == "menos_favorito_jornada":
+            per_team.setdefault(str(th["id"]), 100.0 * ph)
+            per_team.setdefault(str(ta["id"]), 100.0 * pa)
+        elif kind == "under_jornada":
+            per_team.setdefault(str(th["id"]), 100.0 * (1 - p_over(lam_h, lam_a, max_goals)))
+            per_team.setdefault(str(ta["id"]), 100.0 * (1 - p_over(lam_a, lam_h, max_goals)))
+        elif kind == "sin_gol_jornada":
+            per_team.setdefault(str(th["id"]), 100.0 * poisson_cdf(lam_h, max_goals)[0])
+            per_team.setdefault(str(ta["id"]), 100.0 * poisson_cdf(lam_a, max_goals)[0])
         else:  # favorito_jornada
             per_team.setdefault(str(th["id"]), 100.0 * ph)
             per_team.setdefault(str(ta["id"]), 100.0 * pa)
@@ -561,7 +753,7 @@ def _ground_jornada(league, snap, kind, fecha, hour):
         return None
 
     ranking = sorted([t for t in snap["teams"] if str(t["id"]) in per_team],
-                     key=lambda t: per_team[str(t["id"])], reverse=True)[:6]
+                     key=lambda t: per_team[str(t["id"])], reverse=descend)[:6]
     if len(ranking) < 4:
         return None
 
@@ -591,12 +783,18 @@ def ground_stat(league, snap, kind, fecha, hour):
         return _ground_posicion(league, snap, kind, fecha, hour)
     if tipo == "equipo":
         return _ground_equipo(league, snap, kind, fecha, hour)
+    if tipo == "goles":
+        return _ground_goles(league, snap, kind, fecha, hour)
     if tipo == "jornada":
         return _ground_jornada(league, snap, kind, fecha, hour)
     if tipo == "zona":
         return _ground_zona(league, snap, kind, fecha, hour)
+    if tipo == "zona_especifica":
+        return _ground_zona_especifica(league, snap, kind, fecha, hour)
     if tipo == "temporada":
         return _ground_temporada(league, snap, kind, fecha, hour)
+    if tipo == "ranking_vs_prob":
+        return _ground_ranking_vs_prob(league, snap, kind, fecha, hour)
     return None
 
 

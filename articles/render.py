@@ -30,7 +30,16 @@ STAT_HEX = {"colista": "#ff556b", "lider": "#2ec98a", "tapado": "#7c5cff",
             "nivel_jornada": "#7c5cff", "empate_jornada": "#7c5cff", "goles_jornada": "#24d08a",
             "over_25": "#24d08a", "ambos_marcan": "#24d08a", "sorpresa_jornada": "#7c5cff",
             "marcador_jornada": "#7c5cff",
-            "subida_zona": "#2ec98a", "caida_zona": "#ff556b", "sorpresa_temporada": "#7c5cff"}
+            "subida_zona": "#2ec98a", "caida_zona": "#ff556b", "sorpresa_temporada": "#7c5cff",
+            # Segunda tanda de kinds
+            "descenso": "#ff556b", "ascenso_directo": "#2ec98a", "playoff": "#24d08a",
+            "champions": "#2ec98a", "europa": "#24d08a",
+            "coladero": "#ff556b", "peor_ataque": "#ff556b", "equilibrio": "#2ec98a",
+            "desequilibrio": "#7c5cff",
+            "goleador_real": "#24d08a", "coladero_real": "#ff556b", "efectividad": "#2ec98a",
+            "menos_favorito_jornada": "#ff556b", "under_jornada": "#7c5cff", "sin_gol_jornada": "#ff556b",
+            "under_25": "#7c5cff", "local_claro": "#2ec98a", "visitante_claro": "#2ec98a",
+            "decepcion_temporada": "#ff556b", "estabilidad_temporada": "#7c5cff", "subrepresentado": "#24d08a"}
 
 
 def slug_for(league_slug, fecha):
@@ -621,7 +630,7 @@ def _stat_side_headline(protagonista, kind):
                 f'que {verb}, con <span>{pct(protagonista["p_local"])}</span> de victoria local, '
                 f'<span>{pct(protagonista["p_empate"])}</span> de empate y '
                 f'<span>{pct(protagonista["p_visita"])}</span> de victoria visitante')
-    if STAT_KINDS[kind].get("fmt") in ("goles", "pp"):
+    if STAT_KINDS[kind].get("fmt") in ("goles", "pp", "pos"):
         return (f'{protagonista["posicion"]}º en la tabla real, con '
                 f'<span>{grounding.format_val(kind, protagonista["valor"])}</span> de {verb}')
     return (f'{protagonista["posicion"]}º en la tabla real, con el '

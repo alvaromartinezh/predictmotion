@@ -77,7 +77,7 @@ def _dedup_sort(items):
 
 def _write(all_items, dry_run):
     generated = datetime.now(timezone.utc).isoformat()
-    # latest.json (página global /noticias): top-N por fecha.
+    # latest.json (feed global /kiosco): top-N por fecha.
     latest = all_items[:MAX_ITEMS]
     payload = {"generated": generated, "count": len(latest),
                "items": [_clean(it) for it in latest]}
@@ -118,7 +118,7 @@ def _run(args):
         notify.send_alert(
             "[PredictMotion] news: 0 noticias agregadas",
             "El cron de noticias terminó sin agregar ninguna noticia. La página "
-            "/noticias se quedará con el último JSON válido (o vacía).\n\n"
+            "/kiosco se quedará con el último JSON válido (o vacía).\n\n"
             f"Feeds fallidos:\n{motivos}\n\n"
             "Revisar /home/ubuntu/news.log en el servidor.",
             dedup_key="news_zero",

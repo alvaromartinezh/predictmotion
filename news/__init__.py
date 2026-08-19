@@ -2,7 +2,7 @@
 
 Consume feeds RSS públicos de medios deportivos españoles (sindicación), los
 normaliza, los etiqueta por liga/equipo y persiste JSON que lee el frontend
-(/noticias). Solo stdlib. Corre en su propio cron, sin pasos manuales.
+(feed /kiosco). Solo stdlib. Corre en su propio cron, sin pasos manuales.
 
 Legal / sindicación: SOLO se usa lo que el propio RSS ofrece — título + resumen
 CORTO (truncado defensivamente) + enlace al original + atribución de la fuente.

@@ -201,6 +201,143 @@ STAT_KINDS = {
         "verbo_largo": "amenazar el título sin ser el líder actual (la mayor probabilidad de acabar 1º entre los que no mandan)",
         "dato_label": "Probabilidad de acabar 1º (sin ser líder)",
     },
+    # ═══════════════════════════════════════════════════════════════════════
+    # NUEVOS KINDS (segunda tanda): duplican el catálogo a 42 tipos.
+    # Todos derivan de datos que ya persiste el snapshot o del modelo v3 de
+    # la próxima jornada; no requieren nuevos endpoints ni simulaciones.
+    # ═══════════════════════════════════════════════════════════════════════
+    # ── Zonas específicas ──
+    "descenso": {
+        "tipo": "zona_especifica", "zone_type": "relega",
+        "eyebrow": "Cuesta abajo", "verbo": "descender de categoría",
+        "verbo_largo": "descender de categoría al final de la temporada",
+        "dato_label": "Probabilidad de descenso",
+    },
+    "ascenso_directo": {
+        "tipo": "zona_especifica", "zone_type": "promo",
+        "eyebrow": "Ascenso en puerta", "verbo": "ascender de categoría de forma directa",
+        "verbo_largo": "ascender de categoría de forma directa (sin playoff)",
+        "dato_label": "Probabilidad de ascenso directo",
+    },
+    "playoff": {
+        "tipo": "zona_especifica", "zone_type": "playoff",
+        "eyebrow": "Play-off a la vista", "verbo": "jugar el playoff de ascenso",
+        "verbo_largo": "jugar el playoff de ascenso al final de la temporada",
+        "dato_label": "Probabilidad de jugar el playoff",
+    },
+    "champions": {
+        "tipo": "zona_especifica", "zone_type": "champions",
+        "eyebrow": "Aroma a Champions", "verbo": "clasificarse para la Champions League",
+        "verbo_largo": "clasificarse para la Champions League al final de la temporada",
+        "dato_label": "Probabilidad de jugar la Champions League",
+    },
+    "europa": {
+        "tipo": "zona_especifica", "zone_type": "europa",
+        "eyebrow": "Rumbo a Europa", "verbo": "clasificarse para la Europa League",
+        "verbo_largo": "clasificarse para la Europa League al final de la temporada",
+        "dato_label": "Probabilidad de jugar la Europa League",
+    },
+    # ── Fuerza del blend v3 (cara B) ──
+    "coladero": {
+        "tipo": "equipo", "campo": "def", "sort": "max", "fmt": "goles",
+        "eyebrow": "Coladero de la liga", "verbo": "tener la defensa más permeable de la liga",
+        "verbo_largo": "tener la defensa más permeable de la liga (más goles en contra por partido)",
+        "dato_label": "Goles en contra por partido (desv. de la media)",
+    },
+    "peor_ataque": {
+        "tipo": "equipo", "campo": "att", "sort": "min", "fmt": "goles",
+        "eyebrow": "Ataque más apagado", "verbo": "tener el ataque más apagado de la liga",
+        "verbo_largo": "tener el ataque más apagado de la liga (menos goles a favor por partido)",
+        "dato_label": "Goles a favor por partido (desv. de la media)",
+    },
+    "equilibrio": {
+        "tipo": "equipo", "campo": "balance", "sort": "max", "fmt": "goles",
+        "eyebrow": "Equipo más equilibrado", "verbo": "tener el balance ataque-defensa más sólido de la liga",
+        "verbo_largo": "tener el balance ataque-defensa más sólido (la mayor diferencia a favor del blend)",
+        "dato_label": "Balance ataque-defensa (goles/partido)",
+    },
+    "desequilibrio": {
+        "tipo": "equipo", "campo": "imbalance", "sort": "max", "fmt": "goles",
+        "eyebrow": "Equipo más irregular", "verbo": "tener el ataque y la defensa más descompensados de la liga",
+        "verbo_largo": "tener el ataque y la defensa más descompensados (la mayor diferencia absoluta entre att y def)",
+        "dato_label": "Desequilibrio ataque-defensa (goles/partido)",
+    },
+    # ── Goles reales ya anotados ──
+    "goleador_real": {
+        "tipo": "goles", "campo": "gf_por_partido", "sort": "max", "fmt": "goles_abs",
+        "eyebrow": "Máximo goleador real", "verbo": "marcar más goles por partido de lo que dice la media",
+        "verbo_largo": "marcar más goles por partido (dato real de la temporada, no el modelo)",
+        "dato_label": "Goles a favor por partido (real)",
+    },
+    "coladero_real": {
+        "tipo": "goles", "campo": "gc_por_partido", "sort": "max", "fmt": "goles_abs",
+        "eyebrow": "Coladero real", "verbo": "encajar más goles por partido de lo que dice la media",
+        "verbo_largo": "encajar más goles por partido (dato real de la temporada, no el modelo)",
+        "dato_label": "Goles en contra por partido (real)",
+    },
+    "efectividad": {
+        "tipo": "goles", "campo": "efectividad", "sort": "max", "fmt": "goles_abs",
+        "eyebrow": "Equipo más efectivo", "verbo": "sacar más puntos por gol marcado",
+        "verbo_largo": "sacar más puntos por gol marcado (la mayor ratio puntos/goles a favor)",
+        "dato_label": "Puntos por gol a favor",
+    },
+    # ── Próxima jornada: cara B del 1X2/goles ──
+    "menos_favorito_jornada": {
+        "tipo": "jornada",
+        "eyebrow": "En apuros", "verbo": "ser el menos favorito para ganar en la próxima jornada",
+        "verbo_largo": "ser el menos favorito para ganar su partido de la próxima jornada",
+        "dato_label": "Probabilidad de ganar su próximo partido",
+    },
+    "under_jornada": {
+        "tipo": "jornada",
+        "eyebrow": "Partido de pocos goles", "verbo": "ser el equipo con menos opciones de ver +2,5 goles en su próximo partido",
+        "verbo_largo": "ser el equipo con menos opciones de ver más de 2,5 goles en su próximo partido",
+        "dato_label": "Probabilidad de menos de 2,5 goles en su próximo partido",
+    },
+    "sin_gol_jornada": {
+        "tipo": "jornada",
+        "eyebrow": "Sin gol a la vista", "verbo": "tener más opciones de no marcar en la próxima jornada",
+        "verbo_largo": "tener más opciones de no marcar en su próximo partido",
+        "dato_label": "Probabilidad de no marcar en su próximo partido",
+    },
+    # ── Próxima jornada: por partido, cara B ──
+    "under_25": {
+        "tipo": "jornada", "shape": "partido",
+        "eyebrow": "Partido de pocos goles", "verbo": "tener menos opciones de superar los 2,5 goles en la próxima jornada",
+        "verbo_largo": "tener menos opciones de superar los 2,5 goles en la próxima jornada (la mayor probabilidad de 2 goles o menos)",
+        "dato_label": "Probabilidad de menos de 2,5 goles",
+    },
+    "local_claro": {
+        "tipo": "jornada", "shape": "partido",
+        "eyebrow": "Local sólido", "verbo": "tener al local más favorito de la próxima jornada",
+        "verbo_largo": "tener al local más favorito de la próxima jornada (la mayor probabilidad de victoria local según el modelo)",
+        "dato_label": "Probabilidad de victoria local",
+    },
+    "visitante_claro": {
+        "tipo": "jornada", "shape": "partido",
+        "eyebrow": "Visitante sólido", "verbo": "tener al visitante más favorito de la próxima jornada",
+        "verbo_largo": "tener al visitante más favorito de la próxima jornada (la mayor probabilidad de victoria visitante según el modelo)",
+        "dato_label": "Probabilidad de victoria visitante",
+    },
+    # ── Tendencia / estabilidad a lo largo de la temporada ──
+    "decepcion_temporada": {
+        "tipo": "temporada", "fmt": "pp", "direction": "worse",
+        "eyebrow": "La decepción del curso", "verbo": "ser la decepción de la temporada",
+        "verbo_largo": "ser la decepción de la temporada (el equipo que más ha empeorado su probabilidad de zona desde el arranque)",
+        "dato_label": "Empeoramiento de probabilidad de zona desde el arranque",
+    },
+    "estabilidad_temporada": {
+        "tipo": "temporada", "fmt": "pp", "direction": "stable",
+        "eyebrow": "El más fiel a sí mismo", "verbo": "ser el equipo más estable de la temporada",
+        "verbo_largo": "ser el equipo más estable de la temporada (el que menos ha movido su probabilidad de zona desde el arranque)",
+        "dato_label": "Cambio absoluto de probabilidad de zona desde el arranque",
+    },
+    "subrepresentado": {
+        "tipo": "ranking_vs_prob", "sort": "max", "fmt": "pos",
+        "eyebrow": "Equipo infravalorado", "verbo": "estar más bajo en la tabla de lo que su probabilidad merece",
+        "verbo_largo": "estar más bajo en la tabla de lo que su probabilidad de zona merece (mayor diferencia entre posición real y esperada)",
+        "dato_label": "Diferencia posición real vs esperada por el modelo",
+    },
 }
 
 # Cron dedicado (ver CLAUDE.md): un dato curioso cada 2h, de 10:00 a 22:00

@@ -1,4 +1,4 @@
-/* PMNews — estilos de la sección de noticias (/noticias).
+/* PMNews — estilos de las tarjetas de noticias (feed /kiosco, /equipo).
    Usa los tokens de styles.css (:root), así hereda tema claro/oscuro solo. */
 
 /* ── Barra de filtros ─────────────────────────────────────────────────────── */
@@ -25,6 +25,11 @@
   color: var(--accent-ink);
   background: var(--accent);
   border-color: var(--accent);
+}
+.news-filter__sep {
+  width: 1px;
+  background: var(--line);
+  margin: 2px var(--sp-1);
 }
 
 /* ── Rejilla de tarjetas ──────────────────────────────────────────────────── */
@@ -71,6 +76,16 @@
   font-family: var(--font-mono);
   font-size: var(--fs-12);
   color: var(--muted);
+}
+.news-card__badge {
+  font-family: var(--font-data);
+  font-size: var(--fs-11);
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-pill);
+  padding: 1px var(--sp-2);
+  margin-left: auto;
 }
 
 .news-card__title {

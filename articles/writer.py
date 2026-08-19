@@ -156,7 +156,8 @@ def _compose_stat_head(payload):
                 f'{pct(p["p_visita"])} visitante.')
         return title, desc
     title = f'{p["nombre"]}, el favorito a {payload["dato_verbo"]} en {payload["liga"]} | PredictMotion'
-    if STAT_KINDS[payload["kind"]].get("fmt") in ("goles", "pp"):
+    fmt = STAT_KINDS[payload["kind"]].get("fmt")
+    if fmt in ("goles", "pp", "pos"):
         desc = (f'El modelo de PredictMotion sitúa al {p["nombre"]} como el más propenso a '
                 f'{payload["dato_verbo"]} en {payload["liga"]} (jornada {payload["jornada"]}): '
                 f'{grounding.format_val(payload["kind"], p["valor"])}.')

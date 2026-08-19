@@ -4,8 +4,10 @@ Uso: python3 -m articles.test_generate
 """
 
 import json
+import shutil
 
 from . import generate, grounding, illustration, layout_estimate, render, writer
+from .config import ARTICLES_OUT_DIR, DATA_DIR
 from .writer import validate_grounding
 
 _TEAM_A = {"nombre": "Eibar", "id": "3752", "logo": None, "posicion": 20,
@@ -143,7 +145,6 @@ def demo():
     assert "1–3" in html_match
 
     # ── _match_already_handled: idempotencia sin red (existe HTML -> True) ──
-    from .config import ARTICLES_OUT_DIR
     probe_payload = {"fecha": "1999-01-01",
                       "local": {"nombre": "EquipoTestA", "id": "1"},
                       "visitante": {"nombre": "EquipoTestB", "id": "2"}}
@@ -197,6 +198,13 @@ def demo():
     # a lo largo de len(STAT_KINDS) días a una hora fija se recorren TODOS los kinds
     n_kinds = len(grounding.STAT_KINDS)
     assert {grounding.pick_stat_kind(10, day=100 + d) for d in range(n_kinds)} == set(grounding.STAT_KINDS)
+    # si el kind base ya está usado en la jornada, salta al siguiente disponible
+    base_kind = grounding.pick_stat_kind(10, day=100)
+    next_kind = grounding.pick_stat_kind(10, day=100, used=[base_kind])
+    assert next_kind != base_kind
+    assert next_kind in grounding.STAT_KINDS
+    # si todos los kinds están usados, cae al kind base (repetición inevitable)
+    assert grounding.pick_stat_kind(10, day=100, used=list(grounding.STAT_KINDS)) == base_kind
 
     # ── grounding.ground_stat: protagonista = mayor prob["last"]/["first"] ──
     bands_top1 = [{"key": "champions", "label": "Champions", "zone": "promo", "lo": 1, "hi": 4},
@@ -406,6 +414,25 @@ def demo():
 
         payload_der = grounding.ground_stat(league_jornada, snap_v3, "derrota_jornada", "2026-08-19", 12)
         assert payload_der is not None and payload_der["shape"] == "team"
+
+        # Nuevos kinds de jornada (segunda tanda)
+        payload_menos_fav = grounding.ground_stat(league_jornada, snap_v3, "menos_favorito_jornada", "2026-08-19", 12)
+        assert payload_menos_fav is not None and payload_menos_fav["shape"] == "team"
+
+        payload_under_j = grounding.ground_stat(league_jornada, snap_v3, "under_jornada", "2026-08-19", 12)
+        assert payload_under_j is not None and payload_under_j["shape"] == "team"
+
+        payload_sin_gol = grounding.ground_stat(league_jornada, snap_v3, "sin_gol_jornada", "2026-08-19", 12)
+        assert payload_sin_gol is not None and payload_sin_gol["shape"] == "team"
+
+        payload_under_25 = grounding.ground_stat(league_jornada, snap_v3, "under_25", "2026-08-19", 12)
+        assert payload_under_25 is not None and payload_under_25["shape"] == "partido"
+
+        payload_local_claro = grounding.ground_stat(league_jornada, snap_v3, "local_claro", "2026-08-19", 12)
+        assert payload_local_claro is not None and payload_local_claro["shape"] == "partido"
+
+        payload_visitante_claro = grounding.ground_stat(league_jornada, snap_v3, "visitante_claro", "2026-08-19", 12)
+        assert payload_visitante_claro is not None and payload_visitante_claro["shape"] == "partido"
     finally:
         grounding.espn.fetch_scoreboard_range = real_fetch
 
@@ -449,8 +476,6 @@ def demo():
     # ── _article_meta_from_file / _write_articles_index: self-healing, se
     # reconstruye escaneando articulos/*.html (sin estado propio) — así un
     # artículo publicado antes de que existiera el índice aparece igual ──
-    from .config import DATA_DIR
-
     def _write_probe(stem, title):
         p = ARTICLES_OUT_DIR / f"{stem}.html"
         p.write_text(f"<html><head><title>{title} | PredictMotion</title></head></html>", encoding="utf-8")
@@ -479,6 +504,131 @@ def demo():
     finally:
         for p in probes:
             p.unlink()
+
+    # ── _rebuild_stat_kinds_state / _stat_kinds_used_for_matchday: self-healing,
+    # no se repite kind dentro de la misma jornada de competición ──
+    state_path = DATA_DIR / "articles" / "stat_kinds_used.json"
+    state_backup = state_path.read_text(encoding="utf-8") if state_path.exists() else None
+    league_slug = "hypermotiontest"  # slug sin guiones para que _DATO_SLUG_RE haga match
+    season, jornada, fecha_test = "2026-27", 5, "2026-08-20"
+    day_int = int(fecha_test.replace("-", ""))
+    base_kind = grounding.pick_stat_kind(10, day=day_int)
+    snap_dir = DATA_DIR / league_slug / season / "snapshots"
+    snap_dir.mkdir(parents=True, exist_ok=True)
+    snap_path = snap_dir / f"{fecha_test}.json"
+    snap_path.write_text(json.dumps({"date": fecha_test, "jornada": jornada, "teams": []}), encoding="utf-8")
+    dato_path = ARTICLES_OUT_DIR / f"{league_slug}-dato-{base_kind}-{fecha_test}-10.html"
+    ARTICLES_OUT_DIR.mkdir(parents=True, exist_ok=True)
+    dato_path.write_text("<html></html>", encoding="utf-8")
+    try:
+        rebuilt = generate._rebuild_stat_kinds_state(league_slug)
+        assert rebuilt.get(f"{season}|{jornada}") == [base_kind]
+        used = generate._stat_kinds_used_for_matchday(league_slug, season, jornada)
+        assert used == [base_kind]
+        # ahora pick_stat_kind a la misma hora/día evita el kind ya usado
+        assert grounding.pick_stat_kind(10, day=day_int, used=used) != base_kind
+    finally:
+        dato_path.unlink(missing_ok=True)
+        snap_path.unlink(missing_ok=True)
+        if (DATA_DIR / league_slug).exists():
+            shutil.rmtree(DATA_DIR / league_slug)
+        if state_backup is not None:
+            state_path.write_text(state_backup, encoding="utf-8")
+        elif state_path.exists():
+            state_path.unlink()
+
+    # ── Sanity check de TODOS los kinds (segunda tanda incluida) ──
+    required_fields = {"tipo", "eyebrow", "verbo", "verbo_largo", "dato_label"}
+    for kind, info in grounding.STAT_KINDS.items():
+        missing = required_fields - set(info)
+        assert not missing, f"{kind} falta {missing}"
+        if info["tipo"] == "posicion":
+            assert "prob_key" in info, f"{kind} es posicion sin prob_key"
+        if info["tipo"] == "equipo":
+            assert "campo" in info and "sort" in info, f"{kind} es equipo sin campo/sort"
+        if info["tipo"] == "zona_especifica":
+            assert "zone_type" in info, f"{kind} es zona_especifica sin zone_type"
+        if info["tipo"] == "goles":
+            assert "campo" in info and "sort" in info, f"{kind} es goles sin campo/sort"
+
+    # Snapshot completo para probar kinds snapshot-based de la segunda tanda
+    bands_full = [
+        {"key": "ascenso", "label": "Ascenso directo", "zone": "promo", "lo": 1, "hi": 2},
+        {"key": "playoff", "label": "Play-off", "zone": "playoff", "lo": 3, "hi": 6},
+        {"key": "permanencia", "label": "Permanencia", "zone": None, "lo": 7, "hi": 18},
+        {"key": "descenso", "label": "Descenso", "zone": "relega", "lo": 19, "hi": 22},
+    ]
+    snap_full = {
+        "season": "2026-27", "jornada": 5, "num_teams": 22, "bands": bands_full, "total_md": 42,
+        "teams": [
+            {"id": "1", "name": "Líder", "logo": None, "rank": 1, "pts": 13, "gp": 5, "gf": 12, "gc": 3,
+             "att": 0.8, "def": -0.6,
+             "prob": {"ascenso": 55.0, "playoff": 30.0, "permanencia": 12.0, "descenso": 1.0,
+                      "first": 25.0, "last": 0.1}},
+            {"id": "2", "name": "Playoff", "logo": None, "rank": 4, "pts": 10, "gp": 5, "gf": 8, "gc": 7,
+             "att": 0.3, "def": -0.1,
+             "prob": {"ascenso": 20.0, "playoff": 45.0, "permanencia": 25.0, "descenso": 5.0,
+                      "first": 5.0, "last": 1.0}},
+            {"id": "3", "name": "Permanencia", "logo": None, "rank": 10, "pts": 7, "gp": 5, "gf": 5, "gc": 8,
+             "att": -0.2, "def": 0.2,
+             "prob": {"ascenso": 5.0, "playoff": 15.0, "permanencia": 50.0, "descenso": 20.0,
+                      "first": 0.5, "last": 5.0}},
+            {"id": "4", "name": "Descenso", "logo": None, "rank": 20, "pts": 3, "gp": 5, "gf": 3, "gc": 12,
+             "att": -0.5, "def": 0.7,
+             "prob": {"ascenso": 1.0, "playoff": 4.0, "permanencia": 25.0, "descenso": 60.0,
+                      "first": 0.1, "last": 15.0}},
+            {"id": "5", "name": "Colista", "logo": None, "rank": 22, "pts": 1, "gp": 5, "gf": 2, "gc": 14,
+             "att": -0.8, "def": 1.0,
+             "prob": {"ascenso": 0.5, "playoff": 2.0, "permanencia": 12.0, "descenso": 75.0,
+                      "first": 0.0, "last": 35.0}},
+        ],
+    }
+    league_full = {"slug": "hypermotiontest", "name": "Liga de prueba"}
+
+    # Zonas específicas
+    for kind in ["descenso", "ascenso_directo", "playoff"]:
+        p = grounding.ground_stat(league_full, snap_full, kind, "2026-08-20", 12)
+        assert p is not None, f"{kind} debería tener payload"
+    # champions no existe en esta liga -> None
+    assert grounding.ground_stat(league_full, snap_full, "champions", "2026-08-20", 12) is None
+
+    # Fuerza cara B
+    assert grounding.ground_stat(league_full, snap_full, "coladero", "2026-08-20", 12)["protagonista"]["nombre"] == "Colista"
+    assert grounding.ground_stat(league_full, snap_full, "peor_ataque", "2026-08-20", 12)["protagonista"]["nombre"] == "Colista"
+    assert grounding.ground_stat(league_full, snap_full, "equilibrio", "2026-08-20", 12)["protagonista"]["nombre"] == "Líder"
+    assert grounding.ground_stat(league_full, snap_full, "desequilibrio", "2026-08-20", 12)["protagonista"]["nombre"] == "Colista"
+
+    # Goles reales
+    assert grounding.ground_stat(league_full, snap_full, "goleador_real", "2026-08-20", 12)["protagonista"]["nombre"] == "Líder"
+    assert grounding.ground_stat(league_full, snap_full, "coladero_real", "2026-08-20", 12)["protagonista"]["nombre"] == "Colista"
+    assert grounding.ground_stat(league_full, snap_full, "efectividad", "2026-08-20", 12)["protagonista"]["valor"] > 0
+
+    # Ranking vs prob
+    subrep = grounding.ground_stat(league_full, snap_full, "subrepresentado", "2026-08-20", 12)
+    assert subrep is not None
+    assert grounding.format_val("subrepresentado", subrep["protagonista"]["valor"]).endswith(" posiciones")
+
+    # Temporada con direction
+    first_snap_full = {
+        "season": "2026-27", "date": "2026-08-01", "jornada": 0, "num_teams": 22,
+        "bands": bands_full, "total_md": 42,
+        "teams": [
+            {"id": "1", "name": "Líder", "prob": {"ascenso_total": 80.0, "permanencia": 10.0, "descenso": 5.0}},
+            {"id": "2", "name": "Playoff", "prob": {"playoff": 40.0, "permanencia": 45.0, "descenso": 10.0}},
+            {"id": "3", "name": "Permanencia", "prob": {"ascenso_total": 15.0, "permanencia": 55.0, "descenso": 20.0}},
+            {"id": "4", "name": "Descenso", "prob": {"ascenso_total": 10.0, "permanencia": 25.0, "descenso": 65.0}},
+            {"id": "5", "name": "Colista", "prob": {"playoff": 5.0, "permanencia": 10.0, "descenso": 80.0}},
+        ],
+    }
+    real_load_all = grounding.load_all
+    grounding.load_all = lambda slug, season: [first_snap_full]
+    try:
+        decep = grounding.ground_stat(league_full, snap_full, "decepcion_temporada", "2026-08-20", 12)
+        assert decep is not None
+        estab = grounding.ground_stat(league_full, snap_full, "estabilidad_temporada", "2026-08-20", 12)
+        assert estab is not None
+    finally:
+        grounding.load_all = real_load_all
 
     print("articles.test_generate: OK")
 

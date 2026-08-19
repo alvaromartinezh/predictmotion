@@ -259,7 +259,7 @@
       if (events.length) { col.push(feedSec('Partidos de hoy', 'Ver todos', '/partidos')); events.slice(0, 4).forEach(function (m) { col.push(resultCard(m, false)); }); }
       if (snap) { col.push(feedSec('Predicciones que suenan')); col.push(leadersCard(snap, 'laliga', table)); }
       col.push('<section class="cta-card"><h3>Sigue a los tuyos</h3><p>Crea tu cuenta gratis y tu portada se llena con los resultados, la clasificación y las noticias de tus equipos.</p><div class="btns"><a class="btn btn--primary" href="/cuenta">Crear cuenta</a><a class="btn btn--ghost" href="/cuenta">Entrar</a></div></section>');
-      if (allNews.length) { col.push(feedSec('Lo último', 'Más', '/noticias')); allNews.slice(0, 4).forEach(function (it) { col.push(newsCard(it)); }); }
+      if (allNews.length) { col.push(feedSec('Lo último', 'Más', '/kiosco')); allNews.slice(0, 4).forEach(function (it) { col.push(newsCard(it)); }); }
       col.push('<section class="methodology-callout"><h3>Cómo funciona</h3><p>Probabilidades recalculadas cada día con simulación Monte Carlo sobre 40.000 temporadas virtuales. Con cada resultado real, la tabla se actualiza y las probabilidades se recalculan automáticamente.</p></section>');
       return { col: col.join(''), rail: (snap ? leadersRail(snap, 'laliga', table) : '') };
     });

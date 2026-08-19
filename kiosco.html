@@ -23,27 +23,27 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
-  <title>Artículos · Broadsheets, crónicas y datos curiosos · PredictMotion</title>
-  <meta name="description" content="Todos los artículos de PredictMotion: broadsheets diarios, crónicas de partido y datos curiosos calculados por la simulación Monte Carlo." />
+  <title>Noticias y artículos · PredictMotion</title>
+  <meta name="description" content="Feed unificado de noticias y artículos de PredictMotion: broadsheets diarios, crónicas de partido, datos curiosos y noticias agregadas de la prensa deportiva." />
   <meta name="author" content="PredictMotion" />
   <meta name="robots" content="index, follow, max-snippet:-1" />
   <meta name="theme-color" content="#05070e" />
   <link rel="canonical" href="https://predictmotion.com/kiosco" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://predictmotion.com/kiosco" />
-  <meta property="og:title" content="Artículos · PredictMotion" />
-  <meta property="og:description" content="Broadsheets diarios, crónicas de partido y datos curiosos calculados por el modelo de PredictMotion." />
+  <meta property="og:title" content="Noticias y artículos · PredictMotion" />
+  <meta property="og:description" content="Feed unificado de noticias y artículos de PredictMotion." />
   <meta property="og:image" content="https://predictmotion.com/media/og-default.png" />
   <meta property="og:locale" content="es_ES" />
   <meta property="og:site_name" content="PredictMotion" />
   <meta name="twitter:card" content="summary" />
   <meta name="twitter:image" content="https://predictmotion.com/media/og-default.png" />
 
-  <link rel="stylesheet" href="/styles.css?v=20260819b" />
-  <link rel="stylesheet" href="/assets/shell.css?v=20260819b" />
-  <link rel="stylesheet" href="/assets/news.css?v=20260819b" />
-  <script src="/theme.js?v=20260819b"></script>
-  <script src="/assets/pm-leagues.js?v=20260819b"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260820b" />
+  <link rel="stylesheet" href="/assets/shell.css?v=20260820b" />
+  <link rel="stylesheet" href="/assets/news.css?v=20260820b" />
+  <script src="/theme.js?v=20260820b"></script>
+  <script src="/assets/pm-leagues.js?v=20260820b"></script>
 
   <!-- Google AdSense -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3055585323326983" crossorigin="anonymous"></script>
@@ -63,17 +63,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
       <main class="wrap">
         <section class="hero">
-          <p class="eyebrow">Editorial · generado por el modelo</p>
-          <h1>Todos los <span class="hl">artículos</span></h1>
-          <p class="lede">Broadsheets diarios, crónicas de cada partido y datos curiosos que la simulación Monte Carlo calcula pero que ningún dashboard muestra — como quién tiene más papeletas de acabar colista.</p>
+          <p class="eyebrow">Actualidad + Editorial</p>
+          <h1>Tu <span class="hl">feed</span> de fútbol</h1>
+          <p class="lede">Noticias de la prensa deportiva y artículos generados por el modelo de PredictMotion, mezclados en una sola cronología. Si sigues equipos o ligas, esas novedades aparecen primero.</p>
         </section>
 
-        <!-- Filtros por tipo (se generan según los artículos disponibles) -->
-        <div class="news-filters" id="articles-filters" role="group" aria-label="Filtrar artículos por tipo"></div>
+        <!-- Filtros principales: Para ti / Todos / Artículos / Noticias -->
+        <div class="news-filters" id="feed-filters" role="group" aria-label="Filtrar feed"></div>
 
-        <!-- Tarjetas de artículos -->
-        <div id="articles-mount" aria-live="polite">
-          <p class="news-empty">Cargando artículos…</p>
+        <!-- Feed unificado -->
+        <div id="feed-mount" aria-live="polite">
+          <p class="news-empty">Cargando feed…</p>
         </div>
       </main>
 
@@ -90,11 +90,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </div>
   <div id="shell-tabbar"></div>
 
-  <script src="/assets/account.js?v=20260819b"></script>
-  <script src="/assets/shell.js?v=20260819b"></script>
+  <script src="/assets/account.js?v=20260820b"></script>
+  <script src="/assets/shell.js?v=20260820b"></script>
   <script>PMShell.chrome({ active: 'articles' });</script>
-  <script src="/assets/articles.js?v=20260819b"></script>
-  <script>PMArticles.init({ mount: '#articles-mount', filters: '#articles-filters' });</script>
-  <script src="/assets/nav.js?v=20260819b"></script>
+  <script src="/assets/feed.js?v=20260820b"></script>
+  <script>PMFeed.init({ mount: '#feed-mount', filters: '#feed-filters' });</script>
+  <script src="/assets/nav.js?v=20260820b"></script>
 </body>
 </html>
