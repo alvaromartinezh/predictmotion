@@ -164,6 +164,7 @@ class MatchDetail:
     stats: list[StatPair] = field(default_factory=list)
     win_probability: WinProbability | None = None
     stale: bool = False
+    date: str = ""                    # kickoff ISO 8601 (UTC); solo en 'pre' tiene sentido
 
     def to_dict(self):
         return {
@@ -175,4 +176,5 @@ class MatchDetail:
             "stats": [s.to_dict() for s in self.stats],
             "winProbability": self.win_probability.to_dict() if self.win_probability else None,
             "stale": self.stale,
+            "date": self.date,
         }

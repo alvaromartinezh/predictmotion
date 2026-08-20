@@ -171,6 +171,7 @@ class EspnProvider(MatchDataProvider):
         home = _team_from_competitor(home_c)
         away = _team_from_competitor(away_c)
         status = _status_from(comp.get("status", {}))
+        kickoff = comp.get("date") or ""
 
         side_by_team = {home.id: "home", away.id: "away"}
 
@@ -184,6 +185,7 @@ class EspnProvider(MatchDataProvider):
         detail = MatchDetail(
             id=str(event_id), league=league, status=status,
             home=home, away=away, events=events, lineups=lineups, stats=stats,
+            date=kickoff,
         )
         # Probabilidad estimada SOLO mientras no ha terminado: un partido
         # finalizado se muestra completo pero sin bloque de probabilidad.

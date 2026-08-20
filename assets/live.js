@@ -39,6 +39,16 @@
   function pname(p) { return (p && p.athlete) ? (p.athlete.shortName || p.athlete.name) : ''; }
   function aname(a) { return a ? (a.shortName || a.name || '') : ''; }   // jugador de un evento
   function num(v) { return parseFloat(String(v).replace('%', '')) || 0; }
+  function kickoff(iso) {
+    try {
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleString('es-ES', {
+        weekday: 'short', day: 'numeric', month: 'short',
+        hour: '2-digit', minute: '2-digit'
+      }).replace(/,\s*/g, ' · ');
+    } catch (e) { return ''; }
+  }
 
   // ── Colores de equipo (de la API; si faltan, paleta sin repetir) ──────────
   var COLOR_FALLBACK = ['#2ec98a', '#4a90ff', '#e0a13a', '#a855f7', '#ff556b', '#13c4c4'];
@@ -143,6 +153,11 @@
     var clock = '';
     if (st.state === 'in') clock = '<div class="sl-clock">' + esc(st.minute || '') + '</div>';
     else if (st.state === 'post') clock = '<div class="sl-clock">Final</div>';
+    else {
+      // Pre-partido: fecha y hora de saque si ESPN ya las tiene.
+      var ko = kickoff(m.date);
+      clock = '<div class="sl-clock">' + (ko ? esc(ko) : 'Por jugar') + '</div>';
+    }
 
     var scoreline =
       '<div class="scoreline">' +
