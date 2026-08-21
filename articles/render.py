@@ -259,6 +259,17 @@ def _footer_html():
 </div>"""
 
 
+# Versión de los assets de anuncios (misma que el resto del sitio).
+_ADS_V = "20260821a"
+
+
+def _ads_html():
+    """Hueco de anuncio (Native Banner) tras el contenido, antes del pie.
+    Sin código configurado en ads-config.js el hueco no pinta nada
+    (ads.js lo marca .is-empty)."""
+    return '<div class="ad-wrap" data-ad-slot="native"></div>'
+
+
 def _page_html(title, description, canonical, league_logo, json_ld, body):
     """Documento HTML completo (head+body) compartido por el broadsheet
     diario y el de partido — solo cambian título/meta/JSON-LD/cuerpo."""
@@ -289,11 +300,14 @@ def _page_html(title, description, canonical, league_logo, json_ld, body):
 <link rel="dns-prefetch" href="https://a.espncdn.com">
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Saira+Condensed:wght@500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/articles-broadsheet.css?v={_CSS_V}">
+<link rel="stylesheet" href="/assets/ads.css?v={_ADS_V}">
 <script type="application/ld+json">{json.dumps(json_ld, ensure_ascii=False)}</script>
 </head>
 <body>
 {GTM_BODY}
 {body}
+<script src="/assets/ads-config.js?v={_ADS_V}"></script>
+<script src="/assets/ads.js?v={_ADS_V}"></script>
 </body>
 </html>"""
 
@@ -407,9 +421,9 @@ def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explaine
 </div>
 {grid}
 {mentions}
+{_ads_html()}
 {_footer_html()}
 </div></div>"""
-
     return _page_html(title, description, canonical, league_logo, json_ld, body)
 
 
@@ -607,9 +621,9 @@ def render_match_broadsheet(payload, local_body, visitante_body, cronica_body,
 </div>
 {grid}
 {mentions}
+{_ads_html()}
 {_footer_html()}
 </div></div>"""
-
     return _page_html(title, description, canonical, league_logo, json_ld, body)
 
 
@@ -903,7 +917,7 @@ def render_stat_broadsheet(payload, protagonist_body, perseguidores_body, *,
 </div>
 {grid}
 {mentions}
+{_ads_html()}
 {_footer_html()}
 </div></div>"""
-
     return _page_html(title, description, canonical, league_logo, json_ld, body)
