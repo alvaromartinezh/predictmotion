@@ -45,3 +45,10 @@
     display: none;
   }
 }
+
+/* Formato solo móvil (320x50, sustituto del leader en dashboards). */
+@media (min-width: 768px) {
+  .ad-wrap[data-ad-slot="leader-movil"] {
+    display: none;
+  }
+}

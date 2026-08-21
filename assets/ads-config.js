@@ -23,14 +23,21 @@ window.PM_ADS = {
     box: {
       w: 300,
       h: 250,
-      html: "" /* pega aquí el código del banner 300x250 */,
+      html: '<script>\n  atOptions = {\n    \'key\' : \'f024231c8ea422b73db8cc2dd0bcaf02\',\n    \'format\' : \'iframe\',\n    \'height\' : 250,\n    \'width\' : 300,\n    \'params\' : {}\n  };\n<\/script>\n<script src="https://www.highrevenueformat.com/f024231c8ea422b73db8cc2dd0bcaf02/invoke.js"><\/script>',
     },
 
     /* Solo escritorio (≥768px) — cabecera de los dashboards de liga. */
     leader: {
       w: 728,
       h: 90,
-      html: "" /* pega aquí el código del banner 728x90 */,
+      html: '<script>\n  atOptions = {\n    \'key\' : \'ecb1461a8d8a1b4e590f7031a157aec3\',\n    \'format\' : \'iframe\',\n    \'height\' : 90,\n    \'width\' : 728,\n    \'params\' : {}\n  };\n<\/script>\n<script src="https://www.highrevenueformat.com/ecb1461a8d8a1b4e590f7031a157aec3/invoke.js"><\/script>',
+    },
+
+    /* Solo móvil (<768px) — sustituto del leader en la cabecera de dashboards. */
+    "leader-movil": {
+      w: 320,
+      h: 50,
+      html: '<script>\n  atOptions = {\n    \'key\' : \'c39c86922c9ec6323fd572f191ea14a3\',\n    \'format\' : \'iframe\',\n    \'height\' : 50,\n    \'width\' : 320,\n    \'params\' : {}\n  };\n<\/script>\n<script src="https://www.highrevenueformat.com/c39c86922c9ec6323fd572f191ea14a3/invoke.js"><\/script>',
     },
 
     /* Native Banner — tarjeta de contenido recomendado en /kiosco.
