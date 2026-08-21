@@ -40,6 +40,14 @@ window.PM_ADS = {
       html: '<script>\n  atOptions = {\n    \'key\' : \'c39c86922c9ec6323fd572f191ea14a3\',\n    \'format\' : \'iframe\',\n    \'height\' : 50,\n    \'width\' : 320,\n    \'params\' : {}\n  };\n<\/script>\n<script src="https://www.highrevenueformat.com/c39c86922c9ec6323fd572f191ea14a3/invoke.js"><\/script>',
     },
 
+    /* Rail lateral (300x250, código DISTINTO al box: nunca repetir código
+     * dos veces en la misma página). Home, debajo de la tabla lateral. */
+    rail: {
+      w: 300,
+      h: 250,
+      html: "" /* pega aquí el segundo banner 300x250 */,
+    },
+
     /* Native Banner — tarjeta de contenido recomendado en /kiosco.
      * Ancho completo del feed y altura automática (el widget crece solo).
      * Layout del panel: 4:1, fuente heredada de la página. */
