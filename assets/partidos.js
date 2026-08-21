@@ -181,7 +181,8 @@
 
     var liveSec = liveMine.length ? '<div class="feed-sec"><h2 class="feed-sec__title">Tus equipos en vivo <span class="tag tag--live">' + liveMine.length + '</span></h2></div><section class="matchlist">' + liveMine.map(matchRow).join('') + '</section>' : '';
     var col = '<div class="feed-sec" style="margin-top:var(--sp-2)"><h2 class="feed-sec__title">Partidos</h2></div>'
-      + daystrip() + chips + liveSec + feed;
+      + daystrip() + chips + liveSec + feed
+      + '<div class="ad-wrap" data-ad-slot="box"></div>';
     window.PMShell.mount({ active: 'matches', main: '<div class="feed"><div class="feed__col">' + col + '</div><div class="feed__rail">' + liveRail(live, state.loading) + '</div></div>', onRender: wire });
   }
 
