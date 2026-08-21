@@ -260,14 +260,14 @@ def _footer_html():
 
 
 # Versión de los assets de anuncios (misma que el resto del sitio).
-_ADS_V = "20260822c"
+_ADS_V = "20260822d"
 
 
 def _ads_html():
-    """Hueco de anuncio (Native Banner) tras el contenido, antes del pie.
+    """Hueco de anuncio (banner 300x250) tras el contenido, antes del pie.
     Sin código configurado en ads-config.js el hueco no pinta nada
     (ads.js lo marca .is-empty)."""
-    return '<div class="ad-wrap" data-ad-slot="native"></div>'
+    return '<div class="ad-wrap" data-ad-slot="box"></div>'
 
 
 def _page_html(title, description, canonical, league_logo, json_ld, body):

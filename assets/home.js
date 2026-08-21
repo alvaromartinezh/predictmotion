@@ -279,7 +279,7 @@
     return { on: !!(a.isLoggedIn && a.isLoggedIn()), pending: false, f: (a.follows && a.follows()) || empty };
   }
   function skeleton() { return shellMain('<div class="card" style="height:180px"></div><div class="card" style="height:240px"></div>', ''); }
-  function shellMain(colHTML, railHTML) { return '<div class="feed"><div class="feed__col">' + colHTML + '<div class="ad-wrap" data-ad-slot="box"></div></div><div class="feed__rail">' + railHTML + '<div class="ad-wrap" data-ad-slot="rail"></div></div></div>'; }
+  function shellMain(colHTML, railHTML) { return '<div class="feed"><div class="feed__col">' + colHTML + '<div class="ad-wrap" data-ad-slot="box"></div></div><div class="feed__rail">' + railHTML + '</div></div>'; }
   function mount(out) { window.PMShell.mount({ active: 'home', main: shellMain(out.col, out.rail) }); }
   function fail() { window.PMShell.mount({ active: 'home', main: shellMain('<div class="card"><div style="padding:var(--sp-6);color:var(--text-2)">No se pudo cargar el feed. Reintenta en unos segundos.</div></div>', '') }); }
 

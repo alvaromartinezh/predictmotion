@@ -40,24 +40,25 @@ window.PM_ADS = {
       html: '<script>\n  atOptions = {\n    \'key\' : \'c39c86922c9ec6323fd572f191ea14a3\',\n    \'format\' : \'iframe\',\n    \'height\' : 50,\n    \'width\' : 320,\n    \'params\' : {}\n  };\n<\/script>\n<script src="https://www.highrevenueformat.com/c39c86922c9ec6323fd572f191ea14a3/invoke.js"><\/script>',
     },
 
-    /* Rail lateral de la home, bajo la tabla. Reutiliza el código del Native
-     * (único en esta página: el mismo código dos veces en una misma página
-     * rompe las stats de Adsterra). En ancho estrecho se apila en columna. */
+    /* Rail lateral de la home, bajo la tabla. VACÍO: llevaba el código del
+     * Native (retirado 2026-08-22). Un segundo 300x250 aquí duplicaría el
+     * código del box en la misma página — solo rellenar con un código nuevo
+     * cuando el panel lo permita. */
     rail: {
       w: null,
       h: 480,
       autoHeight: true,
-      html: '<script async="async" data-cfasync="false" src="https://pl30961780.profitableratecpmnetwork.com/0d6aacefc55ecd38bd08030a173a84c6/invoke.js"><\/script>\n<div id="container-0d6aacefc55ecd38bd08030a173a84c6"></div>',
+      html: "",
     },
 
-    /* Native Banner — tarjeta de contenido recomendado en /kiosco.
-     * Ancho completo del feed y altura automática (el widget crece solo).
-     * Layout del panel: 4:1, fuente heredada de la página. */
+    /* RETIRADO (2026-08-22, decisión del dueño): el widget nativo quedaba
+     * mal integrado. Slot vacío a propósito — si algún día vuelve, pegar
+     * aquí el código. Mientras esté vacío no pinta nada. */
     native: {
       w: null,
       h: 260,
       autoHeight: true,
-      html: '<script async="async" data-cfasync="false" src="https://pl30961780.profitableratecpmnetwork.com/0d6aacefc55ecd38bd08030a173a84c6/invoke.js"><\/script>\n<div id="container-0d6aacefc55ecd38bd08030a173a84c6"></div>',
+      html: "",
     },
   },
 };
