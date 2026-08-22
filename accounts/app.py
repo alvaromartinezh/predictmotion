@@ -405,7 +405,10 @@ class Handler(BaseHTTPRequestHandler):
                 # Sin esto, una página atacante que reenviara un credential ajeno
                 # podría loguear a la víctima en la cuenta del atacante.
                 csrf_cookie = self._cookie("g_csrf_token")
-                if not csrf_cookie or csrf_cookie != data.get("g_csrf_token"):
+                csrf_body = data.get("g_csrf_token")
+                log.info("DEBUG csrf cookie=%r body=%r raw_cookie_header=%r form_keys=%r",
+                          csrf_cookie, csrf_body, self.headers.get("Cookie"), list(data.keys()))
+                if not csrf_cookie or csrf_cookie != csrf_body:
                     log.info("login rechazado: g_csrf_token ausente o no coincide")
                     return self._redirect("/cuenta?login=error")
             else:
