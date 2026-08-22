@@ -200,11 +200,22 @@ class Handler(BaseHTTPRequestHandler):
         return user
 
     def _client_ip(self):
-        # Detrás de Cloudflare + Caddy: la IP real llega en cabeceras. (Ojo: el
-        # origen es accesible directo, así que estas cabeceras son spoofables si se
-        # salta Cloudflare — es defensa en profundidad, no la barrera principal.)
+        # Solo para el rate limiter de /api/auth — no es la IP "real" a mostrar,
+        # es la clave por la que se cuentan intentos.
+        if not config.TRUST_PROXY_HEADERS:
+            # Sin Cloudflare proxyando (nube gris, ver config.py), el origen es
+            # accesible directo: CF-Connecting-IP/X-Forwarded-For los pone el
+            # propio cliente y no hay nada que los valide. Usar solo el peer TCP
+            # real (la conexión de Caddy, en :8771).
+            return self.client_address[0]
+        # Cloudflare proxyando: CF-Connecting-IP lo pone Cloudflare (no
+        # spoofable si Caddy solo acepta conexiones de sus rangos). Si falta,
+        # caer al ÚLTIMO valor de X-Forwarded-For — es el que Caddy AÑADE al
+        # final de la cadena; el primero puede venir ya puesto por el cliente.
+        xff = self.headers.get("X-Forwarded-For", "")
+        xff_last = xff.rsplit(",", 1)[-1].strip() if xff else ""
         return (self.headers.get("CF-Connecting-IP")
-                or self.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+                or xff_last
                 or self.client_address[0])
 
     # ── verbos ────────────────────────────────────────────────────────────────

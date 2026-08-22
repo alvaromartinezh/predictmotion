@@ -76,6 +76,28 @@ def main():
     assert not r._valid_match("laliga", "x" * 21)
     assert not r._valid_match("laliga", "")
 
+    # ── _client_ip: sin Cloudflare proxyando, ignora cabeceras spoofables ──
+    # (2026-08-23: nube gris, origen accesible directo — CF-Connecting-IP/XFF
+    # los pone el propio atacante y bypasseaban el rate limiter de /api/auth).
+    class _Peer:
+        _client_ip = Handler._client_ip
+    peer = _Peer()
+    peer.client_address = ("203.0.113.9", 54321)
+    peer.headers = {"CF-Connecting-IP": "1.2.3.4", "X-Forwarded-For": "9.9.9.9, 8.8.8.8"}
+    assert config.TRUST_PROXY_HEADERS is False, "default debe ser no confiar en las cabeceras"
+    assert peer._client_ip() == "203.0.113.9", \
+        "sin proxy de confianza debe usar solo el peer TCP, ignorando CF-Connecting-IP/XFF"
+
+    # ── _client_ip: con TRUST_PROXY_HEADERS, CF-Connecting-IP o el ÚLTIMO XFF ──
+    config.TRUST_PROXY_HEADERS = True
+    try:
+        assert peer._client_ip() == "1.2.3.4"          # CF-Connecting-IP manda
+        peer.headers = {"X-Forwarded-For": "1.2.3.4, 5.6.7.8"}
+        assert peer._client_ip() == "5.6.7.8", \
+            "debe tomar el ÚLTIMO valor de XFF (el que añade Caddy), no el primero"
+    finally:
+        config.TRUST_PROXY_HEADERS = False
+
     # ── Rate limiter: el GC dejaba viva una entrada por IP para siempre ──
     rl = RateLimiter(max_events=5, window_seconds=1)
     assert rl.allow("ip-que-no-vuelve")

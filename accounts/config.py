@@ -89,6 +89,14 @@ SESSION_COOKIE_SECURE = _flag("ACCOUNTS_COOKIE_SECURE", True)
 RATE_LIMIT_MAX = _int("ACCOUNTS_RATE_MAX", 20)          # peticiones por ventana e IP
 RATE_LIMIT_WINDOW = _int("ACCOUNTS_RATE_WINDOW", 300)   # ventana en segundos (5 min)
 
+# Cloudflare está en modo DNS-only (nube gris) desde 2026-08-23 (bloqueo de IPs de
+# proxy en España durante partidos, ver CLAUDE.md) — el origen es directamente
+# alcanzable, así que CF-Connecting-IP/X-Forwarded-For son spoofables por
+# cualquiera y NO deben usarse para identificar al cliente del rate limiter.
+# Poner a true cuando Cloudflare vuelva a proxyar (nube naranja) para volver a
+# confiar en esas cabeceras.
+TRUST_PROXY_HEADERS = _flag("ACCOUNTS_TRUST_PROXY_HEADERS", False)
+
 # ── Follows (límites de robustez) ─────────────────────────────────────────────
 # Topes por usuario para que nadie pueda inflar la DB. Holgados para uso normal.
 MAX_FOLLOWED_TEAMS = _int("ACCOUNTS_MAX_TEAMS", 100)
