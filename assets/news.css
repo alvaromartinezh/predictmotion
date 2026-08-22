@@ -1,6 +1,10 @@
 /* PMNews — estilos de las tarjetas de noticias (feed /kiosco, /equipo).
    Usa los tokens de styles.css (:root), así hereda tema claro/oscuro solo. */
 
+/* ── Selector de día + filtros (/kiosco): #feed-filters envuelve el
+   .daystrip-row del día seleccionado y, debajo, los .news-filters ─────────── */
+#feed-filters { margin-top: var(--sp-5); }
+
 /* ── Barra de filtros ─────────────────────────────────────────────────────── */
 .news-filters {
   display: flex;

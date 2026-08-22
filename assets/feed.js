@@ -4,15 +4,19 @@
  *   - /data/articles/index.json  (previas, resúmenes diarios, crónicas, datos curiosos)
  *   - /data/news/latest.json     (noticias RSS de medios españoles)
  *
- * "De PredictMotion" agrupa los artículos propios por tipo (GROUP_ORDER),
- * cada grupo con las últimas piezas de ese formato; "Prensa deportiva" lista
- * las noticias agregadas en orden cronológico. El filtro por defecto es
- * "Para ti": prioriza el contenido de las ligas que sigue el usuario (vía
- * PMAccount y /api/follows). Sin sesión, el filtro por defecto es "Todos".
+ * Todo lo que se ve es de UN solo día (`state.day`, selector arriba —
+ * `.daystrip`/`.day-pick`, reusando el mismo componente de /partidos): así se
+ * puede ir día a día viendo qué datos curiosos, crónicas o resúmenes se
+ * generaron cada jornada, en vez de mezclar piezas de días distintos.
+ * "De PredictMotion" agrupa los artículos propios de ese día por tipo
+ * (GROUP_ORDER); "Prensa deportiva" lista las noticias agregadas de ese
+ * mismo día en orden cronológico. El filtro por defecto es "Para ti":
+ * prioriza el contenido de las ligas que sigue el usuario (vía PMAccount y
+ * /api/follows). Sin sesión, el filtro por defecto es "Todos".
  *
  * Filtros disponibles: Para ti / Todos / Artículos / Noticias (estos dos
  * últimos, al filtrar por `kind`, colapsan la sección contraria sin lógica
- * aparte) + chips de liga.
+ * aparte) + chips de liga + el día.
  */
 (function () {
   "use strict";
@@ -20,8 +24,21 @@
   var DATA_ARTICLES = "/data/articles/index.json";
   var DATA_NEWS = "/data/news/latest.json";
   var LEAGUE_NAMES = { laliga: "LaLiga", hypermotion: "Hypermotion" };
-  var MAX_PER_GROUP = 6;
-  var MAX_PRESS_ROWS = 20;
+  var MAX_PER_GROUP = 12;
+  var MAX_PRESS_ROWS = 40;
+  var DAY_RANGE = 6; // días hacia atrás que muestra la tira rápida (hoy incluido = 7)
+  var DW = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
+  function ymd(d) { return d.getFullYear() + ("0" + (d.getMonth() + 1)).slice(-2) + ("0" + d.getDate()).slice(-2); }
+  function ymdToInput(y) { return y.slice(0, 4) + "-" + y.slice(4, 6) + "-" + y.slice(6, 8); } // YYYYMMDD -> YYYY-MM-DD
+
+  var today = new Date(); today.setHours(12, 0, 0, 0);
+  var DAYS = [];
+  for (var _i = -DAY_RANGE; _i <= 0; _i++) {
+    var _d = new Date(today); _d.setDate(today.getDate() + _i);
+    DAYS.push({ ymd: ymd(_d), dw: (_i === 0 ? "Hoy" : DW[_d.getDay()]), dn: _d.getDate() });
+  }
+  var initialDay = (location.search.match(/[?&]date=(\d{8})/) || [])[1] || ymd(today);
 
   var TIPOS = {
     previa: "Previa del día",
@@ -61,6 +78,7 @@
     items: [],
     filter: "following", // following | all | articles | news
     league: "all",
+    day: initialDay, // YYYYMMDD
     follows: null,
     loggedIn: false,
     loading: true,
@@ -194,12 +212,27 @@
   }
 
   function filteredItems() {
+    var dayDashed = ymdToInput(state.day);
     return state.items
       .filter(matches)
+      .filter(function (it) { return it.fecha === dayDashed; })
       .filter(function (it) {
         return state.league === "all" || (it.leagues || []).indexOf(state.league) >= 0;
       })
       .sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
+  }
+
+  function daystripHTML() {
+    var buttons = DAYS.map(function (d) {
+      return '<button class="day' + (d.ymd === state.day ? " is-on" : "") + '" type="button" data-ymd="' + d.ymd + '">'
+        + '<span class="dw">' + esc(d.dw) + '</span><span class="dn">' + d.dn + '</span></button>';
+    }).join('');
+    var inStrip = DAYS.some(function (d) { return d.ymd === state.day; });
+    var far = inStrip ? '' : '<button class="day is-on" type="button" data-ymd="' + state.day + '"><span class="dw">Fecha</span><span class="dn">' + (+state.day.slice(6, 8)) + '</span></button>';
+    var picker = '<label class="day-pick" title="Ir a otra fecha">'
+      + '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>'
+      + '<input type="date" id="pm-feed-datepick" aria-label="Elegir fecha" max="' + ymdToInput(ymd(today)) + '" value="' + ymdToInput(state.day) + '"></label>';
+    return '<div class="daystrip-row"><div class="daystrip">' + buttons + far + '</div>' + picker + '</div>';
   }
 
   function renderFilters() {
@@ -229,7 +262,7 @@
       });
     }
 
-    els.filters.innerHTML = parts.join("");
+    els.filters.innerHTML = daystripHTML() + '<div class="news-filters">' + parts.join("") + '</div>';
 
     Array.prototype.forEach.call(els.filters.querySelectorAll("[data-filter]"), function (b) {
       b.addEventListener("click", function () {
@@ -246,6 +279,26 @@
         renderList();
       });
     });
+
+    var strip = els.filters.querySelector(".daystrip");
+    if (strip) strip.addEventListener("click", function (e) {
+      var b = e.target.closest(".day");
+      if (!b) return;
+      state.day = b.getAttribute("data-ymd");
+      renderFilters();
+      renderList();
+    });
+
+    var dp = document.getElementById("pm-feed-datepick");
+    if (dp) {
+      dp.addEventListener("click", function () { try { dp.showPicker(); } catch (e) {} });
+      dp.addEventListener("change", function () {
+        if (!dp.value) return;
+        state.day = dp.value.replace(/-/g, "");
+        renderFilters();
+        renderList();
+      });
+    }
   }
 
   function articleCardHTML(it) {
@@ -326,10 +379,11 @@
     var html = renderArticleSection(articles) + renderPressSection(news);
 
     if (!html) {
-      var msg = "No hay contenido para este filtro ahora mismo.";
+      var when = state.day === ymd(today) ? "hoy" : "el " + fechaLabel(ymdToInput(state.day));
+      var msg = "No hay contenido para este filtro " + when + ". Prueba con otro día.";
       if (state.filter === "following") {
         msg = state.loggedIn
-          ? "No hay novedades de lo que sigues. Sigue más equipos o ligas para personalizar este feed."
+          ? "No hay novedades de lo que sigues " + when + ". Prueba otro día o sigue más equipos y ligas."
           : "Inicia sesión para ver primero las noticias y artículos de tus equipos y ligas.";
       }
       els.mount.innerHTML = '<p class="news-empty">' + esc(msg) + "</p>";
