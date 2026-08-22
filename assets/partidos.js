@@ -42,7 +42,7 @@
   for (var i = -1; i <= 6; i++) { var d = new Date(today); d.setDate(today.getDate() + i); DAYS.push({ ymd: ymd(d), dw: (i === 0 ? 'Hoy' : DW[d.getDay()]), dn: d.getDate() }); }
   var initial = (location.search.match(/[?&]date=(\d{8})/) || [])[1] || ymd(today);
 
-  var state = { ymd: initial, filter: 'all', loading: false };
+  var state = { ymd: initial, loading: false };
   var byLeague = {};   // slug -> [matches] del día cargado
 
   // ── follows → ids de equipo y slugs de competición seguidos ──
@@ -152,22 +152,12 @@
       return !!(fw.team[String(m.home.id)] || fw.team[String(m.away.id)]);
     });
 
-    var chips = '';
-    if (present.length) {
-      chips = '<button class="league-chip ' + (state.filter === 'all' ? 'is-on' : '') + '" type="button" data-f="all">Todas</button>'
-        + present.map(function (s) { return '<button class="league-chip ' + (state.filter === s ? 'is-on' : '') + '" type="button" data-f="' + s + '"><img src="' + esc(llogo(s)) + '" alt="">' + esc(lname(s)) + '</button>'; }).join('');
-      chips = '<div class="league-chips" id="pm-filter">' + chips + '</div>';
-    }
-
     var feed;
     if (state.loading) {
       feed = '<article class="card"><div style="padding:var(--sp-7) var(--sp-5);text-align:center;color:var(--text-2)">Cargando partidos…</div></article>';
     } else if (!present.length) {
       var when = state.ymd === ymd(today) ? 'hoy' : 'el ' + humanDate(state.ymd);
       feed = '<article class="card"><div style="padding:var(--sp-7) var(--sp-5);text-align:center;color:var(--text-2)">No hay partidos ' + when + '. Prueba con otra fecha.</div></article>';
-    } else if (state.filter !== 'all') {
-      // Filtro por competición: solo esa liga, tal cual.
-      feed = '<section class="matchlist">' + (byLeague[state.filter] || []).map(matchRow).join('') + '</section>';
     } else {
       var g = partition(fw);
       var html = '';
@@ -181,7 +171,7 @@
 
     var liveSec = liveMine.length ? '<div class="feed-sec"><h2 class="feed-sec__title">Tus equipos en vivo <span class="tag tag--live">' + liveMine.length + '</span></h2></div><section class="matchlist">' + liveMine.map(matchRow).join('') + '</section>' : '';
     var col = '<div class="feed-sec" style="margin-top:var(--sp-2)"><h2 class="feed-sec__title">Partidos</h2></div>'
-      + daystrip() + chips + liveSec + feed;
+      + daystrip() + liveSec + feed;
     window.PMShell.mount({ active: 'matches', main: '<div class="feed"><div class="feed__col">' + col + '</div><div class="feed__rail">' + liveRail(live, state.loading) + '</div></div>', onRender: wire });
   }
 
@@ -203,7 +193,7 @@
     var strip = document.querySelector('.daystrip');
     if (strip) strip.addEventListener('click', function (e) {
       var b = e.target.closest('.day'); if (!b) return;
-      state.ymd = b.getAttribute('data-ymd'); state.filter = 'all'; loadDay();
+      state.ymd = b.getAttribute('data-ymd'); loadDay();
     });
     // Selector de fecha: salta a cualquier día fuera de la franja rápida.
     var dp = document.getElementById('pm-datepick');
@@ -211,14 +201,9 @@
       dp.addEventListener('click', function () { try { dp.showPicker(); } catch (e) {} });
       dp.addEventListener('change', function () {
         if (!dp.value) return;
-        state.ymd = dp.value.replace(/-/g, ''); state.filter = 'all'; loadDay();
+        state.ymd = dp.value.replace(/-/g, ''); loadDay();
       });
     }
-    var bar = document.getElementById('pm-filter');
-    if (bar) bar.addEventListener('click', function (e) {
-      var b = e.target.closest('.league-chip'); if (!b) return;
-      state.filter = b.getAttribute('data-f'); renderMain();
-    });
   }
   function start() { loadDay(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
