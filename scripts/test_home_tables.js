@@ -22,11 +22,11 @@ const table = [
 ];
 const assert = require('assert');
 // 1) sin snapshot pero con tabla: debe pintar, no lanzar
-const mt = H.miniTable(null, '1', 'Uno', table, 'hypermotion');
+const mt = H.miniTable(null, '1', table, 'hypermotion');
 assert(mt.indexOf('Uno') > 0 && mt.indexOf('Hypermotion') > 0, 'mini-tabla sin snapshot');
 assert(mt.indexOf('var(--live)') > 0, 'marca los puntos en vivo');
 // 2) sin nada: no revienta y no pinta
-assert.strictEqual(H.miniTable(null, '1', 'Uno', null, 'hypermotion'), '');
+assert.strictEqual(H.miniTable(null, '1', null, 'hypermotion'), '');
 // 3) cambio de temporada: la tabla de ESPN casi no casa con el snapshot → manda el snapshot
 const snapVieja = { league: 'hypermotion', bands: [], teams: [
   { id: '90', name: 'Descendido', rank: 1, gp: 42, pts: 90, prob: {} },
@@ -40,7 +40,8 @@ const snapOk = { league: 'hypermotion', bands: [], teams: [
 const rows2 = H.rowsOf(snapOk, table);
 assert.deepStrictEqual(rows2.map(t => t.pts), [6, 3], 'usa los puntos provisionales');
 assert.strictEqual(rows2[0].prob.ascenso, 10, 'y las probabilidades del snapshot');
-// 5) mini-tabla: pinta TODAS las probabilidades de zona >10%, no solo la de la zona actual
+// 5) mini-tabla: pinta TODAS las probabilidades de zona >10% de CADA fila visible
+// (no solo la del equipo central), y la columna DG (gf-gc).
 const snapMulti = {
   league: 'laliga',
   bands: [
@@ -48,12 +49,17 @@ const snapMulti = {
     { key: 'europa', label: 'Europa League', color: 'blue', lo: 6, hi: 6 },
     { key: 'descenso', label: 'Descenso', color: 'red', lo: 18, hi: 20 },
   ],
-  teams: [{ id: '1', name: 'Uno', logo: '', rank: 3, gp: 10, pts: 20, prob: { champions: 45, europa: 12, descenso: 3 } }],
+  teams: [
+    { id: '1', name: 'Uno', logo: '', rank: 3, gp: 10, pts: 20, gf: 12, gc: 8, prob: { champions: 45, europa: 12, descenso: 3 } },
+    { id: '2', name: 'Dos', logo: '', rank: 4, gp: 10, pts: 18, gf: 9, gc: 11, prob: { champions: 5, europa: 22, descenso: 2 } },
+  ],
 };
-const mtMulti = H.miniTable(snapMulti, '1', 'Uno', null, 'laliga');
+const mtMulti = H.miniTable(snapMulti, '1', null, 'laliga');
 assert(mtMulti.indexOf('45% Champions League') > 0, 'pinta la probabilidad por encima del 10%');
-assert(mtMulti.indexOf('12% Europa League') > 0, 'pinta TODAS las zonas >10%, no solo la principal');
+assert(mtMulti.indexOf('12% Europa League') > 0, 'y la de OTRA fila (Dos), no solo la del equipo central');
 assert(mtMulti.indexOf('Descenso') < 0, 'omite las zonas por debajo del 10%');
+assert(mtMulti.indexOf('>+4<') > 0, 'columna DG del equipo central (12-8)');
+assert(mtMulti.indexOf('>-2<') > 0, 'columna DG de otra fila (9-11)');
 
 // 6) feed logueado: solo el equipo FAVORITO lleva partido+tabla; el resto de
 // seguidos (otro equipo + una competición) solo aportan noticias, sin más tablas.
@@ -72,15 +78,28 @@ const allNews = [
   { link: 'e', title: 'Sin relación', teams: [], leagues: ['bundesliga'], published: new Date().toISOString() },
 ];
 const out = H.buildUserHTML(f, { '1': favMatch }, { laliga: snapMulti }, allNews, {});
-assert(out.col.indexOf('Destacado para ti') > 0, 'pinta el partido del favorito');
-assert((out.col.match(/class="mini"/g) || []).length === 1, 'una sola tabla en todo el feed (la del favorito)');
+assert(out.col.indexOf('Tu próximo partido') > 0, 'pinta el partido del favorito');
+assert((out.col.match(/class="mini mini--zones"/g) || []).length === 1, 'una sola tabla en todo el feed (la del favorito)');
 assert(out.col.indexOf('Noticia de Uno') > 0, 'la última noticia del favorito sale pegada a su tabla');
 assert(out.col.indexOf('De Dos') > 0 && out.col.indexOf('De Serie A') > 0, 'noticias del resto de seguidos, sin tabla propia');
 assert(out.col.indexOf('Sin relación') < 0, 'no cuela noticias de lo que no se sigue');
 
-// 7) el partido destacado enlaza a /partido y la tabla del favorito enlaza a /<liga>
-assert(out.col.indexOf('href="/partido?league=laliga&amp;id=m1"') > 0, 'el hero enlaza al partido');
+// 7) el CTA del hero enlaza a /partido y la tabla del favorito enlaza a /<liga>
+assert(out.col.indexOf('href="/partido?league=laliga&amp;id=m1"') > 0, 'el CTA "Ver previa y pronóstico" enlaza al partido');
 assert(out.col.indexOf('href="/laliga"') > 0, 'la mini-tabla enlaza a la clasificación de la liga');
+
+// 7b) rail: sin previa (no se pasó ninguna) no aparece esa tarjeta, pero sí "Tus equipos"
+assert(out.rail.indexOf('Previa diaria') < 0, 'sin previa no pinta esa tarjeta');
+assert(out.rail.indexOf('Tus equipos') > 0, 'la home logueada lista los equipos seguidos en el rail');
+assert(out.rail.indexOf('Dos') > 0, 'incluye al resto de equipos seguidos, no solo al favorito');
+
+// 7c) con previa: aparece tanto en el rail (escritorio) como oculta en la columna
+// principal (visible solo en móvil, ver .previa-slot--mobile en shell.css)
+const previa = { url: '/articulos/laliga-previa-2026-08-22', title: 'Previa de la jornada | PredictMotion', fecha: '2026-08-22', liga: 'laliga' };
+const outPrevia = H.buildUserHTML(f, { '1': favMatch }, { laliga: snapMulti }, allNews, {}, null, previa);
+assert(outPrevia.rail.indexOf('Previa diaria') > 0, 'la previa diaria aparece en el rail');
+assert((outPrevia.col.match(/Previa diaria/g) || []).length === 1, 'y una copia oculta-en-escritorio en la columna principal, para que no falte en móvil');
+assert(outPrevia.col.indexOf('previa-slot--mobile') > 0, 'esa copia lleva la clase que la apaga en escritorio');
 
 // 8) con detalle del live_tracker: raya 1X2 de 3 colores (uno por equipo + empate)
 const liveDetail = {

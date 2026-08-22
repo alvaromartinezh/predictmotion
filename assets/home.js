@@ -76,7 +76,7 @@
       if (hit < table.length * 0.8) return teams;
     }
     return table.map(function (t) {
-      return { id: t.id, name: t.name, logo: t.logo, rank: t.rank, gp: t.gp, pts: t.pts,
+      return { id: t.id, name: t.name, logo: t.logo, rank: t.rank, gp: t.gp, pts: t.pts, gf: t.gf, gc: t.gc,
                prob: prob[String(t.id)] || {}, live: t.live };
     });
   }
@@ -85,31 +85,35 @@
     return '<span class="pts num"' + (t.live ? ' style="color:var(--live)"' : '') + '>' + t.pts + '</span>';
   }
 
-  // ±2 posiciones alrededor del equipo + TODAS las probabilidades de zona >10%
-  // (no solo la de su zona actual).
-  function miniTable(snap, teamId, teamName, table, slug) {
+  // Pills de zona >10% de UN equipo (no solo la zona actual, todas las que superen
+  // el umbral) — reusado en cada fila de la mini-tabla, no solo la del favorito.
+  function zonePills(snap, t) {
+    return ((snap && snap.bands) || []).map(function (b) {
+      var p = pct(t.prob && t.prob[b.key]);
+      if (p == null || p < 10) return '';
+      return '<span class="prob-pill" style="color:var(' + zoneVar(b) + ');background:transparent;border-color:currentColor">' + p + '% ' + esc(b.label) + '</span>';
+    }).join('');
+  }
+  // ±2 posiciones alrededor del equipo, con DG y TODAS las probabilidades de zona
+  // >10% de cada fila visible (no solo la del equipo central).
+  function miniTable(snap, teamId, table, slug) {
     var teams = rowsOf(snap, table);
     if (!teams.length) return '';
     var idx = teams.findIndex(function (t) { return String(t.id) === String(teamId); });
     if (idx < 0) return '';
     var lo = Math.max(0, idx - 2), hi = Math.min(teams.length, idx + 3);
     var rows = teams.slice(lo, hi).map(function (t) {
-      var band = bandForRank(snap, t.rank);
+      var band = bandForRank(snap, t.rank), pills = zonePills(snap, t);
+      var dg = (t.gf != null && t.gc != null) ? (t.gf - t.gc) : null, dgTxt = dg == null ? '' : (dg > 0 ? '+' + dg : String(dg));
       return '<div class="mini__row ' + (String(t.id) === String(teamId) ? 'is-me' : '') + '" data-zone="' + zoneClass(band) + '">'
         + '<span class="pos num">' + t.rank + '</span>' + crest(t.logo, t.name, t.id)
-        + '<span class="name">' + esc(t.name) + '</span><span class="pj num">' + t.gp + '</span>' + ptsCell(t) + '</div>';
-    }).join('');
-    var me = teams[idx];
-    var pills = ((snap && snap.bands) || []).map(function (b) {
-      var p = pct(me.prob && me.prob[b.key]);
-      if (p == null || p < 10) return '';
-      return '<span class="prob-pill" style="color:var(' + zoneVar(b) + ');background:transparent;border-color:currentColor">' + p + '% ' + esc(b.label) + '</span>';
+        + '<span class="name">' + esc(t.name) + '</span><span class="pj num">' + t.gp + '</span>'
+        + '<span class="dg num">' + dgTxt + '</span>' + ptsCell(t)
+        + (pills ? '<span class="mini__pills">' + pills + '</span>' : '') + '</div>';
     }).join('');
     var lg = slug || (snap && snap.league);
-    return '<a class="card card--link" href="/' + esc(lg) + '">' + leagueHead(lg, '<span style="color:var(--faint);font-family:var(--font-mono);font-size:var(--fs-11)">Clasificación</span>')
-      + '<div class="mini">' + rows + '</div>'
-      + '<div class="mini__foot"><span>' + esc(teamName || me.name) + ' · ' + me.rank + 'º</span>'
-      + (pills ? '<span style="display:flex;gap:var(--sp-2);flex-wrap:wrap;justify-content:flex-end">' + pills + '</span>' : '') + '</div></a>';
+    return '<a class="card card--link" href="/' + esc(lg) + '">' + leagueHead(lg, '<span style="color:var(--faint);font-family:var(--font-mono);font-size:var(--fs-11)">Tabla completa →</span>')
+      + '<div class="mini mini--zones">' + rows + '</div></a>';
   }
   function newsCard(it) {
     var lslug = (it.leagues || [])[0], hue = { laliga: 150, hypermotion: 195, premier: 265, seriea: 210, champions: 220 }[lslug] || 205;
@@ -146,16 +150,37 @@
       + '<span class="mid">Empate ' + wp.pDraw + '%</span>'
       + '<b>' + esc(an) + ' ' + wp.pAway + '%</b></div></div>';
   }
-  function hero(m, pill, winbar) {
+  // Cuenta atrás corta ("En 3d 4h") para un kickoff futuro; '' si ya empezó/no hay fecha.
+  function countdownHTML(iso) {
+    var ms = new Date(iso) - Date.now(); if (!(ms > 0)) return '';
+    var totalH = Math.floor(ms / 3600000), d = Math.floor(totalH / 24), h = totalH % 24;
+    return '<span class="hero-match__cd">' + (d > 0 ? ('En ' + d + 'd ' + h + 'h') : ('En ' + h + 'h')) + '</span>';
+  }
+  // .ics como data: URI (sin backend): "Añadir al calendario" de un partido futuro.
+  function icsHref(m) {
+    if (!m || m.state !== 'pre' || !m.date) return '';
+    var d = new Date(m.date); if (isNaN(d)) return '';
+    function fmt(dt) { return dt.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'; }
+    var end = new Date(d.getTime() + 2 * 3600000);
+    var title = (m.home.name || '') + ' - ' + (m.away.name || '');
+    var ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT', 'UID:' + (m.id || Date.now()) + '@predictmotion.com',
+      'DTSTART:' + fmt(d), 'DTEND:' + fmt(end), 'SUMMARY:' + title.replace(/[\r\n,;]/g, ' '), 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+    return 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics);
+  }
+  function hero(m, pill, winbar, eyebrow) {
     var mid = m.state === 'pre' ? esc(kick(m.date)) : (m.state === 'in' ? esc(m.clock || 'EN VIVO') : ((m.home.score == null ? '' : m.home.score) + '–' + (m.away.score == null ? '' : m.away.score)));
     var sub = m.state === 'post' ? 'Final' : (m.state === 'in' ? 'En vivo' : esc(lname(m.slug)));
-    var href = matchHref(m), tag = href ? 'a' : 'section';
-    return '<' + tag + ' class="hero-match"' + (href ? ' href="' + esc(href) + '"' : '') + '><p class="eyebrow hero-match__eyebrow">Destacado para ti</p>'
+    var href = matchHref(m), cd = m.state === 'pre' ? countdownHTML(m.date) : '', ics = icsHref(m);
+    var ctas = (href || ics) ? ('<div class="hero-match__ctas">'
+      + (href ? '<a class="hero-match__btn hero-match__btn--primary" href="' + esc(href) + '">Ver previa y pronóstico</a>' : '')
+      + (ics ? '<a class="hero-match__btn" download="partido.ics" href="' + ics + '">Añadir al calendario</a>' : '')
+      + '</div>') : '';
+    return '<section class="hero-match"><div class="hero-match__meta"><p class="eyebrow hero-match__eyebrow">' + esc(eyebrow || 'Destacado para ti') + '</p>' + cd + '</div>'
       + '<div class="hero-match__row">'
       + '<div class="hero-match__team">' + crest(m.home.logo, m.home.name, m.home.id) + '<span class="name">' + esc(m.home.name) + '</span></div>'
       + '<div class="hero-match__vs"><span class="kick">' + mid + '</span>' + sub + '</div>'
       + '<div class="hero-match__team">' + crest(m.away.logo, m.away.name, m.away.id) + '<span class="name">' + esc(m.away.name) + '</span></div>'
-      + '</div>' + (pill ? '<div style="text-align:center;margin-top:var(--sp-5)">' + pill + '</div>' : '') + (winbar || '') + '</' + tag + '>';
+      + '</div>' + (pill ? '<div style="text-align:center;margin-top:var(--sp-5)">' + pill + '</div>' : '') + (winbar || '') + ctas + '</section>';
   }
   // Rail de seguidos: competiciones (con logo) + equipos (con escudo) + añadir.
   // Líderes de una competición. En PRETEMPORADA o con datos inestables (prob.first
@@ -184,24 +209,42 @@
     return '<div class="feed-sec"><h2 class="feed-sec__title">' + esc(title) + (tagHTML || '') + '</h2>'
       + (moreTxt ? '<a class="feed-sec__more" href="' + (moreHref || '#') + '">' + esc(moreTxt) + '</a>' : '') + '</div>';
   }
-  function articleLeagueSlug(url) { var m = (url || '').match(/articulos\/([a-z0-9]+)-resumen/); return m ? m[1] : ''; }
   function fechaLarga(iso) { try { var p = String(iso || '').split('-'); return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }); } catch (e) { return iso || ''; } }
-  function articleCard(a) {
+  // Tarjeta-promo de la previa diaria (índice de artículos, tipo "previa").
+  function previaCard(a) {
     if (!a || !a.url) return '';
-    var slug = articleLeagueSlug(a.url), leagueName = lname(slug) || 'Hypermotion';
+    var leagueName = lname(a.liga) || a.liga;
     return '<a class="card card--link bscard" href="' + esc(a.url) + '">'
-      + '<div class="bscard__top"><span class="bscard__kicker">Broadsheet diario</span>'
-      + '<span class="bscard__league"><img src="' + esc(llogo(slug)) + '" alt="">' + esc(leagueName) + '</span></div>'
+      + '<div class="bscard__top"><span class="bscard__kicker">Previa diaria</span>'
+      + '<span class="bscard__league"><img src="' + esc(llogo(a.liga)) + '" alt="">' + esc(leagueName) + '</span></div>'
       + '<h3 class="bscard__title">' + esc((a.title || '').replace(' | PredictMotion', '')) + '</h3>'
       + '<div class="bscard__foot"><span class="bscard__date">' + esc(fechaLarga(a.fecha)) + '</span>'
-      + '<span class="bscard__cta">Leer la edición →</span></div></a>';
+      + '<span class="bscard__cta">Leer la previa →</span></div></a>';
+  }
+  // Rail "Tus equipos": los seguidos (hasta 4), con la posición solo del favorito
+  // (el único cuya tabla ya se pide en la home; pedir la de cada seguido dispararía
+  // una llamada por equipo/liga extra, ver la nota de "solo el favorito" abajo).
+  function myTeamsCard(teams, favId, favSnap) {
+    if (!teams.length) return '';
+    var rows = teams.map(function (t) {
+      var rank = '';
+      if (String(t.espn_team_id) === favId && favSnap) {
+        var ft = (favSnap.teams || []).filter(function (x) { return String(x.id) === String(t.espn_team_id); })[0];
+        if (ft) rank = ft.rank + 'º';
+      }
+      return '<a class="myteams__row" href="/equipo?id=' + encodeURIComponent(t.espn_team_id) + '&name=' + encodeURIComponent(t.name || '') + '&league=' + encodeURIComponent(t.league_slug || '') + '">'
+        + crest(null, t.name, t.espn_team_id) + '<span class="name">' + esc(t.name) + '</span>'
+        + (rank ? '<span class="rank">' + rank + '</span>' : '') + '</a>';
+    }).join('');
+    return '<div class="myteams-card"><span class="myteams-card__lbl">Tus equipos</span><div class="myteams__rows">' + rows + '</div>'
+      + '<a class="myteams-card__more" href="/siguiendo">Gestionar seguimiento →</a></div>';
   }
 
   // ── builder PURO del feed logueado (sin fetch) ──
   // Foco en el equipo FAVORITO: su partido más cercano (con probabilidades) + su
   // clasificación (±2 y todas las probabilidades de zona >10%) + su última noticia. Debajo, el resto
   // de noticias de lo que sigue — sin más tablas ni partidos.
-  function buildUserHTML(f, matches, snaps, allNews, tables, liveMatchDetail, article) {
+  function buildUserHTML(f, matches, snaps, allNews, tables, liveMatchDetail, previa) {
     matches = matches || {}; tables = tables || {};
     var teams = (f.teams || []).slice(0, 4), favId = f.favorite_team && String(f.favorite_team.espn_team_id);
     teams.sort(function (a, b) { return (String(b.espn_team_id) === favId) - (String(a.espn_team_id) === favId); });
@@ -226,24 +269,30 @@
         var ft = (favSnap.teams || []).filter(function (x) { return String(x.id) === String(fav.espn_team_id); })[0];
         if (ft) { var b = bandForRank(favSnap, ft.rank), p = b && pct(ft.prob[b.key]); if (b && p != null) pill = '<span class="prob-pill" style="color:var(' + zoneVar(b) + ');background:transparent;border-color:currentColor">' + esc(fav.name) + ' · ' + p + '% ' + esc(b.label) + '</span>'; }
       }
-      col.push(hero(favM, pill, winbarHTML(liveMatchDetail)));
+      col.push(hero(favM, pill, winbarHTML(liveMatchDetail), 'Tu próximo partido'));
     }
     if (fav) {
-      var mt = miniTable(favSnap, fav.espn_team_id, fav.name, tables[fav.league_slug], fav.league_slug);
+      var mt = miniTable(favSnap, fav.espn_team_id, tables[fav.league_slug], fav.league_slug);
       if (mt) col.push(mt);
       var teamNews = nextNews(function (it) { return (it.teams || []).some(function (x) { return String(x.id) === String(fav.espn_team_id); }); });
       if (teamNews) col.push(teamNews);
     }
-    if (article && fLeagues[articleLeagueSlug(article.url)]) col.push(articleCard(article));
+    // La previa vive en el rail en escritorio (ver más abajo); el rail se oculta
+    // por completo en móvil (.feed__rail), así que aquí se repite oculta con CSS
+    // en escritorio (.previa-slot--mobile) para que siga siendo visible en móvil.
+    if (previa) col.push('<div class="previa-slot--mobile">' + previaCard(previa) + '</div>');
 
     var rest = relNews.filter(function (it) { return !usedLinks[it.link]; });
     if (rest.length) { col.push(feedSec('Más noticias')); rest.slice(0, 8).forEach(function (it) { col.push(newsCard(it)); }); }
 
     col.push('<section class="methodology-callout"><h3>Cómo funciona</h3><p>Probabilidades recalculadas cada día con simulación Monte Carlo sobre 40.000 temporadas virtuales. Con cada resultado real, la tabla se actualiza y las probabilidades se recalculan automáticamente.</p></section>');
 
-    var primary = fav ? fav.league_slug : (f.competitions || [])[0];
-    var rail = (primary && snaps[primary] ? leadersRail(snaps[primary], primary, tables[primary]) : '');
-    return { col: col.join(''), rail: rail };
+    var railParts = [];
+    if (previa) railParts.push(previaCard(previa));
+    var mtc = myTeamsCard(teams, favId, favSnap);
+    if (mtc) railParts.push(mtc);
+    railParts.push('<div class="ad-wrap" data-ad-slot="box"></div>');
+    return { col: col.join(''), rail: railParts.join('') };
   }
 
   // ── feed anónimo ──
@@ -297,10 +346,10 @@
     var fav = teams[0], primary = fav ? fav.league_slug : (f.competitions || [])[0];
     // Solo el equipo favorito lleva partido/tabla en el feed: se pide únicamente
     // la liga y el equipo que realmente se van a pintar.
-    Promise.all([D.news(), D.articles(), primary ? D.snapshot(primary) : Promise.resolve(null)]).then(function (r) {
+    Promise.all([D.news(), D.previaArticle(primary), primary ? D.snapshot(primary) : Promise.resolve(null)]).then(function (r) {
       if (my !== token) return;
-      var news = r[0] || [], article = r[1], snaps = {}; if (primary) snaps[primary] = r[2];
-      mount(buildUserHTML(f, {}, snaps, news, {}, null, article));
+      var news = r[0] || [], previa = r[1], snaps = {}; if (primary) snaps[primary] = r[2];
+      mount(buildUserHTML(f, {}, snaps, news, {}, null, previa));
       // Fase 2: partido del favorito (ESPN) + tabla en vivo de su liga.
       Promise.all([
         fav ? D.schedule(fav.league_slug, fav.espn_team_id).then(function (ev) { return D.pickTeamMatch(ev, fav.league_slug); }) : Promise.resolve(null),
@@ -309,13 +358,13 @@
           if (my !== token) return;
           var matches = {}; if (fav && r2[0]) matches[fav.espn_team_id] = r2[0];
           var tables = {}; if (primary && r2[1]) tables[primary] = r2[1];
-          mount(buildUserHTML(f, matches, snaps, news, tables, null, article));
+          mount(buildUserHTML(f, matches, snaps, news, tables, null, previa));
           // Fase 3: probabilidad 1X2 + colores del partido del favorito (live_tracker).
           var favM = fav && matches[fav.espn_team_id];
           if (favM && favM.id) {
             D.liveMatch(fav.league_slug, favM.id).then(function (lm) {
               if (my !== token || !lm) return;
-              mount(buildUserHTML(f, matches, snaps, news, tables, lm, article));
+              mount(buildUserHTML(f, matches, snaps, news, tables, lm, previa));
             });
           }
         }).catch(fail);

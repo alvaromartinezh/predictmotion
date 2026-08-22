@@ -57,6 +57,20 @@
     });
   }
 
+  // ── índice de artículos (todos los tipos: diario/previa/dato/partido) ──
+  function articlesIndex() {
+    return memo('articlesIndex', function () {
+      return getJSON('/data/articles/index.json').then(function (j) { return j || []; });
+    });
+  }
+  // ── previa diaria más reciente de una liga (tipo "previa" en el índice) ──
+  function previaArticle(slug) {
+    if (!slug) return Promise.resolve(null);
+    return articlesIndex().then(function (items) {
+      return (items || []).filter(function (it) { return it.tipo === 'previa' && it.liga === slug; })[0] || null;
+    });
+  }
+
   function ymd(iso) { var d = new Date(iso); return d.getFullYear() + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2); }
   // ── ESPN: TODOS los partidos de la temporada de una liga (rango del `calendar`
   // del scoreboard) — mismo patrón que assets/fixtures.js. Sirve de fallback cuando
@@ -211,7 +225,8 @@
 
   window.PMData = {
     L: L, codeOf: codeOf,
-    snapshot: snapshot, news: news, articles: articles, schedule: schedule, scoreboard: scoreboard,
+    snapshot: snapshot, news: news, articles: articles, articlesIndex: articlesIndex, previaArticle: previaArticle,
+    schedule: schedule, scoreboard: scoreboard,
     liveTable: liveTable, liveMatch: liveMatch,
     parseEvent: parseEvent, pickTeamMatch: pickTeamMatch
   };
