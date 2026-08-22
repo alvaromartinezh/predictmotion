@@ -18,8 +18,10 @@ window.PM_ADS = {
 
   slots: {
     /* Formato universal inline — se usa en TODAS las páginas:
-     * dashboards (tras la tabla), home, /partidos, /partido, /kiosco,
-     * /equipo, /acerca. */
+     * dashboards (tras la tabla), home (rail lateral, bajo la clasificación
+     * del favorito/LaLiga — un único box por página, no se repite también al
+     * final del feed), /partidos, /partido, /kiosco, /equipo, /acerca,
+     * /ajustes, /buscar, /siguiendo, /privacy, /cuenta, /jugador. */
     box: {
       w: 300,
       h: 250,
@@ -38,17 +40,6 @@ window.PM_ADS = {
       w: 320,
       h: 50,
       html: '<script>\n  atOptions = {\n    \'key\' : \'c39c86922c9ec6323fd572f191ea14a3\',\n    \'format\' : \'iframe\',\n    \'height\' : 50,\n    \'width\' : 320,\n    \'params\' : {}\n  };\n<\/script>\n<script src="https://www.highrevenueformat.com/c39c86922c9ec6323fd572f191ea14a3/invoke.js"><\/script>',
-    },
-
-    /* Rail lateral de la home, bajo la tabla. VACÍO: llevaba el código del
-     * Native (retirado 2026-08-22). Un segundo 300x250 aquí duplicaría el
-     * código del box en la misma página — solo rellenar con un código nuevo
-     * cuando el panel lo permita. */
-    rail: {
-      w: null,
-      h: 480,
-      autoHeight: true,
-      html: "",
     },
 
     /* RETIRADO (2026-08-22, decisión del dueño): el widget nativo quedaba

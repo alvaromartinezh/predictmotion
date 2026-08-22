@@ -172,7 +172,7 @@
     if (!snap || !snap.teams) return '';
     var L = leaders(snap, 5, table), title = (L.mode === 'std' ? 'Clasificación · ' : 'Favoritos al título · ') + lname(slug);
     var rows = L.rows.map(function (r) { return '<div class="trend"><span class="rank num">' + r.num + '</span>' + crest(r.t.logo, r.t.name, r.t.id) + '<span class="name">' + esc(r.t.name) + '</span><span class="val">' + r.val + '</span></div>'; }).join('');
-    return '<a class="rail-card" href="/' + esc(slug) + '"><h4>' + esc(title) + '</h4>' + rows + '</a>';
+    return '<a class="rail-card" href="/' + esc(slug) + '"><h4>' + esc(title) + '</h4>' + rows + '</a><div class="ad-wrap" data-ad-slot="box"></div>';
   }
   function leadersCard(snap, slug, table) {
     if (!snap || !snap.teams) return '';
@@ -279,7 +279,7 @@
     return { on: !!(a.isLoggedIn && a.isLoggedIn()), pending: false, f: (a.follows && a.follows()) || empty };
   }
   function skeleton() { return shellMain('<div class="card" style="height:180px"></div><div class="card" style="height:240px"></div>', ''); }
-  function shellMain(colHTML, railHTML) { return '<div class="feed"><div class="feed__col">' + colHTML + '<div class="ad-wrap" data-ad-slot="box"></div></div><div class="feed__rail">' + railHTML + '</div></div>'; }
+  function shellMain(colHTML, railHTML) { return '<div class="feed"><div class="feed__col">' + colHTML + '</div><div class="feed__rail">' + railHTML + '</div></div>'; }
   function mount(out) { window.PMShell.mount({ active: 'home', main: shellMain(out.col, out.rail) }); }
   function fail() { window.PMShell.mount({ active: 'home', main: shellMain('<div class="card"><div style="padding:var(--sp-6);color:var(--text-2)">No se pudo cargar el feed. Reintenta en unos segundos.</div></div>', '') }); }
 

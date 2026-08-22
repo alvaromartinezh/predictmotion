@@ -260,7 +260,7 @@ def _footer_html():
 
 
 # Versión de los assets de anuncios (misma que el resto del sitio).
-_ADS_V = "20260822e"
+_ADS_V = "20260822f"
 
 
 def _ads_html():
