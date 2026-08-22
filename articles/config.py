@@ -348,6 +348,12 @@ STAT_KINDS = {
 # cambio de hora de verano/invierno sin tocar el cron a mano.
 STAT_ARTICLE_HOURS = range(10, 23, 2)
 
+# Previa diaria (ver CLAUDE.md): una vez al día por liga, antes de que
+# empiecen los partidos. Mismo patrón que STAT_ARTICLE_HOURS — el cron del
+# servidor dispara cada hora en UTC y `_run_previa` solo publica cuando la
+# hora de Madrid es esta.
+PREVIEW_LOCAL_HOUR = 8
+
 
 def gemini_endpoint(model):
     return f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"

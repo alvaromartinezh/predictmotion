@@ -54,6 +54,18 @@ def file_for(league_slug, fecha):
     return f"articulos/{slug_for(league_slug, fecha)}.html"
 
 
+def slug_for_previa(league_slug, fecha):
+    return f"{league_slug}-previa-{fecha}"
+
+
+def url_for_previa(league_slug, fecha):
+    return f"/articulos/{slug_for_previa(league_slug, fecha)}"
+
+
+def file_for_previa(league_slug, fecha):
+    return f"articulos/{slug_for_previa(league_slug, fecha)}.html"
+
+
 def slug_for_stat(league_slug, fecha, hour, kind):
     return f"{league_slug}-dato-{kind}-{fecha}-{hour:02d}"
 
@@ -196,6 +208,59 @@ def _side_brief_html(m, text, league_slug):
         f'{team_avatar(v.get("logo"), v["nombre"], _seed(v.get("id")), 22)}'
         f'{cronica}</div>'
         f'<p>{esc(text)}</p>{zones}</div>'
+    )
+
+
+_1X2_ROWS = [("Local", "p_local", "#2ec98a"), ("Empate", "p_empate", "#f0a92a"),
+             ("Visitante", "p_visita", "#ff556b")]
+
+
+def _match_1x2_html(m):
+    """1X2 del partido (previa diaria) reusando el marcado/CSS de
+    _zone_block sin cambiar una sola clase — solo cambia el contenido
+    (Local/Empate/Visitante en vez de zona de tabla)."""
+    return "".join(
+        f'<div class="bs-zone" style="border-left-color:{color}">'
+        f'<div class="bs-zone__row"><span class="bs-zone__team">{esc(label)}</span>'
+        f'<b class="bs-zone__val">{pct(m[key])}</b></div></div>'
+        for label, key, color in _1X2_ROWS
+    )
+
+
+def _preview_match_head(m, league_slug, size=20):
+    """Como _match_head pero pre-partido: hora de saque en vez de marcador
+    (el partido aún no se ha jugado)."""
+    l, v = m["local"], m["visitante"]
+    inner = (
+        f'{team_avatar(l.get("logo"), l["nombre"], _seed(l.get("id")), size)}'
+        f'<span class="bs-brief__name">{esc(l["nombre"])}</span>'
+        f'<b class="bs-brief__score">{esc(m.get("hora") or "—")}</b>'
+        f'<span class="bs-brief__name bs-brief__name--away">{esc(v["nombre"])}</span>'
+        f'{team_avatar(v.get("logo"), v["nombre"], _seed(v.get("id")), size)}'
+    )
+    if m.get("event_id"):
+        href = f'/partido?league={league_slug}&id={m["event_id"]}'
+        return f'<a class="bs-brief__head" href="{esc(href)}">{inner}</a>'
+    return f'<div class="bs-brief__head">{inner}</div>'
+
+
+def _preview_brief_html(m, text, league_slug):
+    return (f'<div class="bs-brief">{_preview_match_head(m, league_slug)}'
+            f'<p>{esc(text)}</p>{_match_1x2_html(m)}</div>')
+
+
+def _preview_side_brief_html(m, text, league_slug):
+    l, v = m["local"], m["visitante"]
+    href = f'/partido?league={league_slug}&id={m["event_id"]}' if m.get("event_id") else None
+    ficha = f'<a class="bs-side-brief__cronica" href="{esc(href)}">Ficha</a>' if href else ""
+    return (
+        f'<div class="bs-side-brief">'
+        f'<h3>{esc(l["nombre"])} <span>{esc(m.get("hora") or "—")}</span> {esc(v["nombre"])}</h3>'
+        f'<div class="bs-side-brief__row">'
+        f'{team_avatar(l.get("logo"), l["nombre"], _seed(l.get("id")), 22)}'
+        f'{team_avatar(v.get("logo"), v["nombre"], _seed(v.get("id")), 22)}'
+        f'{ficha}</div>'
+        f'<p>{esc(text)}</p>{_match_1x2_html(m)}</div>'
     )
 
 
@@ -418,6 +483,121 @@ def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explaine
 <span class="bs-edition__item">Jornada {payload_resumen["jornada"]}</span>
 <span class="bs-edition__item">{n} {"partido" if n == 1 else "partidos"}</span>
 <span class="bs-edition__item bs-edition__item--status">{esc(status_label)}</span>
+</div>
+{grid}
+{mentions}
+{_ads_html()}
+{_footer_html()}
+</div></div>"""
+    return _page_html(title, description, canonical, league_logo, json_ld, body)
+
+
+def render_previa_broadsheet(payload_preview, preview_body, payload_explainer, explainer_body,
+                             *, league_slug, fecha, league_logo, headline, subtitle,
+                             explainer_filler_h=None, side_filler_h=None):
+    """Previa diaria: MISMO layout de 3 columnas que render_broadsheet
+    (explicador / previa / más partidos), con briefs pre-partido (hora +
+    1X2 en vez de marcador + delta de zona) — ver _preview_brief_html."""
+    partidos = payload_preview["partidos"]
+    n = len(partidos)
+    picked_files = set()
+
+    def pick_illo(variant):
+        ill = illustration.pick(league_slug, fecha, variant, avoid=picked_files)
+        picked_files.add(ill["file"])
+        return ill
+    title = f'{headline} | PredictMotion'
+    description = subtitle
+    canonical = SITE + url_for_previa(league_slug, fecha)
+    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    json_ld = {
+        "@context": "https://schema.org", "@type": "SportsArticle", "headline": title,
+        "description": description, "datePublished": generated_at,
+        "author": {"@type": "Organization", "name": "PredictMotion"},
+        "publisher": {"@type": "Organization", "name": "PredictMotion",
+                      "logo": {"@type": "ImageObject", "url": "https://predictmotion.com/media/twitter_profile.png"}},
+        "about": {"@type": "SportsOrganization", "name": payload_preview["liga"]},
+        "url": canonical,
+    }
+
+    side_paras, note_paras = writer.split_explainer_paragraphs(explainer_body)
+    zonas = payload_explainer["probabilidades_por_zona"]
+    top_zona, top_val = grounding.explainer_best_zone(payload_explainer)
+    ex_headline = f'El modelo da al {esc(payload_explainer["equipo"])} un <span>{pct(top_val)}</span> de {esc(top_zona.lower())}'
+
+    ZONE_ORDER = [("Ascenso total", "#2ec98a"), ("Ascenso directo", "#2ec98a"),
+                  ("Play-off de ascenso", "#24d08a"), ("Descenso", "#ff556b")]
+    stats_html = "".join(
+        f'<div class="bs-stats__row"><span class="bs-stats__value" style="color:{color}">{pct(zonas[label])}</span>'
+        f'<span class="bs-stats__label">{esc(label)}</span></div>'
+        for label, color in ZONE_ORDER if label in zonas
+    )
+
+    explainer_col = (
+        '<div class="bs-col-explainer">'
+        '<div class="bs-section-label">Explicador</div>'
+        f'<h2>{ex_headline}</h2>'
+        f'<div class="bs-team-row">{team_avatar(payload_explainer["equipo_logo"], payload_explainer["equipo"], _seed(payload_explainer["equipo_id"]), 26)}'
+        f'<span class="bs-team-row__name">{esc(payload_explainer["equipo"])}</span>'
+        f'<span class="bs-team-row__meta">{payload_explainer["posicion"]}º · {payload_explainer["puntos"]} pts</span></div>'
+        f'<div class="bs-stats">{stats_html}</div>'
+        + _prose_html("\n\n".join(side_paras)) +
+        _illo_html(pick_illo("explainer"), "bs-illo bs-illo--sm")
+    )
+    if explainer_filler_h:
+        explainer_col += _illo_html(pick_illo("explainer_filler"), "bs-illo bs-illo--filler",
+                                     img_style=f"height:{explainer_filler_h:.0f}px")
+    explainer_col += '</div>'
+
+    pairs = _split_briefs(preview_body, partidos)
+    if pairs is None:
+        lead_html, side_html = _prose_html(preview_body), ""
+    else:
+        lead_pairs, side_pairs = pairs[:2], pairs[2:]
+        lead_html = "".join(_preview_brief_html(m, t, league_slug) for m, t in lead_pairs)
+        side_html = "".join(_preview_side_brief_html(m, t, league_slug) for m, t in side_pairs)
+
+    note_html = ""
+    if note_paras:
+        note_html = ('<div class="bs-note"><div class="bs-note__label">Nota del modelo</div>'
+                     f'<p>{esc(" ".join(note_paras))}</p></div>')
+
+    main_col = (
+        '<div class="bs-col-main">'
+        + _illo_html(pick_illo("cover"), "bs-cover") +
+        '<div class="bs-main-label">Previa del día</div>'
+        f'<h2>{_highlight_teams(headline, [t["nombre"] for m in partidos for t in (m["local"], m["visitante"])])}</h2>'
+        f'<div class="bs-teaser"><p>{esc(subtitle)}</p></div>'
+        + lead_html + note_html +
+        '</div>'
+    )
+
+    side_col = ""
+    if side_html:
+        side_col = (
+            '<div class="bs-col-side">'
+            '<div class="bs-section-label">Más partidos</div>'
+            + side_html +
+            _illo_html(pick_illo("footer"), "bs-illo bs-illo--footer")
+        )
+        if side_filler_h:
+            side_col += _illo_html(pick_illo("side_filler"), "bs-illo bs-illo--filler",
+                                    img_style=f"height:{side_filler_h:.0f}px")
+        side_col += '</div>'
+
+    grid = f'<div class="bs-grid">{explainer_col}{main_col}{side_col}</div>'
+    mentions = _mentions_html(payload_preview, payload_preview["liga"], league_logo, league_slug)
+
+    body = f"""<div class="bs-page">
+<a class="bs-back" href="/{league_slug}">← Volver a la clasificación</a>
+<div class="bs-sheet">
+{_masthead_html(f'{payload_preview["liga"]} · El diario de las probabilidades')}
+<div class="bs-edition">
+<span class="bs-edition__item">Previa diaria</span>
+<span class="bs-edition__item bs-edition__item--muted">{_fecha_label(fecha)}</span>
+<span class="bs-edition__item">Jornada {payload_preview["jornada"]}</span>
+<span class="bs-edition__item">{n} {"partido" if n == 1 else "partidos"}</span>
 </div>
 {grid}
 {mentions}

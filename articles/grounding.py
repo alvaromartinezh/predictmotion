@@ -142,6 +142,50 @@ def ground_resumen_diario(league, snap, matches):
     }
 
 
+def ground_previa_diaria(league, snap, matches):
+    """payload de TODOS los partidos de {liga} programados HOY (state=='pre').
+    `matches`: eventos de espn.fetch_scoreboard_range ya filtrados a la fecha
+    de hoy. Sin "antes/después" (el partido no se ha jugado): cada equipo
+    lleva su zona ACTUAL (_match_side_summary con prior_by_id vacío, así que
+    _delta en render.py no pinta nada) y el 1X2 del partido sale del MISMO
+    dispatcher central que el resto del sitio (seo.sim_table.match_1x2, ver
+    CLAUDE.md) — ningún modelo propio."""
+    bands = snap["bands"]
+    p_home = league.get("p_home", 0.45)
+    p_draw = league.get("p_draw", 0.26)
+    fecha = matches[0]["date"] if matches else None
+
+    partidos = []
+    for m in matches:
+        local = _match_side_summary(snap, bands, {}, m["home"]["id"])
+        visitante = _match_side_summary(snap, bands, {}, m["away"]["id"])
+        if not local or not visitante:
+            continue
+        probs = match_1x2(snap, local["id"], visitante["id"], p_home, p_draw)
+        if probs is None:
+            continue
+        ph, pd, pa = probs
+        hora = None
+        if m.get("kickoff"):
+            try:
+                dt = datetime.fromisoformat(m["kickoff"].replace("Z", "+00:00"))
+                hora = dt.astimezone(_MADRID_TZ).strftime("%H:%M")
+            except ValueError:
+                hora = None
+        partidos.append({
+            "local": local, "visitante": visitante, "event_id": m.get("event_id"),
+            "estadio": m.get("venue"), "hora": hora,
+            "p_local": round(ph * 100, 1), "p_empate": round(pd * 100, 1),
+            "p_visita": round(pa * 100, 1),
+        })
+
+    return {
+        "tipo": "previa_diaria",
+        "liga": league["name"], "temporada": snap["season"], "jornada": snap["jornada"],
+        "fecha": fecha, "partidos": partidos,
+    }
+
+
 def ground_match(league, snap, match):
     """payload de hechos de UN partido de Hypermotion terminado hoy, para el
     broadsheet de partido (render.py:render_match_broadsheet). `match`: un

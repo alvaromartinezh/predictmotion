@@ -75,6 +75,11 @@ _INSTRUCTIONS = {
         "Para cada partido compara la probabilidad de zona 'antes' con la de 'ahora' "
         "y di, en una frase, qué ha cambiado." + _ONE_PARA_PER_MATCH
     ),
+    "previa_diaria": (
+        "Escribe una previa de los partidos de {liga} programados para hoy: quién es "
+        "favorito según el 1X2 del modelo y en qué momento de la tabla llega cada equipo "
+        "(posición, puntos, zona). Usa la hora y el estadio si están en DATOS." + _ONE_PARA_PER_MATCH
+    ),
     "explicador_probabilidad": (
         "Explica por qué el modelo le da a este equipo esas probabilidades: "
         "compáralo con los equipos que tiene cerca en la tabla y con su fuerza (ataque/defensa).\n\n"
@@ -193,6 +198,15 @@ def _compose_resumen_head(payload):
     return title, desc
 
 
+def _compose_previa_head(payload):
+    n = len(payload["partidos"])
+    plural = "partidos" if n != 1 else "partido"
+    title = f'Previa del día en {payload["liga"]} | PredictMotion'
+    desc = (f'Los {n} {plural} de hoy en {payload["liga"]} y quién es favorito según el '
+            f'modelo de PredictMotion.')
+    return title, desc
+
+
 def _compose_explainer_head(payload):
     zonas = payload["probabilidades_por_zona"]
     top_zona, top_val = max(zonas.items(), key=lambda kv: kv[1] or 0)
@@ -215,6 +229,7 @@ def _compose_match_head(payload):
 
 _HEAD_BUILDERS = {
     "resumen_diario": _compose_resumen_head,
+    "previa_diaria": _compose_previa_head,
     "explicador_probabilidad": _compose_explainer_head,
     "match_local": _compose_match_head,
     "match_visitante": _compose_match_head,
@@ -249,6 +264,24 @@ _HEADLINE_INSTR = (
     "gancho del tuit. Y, en la línea siguiente, un subtítulo corto y también llamativo "
     "que cuente cómo han quedado los equipos. Que no se repitan casi las mismas "
     "palabras entre las dos líneas.\n\n"
+    "FORMATO OBLIGATORIO: EXACTAMENTE 2 líneas — primero el titular (CON el "
+    "porcentaje), luego el subtítulo — sin etiquetas ('Titular:'/'Subtítulo:'), sin "
+    "numerarlas, sin nada más de texto. Usa siempre el nombre de cada equipo tal cual "
+    "aparece en DATOS — NUNCA un gentilicio, apodo o ciudad ('alicantina', 'merengues', "
+    "'el conjunto de Vigo'...): si no estás seguro de a qué ciudad o afición "
+    "corresponde, lo más probable es que te equivoques, y eso no está en DATOS."
+)
+
+
+_PREVIA_HEADLINE_INSTR = (
+    "Escribe un titular llamativo para la previa de los partidos de {liga} de hoy (sin "
+    "dos puntos, sin comillas, sin mencionar el número de partidos). El TITULAR (la "
+    "primera línea) es lo que se manda tal cual a Telegram como titular del tuit, así "
+    "que DEBE incluir al menos un porcentaje real de DATOS (una probabilidad 1X2 — "
+    "p_local/p_empate/p_visita — de alguno de los partidos, con el símbolo %) — es el "
+    "gancho del tuit. Y, en la línea siguiente, un subtítulo corto y también llamativo "
+    "que anticipe el día de partidos. Que no se repitan casi las mismas palabras entre "
+    "las dos líneas.\n\n"
     "FORMATO OBLIGATORIO: EXACTAMENTE 2 líneas — primero el titular (CON el "
     "porcentaje), luego el subtítulo — sin etiquetas ('Titular:'/'Subtítulo:'), sin "
     "numerarlas, sin nada más de texto. Usa siempre el nombre de cada equipo tal cual "
@@ -368,6 +401,12 @@ def write_match_headline(payload):
     """write_headline() con las instrucciones del broadsheet de partido
     (titular + entradilla, marcador permitido en vez de vetado)."""
     return write_headline(payload, instr=_MATCH_HEADLINE_INSTR)
+
+
+def write_preview_headline(payload):
+    """write_headline() con las instrucciones de la previa diaria (el "%"
+    exigido es el 1X2 de algún partido, no una probabilidad de zona)."""
+    return write_headline(payload, instr=_PREVIA_HEADLINE_INSTR)
 
 
 def write_stat_headline(payload):

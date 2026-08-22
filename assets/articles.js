@@ -15,6 +15,7 @@
   var DATA_URL = "/data/articles/index.json";
   var TIPOS = {
     diario: "Broadsheet diario",
+    previa: "Previa del día",
     partido: "Crónica de partido",
     dato: "Dato curioso",
   };
@@ -40,7 +41,7 @@
   function tiposPresent() {
     var seen = {};
     state.items.forEach(function (it) { seen[it.tipo] = true; });
-    return ["diario", "partido", "dato"].filter(function (t) { return seen[t]; });
+    return ["diario", "previa", "partido", "dato"].filter(function (t) { return seen[t]; });
   }
 
   function renderFilters() {

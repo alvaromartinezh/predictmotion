@@ -1,17 +1,25 @@
-"""Orquestador de los artículos: el resumen diario y la crónica de partido,
-para cada liga en articles.config.ARTICLE_LEAGUES.
+"""Orquestador de los artículos: previa diaria, resumen diario, crónica de
+partido y dato curioso, para cada liga en articles.config.ARTICLE_LEAGUES.
 
-DOS entry points/cron (ver CLAUDE.md):
+CUATRO entry points/cron (ver CLAUDE.md), todos disparando cada hora (o cada
+5 min) en UTC — CRON_TZ no se aplica en /etc/cron.d en este servidor, así que
+cada script filtra por hora de Madrid él mismo:
 - `--matches-only`, cada 5 min: publica la crónica de cada partido
   terminado hoy NADA MÁS TERMINAR (no espera a las 23:59).
-- sin flags, cada hora en UTC (el script filtra a la hora 23 de Madrid, ver
-  CLAUDE.md — CRON_TZ no se aplica en /etc/cron.d, mismo motivo que
-  STAT_ARTICLE_HOURS): el resumen diario + explicador de siempre, Y ADEMÁS
-  vuelve a pasar por los partidos del día como red de seguridad (si el cron
-  frecuente se perdió alguno por lo que sea). Ambos
-  caminos llaman a `_run_match`, que es idempotente
-  (`_match_already_handled`): si el partido ya tiene HTML publicado o ya
-  quedó en cuarentena, no vuelve a gastar Gemini en él.
+- `--previa-only`, filtra la hora PREVIEW_LOCAL_HOUR (8) de Madrid: la
+  previa del día, con TODOS los partidos programados hoy y su 1X2 según el
+  modelo, antes de que empiecen.
+- `--stat-only`, filtra STAT_ARTICLE_HOURS (10-22h cada 2h) de Madrid: el
+  dato curioso de la franja.
+- sin flags, filtra la hora 23 de Madrid: el resumen diario + explicador de
+  siempre, Y ADEMÁS vuelve a pasar por los partidos del día como red de
+  seguridad (si el cron frecuente se perdió alguno por lo que sea).
+
+Todos los caminos que publican una crónica de partido llaman a `_run_match`,
+que es idempotente (`_match_already_handled`): si el partido ya tiene HTML
+publicado o ya quedó en cuarentena, no vuelve a gastar Gemini en él. La
+previa y el resumen tienen su propio guard equivalente
+(`_previa_already_handled`/`_resumen_already_handled`).
 
 `main()` itera ARTICLE_LEAGUES y aísla los fallos por liga (una excepción o
 un grounding fallido en una liga no bloquea a las demás) — mismo criterio
@@ -29,7 +37,9 @@ Gemini) y el enlace del artículo, para que el dueño lo tuitee a mano.
 
 Uso:
     python -m articles.generate                  # resumen diario (hora 23 Madrid) + red de seguridad
+    python -m articles.generate --previa-only     # previa diaria (hora 8 Madrid)
     python -m articles.generate --matches-only    # solo crónicas de partido (cron frecuente)
+    python -m articles.generate --stat-only       # dato curioso (cron cada hora, filtra 10-22h Madrid)
     python -m articles.generate --dry-run         # no llama a Gemini ni escribe
 """
 
@@ -50,7 +60,8 @@ from seo.textutil import pct
 from seo.tweets import _caption, _tg_send_message
 
 from . import grounding, layout_estimate, render, writer
-from .config import ARTICLE_LEAGUES, ARTICLES_OUT_DIR, DATA_DIR, STAT_ARTICLE_HOURS, STAT_KINDS
+from .config import (ARTICLE_LEAGUES, ARTICLES_OUT_DIR, DATA_DIR, PREVIEW_LOCAL_HOUR,
+                     STAT_ARTICLE_HOURS, STAT_KINDS)
 
 _MADRID_TZ = ZoneInfo("Europe/Madrid")
 _FLAGGED_DIR = DATA_DIR / "articles_flagged"
@@ -124,6 +135,7 @@ def _write_latest_pointer(league_slug, fecha, title):
 
 
 _DIARIO_SLUG_RE = re.compile(r"^(?P<liga>[a-z0-9]+)-resumen-(?P<fecha>\d{4}-\d{2}-\d{2})$")
+_PREVIA_SLUG_RE = re.compile(r"^(?P<liga>[a-z0-9]+)-previa-(?P<fecha>\d{4}-\d{2}-\d{2})$")
 _DATO_SLUG_RE = re.compile(
     r"^(?P<liga>[a-z0-9]+)-dato-(?P<kind>" + "|".join(re.escape(k) for k in STAT_KINDS)
     + r")-(?P<fecha>\d{4}-\d{2}-\d{2})-\d{2}$")
@@ -138,7 +150,7 @@ def _article_meta_from_file(path):
     None si el nombre no encaja con ningún patrón conocido (p.ej. restos de
     un sistema anterior) o su liga no está en ARTICLE_LEAGUES."""
     stem = path.stem
-    for tipo, rx in (("diario", _DIARIO_SLUG_RE), ("dato", _DATO_SLUG_RE)):
+    for tipo, rx in (("diario", _DIARIO_SLUG_RE), ("previa", _PREVIA_SLUG_RE), ("dato", _DATO_SLUG_RE)):
         m = rx.match(stem)
         if m:
             break
@@ -511,11 +523,133 @@ def _resumen_already_handled(league_slug, today):
     estado propio, mira si ya existe el HTML publicado o un registro de
     cuarentena para hoy (el cron ahora dispara cada hora, así que dos
     disparos dentro de la misma hora 23 Madrid no duplican ni gastan Gemini
-    de más)."""
+    de más). Comprueba los kinds de cuarentena por su nombre exacto, no con
+    un glob "*" — un "*" habría confundido la previa diaria (cuarentena
+    "previa"/"previa-explicador" del mismo día) con el resumen."""
     slug = render.slug_for(league_slug, today)
     if (ARTICLES_OUT_DIR / f"{slug}.html").exists():
         return True
-    return any(_FLAGGED_DIR.glob(f"{league_slug}-*-{today}.json"))
+    return any((_FLAGGED_DIR / f"{league_slug}-{k}-{today}.json").exists()
+               for k in ("resumen", "explicador"))
+
+
+def _previa_already_handled(league_slug, today):
+    """Mismo criterio que _resumen_already_handled, para la previa diaria."""
+    slug = render.slug_for_previa(league_slug, today)
+    if (ARTICLES_OUT_DIR / f"{slug}.html").exists():
+        return True
+    return any((_FLAGGED_DIR / f"{league_slug}-{k}-{today}.json").exists()
+               for k in ("previa", "previa-explicador"))
+
+
+def _pick_preview_team_id(partidos):
+    """Equipo foco del explicador de la previa: el mayor favorito del día
+    (el lado con el 1X2 más alto de cualquier partido) — sin Gemini, mismo
+    criterio determinista que _pick_highlight_team_id (resumen diario) pero
+    por favoritismo en vez de por cambio de probabilidad (aquí no hay
+    'antes/después' porque el partido no se ha jugado)."""
+    best_match = max(partidos, key=lambda m: max(m["p_local"], m["p_visita"]))
+    if best_match["p_local"] >= best_match["p_visita"]:
+        return best_match["local"]["id"]
+    return best_match["visitante"]["id"]
+
+
+def _run_previa(league_slug, dry_run, date_override=None):
+    """Entry point de la previa diaria (cron cada hora en UTC, publica solo
+    en la hora PREVIEW_LOCAL_HOUR de Madrid — mismo motivo/patrón que _run,
+    ver CLAUDE.md): un artículo por liga con TODOS los partidos programados
+    hoy y su 1X2 según el modelo, antes de que empiecen."""
+    league = league_by_slug(league_slug)
+    snap = grounding.load_snapshot(league_slug)
+    if not snap:
+        print(f"{league_slug}: sin snapshot (offseason o el cron SEO no ha corrido aún)")
+        return 0
+
+    now = datetime.now(_MADRID_TZ)
+    if date_override is None and now.hour != PREVIEW_LOCAL_HOUR:
+        return 0
+    today = date_override or now.strftime("%Y-%m-%d")
+    if _previa_already_handled(league_slug, today):
+        return 0
+    compact = today.replace("-", "")
+    events = espn.fetch_scoreboard_range(league["espn_code"], compact, compact)
+    scheduled = [e for e in events if e["state"] == "pre"]
+    if not scheduled:
+        print(f"{league_slug}: sin partidos programados hoy ({today})")
+        return 0
+
+    payload_preview = grounding.ground_previa_diaria(league, snap, scheduled)
+    if not payload_preview["partidos"]:
+        print(f"{league_slug}: partidos de hoy sin equipo resoluble en el snapshot")
+        return 0
+
+    team_id = _pick_preview_team_id(payload_preview["partidos"])
+    team = grounding.team_by_id(snap, team_id)
+    payload_explainer = grounding.ground_explainer(league, snap, team)
+
+    if dry_run:
+        print(f"{league_slug}: publicaría {render.slug_for_previa(league_slug, today)} "
+              f"({len(payload_preview['partidos'])} partidos, explicador: {team['name']})")
+        return 0
+
+    preview = writer.write_article(payload_preview)
+    explainer = writer.write_article(payload_explainer)
+
+    if preview["status"] != "draft" or explainer["status"] != "draft":
+        if preview["status"] != "draft":
+            _save_flagged(league_slug, today, "previa", payload_preview, preview)
+        if explainer["status"] != "draft":
+            _save_flagged(league_slug, today, "previa-explicador", payload_explainer, explainer)
+        bad = preview["flagged_values"] + explainer["flagged_values"]
+        notify.send_alert(
+            f"[PredictMotion] previa de {league['name']} sin publicar (grounding)",
+            f"El texto generado por Gemini el {today} citaba cifras que no están en "
+            f"los datos reales, así que no se publica: {bad}\n\n"
+            f"Detalle en {_FLAGGED_DIR}/{league_slug}-previa*-{today}.json (en el servidor).",
+            dedup_key=f"articles_previa_flagged_{league_slug}",
+        )
+        return 1
+
+    catchy = writer.write_preview_headline(payload_preview)
+    if catchy:
+        headline, subtitle = catchy
+    else:
+        print(f"{league_slug}: titular llamativo no disponible, cae al determinista")
+        headline = preview["title"].replace(" | PredictMotion", "")
+        subtitle = preview["meta_description"]
+
+    pairs = render._split_briefs(preview["body"], payload_preview["partidos"])
+    has_side = pairs is not None and len(pairs) > 2
+    widths = layout_estimate.column_widths(has_side)
+    if pairs is not None:
+        lead_paras = [t for _, t in pairs[:2]]
+        side_paras_matches = [t for _, t in pairs[2:]]
+    else:
+        lead_paras, side_paras_matches = [preview["body"]], []
+
+    ex_side_paras, ex_note_paras = writer.split_explainer_paragraphs(explainer["body"])
+    ex_top_zona, ex_top_val = grounding.explainer_best_zone(payload_explainer)
+    ex_headline_text = f'El modelo da al {team["name"]} un {pct(ex_top_val)} de {ex_top_zona.lower()}'
+
+    exp_h = layout_estimate.explainer_height(ex_headline_text, ex_side_paras, widths["explainer"])
+    main_h = layout_estimate.main_height(headline, subtitle, lead_paras, ex_note_paras, widths["main"])
+    side_h = layout_estimate.side_height(side_paras_matches, widths["side"]) if has_side else 0
+    fillers = layout_estimate.plan_fillers(exp_h, main_h, side_h, has_side)
+
+    html = render.render_previa_broadsheet(
+        payload_preview, preview["body"], payload_explainer, explainer["body"],
+        league_slug=league_slug, fecha=today, league_logo=snap.get("league_logo"),
+        headline=headline, subtitle=subtitle,
+        explainer_filler_h=fillers.get("explainer"), side_filler_h=fillers.get("side"),
+    )
+    _write_atomic(ARTICLES_OUT_DIR / f"{render.slug_for_previa(league_slug, today)}.html", html)
+    _write_sitemap()
+    _write_articles_index()
+    print(f"{league_slug}: publicado {render.url_for_previa(league_slug, today)}")
+
+    _notify_telegram(league_slug, headline, _pick_tweet_cta(f"{league_slug}|previa|{today}"),
+                      SITE + render.url_for_previa(league_slug, today))
+    return 0
 
 
 def _run(league_slug, dry_run, date_override=None):
@@ -641,6 +775,8 @@ def main(argv=None):
                      help="Solo crónicas de partido (cron frecuente); sin resumen diario ni explicador")
     ap.add_argument("--stat-only", action="store_true",
                      help="Solo el dato curioso de la franja (cron cada hora UTC, filtra 10-22h Madrid); sin resumen ni crónicas")
+    ap.add_argument("--previa-only", action="store_true",
+                     help="Solo la previa diaria (cron cada hora UTC, filtra la hora PREVIEW_LOCAL_HOUR de Madrid); sin resumen ni crónicas")
     ap.add_argument("--league", choices=ARTICLE_LEAGUES, help="Solo esta liga (por defecto, todas ARTICLE_LEAGUES)")
     args = ap.parse_args(argv)
     rc = 0
@@ -650,6 +786,8 @@ def main(argv=None):
                 rc |= _run_matches_only(league_slug, args.dry_run, date_override=args.date)
             elif args.stat_only:
                 rc |= _run_stat(league_slug, args.dry_run, date_override=args.date)
+            elif args.previa_only:
+                rc |= _run_previa(league_slug, args.dry_run, date_override=args.date)
             else:
                 rc |= _run(league_slug, args.dry_run, date_override=args.date)
         except Exception:

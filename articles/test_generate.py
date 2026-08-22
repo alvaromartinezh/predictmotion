@@ -436,6 +436,53 @@ def demo():
     finally:
         grounding.espn.fetch_scoreboard_range = real_fetch
 
+    # ── grounding.ground_previa_diaria: TODOS los partidos 'pre' de hoy,
+    # 1X2 vía el dispatcher central (mismo snap_v3 de _ground_jornada), sin
+    # "antes/después" porque el partido no se ha jugado ──
+    matches_previa = [
+        {"event_id": "201", "date": "2026-08-19", "kickoff": "2026-08-19T19:00:00Z", "state": "pre",
+         "home": {"id": 1, "name": "Tenerife"}, "away": {"id": 3, "name": "Albacete"},
+         "home_score": None, "away_score": None, "venue": "Heliodoro"},
+        {"event_id": "202", "date": "2026-08-19", "kickoff": "2026-08-19T21:00:00Z", "state": "pre",
+         "home": {"id": 4, "name": "Eibar"}, "away": {"id": 2, "name": "Córdoba"},
+         "home_score": None, "away_score": None, "venue": "Ipurua"},
+    ]
+    payload_previa = grounding.ground_previa_diaria(league_jornada, snap_v3, matches_previa)
+    assert payload_previa["tipo"] == "previa_diaria" and payload_previa["fecha"] == "2026-08-19"
+    assert len(payload_previa["partidos"]) == 2
+    m0 = payload_previa["partidos"][0]
+    assert m0["local"]["nombre"] == "Tenerife" and m0["visitante"]["nombre"] == "Albacete"
+    assert m0["hora"] == "21:00"  # 19:00 UTC -> CEST (+2)
+    assert 95.0 <= m0["p_local"] + m0["p_empate"] + m0["p_visita"] <= 100.0  # Poisson truncado a max_goals
+    assert m0["local"]["prob_zona_antes_del_partido"] is None
+
+    # ── generate._pick_preview_team_id: el mayor favorito del día ──
+    team_id = generate._pick_preview_team_id(payload_previa["partidos"])
+    assert team_id in ("1", "2", "3", "4")
+
+    # ── render_previa_broadsheet: smoke-test end-to-end ──
+    html_previa = render.render_previa_broadsheet(
+        payload_previa, two_paras, payload_explainer, explainer_body,
+        league_slug="hypermotion", fecha="2026-08-19", league_logo=None,
+        headline="Titular de previa", subtitle="Subtítulo de previa",
+    )
+    assert "<!DOCTYPE html>" in html_previa
+    assert "Tenerife" in html_previa and "Albacete" in html_previa
+    assert "Titular de previa" in html_previa and "Subtítulo de previa" in html_previa
+    assert "Previa del día" in html_previa
+    assert html_previa.count("bs-brief__head") >= 2
+
+    # ── slug_for_previa / _previa_already_handled: namespaced, idempotente ──
+    assert render.slug_for_previa("hypermotion", "2026-08-19") == "hypermotion-previa-2026-08-19"
+    assert not generate._previa_already_handled("hypermotion-test-x", "1999-01-01")
+    probe_previa_path = ARTICLES_OUT_DIR / f"{render.slug_for_previa('hypermotion-test-x', '1999-01-01')}.html"
+    ARTICLES_OUT_DIR.mkdir(parents=True, exist_ok=True)
+    probe_previa_path.write_text("<html></html>", encoding="utf-8")
+    try:
+        assert generate._previa_already_handled("hypermotion-test-x", "1999-01-01")
+    finally:
+        probe_previa_path.unlink()
+
     # ── render_stat_broadsheet: smoke-test end-to-end sobre datos sintéticos ──
     stat_body_4p = "Uno.\n\nDos.\n\nTres.\n\nCuatro."
     stat_chasers_3p = "Uno.\n\nDos.\n\nTres."
