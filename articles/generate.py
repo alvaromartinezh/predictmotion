@@ -4,9 +4,11 @@ para cada liga en articles.config.ARTICLE_LEAGUES.
 DOS entry points/cron (ver CLAUDE.md):
 - `--matches-only`, cada 5 min: publica la crónica de cada partido
   terminado hoy NADA MÁS TERMINAR (no espera a las 23:59).
-- sin flags, a las 23:59 hora de España: el resumen diario + explicador de
-  siempre, Y ADEMÁS vuelve a pasar por los partidos del día como red de
-  seguridad (si el cron frecuente se perdió alguno por lo que sea). Ambos
+- sin flags, cada hora en UTC (el script filtra a la hora 23 de Madrid, ver
+  CLAUDE.md — CRON_TZ no se aplica en /etc/cron.d, mismo motivo que
+  STAT_ARTICLE_HOURS): el resumen diario + explicador de siempre, Y ADEMÁS
+  vuelve a pasar por los partidos del día como red de seguridad (si el cron
+  frecuente se perdió alguno por lo que sea). Ambos
   caminos llaman a `_run_match`, que es idempotente
   (`_match_already_handled`): si el partido ya tiene HTML publicado o ya
   quedó en cuarentena, no vuelve a gastar Gemini en él.
@@ -26,7 +28,7 @@ frase de invitación a entrar (_TWEET_CTAS, determinista por clave, SIN
 Gemini) y el enlace del artículo, para que el dueño lo tuitee a mano.
 
 Uso:
-    python -m articles.generate                  # resumen diario (23:59) + red de seguridad
+    python -m articles.generate                  # resumen diario (hora 23 Madrid) + red de seguridad
     python -m articles.generate --matches-only    # solo crónicas de partido (cron frecuente)
     python -m articles.generate --dry-run         # no llama a Gemini ni escribe
 """
@@ -504,6 +506,18 @@ def _run_stat(league_slug, dry_run, date_override=None):
     return 0
 
 
+def _resumen_already_handled(league_slug, today):
+    """Mismo criterio que _match_already_handled/_stat_already_handled: sin
+    estado propio, mira si ya existe el HTML publicado o un registro de
+    cuarentena para hoy (el cron ahora dispara cada hora, así que dos
+    disparos dentro de la misma hora 23 Madrid no duplican ni gastan Gemini
+    de más)."""
+    slug = render.slug_for(league_slug, today)
+    if (ARTICLES_OUT_DIR / f"{slug}.html").exists():
+        return True
+    return any(_FLAGGED_DIR.glob(f"{league_slug}-*-{today}.json"))
+
+
 def _run(league_slug, dry_run, date_override=None):
     league = league_by_slug(league_slug)
     snap = grounding.load_snapshot(league_slug)
@@ -511,12 +525,20 @@ def _run(league_slug, dry_run, date_override=None):
         print(f"{league_slug}: sin snapshot (offseason o el cron SEO no ha corrido aún)")
         return 0
 
-    # El cron corre a las 23:59 hora de España, así que "hoy" en ese momento
-    # sigue siendo el día natural de los partidos. --date es solo para
-    # relanzar a mano un día concreto (p.ej. tras medianoche, cuando "hoy"
-    # ya habría rodado al día siguiente y los partidos de ayer quedarían
-    # invisibles).
-    today = date_override or datetime.now(_MADRID_TZ).strftime("%Y-%m-%d")
+    # El cron dispara cada hora en UTC (CRON_TZ no se aplica en /etc/cron.d,
+    # mismo gotcha que STAT_ARTICLE_HOURS): ejecuta solo en la hora 23 de
+    # Madrid, para que "hoy" siga siendo el día natural de los partidos que
+    # se acaban de jugar. Sin esto, a las 23:59 UTC son ya las 01:59 Madrid
+    # del día siguiente y "hoy" rueda antes de que el día tenga partidos
+    # terminados (incidente 2026-08-22: el resumen de Betis-Sociedad no
+    # salió porque "hoy" ya era el día siguiente). --date bypassa la
+    # guardia: es para relanzar a mano un día concreto.
+    now = datetime.now(_MADRID_TZ)
+    if date_override is None and now.hour != 23:
+        return 0
+    today = date_override or now.strftime("%Y-%m-%d")
+    if _resumen_already_handled(league_slug, today):
+        return 0
     compact = today.replace("-", "")
     events = espn.fetch_scoreboard_range(league["espn_code"], compact, compact)
     finished = [e for e in events if e["state"] == "post"]
