@@ -36,7 +36,6 @@ import json
 import logging
 import urllib.parse
 import urllib.request
-from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import auth, catalog, config, db, sessions
@@ -157,16 +156,23 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def _cookie(self, name):
+        # Parseo manual, NO http.cookies.SimpleCookie: Google pone en `g_state` un
+        # JSON crudo sin comillas escapadas ({"i_l":0,...}), que no cumple RFC 6265
+        # (cookie-value con espacios/comillas/llaves sin quotear). SimpleCookie.load()
+        # no lanza con eso, pero se rinde en SILENCIO con la cabecera ENTERA en cuanto
+        # lo encuentra: cualquier cookie después de `g_state` (pm_session, g_csrf_token…)
+        # se perdía. Como `g_state` es del propio script de Google (accounts.google.com/
+        # gsi/client) y persiste en el dominio tras la primera visita a /cuenta, esto
+        # rompía la sesión en TODA la web para cualquiera que la tuviera en el navegador
+        # — el origen real de "Google aprueba el login pero la web no se entera".
         raw = self.headers.get("Cookie")
         if not raw:
             return None
-        jar = SimpleCookie()
-        try:
-            jar.load(raw)
-        except Exception:  # noqa: BLE001 — cookie malformada
-            return None
-        m = jar.get(name)
-        return m.value if m else None
+        for part in raw.split(";"):
+            k, sep, v = part.strip().partition("=")
+            if sep and k == name:
+                return v
+        return None
 
     def _set_session_cookie(self, token, max_age):
         # Devuelve DOS cookies: (1) la sesión real HttpOnly (secreto, ilegible por JS)
@@ -405,10 +411,7 @@ class Handler(BaseHTTPRequestHandler):
                 # Sin esto, una página atacante que reenviara un credential ajeno
                 # podría loguear a la víctima en la cuenta del atacante.
                 csrf_cookie = self._cookie("g_csrf_token")
-                csrf_body = data.get("g_csrf_token")
-                log.info("DEBUG csrf cookie=%r body=%r raw_cookie_header=%r form_keys=%r",
-                          csrf_cookie, csrf_body, self.headers.get("Cookie"), list(data.keys()))
-                if not csrf_cookie or csrf_cookie != csrf_body:
+                if not csrf_cookie or csrf_cookie != data.get("g_csrf_token"):
                     log.info("login rechazado: g_csrf_token ausente o no coincide")
                     return self._redirect("/cuenta?login=error")
             else:
