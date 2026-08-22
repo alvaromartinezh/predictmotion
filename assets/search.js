@@ -97,6 +97,7 @@
       + '<input id="search-input" type="search" placeholder="Equipo, competición o jugador…" autocomplete="off" aria-label="Buscar">'
       + '<button class="search-clear" id="search-clear" type="button" aria-label="Limpiar" hidden>✕</button></div></div>'
       + '<div id="search-results"></div>'
+      + '<div class="ad-wrap" data-ad-slot="box"></div>'
       + '</div><div class="feed__rail"></div></div>';
   }
 

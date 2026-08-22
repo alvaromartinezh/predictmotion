@@ -52,3 +52,19 @@
     display: none;
   }
 }
+
+/* Dashboards: el box de la pestaña Clasificación se fija flotando al margen
+ * derecho de la pantalla en escritorios muy anchos, en vez de quedar en línea
+ * bajo la tabla (mismo <div>, no un anuncio duplicado). Umbral calculado para
+ * que nunca se solape con el contenido: sidebar (248px) + .wrap (1080px) +
+ * hueco necesario para el anuncio (300px) + márgenes ⇒ a partir de ~2024px. */
+@media (min-width: 2024px) {
+  .tab-section[data-section="clasificacion"] .ad-wrap[data-ad-slot="box"] {
+    position: fixed;
+    top: 140px;
+    right: 24px;
+    width: 300px;
+    margin: 0;
+    z-index: 5;
+  }
+}

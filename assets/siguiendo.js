@@ -52,7 +52,7 @@
       col.push('<section class="cta-card"><h3>' + (err ? 'No se pudo iniciar sesión' : 'Sigue a los tuyos') + '</h3><p>'
         + (err ? 'La sesión no se ha podido confirmar. Vuelve a intentarlo desde /cuenta.' : (s.avail ? 'Inicia sesión para seguir equipos y competiciones y verlos aquí y en tu portada.' : 'Las cuentas no están disponibles ahora mismo.')) + '</p>'
         + (s.avail ? '<div class="btns"><a class="btn btn--primary" href="/cuenta">' + (err ? 'Volver a intentar' : 'Entrar') + '</a><a class="btn btn--ghost" href="/buscar">Explorar</a></div>' : '') + '</section>');
-      return '<div class="feed"><div class="feed__col">' + col.join('') + '</div><div class="feed__rail"></div></div>';
+      return '<div class="feed"><div class="feed__col">' + col.join('') + '<div class="ad-wrap" data-ad-slot="box"></div></div><div class="feed__rail"></div></div>';
     }
     var f = s.f, favId = f.favorite_team && String(f.favorite_team.espn_team_id);
     if (!((f.competitions || []).length || (f.teams || []).length)) {
@@ -64,7 +64,7 @@
       if (teams.length) col.push(group('Equipos', teams.map(function (t) { return teamRow(t, favId === String(t.espn_team_id)); }).join('')));
       col.push('<div class="feed-sec"><a class="feed-sec__more" href="/buscar">+ Seguir más</a></div>');
     }
-    return '<div class="feed"><div class="feed__col">' + col.join('') + '</div><div class="feed__rail"></div></div>';
+    return '<div class="feed"><div class="feed__col">' + col.join('') + '<div class="ad-wrap" data-ad-slot="box"></div></div><div class="feed__rail"></div></div>';
   }
 
   // Dejar de seguir: delegación en document UNA vez (no apila handlers en #app).

@@ -92,7 +92,7 @@
     // Enlaces
     col.push(group('Más', linkRow('/kiosco', 'Noticias y artículos') + linkRow('/privacy', 'Privacidad') + linkRow('mailto:contact@predictmotion.com', 'Contacto', 'contact@predictmotion.com', true)));
 
-    return '<div class="feed"><div class="feed__col">' + col.join('') + '</div><div class="feed__rail"></div></div>';
+    return '<div class="feed"><div class="feed__col">' + col.join('') + '<div class="ad-wrap" data-ad-slot="box"></div></div><div class="feed__rail"></div></div>';
   }
 
   // El control de tema (#set-theme) se recrea en cada render → se recablea aquí.
