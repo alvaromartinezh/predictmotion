@@ -28,7 +28,6 @@
     return { avail: true, on: !!(a.isLoggedIn && a.isLoggedIn()), pending: false, user: (a.user && a.user()) || null, f: (a.follows && a.follows()) || empty };
   }
   function curTheme() { return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'; }
-  var BG_LABELS = { purple: 'Morado', green: 'Verde', blue: 'Azul', orange: 'Naranja', teal: 'Turquesa', rose: 'Rosa' };
 
   function group(title, rowsHTML) {
     return (title ? '<div class="feed-sec"><h2 class="feed-sec__title">' + esc(title) + '</h2></div>' : '') + '<section class="set-group">' + rowsHTML + '</section>';
@@ -45,16 +44,6 @@
     col.push(group('', '<div class="set-row"><span class="s-main"><span class="s-label">Tema</span><span class="s-hint">Claro u oscuro</span></span>'
       + '<span class="seg" id="set-theme"><button type="button" data-theme-set="light" class="' + (t === 'light' ? 'is-on' : '') + '">Claro</button>'
       + '<button type="button" data-theme-set="dark" class="' + (t === 'dark' ? 'is-on' : '') + '">Oscuro</button></span></div>'));
-
-    // Color de fondo (patrón de iconos)
-    var bg = window.PMBgTheme ? window.PMBgTheme.current() : 'purple';
-    var swatches = (window.PMBgTheme ? window.PMBgTheme.THEMES : ['purple', 'green', 'blue', 'orange', 'teal', 'rose'])
-      .map(function (key) {
-        return '<button type="button" class="bg-swatch' + (key === bg ? ' is-on' : '') + '" data-bg-theme-set="' + key
-          + '" style="--sw:var(--bg-accent-' + key + ',#7c5cff)" aria-label="' + esc(BG_LABELS[key] || key) + '"></button>';
-      }).join('');
-    col.push(group('', '<div class="set-row"><span class="s-main"><span class="s-label">Color de fondo</span><span class="s-hint">Patrón del shell</span></span>'
-      + '<span class="bg-swatches" id="set-bg-theme">' + swatches + '</span></div>'));
 
     // Cuenta (pendiente: no pintar "Inicia sesión" para un usuario con sesión)
     if (s.pending) {
@@ -102,15 +91,6 @@
       var b = e.target.closest('[data-theme-set]'); if (!b) return;
       if (curTheme() !== b.getAttribute('data-theme-set') && window.PMTheme) window.PMTheme.toggle();
       seg.querySelectorAll('button').forEach(function (x) { x.classList.toggle('is-on', x.getAttribute('data-theme-set') === curTheme()); });
-    });
-    var bgSeg = document.getElementById('set-bg-theme');
-    if (bgSeg) bgSeg.addEventListener('click', function (e) {
-      var b = e.target.closest('[data-bg-theme-set]'); if (!b || !window.PMBgTheme) return;
-      var t = b.getAttribute('data-bg-theme-set');
-      window.PMBgTheme.set(t);
-      bgSeg.querySelectorAll('button').forEach(function (x) { x.classList.toggle('is-on', x.getAttribute('data-bg-theme-set') === t); });
-      var a = acct();
-      if (a.on) window.PMAccount.setBgTheme(t); // persiste en cuenta, cross-device
     });
   }
 

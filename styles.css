@@ -8,7 +8,7 @@
 /* ---------- TOKENS ---------- */
 :root {
   /* Superficies (partiendo de #060916) */
-  --bg:        #060916;
+  --bg:        #071620;
   --bg-2:      #080d1e;
   --bg-elev:   #080b15;   /* superficie de barra lateral/pestañas del shell */
   --surface:   #0b1124;
@@ -70,31 +70,7 @@
 
   --maxw: 1080px;
   --ease: cubic-bezier(.2,.7,.3,1);
-
-  /* Patrón de fondo del shell (camiseta/silbato/botas/portería), tema por color.
-     El color lo pone --bg-accent (nunca baked en el SVG); presets en
-     html[data-bg-theme="…"] más abajo. bg-theme.js aplica el atributo. */
-  --bg-accent: #7c5cff;
-  --bg-pattern-tile: url('/assets/bg-pattern.svg?v=20260811e');
-  --bg-pattern-size: 128px;
-  --bg-pattern-opacity: .17;
-
-  /* Muestras fijas para el selector de Ajustes (independientes de cuál esté
-     activo): mismos valores que los presets html[data-bg-theme] de abajo. */
-  --bg-accent-purple: #7c5cff;
-  --bg-accent-green:  #24d08a;
-  --bg-accent-blue:   #4a90ff;
-  --bg-accent-orange: #ff7a3d;
-  --bg-accent-teal:   #2fe0d0;
-  --bg-accent-rose:   #ff4f8b;
 }
-
-html[data-bg-theme="purple"] { --bg-accent: #7c5cff; }
-html[data-bg-theme="green"]  { --bg-accent: #24d08a; }
-html[data-bg-theme="blue"]   { --bg-accent: #4a90ff; }
-html[data-bg-theme="orange"] { --bg-accent: #ff7a3d; }
-html[data-bg-theme="teal"]   { --bg-accent: #2fe0d0; }
-html[data-bg-theme="rose"]   { --bg-accent: #ff4f8b; }
 
 /* Superficies del REDISEÑO (shell app): acento esmeralda. Se declara ANTES que los
    .theme-* por-liga para que, cuando un dashboard viva dentro del shell (CP-R6), su
@@ -109,31 +85,6 @@ html[data-bg-theme="rose"]   { --bg-accent: #ff4f8b; }
   position: relative;
   z-index: 0;
   background: var(--bg);
-}
-/* Patrón de iconos tiled en los márgenes/huecos del shell (detrás de TODO su
-   contenido: z-index:-1 dentro del stacking context propio de .pm-app, así que
-   ningún descendiente necesita position/z-index para pintar por encima). Las
-   cards/paneles siguen con su propio fondo sólido (var(--surface)), así que el
-   patrón nunca compite con ellos, solo se ve en los huecos entre ellos.
-   position:FIXED (viewport-anchored): el patrón + mask-image de WebKit se
-   cortaban al scrollear con position:absolute (solo cubría el primer viewport);
-   fixed lo ancla al viewport y no se corta nunca. */
-.pm-app::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background-color: var(--bg-accent);
-  -webkit-mask-image: var(--bg-pattern-tile);
-  mask-image: var(--bg-pattern-tile);
-  -webkit-mask-repeat: repeat;
-  mask-repeat: repeat;
-  -webkit-mask-size: var(--bg-pattern-size) var(--bg-pattern-size);
-  mask-size: var(--bg-pattern-size) var(--bg-pattern-size);
-  -webkit-mask-mode: luminance;
-  mask-mode: luminance;
-  opacity: var(--bg-pattern-opacity);
 }
 
 /* Temas por competición — aplica a un contenedor (.theme-x) */
