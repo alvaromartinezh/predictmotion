@@ -10,13 +10,9 @@
  * generaron cada jornada, en vez de mezclar piezas de días distintos.
  * "De PredictMotion" agrupa los artículos propios de ese día por tipo
  * (GROUP_ORDER); "Prensa deportiva" lista las noticias agregadas de ese
- * mismo día en orden cronológico. El filtro por defecto es "Para ti":
- * prioriza el contenido de las ligas que sigue el usuario (vía PMAccount y
- * /api/follows). Sin sesión, el filtro por defecto es "Todos".
+ * mismo día en orden cronológico.
  *
- * Filtros disponibles: Para ti / Todos / Artículos / Noticias (estos dos
- * últimos, al filtrar por `kind`, colapsan la sección contraria sin lógica
- * aparte) + chips de liga + el día.
+ * Único filtro además del día: liga (chips, solo si hay más de una presente).
  */
 (function () {
   "use strict";
@@ -50,7 +46,7 @@
 
   // Orden de aparición de "De PredictMotion" + su copy descriptivo (fijo,
   // no dato de negocio — los artículos de cada grupo sí son reales).
-  var GROUP_ORDER = ["previa", "dato", "partido", "diario"];
+  var GROUP_ORDER = ["previa", "partido", "diario", "dato"];
   var GROUP_META = {
     previa: {
       title: "Qué esperar hoy",
@@ -76,11 +72,8 @@
 
   var state = {
     items: [],
-    filter: "following", // following | all | articles | news
     league: "all",
     day: initialDay, // YYYYMMDD
-    follows: null,
-    loggedIn: false,
     loading: true,
   };
 
@@ -177,32 +170,6 @@
     });
   }
 
-  function isFollowed(it) {
-    if (!state.follows) return false;
-    var comps = state.follows.competitions || [];
-    var teams = state.follows.teams || [];
-    var fav = state.follows.favorite_team;
-
-    if (it.leagues && it.leagues.some(function (l) { return comps.indexOf(l) >= 0; })) return true;
-
-    var teamIds = teams.map(function (t) { return String(t.espn_team_id); });
-    if (fav && fav.espn_team_id) teamIds.push(String(fav.espn_team_id));
-
-    if (it.teams && it.teams.some(function (t) {
-      var id = String(t.id != null ? t.id : t.espn_team_id);
-      return teamIds.indexOf(id) >= 0;
-    })) return true;
-
-    return false;
-  }
-
-  function matches(it) {
-    if (state.filter === "articles") return it.kind === "article";
-    if (state.filter === "news") return it.kind === "news";
-    if (state.filter === "following") return isFollowed(it);
-    return true;
-  }
-
   function leaguesPresent() {
     var seen = {};
     state.items.forEach(function (it) {
@@ -214,7 +181,6 @@
   function filteredItems() {
     var dayDashed = ymdToInput(state.day);
     return state.items
-      .filter(matches)
       .filter(function (it) { return it.fecha === dayDashed; })
       .filter(function (it) {
         return state.league === "all" || (it.leagues || []).indexOf(state.league) >= 0;
@@ -237,24 +203,9 @@
 
   function renderFilters() {
     if (!els.filters) return;
-    var tabs = [
-      { key: "following", label: "Para ti", show: state.loggedIn },
-      { key: "all", label: "Todos", show: true },
-      { key: "articles", label: "Artículos", show: true },
-      { key: "news", label: "Noticias", show: true },
-    ];
-
-    var parts = tabs
-      .filter(function (t) { return t.show; })
-      .map(function (t) {
-        var active = state.filter === t.key ? " is-active" : "";
-        return '<button class="news-filter' + active + '" data-filter="' + t.key + '">' + esc(t.label) + "</button>";
-      });
-
-    // Filtro por liga
+    var parts = [];
     var leagues = leaguesPresent();
     if (leagues.length > 1) {
-      parts.push('<span class="news-filter__sep" aria-hidden="true"></span>');
       parts.push('<button class="news-filter' + (state.league === "all" ? " is-active" : "") + '" data-league="all">Todas las ligas</button>');
       leagues.forEach(function (l) {
         var active = state.league === l ? " is-active" : "";
@@ -262,15 +213,7 @@
       });
     }
 
-    els.filters.innerHTML = daystripHTML() + '<div class="news-filters">' + parts.join("") + '</div>';
-
-    Array.prototype.forEach.call(els.filters.querySelectorAll("[data-filter]"), function (b) {
-      b.addEventListener("click", function () {
-        state.filter = b.dataset.filter;
-        renderFilters();
-        renderList();
-      });
-    });
+    els.filters.innerHTML = daystripHTML() + (parts.length ? '<div class="news-filters">' + parts.join("") + '</div>' : '');
 
     Array.prototype.forEach.call(els.filters.querySelectorAll("[data-league]"), function (b) {
       b.addEventListener("click", function () {
@@ -380,13 +323,8 @@
 
     if (!html) {
       var when = state.day === ymd(today) ? "hoy" : "el " + fechaLabel(ymdToInput(state.day));
-      var msg = "No hay contenido para este filtro " + when + ". Prueba con otro día.";
-      if (state.filter === "following") {
-        msg = state.loggedIn
-          ? "No hay novedades de lo que sigues " + when + ". Prueba otro día o sigue más equipos y ligas."
-          : "Inicia sesión para ver primero las noticias y artículos de tus equipos y ligas.";
-      }
-      els.mount.innerHTML = '<p class="news-empty">' + esc(msg) + "</p>";
+      var msg = "No hay contenido " + when + (state.league !== "all" ? " para " + esc(LEAGUE_NAMES[state.league] || state.league) : "") + ". Prueba con otro día.";
+      els.mount.innerHTML = '<p class="news-empty">' + msg + "</p>";
       return;
     }
     els.mount.innerHTML = html;
@@ -397,22 +335,7 @@
     if (els.mount) els.mount.innerHTML = '<p class="news-empty">' + esc(msg) + "</p>";
   }
 
-  function setAccountState() {
-    var a = window.PMAccount;
-    if (!a) {
-      state.loggedIn = false;
-      state.follows = null;
-      state.filter = "all";
-      return;
-    }
-    state.loggedIn = !!a.isLoggedIn && a.isLoggedIn();
-    state.follows = (a.follows && a.follows()) || null;
-    if (!state.loggedIn) state.filter = "all";
-  }
-
   function load() {
-    setAccountState();
-
     Promise.all([
       fetch(DATA_ARTICLES, { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; }),
       fetch(DATA_NEWS, { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
@@ -437,25 +360,7 @@
     els.mount = document.querySelector(opts.mount || "#feed-mount");
     els.filters = document.querySelector(opts.filters || "#feed-filters");
     if (!els.mount) return;
-
-    var a = window.PMAccount;
-    if (a && a.pending && a.pending()) {
-      // Hay cookie hint: esperar a que /api/me resuelva para no flashear
-      // estado anónimo mientras el usuario está logueado.
-      document.addEventListener("pm-account-ready", function once() {
-        document.removeEventListener("pm-account-ready", once);
-        load();
-      });
-    } else {
-      load();
-    }
-
-    // Si los follows cambian mientras la página está abierta, recargar.
-    document.addEventListener("pm-follows-changed", function () {
-      setAccountState();
-      if (els.filters) renderFilters();
-      renderList();
-    });
+    load();
   }
 
   window.PMFeed = { init: init };
