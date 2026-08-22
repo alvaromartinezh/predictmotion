@@ -135,7 +135,7 @@
         + '<span class="name">' + esc(initials(m.home.name)) + ' ' + (m.home.score == null ? 0 : m.home.score) + '-' + (m.away.score == null ? 0 : m.away.score) + ' ' + esc(initials(m.away.name)) + '</span>'
         + '<span class="val" style="color:var(--live)">' + esc(m.clock || '') + '</span></div>';
     }).join('') : (loading ? '<p class="time">Cargando…</p>' : '<p class="time">Sin partidos en vivo</p>');
-    return '<div class="rail-card"><h4>En directo ahora</h4>' + rows + '</div>';
+    return '<div class="rail-card"><h4>En directo ahora</h4>' + rows + '</div><div class="ad-wrap" data-ad-slot="box"></div>';
   }
 
   function renderMain() {
@@ -181,8 +181,7 @@
 
     var liveSec = liveMine.length ? '<div class="feed-sec"><h2 class="feed-sec__title">Tus equipos en vivo <span class="tag tag--live">' + liveMine.length + '</span></h2></div><section class="matchlist">' + liveMine.map(matchRow).join('') + '</section>' : '';
     var col = '<div class="feed-sec" style="margin-top:var(--sp-2)"><h2 class="feed-sec__title">Partidos</h2></div>'
-      + daystrip() + chips + liveSec + feed
-      + '<div class="ad-wrap" data-ad-slot="box"></div>';
+      + daystrip() + chips + liveSec + feed;
     window.PMShell.mount({ active: 'matches', main: '<div class="feed"><div class="feed__col">' + col + '</div><div class="feed__rail">' + liveRail(live, state.loading) + '</div></div>', onRender: wire });
   }
 
