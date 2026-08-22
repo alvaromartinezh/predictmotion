@@ -70,6 +70,12 @@
     },
   };
 
+  /* Huecos de anuncio del mockup: leaderboard entre las dos secciones y un
+   * box dentro de la lista de prensa (los pinta PMAds, ver assets/ads.js). */
+  var AD_LEADER = '<div class="ad-wrap ad-wrap--feed" data-ad-slot="leader"></div>'
+    + '<div class="ad-wrap ad-wrap--feed" data-ad-slot="leader-movil"></div>';
+  var AD_BOX = '<div class="ad-wrap ad-wrap--press" data-ad-slot="box"></div>';
+
   var state = {
     items: [],
     league: "all",
@@ -311,7 +317,7 @@
       + '    <div class="feed-section__title-row"><span class="feed-section__dot feed-section__dot--outline"></span><h2>Prensa deportiva</h2></div>'
       + '    <span class="feed-section__meta">Medios externos · sin editar</span>'
       + '  </div>'
-      + '  <div class="press-list">' + rows + '</div>'
+      + '  <div class="press-list">' + rows + AD_BOX + '</div>'
       + '</section>';
   }
 
@@ -319,7 +325,8 @@
     var list = filteredItems();
     var articles = list.filter(function (it) { return it.kind === "article"; });
     var news = list.filter(function (it) { return it.kind === "news"; });
-    var html = renderArticleSection(articles) + renderPressSection(news);
+    var arts = renderArticleSection(articles);
+    var html = arts + (arts ? AD_LEADER : "") + renderPressSection(news);
 
     if (!html) {
       var when = state.day === ymd(today) ? "hoy" : "el " + fechaLabel(ymdToInput(state.day));
@@ -328,6 +335,8 @@
       return;
     }
     els.mount.innerHTML = html;
+    /* Pinta los huecos ya, sin esperar al debounce del MutationObserver de ads.js. */
+    if (window.PMAds) window.PMAds.scan(els.mount);
   }
 
   function fail(msg) {

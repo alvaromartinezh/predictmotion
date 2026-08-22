@@ -258,3 +258,12 @@
   .press-row { grid-template-columns: 80px 1fr; }
   .press-row__source { grid-column: 2; text-align: left; }
 }
+
+/* Hueco de anuncio dentro de la lista de prensa: se lee como una fila más
+ * (mockup Articulos.dc.html). El leaderboard entre secciones usa el margen
+ * por defecto de .ad-wrap. */
+.press-list .ad-wrap--press {
+  margin: 0;
+  padding: var(--sp-5) var(--sp-1);
+  border-bottom: 1px solid var(--line-soft);
+}
