@@ -111,6 +111,11 @@ class Handler(BaseHTTPRequestHandler):
     def _login_next(self, data):
         """Destino post-login (campo `next` del formulario), SIEMPRE como ruta relativa.
 
+        Sin llamador en el flujo real (el redirect de Google no puede llevar un
+        `next` propio — ver `rest == ["auth", "google"]`), pero se conserva junto a
+        `test_hardening.py` como sanitizador probado por si se reintroduce un
+        destino post-login configurable.
+
         Este valor va a una cabecera `Location`, así que es entrada hostil:
         - `send_header` de CPython NO sanea CRLF, así que un `next` con %0d%0a
           inyectaba cabeceras enteras en la respuesta (p. ej. un `Set-Cookie` con
@@ -380,36 +385,43 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(429, {"ok": False, "reason": "rate-limited"})
 
         if rest == ["auth", "google"]:
-            # Dos modos: (1) form POST top-level (login del navegador) → 303 con
-            # Set-Cookie, para que la cookie de sesión se commitee SIEMPRE (móvil
-            # incluido; un fetch XHR la pierde a veces); (2) fetch JSON (dev/tests)
-            # → 200 con Set-Cookie. La verificación es idéntica.
-            # El formulario de login lo construye NUESTRA página (cuenta.html), así
-            # que su Origin es propio. Una página atacante que auto-envíe el mismo
-            # formulario con SU credential logueaba a la víctima en la cuenta del
-            # atacante, y a partir de ahí sus follows, prefs y votos se escribían
-            # ahí. Se rechaza cuando el Origin viene y NO es nuestro; si no viene
-            # (navegadores que lo omiten en same-origin) no se bloquea, porque un
-            # POST cross-site sí lo lleva siempre.
-            origin = self.headers.get("Origin")
-            if origin and origin not in config.ALLOWED_ORIGINS:
-                log.info("login rechazado: Origin ajeno %s", origin)
-                return self._send(403, {"ok": False, "reason": "forbidden-origin"})
-
+            # Dos modos: (1) form POST top-level, mandado por el propio servidor de
+            # Google (ux_mode:'redirect' en cuenta.html — NO por JS nuestro; se
+            # abandonó el popup+callback porque en Safari/iOS y navegadores
+            # embebidos el callback podía no disparar en la pestaña padre pese a
+            # que el login era válido) → 303 con Set-Cookie; (2) fetch JSON
+            # (dev/tests) → 200 con Set-Cookie. La verificación del credential es
+            # idéntica en ambos.
             ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
             form = ctype == "application/x-www-form-urlencoded"
             data = self._read_form() if form else (self._read_json() or {})
+
+            if form:
+                # En modo redirect, quien hace el POST es accounts.google.com (top-
+                # level, cross-site de verdad): el Origin YA NO sirve de CSRF check
+                # (siempre viene ajeno). Google defiende esto con un doble-envío:
+                # pone `g_csrf_token` en una cookie Y en el cuerpo del POST; solo es
+                # válido si coinciden (mismo patrón que su propia guía/ejemplos).
+                # Sin esto, una página atacante que reenviara un credential ajeno
+                # podría loguear a la víctima en la cuenta del atacante.
+                csrf_cookie = self._cookie("g_csrf_token")
+                if not csrf_cookie or csrf_cookie != data.get("g_csrf_token"):
+                    log.info("login rechazado: g_csrf_token ausente o no coincide")
+                    return self._redirect("/cuenta?login=error")
+            else:
+                # Fetch JSON directo (dev/tests): sigue siendo same-origin de
+                # verdad, así que el Origin SÍ es una señal válida.
+                origin = self.headers.get("Origin")
+                if origin and origin not in config.ALLOWED_ORIGINS:
+                    log.info("login rechazado: Origin ajeno %s", origin)
+                    return self._send(403, {"ok": False, "reason": "forbidden-origin"})
+
             try:
                 claims = auth.verify_google_id_token(data.get("credential"))
             except auth.TokenError as e:
                 log.info("login rechazado: %s", e)
                 if form:
-                    loc = self._login_next(data)
-                    if "?" in loc:
-                        loc += "&login=error"
-                    else:
-                        loc += "?login=error"
-                    return self._redirect(loc)
+                    return self._redirect("/cuenta?login=error")
                 return self._send(401, {"ok": False, "reason": "invalid-token"})
             user = db.upsert_user(
                 google_sub=claims["sub"],
@@ -420,7 +432,7 @@ class Handler(BaseHTTPRequestHandler):
             token = sessions.create_session(user["id"], self.headers.get("User-Agent"))
             cookies = self._set_session_cookie(token, config.SESSION_TTL_DAYS * 86400)
             if form:
-                return self._redirect(self._login_next(data), 303, cookies)
+                return self._redirect("/siguiendo?login=ok", 303, cookies)
             return self._send(200, {"ok": True, "user": user}, extra_headers=cookies)
 
         if rest == ["auth", "logout"]:

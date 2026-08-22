@@ -155,30 +155,29 @@
     say(initialMsg || 'Cargando el botón de Google…');
     gisReady().then(function (ready) {
       if (ready && clientId) {
-        google.accounts.id.initialize({ client_id: clientId, callback: onCredential });
+        // ux_mode:'redirect' en vez de popup+callback JS: el propio servidor de
+        // Google hace el POST top-level a login_uri con el credential. Se dejó
+        // de depender del callback (google.accounts.id.initialize({callback:…}) +
+        // f.submit() desde JS) porque en Safari/iOS y en navegadores embebidos
+        // (Chrome iOS, la propia app de Google) el popup se completaba —el
+        // usuario veía el consentimiento de Google y lo aceptaba— pero el
+        // callback no siempre disparaba en la pestaña padre: el login quedaba
+        // sin reflejarse en la web pese a que el backend SÍ había creado la
+        // sesión (visto en producción: usuarios con varias sesiones creadas en
+        // segundos, reintentando el botón una y otra vez). El modo redirect es
+        // una navegación real iniciada por el propio click, sin popup ni
+        // postMessage de por medio.
+        google.accounts.id.initialize({
+          client_id: clientId,
+          ux_mode: 'redirect',
+          login_uri: (API || location.origin) + '/api/auth/google'
+        });
         google.accounts.id.renderButton($('g_btn'), { theme: 'filled_black', size: 'large', text: 'signin_with', shape: 'pill' });
         say(initialMsg || '');
       } else {
         say('El inicio de sesión no está disponible ahora mismo.', true);
       }
     });
-  }
-
-  function onCredential(resp) {
-    // Login como NAVEGACIÓN top-level (form POST), no fetch: la cookie de sesión
-    // del Set-Cookie se commitea de forma fiable en todos los navegadores (móvil
-    // incluido). El backend responde 303 → /siguiendo (o ?login=error si falla).
-    say('Verificando…');
-    var f = document.createElement('form');
-    f.method = 'POST';
-    f.action = API + '/api/auth/google';
-    var c = document.createElement('input');
-    c.type = 'hidden'; c.name = 'credential'; c.value = resp.credential;
-    var n = document.createElement('input');
-    n.type = 'hidden'; n.name = 'next'; n.value = location.origin + '/siguiendo?login=ok';
-    f.appendChild(c); f.appendChild(n);
-    document.body.appendChild(f);
-    f.submit();
   }
 
   $('logout-btn').addEventListener('click', function () {
