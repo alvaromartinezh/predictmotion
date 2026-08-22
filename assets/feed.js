@@ -1,15 +1,18 @@
 /* PMFeed — feed unificado de artículos propios + noticias agregadas (/kiosco).
  *
- * Mezcla:
- *   - /data/articles/index.json  (broadsheets, crónicas, datos curiosos)
+ * Lee:
+ *   - /data/articles/index.json  (previas, resúmenes diarios, crónicas, datos curiosos)
  *   - /data/news/latest.json     (noticias RSS de medios españoles)
  *
- * y los ordena cronológicamente. El filtro por defecto es "Para ti": prioriza
- * el contenido de las ligas y equipos que sigue el usuario (vía PMAccount y
- * /api/follows). Sin sesión, el filtro por defecto es "Todos".
+ * "De PredictMotion" agrupa los artículos propios por tipo (GROUP_ORDER),
+ * cada grupo con las últimas piezas de ese formato; "Prensa deportiva" lista
+ * las noticias agregadas en orden cronológico. El filtro por defecto es
+ * "Para ti": prioriza el contenido de las ligas que sigue el usuario (vía
+ * PMAccount y /api/follows). Sin sesión, el filtro por defecto es "Todos".
  *
- * Filtros disponibles: Para ti / Todos / Artículos / Noticias.
- * También se pueden filtrar por liga/equipo con chips secundarios.
+ * Filtros disponibles: Para ti / Todos / Artículos / Noticias (estos dos
+ * últimos, al filtrar por `kind`, colapsan la sección contraria sin lógica
+ * aparte) + chips de liga.
  */
 (function () {
   "use strict";
@@ -17,19 +20,47 @@
   var DATA_ARTICLES = "/data/articles/index.json";
   var DATA_NEWS = "/data/news/latest.json";
   var LEAGUE_NAMES = { laliga: "LaLiga", hypermotion: "Hypermotion" };
+  var MAX_PER_GROUP = 6;
+  var MAX_PRESS_ROWS = 20;
 
   var TIPOS = {
-    diario: "Broadsheet diario",
+    previa: "Previa del día",
+    diario: "Resumen de jornada",
     partido: "Crónica de partido",
-    dato: "Dato curioso",
+    dato: "Dato de la hora",
     news: "Noticia",
+  };
+
+  // Orden de aparición de "De PredictMotion" + su copy descriptivo (fijo,
+  // no dato de negocio — los artículos de cada grupo sí son reales).
+  var GROUP_ORDER = ["previa", "dato", "partido", "diario"];
+  var GROUP_META = {
+    previa: {
+      title: "Qué esperar hoy",
+      desc: "Antes de que arranque la jornada, un resumen de lo que se puede esperar de los partidos del día.",
+      cadence: "08:00 · días de partido",
+    },
+    dato: {
+      title: "Un equipo, un dato",
+      desc: "Cada hora del día, una pieza corta sobre un dato de un equipo dentro de su liga.",
+      cadence: "cada hora · 10:00–22:00",
+    },
+    partido: {
+      title: "Nada más terminar",
+      desc: "En cuanto acaba cada partido, una crónica con lo ocurrido y la lectura del modelo.",
+      cadence: "al terminar cada partido",
+    },
+    diario: {
+      title: "Cómo se ha movido",
+      desc: "Cuando se han jugado los partidos del día, un cierre con lo ocurrido y cómo se han movido los pronósticos.",
+      cadence: "23:00 · cierre del día",
+    },
   };
 
   var state = {
     items: [],
     filter: "following", // following | all | articles | news
     league: "all",
-    team: null,
     follows: null,
     loggedIn: false,
     loading: true,
@@ -162,27 +193,11 @@
     return ["laliga", "hypermotion"].filter(function (l) { return seen[l]; });
   }
 
-  function teamsPresent() {
-    var seen = {};
-    state.items.forEach(function (it) {
-      (it.teams || []).forEach(function (t) {
-        var id = String(t.id != null ? t.id : t.espn_team_id);
-        seen[id] = t;
-      });
-    });
-    return Object.values(seen).sort(function (a, b) { return (a.name || "").localeCompare(b.name || "", "es"); });
-  }
-
   function filteredItems() {
     return state.items
       .filter(matches)
       .filter(function (it) {
-        if (state.league !== "all" && (it.leagues || []).indexOf(state.league) < 0) return false;
-        if (state.team) {
-          var tid = String(state.team);
-          return (it.teams || []).some(function (t) { return String(t.id != null ? t.id : t.espn_team_id) === tid; });
-        }
-        return true;
+        return state.league === "all" || (it.leagues || []).indexOf(state.league) >= 0;
       })
       .sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
   }
@@ -227,21 +242,10 @@
     Array.prototype.forEach.call(els.filters.querySelectorAll("[data-league]"), function (b) {
       b.addEventListener("click", function () {
         state.league = b.dataset.league;
-        state.team = null;
         renderFilters();
         renderList();
       });
     });
-  }
-
-  function teamChips(it) {
-    var teams = it.teams || [];
-    if (!teams.length) return "";
-    var chips = teams.slice(0, 3).map(function (t) {
-      return '<span class="news-chip' + (String(state.team) === String(t.id != null ? t.id : t.espn_team_id) ? " is-active" : "") + '" data-team="' + esc(String(t.id != null ? t.id : t.espn_team_id)) + '">' + esc(t.name) + "</span>";
-    });
-    if (teams.length > 3) chips.push('<span class="news-chip is-more">+' + (teams.length - 3) + "</span>");
-    return '<div class="news-card__tags">' + chips.join("") + "</div>";
   }
 
   function articleCardHTML(it) {
@@ -254,7 +258,6 @@
       + '    <span class="bscard__league">' + leagueName + '</span>'
       + '  </div>'
       + '  <h3 class="bscard__title">' + esc(it.title) + '</h3>'
-      + teamChips(it)
       + '  <div class="bscard__foot">'
       + '    <span class="bscard__date">' + esc(fechaLabel(it.fecha)) + '</span>'
       + '    <span class="bscard__cta">Leer →</span>'
@@ -262,30 +265,67 @@
       + '</a>';
   }
 
-  function newsCardHTML(it) {
+  function pressRowHTML(it) {
     var ago = timeAgo(it.ts);
     var src = esc(it.source || "Medio");
     return ''
-      + '<article class="news-card">'
-      + '  <div class="news-card__meta">'
-      + '    <span class="news-card__src">' + src + '</span>'
-      + (ago ? '<span class="news-card__time">' + esc(ago) + '</span>' : "")
-      + '    <span class="news-card__badge">Noticia</span>'
-      + '  </div>'
-      + '  <h2 class="news-card__title"><a href="' + esc(it.url) + '" target="_blank" rel="noopener noreferrer nofollow">' + esc(it.title) + '</a></h2>'
-      + (it.summary ? '<p class="news-card__summary">' + esc(it.summary) + '</p>' : "")
-      + teamChips(it)
-      + '  <a class="news-card__link" href="' + esc(it.url) + '" target="_blank" rel="noopener noreferrer nofollow">Leer en ' + src + ' <span aria-hidden="true">↗</span></a>'
-      + '</article>';
+      + '<a class="press-row" href="' + esc(it.url) + '" target="_blank" rel="noopener noreferrer nofollow">'
+      + '  <span class="press-row__time">' + esc(ago) + '</span>'
+      + '  <span class="press-row__title">' + esc(it.title) + '</span>'
+      + '  <span class="press-row__source">' + src + '</span>'
+      + '</a>';
   }
 
-  function cardHTML(it) {
-    return it.kind === "news" ? newsCardHTML(it) : articleCardHTML(it);
+  function renderArticleSection(articles) {
+    var byTipo = {};
+    articles.forEach(function (it) { (byTipo[it.tipo] = byTipo[it.tipo] || []).push(it); });
+    var present = GROUP_ORDER.filter(function (t) { return byTipo[t] && byTipo[t].length; });
+    if (!present.length) return "";
+
+    var groups = present.map(function (t) {
+      var meta = GROUP_META[t];
+      var items = byTipo[t].slice(0, MAX_PER_GROUP);
+      return ''
+        + '<div class="feed-group">'
+        + '  <div class="feed-group__side">'
+        + '    <span class="feed-group__chip">' + esc(TIPOS[t] || t) + '</span>'
+        + '    <h3 class="feed-group__title">' + esc(meta.title) + '</h3>'
+        + '    <p class="feed-group__desc">' + esc(meta.desc) + '</p>'
+        + '    <div class="feed-group__cadence">' + esc(meta.cadence) + '</div>'
+        + '  </div>'
+        + '  <div class="feed-group__cards news-grid">' + items.map(articleCardHTML).join('') + '</div>'
+        + '</div>';
+    }).join('');
+
+    return ''
+      + '<section class="feed-section">'
+      + '  <div class="feed-section__head">'
+      + '    <div class="feed-section__title-row"><span class="feed-section__dot"></span><h2>De PredictMotion</h2></div>'
+      + '    <span class="feed-section__meta">' + present.length + ' formatos · generado por el modelo</span>'
+      + '  </div>'
+      + '  <div class="feed-groups">' + groups + '</div>'
+      + '</section>';
+  }
+
+  function renderPressSection(news) {
+    var rows = news.slice(0, MAX_PRESS_ROWS).map(pressRowHTML).join('');
+    return ''
+      + '<section class="feed-section feed-section--press">'
+      + '  <div class="feed-section__head">'
+      + '    <div class="feed-section__title-row"><span class="feed-section__dot feed-section__dot--outline"></span><h2>Prensa deportiva</h2></div>'
+      + '    <span class="feed-section__meta">Medios externos · sin editar</span>'
+      + '  </div>'
+      + '  <div class="press-list">' + rows + '</div>'
+      + '</section>';
   }
 
   function renderList() {
     var list = filteredItems();
-    if (!list.length) {
+    var articles = list.filter(function (it) { return it.kind === "article"; });
+    var news = list.filter(function (it) { return it.kind === "news"; });
+    var html = renderArticleSection(articles) + renderPressSection(news);
+
+    if (!html) {
       var msg = "No hay contenido para este filtro ahora mismo.";
       if (state.filter === "following") {
         msg = state.loggedIn
@@ -295,19 +335,7 @@
       els.mount.innerHTML = '<p class="news-empty">' + esc(msg) + "</p>";
       return;
     }
-    els.mount.innerHTML = '<div class="news-grid">' + list.map(cardHTML).join("") + '</div>';
-
-    // chips de equipo dentro de las tarjetas
-    Array.prototype.forEach.call(els.mount.querySelectorAll(".news-chip[data-team]"), function (c) {
-      c.addEventListener("click", function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        state.team = c.dataset.team;
-        renderFilters();
-        renderList();
-        if (els.mount.scrollIntoView) els.mount.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-    });
+    els.mount.innerHTML = html;
   }
 
   function fail(msg) {
