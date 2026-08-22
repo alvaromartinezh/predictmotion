@@ -19,7 +19,7 @@ from . import grounding, illustration, writer
 from .config import STAT_KINDS
 
 _CSS_V = "13"
-_SITE_LOGO = SITE + "/media/twitter_profile.png"
+_SITE_LOGO = SITE + "/media/logo.jpeg"
 _DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 _MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 ZONE_HEX = {"ascenso": "#2ec98a", "ascenso_total": "#2ec98a", "playoff": "#24d08a", "descenso": "#ff556b"}
@@ -358,8 +358,8 @@ def _page_html(title, description, canonical, league_logo, json_ld, body):
 <meta property="og:site_name" content="PredictMotion">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="{_SITE_LOGO}">
-<link rel="icon" type="image/png" href="/media/twitter_profile.png">
-<link rel="apple-touch-icon" href="/media/twitter_profile.png">
+<link rel="icon" type="image/jpeg" href="/media/logo.jpeg">
+<link rel="apple-touch-icon" href="/media/logo.jpeg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="dns-prefetch" href="https://a.espncdn.com">
@@ -398,7 +398,7 @@ def render_broadsheet(payload_resumen, resumen_body, payload_explainer, explaine
         "description": description, "datePublished": generated_at,
         "author": {"@type": "Organization", "name": "PredictMotion"},
         "publisher": {"@type": "Organization", "name": "PredictMotion",
-                      "logo": {"@type": "ImageObject", "url": "https://predictmotion.com/media/twitter_profile.png"}},
+                      "logo": {"@type": "ImageObject", "url": "https://predictmotion.com/media/logo.jpeg"}},
         "about": {"@type": "SportsOrganization", "name": payload_resumen["liga"]},
         "url": canonical,
     }
@@ -516,7 +516,7 @@ def render_previa_broadsheet(payload_preview, preview_body, payload_explainer, e
         "description": description, "datePublished": generated_at,
         "author": {"@type": "Organization", "name": "PredictMotion"},
         "publisher": {"@type": "Organization", "name": "PredictMotion",
-                      "logo": {"@type": "ImageObject", "url": "https://predictmotion.com/media/twitter_profile.png"}},
+                      "logo": {"@type": "ImageObject", "url": "https://predictmotion.com/media/logo.jpeg"}},
         "about": {"@type": "SportsOrganization", "name": payload_preview["liga"]},
         "url": canonical,
     }
@@ -750,7 +750,7 @@ def render_match_broadsheet(payload, local_body, visitante_body, cronica_body,
         "description": description, "datePublished": generated_at,
         "author": {"@type": "Organization", "name": "PredictMotion"},
         "publisher": {"@type": "Organization", "name": "PredictMotion",
-                      "logo": {"@type": "ImageObject", "url": "https://predictmotion.com/media/twitter_profile.png"}},
+                      "logo": {"@type": "ImageObject", "url": "https://predictmotion.com/media/logo.jpeg"}},
         "about": {"@type": "SportsEvent", "name": f'{local["nombre"]} - {visitante["nombre"]}',
                   "homeTeam": {"@type": "SportsTeam", "name": local["nombre"]},
                   "awayTeam": {"@type": "SportsTeam", "name": visitante["nombre"]}},
@@ -998,7 +998,7 @@ def render_stat_broadsheet(payload, protagonist_body, perseguidores_body, *,
         "description": description, "datePublished": generated_at,
         "author": {"@type": "Organization", "name": "PredictMotion"},
         "publisher": {"@type": "Organization", "name": "PredictMotion",
-                      "logo": {"@type": "ImageObject", "url": "https://predictmotion.com/media/twitter_profile.png"}},
+                      "logo": {"@type": "ImageObject", "url": "https://predictmotion.com/media/logo.jpeg"}},
         "about": {"@type": "SportsOrganization", "name": payload["liga"]},
         "url": canonical,
     }

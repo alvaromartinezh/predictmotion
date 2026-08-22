@@ -21,7 +21,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 GTM_BODY = ('<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NG2T7CM4"'
             ' height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>')
 
-LOGO = "/media/twitter_profile.png"
+LOGO = "/media/logo.jpeg"
 
 # Paleta de fondo para avatares fallback (idéntica al dashboard).
 COLOR_PALETTE = [
@@ -400,7 +400,7 @@ def page(title, description, canonical_path, body, *, heading, logo=None, badge=
     badge_html = f'<div class="header-actions"><div class="badge">{badge}</div></div>' if badge else ""
     logo_box = f'<div class="logo"><img src="{esc(logo)}" alt="{esc(heading)}"></div>' if logo else ""
     og_image = f'<meta property="og:image" content="{esc(logo)}">' if logo else ""
-    icons = (f'<link rel="icon" type="image/png" href="{esc(logo)}">'
+    icons = (f'<link rel="icon" type="image/jpeg" href="{esc(logo)}">'
              f'<link rel="apple-touch-icon" href="{esc(logo)}">') if logo else ""
     canonical = SITE + canonical_path
     return f"""<!DOCTYPE html>
