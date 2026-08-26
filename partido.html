@@ -20,15 +20,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="dns-prefetch" href="https://a.espncdn.com" />
-  <link rel="stylesheet" href="/styles.css?v=20260823a" />
-  <link rel="stylesheet" href="/assets/shell.css?v=20260823a" />
-  <link rel="stylesheet" href="/assets/account.css?v=20260823a" />
-  <script src="/theme.js?v=20260823a"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260826a" />
+  <link rel="stylesheet" href="/assets/shell.css?v=20260826a" />
+  <link rel="stylesheet" href="/assets/account.css?v=20260826a" />
+  <script src="/theme.js?v=20260826a"></script>
 
-  <link rel="stylesheet" href="/assets/live.css?v=20260823a" />
-  <link rel="stylesheet" href="/assets/ads.css?v=20260823a" />
-  <script src="/assets/ads-config.js?v=20260823a"></script>
-  <script src="/assets/ads.js?v=20260823a"></script>
+  <link rel="stylesheet" href="/assets/live.css?v=20260826a" />
+  <link rel="stylesheet" href="/assets/ads.css?v=20260826a" />
+  <script src="/assets/ads-config.js?v=20260826a"></script>
+  <script src="/assets/ads.js?v=20260826a"></script>
 </head>
 <body>
 <!-- Google Tag Manager (noscript) -->
@@ -59,6 +59,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div id="live-unavailable" class="lv-msg" style="display:none"></div>
 
     <div id="live-content" style="display:none">
+      <!-- Único anuncio de la página, bajo la cabecera del partido -->
+      <div class="ad-wrap" data-ad-slot="box"></div>
+
       <div class="page-tabs">
         <button class="page-tab active" type="button" data-section="alineacion">Alineación</button>
         <button class="page-tab" type="button" data-section="minuto">Minuto a minuto</button>
@@ -67,23 +70,18 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
       <!-- ===== ALINEACIÓN ===== -->
       <div class="tab-section" data-section="alineacion">
-        <p class="sec-label">Alineaciones</p>
         <div id="lv-lineups"></div>
       </div>
 
       <!-- ===== MINUTO A MINUTO ===== -->
       <div class="tab-section" data-section="minuto" hidden>
-        <p class="sec-label">Eventos del partido</p>
         <div id="lv-timeline"></div>
       </div>
 
       <!-- ===== DATOS ===== -->
       <div class="tab-section" data-section="datos" hidden>
-        <p class="sec-label">Estadísticas del partido</p>
         <div id="lv-stats"></div>
       </div>
-
-      <div class="ad-wrap" data-ad-slot="box"></div>
     </div>
   </main>
 
@@ -99,28 +97,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
   <!-- Contenido estático para Googlebot: explica el seguimiento en vivo -->
   <div class="wrap" style="max-width:var(--maxw);margin-inline:auto;padding-inline:var(--sp-5);padding-block:var(--sp-8)">
-    <section aria-label="Qué muestra esta página">
+    <section aria-label="Qué muestra esta página" style="max-width:640px">
       <p class="eyebrow">Sobre esta página</p>
       <h2 style="font-family:var(--font-display);font-size:var(--fs-24);font-weight:700;color:var(--text);margin-top:var(--sp-2);margin-bottom:var(--sp-4)">Seguimiento de partido en vivo</h2>
-
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--sp-4);margin-top:var(--sp-5)">
-        <div class="panel" style="padding:var(--sp-5)">
-          <h3 style="font-family:var(--font-display);font-size:var(--fs-15);font-weight:700;color:var(--text);margin-bottom:var(--sp-2)">Alineación</h3>
-          <p style="font-size:var(--fs-14);color:var(--text-2);line-height:1.6">Once inicial de cada equipo con formación táctica. Los jugadores se posicionan sobre el campo según su posición habitual.</p>
-        </div>
-        <div class="panel" style="padding:var(--sp-5)">
-          <h3 style="font-family:var(--font-display);font-size:var(--fs-15);font-weight:700;color:var(--text);margin-bottom:var(--sp-2)">Minuto a minuto</h3>
-          <p style="font-size:var(--fs-14);color:var(--text-2);line-height:1.6">Cronología de eventos: goles, tarjetas, cambios y ocasiones. Cada evento muestra el minuto y el jugador implicado.</p>
-        </div>
-        <div class="panel" style="padding:var(--sp-5)">
-          <h3 style="font-family:var(--font-display);font-size:var(--fs-15);font-weight:700;color:var(--text);margin-bottom:var(--sp-2)">Datos</h3>
-          <p style="font-size:var(--fs-14);color:var(--text-2);line-height:1.6">Estadísticas del partido: posesión, tiros, tiros a puerta, córners, faltas y más. Se actualizan en tiempo real durante el partido.</p>
-        </div>
-        <div class="panel" style="padding:var(--sp-5)">
-          <h3 style="font-family:var(--font-display);font-size:var(--fs-15);font-weight:700;color:var(--text);margin-bottom:var(--sp-2)">Probabilidad estimada</h3>
-          <p style="font-size:var(--fs-14);color:var(--text-2);line-height:1.6">La probabilidad de victoria de cada equipo se estima en vivo según el marcador, el tiempo restante y las estadísticas del partido. Modelo heurístico, no validado.</p>
-        </div>
-      </div>
+      <p style="font-size:var(--fs-15);color:var(--text-2);line-height:1.7;margin-bottom:var(--sp-4)">La pestaña <b style="color:var(--text);font-weight:600">Alineación</b> dibuja el once inicial de cada equipo sobre el campo, con la formación táctica y los suplentes debajo. <b style="color:var(--text);font-weight:600">Minuto a minuto</b> recoge la cronología del partido agrupada por parte: goles con su asistencia, tarjetas y cambios, con el minuto y el jugador implicado en cada línea.</p>
+      <p style="font-size:var(--fs-15);color:var(--text-2);line-height:1.7;margin-bottom:var(--sp-4)">En <b style="color:var(--text);font-weight:600">Datos</b> están las estadísticas del encuentro (posesión, tiros, tiros a puerta, córners, faltas y más), que se actualizan durante el partido.</p>
+      <p style="font-size:var(--fs-15);color:var(--text-2);line-height:1.7">La probabilidad de victoria que aparece bajo el marcador se estima en vivo a partir del resultado, el tiempo restante y las estadísticas del partido. Es un modelo heurístico, no validado.</p>
     </section>
   </div>
 
@@ -128,16 +110,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </div><!-- /.pm-app.app -->
   <div id="shell-tabbar"></div>
 
-  <script src="/assets/fixtures.js?v=20260823a"></script>
-  <script src="/assets/live.js?v=20260820c"></script>
+  <script src="/assets/fixtures.js?v=20260826a"></script>
+  <script src="/assets/live.js?v=20260826a"></script>
   <script>
     PMTabs.init();
     PMLive.init();
   </script>
-  <script src="/assets/account.js?v=20260823a"></script>
-  <script src="/assets/pm-leagues.js?v=20260823a"></script>
-  <script src="/assets/shell.js?v=20260823a"></script>
+  <script src="/assets/account.js?v=20260826a"></script>
+  <script src="/assets/pm-leagues.js?v=20260826a"></script>
+  <script src="/assets/shell.js?v=20260826a"></script>
   <script>PMShell.chrome({ active: null });</script>
-  <script src="/assets/nav.js?v=20260823a"></script>
+  <script src="/assets/nav.js?v=20260826a"></script>
 </body>
 </html>

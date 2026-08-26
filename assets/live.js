@@ -269,17 +269,13 @@
   }
   // Solo suplentes: los titulares ya están dibujados en el campo, no hace
   // falta repetirlos en una lista debajo.
-  function benchBlock(lineup, team) {
+  function benchBlock(lineup) {
     if (!lineup) return '';
-    var cr = team.logo ? '<span class="lineup__crest"><img src="' + esc(team.logo) + '" alt=""></span>' : '<span class="lineup__crest ph"></span>';
-    var head = '<div class="lineup__head">' + cr +
-      '<div class="lineup__meta"><div class="lineup__team">' + esc(team.name || team.abbr) + '</div>' +
-      '<div class="lineup__form">' + esc(lineup.formation || '—') + '</div></div></div>';
     var subs = lineup.subs || [];
     var bench = subs.length
       ? '<div class="bench"><p class="bench__label">Suplentes</p>' + subs.map(playerRow).join('') + '</div>'
       : '<p class="lv-msg lv-msg--sm">Sin suplentes disponibles.</p>';
-    return '<div class="lineup">' + head + bench + '</div>';
+    return '<div class="lineup">' + bench + '</div>';
   }
   function renderLineups(m) {
     var lu = m.lineups || {};
@@ -300,7 +296,7 @@
     }
     el('lv-lineups').innerHTML = sideSwitchHTML(m, lineupSide) +
       buildPitch(lu, m, lineupSide) +
-      '<div class="lineup-wrap">' + benchBlock(lu[lineupSide], m[lineupSide]) + '</div>';
+      '<div class="lineup-wrap">' + benchBlock(lu[lineupSide]) + '</div>';
     Array.prototype.forEach.call(el('lv-lineups').querySelectorAll('.side-switch__btn'), function (b) {
       b.addEventListener('click', function () {
         lineupSide = b.getAttribute('data-side');
@@ -317,33 +313,56 @@
     SUB: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 7l-4 4 4 4"/><path d="M5 11h10"/><path d="M15 17l4-4-4-4"/><path d="M19 13H9"/></svg>'
   };
   var EV_ICCLS = { GOAL: 'ic-goal', YELLOW: 'ic-yc', RED: 'ic-rc', SUB: 'ic-sub' };
+  var EV_TITLE = { GOAL: 'Gol', YELLOW: 'Tarjeta amarilla', RED: 'Tarjeta roja', SUB: 'Cambio' };
   function periodLabel(p) { return p >= 5 ? 'Penaltis' : p >= 3 ? 'Prórroga' : p === 2 ? '2ª parte' : '1ª parte'; }
-  function evContent(e) {
+
+  // Una línea por evento: el nombre del protagonista es el titular; el dato
+  // secundario (asistente, jugador que sale) va debajo en gris.
+  function evLines(e) {
     var pl = e.players || [];
-    var t, desc = '';
-    if (e.type === 'GOAL') { t = 'Gol' + (aname(pl[0]) ? ' · ' + aname(pl[0]) : ''); if (pl[1]) desc = 'Asistencia: ' + aname(pl[1]); }
-    else if (e.type === 'YELLOW') t = 'Amarilla' + (aname(pl[0]) ? ' · ' + aname(pl[0]) : '');
-    else if (e.type === 'RED') t = 'Roja' + (aname(pl[0]) ? ' · ' + aname(pl[0]) : '');
-    else if (e.type === 'SUB') { t = 'Cambio'; if (pl[0]) desc = '↑ ' + aname(pl[0]) + (pl[1] ? '  ↓ ' + aname(pl[1]) : ''); }
-    else t = e.text || '';
-    return '<div class="tl-body"><div class="tl-title">' + esc(t) + '</div>' +
-      (desc ? '<div class="tl-desc">' + esc(desc) + '</div>' : '') + '</div>';
+    if (e.type === 'GOAL') return { name: aname(pl[0]) || 'Gol', sub: pl[1] ? 'Asistencia: ' + aname(pl[1]) : '' };
+    if (e.type === 'YELLOW' || e.type === 'RED') return { name: aname(pl[0]) || EV_TITLE[e.type], sub: '' };
+    if (e.type === 'SUB') return { name: aname(pl[0]) || 'Cambio', sub: pl[1] ? 'Sale: ' + aname(pl[1]) : '' };
+    return { name: e.text || '', sub: '' };
   }
-  function timelineRow(e) {
+  function evCrest(m, side) {
+    var t = m[side] || {};
+    var inner = t.logo
+      ? '<img src="' + esc(t.logo) + '" alt="' + esc(t.name || t.abbr || '') + '" loading="lazy">'
+      : '<span>' + esc(t.abbr || '') + '</span>';
+    return '<span class="tl-ev__crest">' + inner + '</span>';
+  }
+  function timelineRow(e, m, score) {
     var side = e.teamSide === 'away' ? 'away' : 'home';
-    var ic = '<span class="tl-ev-ic ' + (EV_ICCLS[e.type] || '') + '" aria-hidden="true">' + (EV_SVG[e.type] || '') + '</span>';
-    var card = '<div class="tl-card' + (e.type === 'GOAL' ? ' tl-goal-card' : '') + '">' + ic + evContent(e) + '</div>';
-    var min = '<div class="tl-min' + (e.type === 'GOAL' ? ' goal' : '') + '">' + esc(e.minute) + '</div>';
-    return '<div class="tl-row ' + side + '">' + (side === 'home' ? card + min : min + card) + '</div>';
+    var L = evLines(e), isGoal = e.type === 'GOAL';
+    return '<div class="tl-ev' + (isGoal ? ' tl-ev--goal' : '') + '">' +
+      '<span class="tl-ev__min">' + esc(e.minute) + '</span>' +
+      '<span class="tl-ev__ic ' + (EV_ICCLS[e.type] || '') + '" title="' + esc(EV_TITLE[e.type] || '') + '">' + (EV_SVG[e.type] || '') + '</span>' +
+      evCrest(m, side) +
+      '<span class="tl-ev__body">' +
+        '<span class="tl-ev__name">' + esc(L.name) +
+          (isGoal && score ? '<span class="tl-ev__score">' + esc(score) + '</span>' : '') +
+        '</span>' +
+        (L.sub ? '<span class="tl-ev__sub">' + esc(L.sub) + '</span>' : '') +
+      '</span>' +
+    '</div>';
   }
   function renderTimeline(m) {
     var evs = (m.events || []).filter(function (e) { return e.type !== 'OTHER'; });
     if (!evs.length) { el('lv-timeline').innerHTML = '<div class="lv-msg">Aún no hay eventos.</div>'; return; }
-    var rev = evs.slice().reverse(), out = '', lastP = null;
-    rev.forEach(function (e) {
-      if (e.period !== lastP) { out += '<div class="tl-divider"><span>' + periodLabel(e.period) + '</span></div>'; lastP = e.period; }
-      out += timelineRow(e);
+    // Marcador acumulado en cada gol (los eventos llegan en orden cronológico).
+    var h = 0, a = 0;
+    var scores = evs.map(function (e) {
+      if (e.type !== 'GOAL') return '';
+      if (e.teamSide === 'away') a++; else h++;
+      return h + '-' + a;
     });
+    var out = '', lastP = null;
+    for (var i = evs.length - 1; i >= 0; i--) {
+      var e = evs[i];
+      if (e.period !== lastP) { out += '<div class="tl-part">' + periodLabel(e.period) + '</div>'; lastP = e.period; }
+      out += timelineRow(e, m, scores[i]);
+    }
     el('lv-timeline').innerHTML = '<div class="timeline">' + out + '</div>';
   }
 
@@ -378,12 +397,18 @@
     var possHtml = '';
     if (poss) {
       var h = num(poss.home), a = num(poss.away), tot = h + a || 1, hp = Math.round(h / tot * 100);
-      possHtml = '<div class="possession"><div class="poss__track">' +
-        '<span class="poss__seg home" style="width:' + hp + '%;background:' + COL.home + ';color:' + COL.homeText + '">' + esc(poss.home) + '%</span>' +
-        '<span class="poss__seg away" style="width:' + (100 - hp) + '%;background:' + COL.away + ';color:' + COL.awayText + '">' + esc(poss.away) + '%</span>' +
-        '</div><p class="poss__label">Posesión</p></div>';
+      possHtml = '<div class="possession">' +
+        '<div class="poss__top">' +
+          '<span class="poss__val" style="color:' + COL.home + '">' + esc(poss.home) + '%</span>' +
+          '<span class="poss__label">Posesión</span>' +
+          '<span class="poss__val" style="color:' + COL.away + '">' + esc(poss.away) + '%</span>' +
+        '</div>' +
+        '<div class="poss__track">' +
+          '<span class="poss__seg" style="width:' + hp + '%;background:' + COL.home + '"></span>' +
+          '<span class="poss__seg" style="width:' + (100 - hp) + '%;background:' + COL.away + '"></span>' +
+        '</div></div>';
     }
-    el('lv-stats').innerHTML = '<div class="stats-card">' + legend + possHtml + others.map(statRow).join('') + '</div>';
+    el('lv-stats').innerHTML = '<div class="stats">' + legend + possHtml + others.map(statRow).join('') + '</div>';
   }
 
   // ── Voto 1X2 de la comunidad (solo /partido; requiere cuenta de Google) ───
@@ -548,5 +573,15 @@
       '</div>';
   }
 
-  w.PMLive = { init: init };
+  // Render con datos ya dados (maqueta/preview): sin fetch, sin polling, sin voto.
+  function preview(m) {
+    resolveColors(m);
+    lastMatch = m;
+    renderHeader(m);
+    renderLineups(m);
+    renderTimeline(m);
+    renderStats(m);
+  }
+
+  w.PMLive = { init: init, preview: preview };
 })(window, document);
