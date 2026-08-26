@@ -9,7 +9,7 @@ from .chrome import (page, esc, crumbs, avatar, prob_cell, stat_card, sparkline,
                      COLOR_PALETTE, team_avatar, delta_span)
 from .config import SITE
 from .snapshots import per_period_series
-from .textutil import pct, signed, ordinal, de_league, en_league
+from .textutil import pct, signed, ordinal, de_league, en_league, zone_label
 
 _SPARK_HEX = {"green": "#00c97a", "blue": "#3d8ef5", "violet": "#9b6bff", "red": "#f53050"}
 
@@ -70,7 +70,7 @@ def _team_page(league, snap, series, team, extras, logo):
     # Frase principal
     lede = (f'El <strong>{esc(team["name"])}</strong> es {ordinal(team["rank"])} '
             f'{esc(en_league(league))} con <strong>{team["pts"]} puntos</strong> '
-            f'tras la jornada {j}. Probabilidad de <strong>{esc(primary["label"].lower())}</strong>: '
+            f'tras la jornada {j}. Probabilidad de <strong>{esc(zone_label(primary["label"]))}</strong>: '
             f'<strong>{pct(pv)}</strong>')
     if prev_team is not None:
         d = pv - prev_team["prob"][primary["key"]]
@@ -133,8 +133,8 @@ def _team_page(league, snap, series, team, extras, logo):
              f'<div class="section-label">Más datos {esc(de_league(league))}</div>'
              f'<div class="chips">{chips}</div></div></div>')
 
-    title = f'{team["name"]} — Probabilidad de {primary["label"].lower()} · {league["name"]}'
-    desc = (f'{team["name"]}: {pct(pv)} de {primary["label"].lower()} {en_league(league)} '
+    title = f'{team["name"]} — Probabilidad de {zone_label(primary["label"])} · {league["name"]}'
+    desc = (f'{team["name"]}: {pct(pv)} de {zone_label(primary["label"])} {en_league(league)} '
             f'tras la jornada {j} ({team["pts"]} pts, {ordinal(team["rank"])}). '
             f'Simulación Monte Carlo actualizada.')
     ld = {
@@ -249,7 +249,7 @@ def _jornada_page(league, after, before, logo):
                          f'fue quien más bajó ({signed(down[0])} pp)')
         if parts:
             mv = (f'<p class="lede" style="margin-top:10px">Respecto a la jornada {before["jornada"]}, '
-                  + " y ".join(parts) + f' en probabilidad de {esc(primary["label"].lower())}.</p>')
+                  + " y ".join(parts) + f' en probabilidad de {esc(zone_label(primary["label"]))}.</p>')
 
     if before is None:
         intro = (f'Probabilidades {esc(de_league(league))} tras la jornada {j}. '
@@ -279,7 +279,7 @@ def _jornada_page(league, after, before, logo):
     )
     title = f'Jornada {j} · Probabilidades de {league["name"]} {league["season"]}'
     desc = (f'Evolución de las probabilidades {de_league(league)} en la jornada {j}: '
-            f'cuánto movió cada resultado la carrera por {primary["label"].lower()}.')
+            f'cuánto movió cada resultado la carrera por {zone_label(primary["label"])}.')
     ld = {
         "@context": "https://schema.org", "@type": "ItemList", "name": title,
         "itemListElement": [

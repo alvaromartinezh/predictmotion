@@ -52,3 +52,23 @@ def en_league(league):
     """Concordancia: 'en la Liga Hypermotion', 'en LaLiga', 'en la Copa del Mundo'."""
     art = league.get("article", "")
     return f"en {art + ' ' if art else ''}{league['name']}"
+
+
+def zone_label(label):
+    """Etiqueta de zona en minúsculas dentro de una frase ('probabilidad de
+    descenso'), PERO respetando los nombres propios: las tres competiciones UEFA
+    son marcas registradas y '…de champions league' se leía como una errata en el
+    <title> de ~250 páginas de equipo. Todo lo demás ('Descenso', 'Ascenso
+    directo', 'Play-off de ascenso') es sustantivo común y sí va en minúscula."""
+    return label if label.endswith("League") else label.lower()
+
+
+if __name__ == "__main__":  # python3 -m seo.textutil
+    assert zone_label("Champions League") == "Champions League"
+    assert zone_label("Europa League") == "Europa League"
+    assert zone_label("Conference League") == "Conference League"
+    assert zone_label("Descenso") == "descenso"
+    assert zone_label("Ascenso directo") == "ascenso directo"
+    assert zone_label("Play-off de ascenso") == "play-off de ascenso"
+    assert zone_label("Descenso a Segunda") == "descenso a segunda"
+    print("ok")
