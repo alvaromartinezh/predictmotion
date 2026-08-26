@@ -27,6 +27,17 @@ GROUNDING_TOLERANCE_PP = 1.0
 # esta fracción, se listan por separado. Ver articles/grounding.py:_effective_bands.
 ASCENSO_TOTAL_SEASON_FRACTION = 0.5
 
+# flash-lite es el modelo de TODO (500 RPD en el tier gratis, holgadísimo). La
+# única excepción es el camino con grounding, y NO por elección: probado contra la
+# API el 2026-08-26, en el mismo minuto y con la misma clave —
+#     3.5-flash-lite sin grounding .......... OK
+#     3.5-flash-lite CON grounding .......... HTTP 429 (sin detalle de cuota)
+#     2.5-flash      sin grounding .......... OK
+#     2.5-flash      CON grounding .......... OK
+# No es rate limiting del modelo (la sonda sin tools pasa a la vez): el tier gratis
+# da cuota CERO a flash-lite + google_search. Si alguien "arregla" esto poniendo
+# flash-lite aquí, la previa diaria deja de publicarse con un 429 que no explica
+# nada. Reprobar antes de tocarlo. Ver [[docs/articulos]].
 GEMINI_MODEL = "gemini-3.5-flash-lite"
 GEMINI_MODEL_GROUNDED = "gemini-2.5-flash"
 
