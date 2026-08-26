@@ -139,10 +139,14 @@ def _team_analysis(league, snap, series, team, extras):
     if gp and corte and team["rank"] > banda["hi"]:
         d = abs(team["pts"] - corte["pts"])
         # Cuanto más cerca del corte, más interesa: a 0-2 puntos es la noticia.
+        # "Está a 0 puntos del 5º" = está empatado con él, pero por detrás por
+        # el desempate. Misma trampa que en la rama de dentro de la zona.
+        dist = (f'Está <strong>empatado a puntos</strong> con el {ordinal(corte["rank"])}'
+                if d == 0 else
+                f'Está a <strong>{plural(d, "punto")}</strong> del {ordinal(corte["rank"])}')
         cand.append((max(0.0, 1.0 - d / 8),
-                     f'Está a <strong>{plural(d, "punto")}</strong> del '
-                     f'{ordinal(corte["rank"])} ({esc(corte["name"])}), que hoy marca '
-                     f'el corte de {etiqueta}.'))
+                     f'{dist} ({esc(corte["name"])}), que hoy marca el corte '
+                     f'de {etiqueta}.'))
     elif gp and fuera and team["rank"] <= banda["hi"]:
         d = team["pts"] - fuera["pts"]
         # signed() da "=" para 0, que vale en una tabla pero no en una frase.
@@ -602,6 +606,8 @@ def _demo():
     # Concordancia y singulares: los cuatro fallos que salieron en la 1ª pasada.
     assert "= puntos" not in junto, "signed(0) se coló en la prosa"
     assert " 1 puntos" not in junto, "falta el singular 'punto'"
+    assert "0 puntos del" not in junto and "0 puntos sobre" not in junto, \
+        "a 0 puntos es 'empatado a puntos'"
     assert "1º mejor" not in junto, "'1º mejor' debe ser 'el/la mejor'"
     assert "el 4ª" not in junto and "la 4º" not in junto, "concordancia de género rota"
     # El peor de la liga no puede describirse como "4º mejor" de 4 equipos.
@@ -609,6 +615,16 @@ def _demo():
 
     # Lo que justifica todo esto: las páginas tienen que ser DISTINTAS.
     assert len(set(textos)) == len(textos), "dos equipos con el mismo texto"
+
+    # Empate a puntos en el corte: la aserción de arriba no muerde si ningún
+    # equipo empata, así que aquí se fuerza el caso por los dos lados (el 3º
+    # empatado con el 2º, que marca el corte).
+    emp = _demo_snap()
+    emp["teams"][2]["pts"] = emp["teams"][1]["pts"]
+    dentro = _team_analysis(league, emp, series, emp["teams"][1], {})
+    fuera_ = _team_analysis(league, emp, series, emp["teams"][2], {})
+    assert "empatado a puntos" in fuera_, fuera_
+    assert "0 puntos del" not in fuera_ and "0 puntos sobre" not in dentro
 
     # Pretemporada: sin partidos no se inventa nada.
     pre = _demo_snap(gp=0)
