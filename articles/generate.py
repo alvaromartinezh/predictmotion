@@ -60,6 +60,7 @@ from seo.textutil import pct
 from seo.tweets import _caption, _tg_send_message
 
 from . import grounding, layout_estimate, render, writer
+from .gemini_client import GeminiError
 from .config import (ARTICLE_LEAGUES, ARTICLES_OUT_DIR, DATA_DIR, PREVIEW_LOCAL_HOUR,
                      STAT_ARTICLE_HOURS, STAT_KINDS)
 
@@ -310,7 +311,13 @@ def _run_finished_matches(league, snap, finished, today, dry_run):
     for m in finished:
         try:
             _run_match(league, snap, m, dry_run)
-        except Exception:
+        except Exception as e:
+            # Igual que en main(): un timeout o un 429 se reintenta solo en la
+            # pasada de dentro de 5 min (_run_match es idempotente por
+            # _match_already_handled), así que no merece alerta.
+            if isinstance(e, GeminiError) and e.transient:
+                print(f"[SKIP] {league_slug} crónica: {e}", file=sys.stderr)
+                continue
             tb = traceback.format_exc()
             print(tb, file=sys.stderr)
             if not dry_run:
@@ -790,7 +797,14 @@ def main(argv=None):
                 rc |= _run_previa(league_slug, args.dry_run, date_override=args.date)
             else:
                 rc |= _run(league_slug, args.dry_run, date_override=args.date)
-        except Exception:
+        except Exception as e:
+            # Timeout / 429 / corte de red: el artículo de esta pasada no sale,
+            # pero el cron vuelve en 5 min (crónicas) o en 1 h (dato y previa) y
+            # lo reintenta. No es una incidencia: al log y a la siguiente liga,
+            # sin email. Antes esto abortaba la liga Y mandaba alerta.
+            if isinstance(e, GeminiError) and e.transient:
+                print(f"[SKIP] {league_slug}: {e}", file=sys.stderr)
+                continue
             tb = traceback.format_exc()
             print(tb, file=sys.stderr)
             rc = 1

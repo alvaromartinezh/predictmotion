@@ -699,6 +699,44 @@ def demo():
     finally:
         urllib.request.urlopen = _real
 
+    # 3) Clasificación transitorio/permanente y, sobre todo, que un fallo
+    #    transitorio NO manda alerta ni se lleva por delante las demás ligas.
+    #    El 2026-08-26 llegó un email por un timeout de 60 s que el propio cron
+    #    ya había reintentado: ese es el caso que fija esta prueba.
+    assert not gemini_client.GeminiError("sin key").transient
+    assert gemini_client.GeminiError("x", transient=True).transient
+
+    from seo import notify
+    alertas = []
+    hechas = []
+    _alert, _stat = notify.send_alert, generate._run_stat
+    notify.send_alert = lambda *a, **k: alertas.append(a[0])
+
+    def _falla(slug, dry_run, date_override=None):
+        hechas.append(slug)
+        raise gemini_client.GeminiError(f"Timeout de 60s [{slug}]", transient=True)
+
+    import contextlib, io
+    try:
+        generate._run_stat = _falla
+        # main() escupe el traceback por stderr (correcto en producción, ruido
+        # aquí): se traga para que la salida de la prueba sea legible.
+        with contextlib.redirect_stderr(io.StringIO()):
+            rc = generate.main(["--stat-only"])
+        assert not alertas, f"un timeout no debe mandar alerta: {alertas}"
+        assert len(hechas) > 1, "las demás ligas deben seguir tras el fallo de una"
+        assert rc == 0, rc
+
+        # Y al revés: lo permanente sí tiene que avisar.
+        alertas.clear(); hechas.clear()
+        generate._run_stat = lambda *a, **k: (_ for _ in ()).throw(
+            gemini_client.GeminiError("GEMINI_API_KEY no está definida"))
+        with contextlib.redirect_stderr(io.StringIO()):
+            generate.main(["--stat-only"])
+        assert alertas, "un fallo permanente sí debe alertar"
+    finally:
+        notify.send_alert, generate._run_stat = _alert, _stat
+
     print("articles.test_generate: OK")
 
 

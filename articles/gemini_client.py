@@ -18,7 +18,21 @@ HTTP_TIMEOUT = 60  # s — generación de texto, más lento que un fetch normal
 
 
 class GeminiError(Exception):
-    """Fallo de la llamada a Gemini (HTTP, respuesta vacía o key ausente)."""
+    """Fallo de la llamada a Gemini (HTTP, respuesta vacía o key ausente).
+
+    `transient` distingue lo que se arregla solo de lo que necesita a un humano:
+
+    - **transitorio** (timeout, 429, corte de red): el artículo de esta pasada no
+      sale, pero el cron vuelve en 5 min o en 1 h y lo reintenta. Avisar por email
+      de esto es ruido — el 2026-08-26 llegó una alerta por un timeout de 60 s que
+      ya se había recuperado solo.
+    - **permanente** (falta GEMINI_API_KEY, respuesta con una forma que no
+      entendemos): no se arregla reintentando y sí hay que enterarse.
+    """
+
+    def __init__(self, msg, transient=False):
+        super().__init__(msg)
+        self.transient = transient
 
 
 def _model_for(tools):
@@ -63,9 +77,11 @@ def _call(prompt, temperature, tools=None):
         detail = e.read().decode("utf-8", errors="replace")
         # El modelo va en el mensaje: desde que hay dos, un 429 no dice nada
         # si no se sabe cuál lo dio (la cuota es por modelo).
-        raise GeminiError(f"HTTP {e.code} [{model}]: {detail}") from e
+        # 429 = cuota (se recupera al reiniciarse la ventana), 5xx = lado Google.
+        raise GeminiError(f"HTTP {e.code} [{model}]: {detail}",
+                          transient=e.code == 429 or e.code >= 500) from e
     except urllib.error.URLError as e:
-        raise GeminiError(f"Fallo de red: {e.reason}") from e
+        raise GeminiError(f"Fallo de red: {e.reason}", transient=True) from e
     except TimeoutError as e:
         # urlopen(timeout=) lanza TimeoutError, que NO es subclase de URLError:
         # se escapaba de los dos except de arriba, subía en crudo hasta main() y
@@ -73,7 +89,7 @@ def _call(prompt, temperature, tools=None):
         # laliga muerta con alerta por email). Convertido a GeminiError degrada a
         # un [SKIP] del artículo, que es lo que el orquestador ya sabe manejar; el
         # propio cron es el reintento, no hace falta un bucle aquí.
-        raise GeminiError(f"Timeout de {HTTP_TIMEOUT}s [{model}]") from e
+        raise GeminiError(f"Timeout de {HTTP_TIMEOUT}s [{model}]", transient=True) from e
 
     try:
         candidate = payload["candidates"][0]
