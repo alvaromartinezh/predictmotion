@@ -38,6 +38,8 @@ infra/
 DEPLOYMENT.md
 **/deploy.sh
 **/*.service
+# docs/ = CLAUDE.md partido en notas. Local, NO se publica: lleva IP, email y
+# credenciales, lo mismo que se borro del historial en 2026-08-11.
 docs/
 
 # Scratch local: exploración de diseño y baseline de paridad (no van al repo).
@@ -46,3 +48,6 @@ _pm_baseline.json
 
 # Hallazgos rescatados del code-review (local, no al repo público).
 _code_review_seo.md
+
+# Obsidian (vault local, no se versiona)
+.obsidian/
