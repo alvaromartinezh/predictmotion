@@ -58,6 +58,15 @@ def _prior_snapshot(slug, season, before_date):
     return prior
 
 
+def _round_or_none(v, nd):
+    """round() tolerante a None. Los *_val() de abajo devuelven None cuando el
+    equipo no tiene datos suficientes (gp==0, gf==0, expected_rank sin serie), y
+    el snapshot ANTERIOR sí puede tener ceros aunque el actual no: a principio de
+    temporada el prior es la jornada 0/1. Sin esto, `round(None)` reventaba
+    ground_stat() entero con TypeError y se perdía el dato curioso de la hora."""
+    return None if v is None else round(v, nd)
+
+
 def _best_band(bands, prob):
     """Banda con la probabilidad más alta para este equipo. El porcentaje que
     se enseña es SIEMPRE el mejor de cada equipo, no el de una banda elegida
@@ -391,8 +400,7 @@ def _ground_equipo(league, snap, kind, fecha, hour):
             "nombre": t["name"], "id": t["id"], "logo": t["logo"], "posicion": t["rank"],
             "puntos": t["pts"], "pj": t.get("gp"), "rating_fuerza": t.get("strength"),
             "valor": round(_equipo_virtual_val(t, campo), 2),
-            "valor_antes": (round(_equipo_virtual_val(pt, campo), 2)
-                            if pt and _equipo_virtual_val(pt, campo) is not None else None),
+            "valor_antes": _round_or_none(_equipo_virtual_val(pt, campo) if pt else None, 2),
             "zona": zone["label"], "prob_zona": t["prob"].get(zone["key"]),
         }
 
@@ -439,7 +447,7 @@ def _ground_goles(league, snap, kind, fecha, hour):
             "nombre": t["name"], "id": t["id"], "logo": t["logo"], "posicion": t["rank"],
             "puntos": t["pts"], "pj": t.get("gp"), "rating_fuerza": t.get("strength"),
             "valor": round(goles_val(t), 2),
-            "valor_antes": (round(goles_val(pt), 2) if pt else None),
+            "valor_antes": _round_or_none(goles_val(pt) if pt else None, 2),
             "zona": zone["label"], "prob_zona": t["prob"].get(zone["key"]),
         }
 
@@ -632,7 +640,7 @@ def _ground_ranking_vs_prob(league, snap, kind, fecha, hour):
             "nombre": t["name"], "id": t["id"], "logo": t["logo"], "posicion": t["rank"],
             "puntos": t["pts"], "pj": t.get("gp"), "rating_fuerza": t.get("strength"),
             "valor": round(rv_val(t), 1),
-            "valor_antes": (round(rv_val(pt), 1) if pt else None),
+            "valor_antes": _round_or_none(rv_val(pt) if pt else None, 1),
             "zona": zone["label"], "prob_zona": t["prob"].get(zone["key"]),
         }
 

@@ -66,6 +66,14 @@ def _call(prompt, temperature, tools=None):
         raise GeminiError(f"HTTP {e.code} [{model}]: {detail}") from e
     except urllib.error.URLError as e:
         raise GeminiError(f"Fallo de red: {e.reason}") from e
+    except TimeoutError as e:
+        # urlopen(timeout=) lanza TimeoutError, que NO es subclase de URLError:
+        # se escapaba de los dos except de arriba, subía en crudo hasta main() y
+        # ABORTABA la liga entera (se veía en articles_previa.log: la previa de
+        # laliga muerta con alerta por email). Convertido a GeminiError degrada a
+        # un [SKIP] del artículo, que es lo que el orquestador ya sabe manejar; el
+        # propio cron es el reintento, no hace falta un bucle aquí.
+        raise GeminiError(f"Timeout de {HTTP_TIMEOUT}s [{model}]") from e
 
     try:
         candidate = payload["candidates"][0]

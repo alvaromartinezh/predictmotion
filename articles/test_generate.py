@@ -677,6 +677,28 @@ def demo():
     finally:
         grounding.load_all = real_load_all
 
+    # ── Resiliencia del cron (dos caídas reales, 2026-08) ──────────────────
+    # 1) round(None): los *_val() devuelven None cuando el equipo previo no tiene
+    #    datos (gp==0 a principio de temporada) y ground_stat() moría entero.
+    assert grounding._round_or_none(None, 2) is None
+    assert grounding._round_or_none(1.23456, 2) == 1.23
+    assert grounding._round_or_none(0, 1) == 0        # 0 no es None: debe pasar
+
+    # 2) TimeoutError de urlopen() no es URLError: se escapaba de los except de
+    #    _call() y abortaba la liga entera en vez de saltarse UN artículo.
+    import urllib.request
+    from . import gemini_client
+    _real = urllib.request.urlopen
+    urllib.request.urlopen = lambda *a, **k: (_ for _ in ()).throw(TimeoutError())
+    try:
+        gemini_client._call("hola", 0.6)
+    except gemini_client.GeminiError as e:
+        assert "Timeout" in str(e), e
+    else:
+        raise AssertionError("un TimeoutError debe salir como GeminiError")
+    finally:
+        urllib.request.urlopen = _real
+
     print("articles.test_generate: OK")
 
 
