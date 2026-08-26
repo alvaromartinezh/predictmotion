@@ -90,9 +90,12 @@ class LiveStore:
             return None
 
     def _handle_finished(self, league: str, event_id: str, now: float):
-        """Persistencia de un partido finalizado: una vez al verlo terminar y una
-        segunda vez pasados FINAL_REFRESH_SECONDS (para capturar las stats que ESPN
-        consolida tras el pitido final)."""
+        """Persistencia de un partido finalizado: una vez al verlo terminar y luego
+        cada FINAL_REFRESH_SECONDS mientras el snapshot guardado siga sin
+        alineaciones (ESPN a veces tarda más de una ronda en consolidar rosters/stats
+        de un partido, sobre todo de filiales/divisiones menores — visto en
+        Albacete-Real Sociedad II 2026-08-22). Deja de reintentar en cuanto hay
+        alineaciones o el partido sale del scoreboard de hoy (el poller ya no lo ve)."""
         key = (league, event_id)
         if not persist.exists(league, event_id):
             self._refresh_detail(league, event_id)     # primera vez → guarda
@@ -100,8 +103,11 @@ class LiveStore:
         elif key not in self._post_refreshed:
             seen = self._post_seen.setdefault(key, now)  # si reinició, cuenta desde ahora
             if now - seen >= config.FINAL_REFRESH_SECONDS:
-                self._refresh_detail(league, event_id)   # re-guarda (consolidado)
-                self._post_refreshed.add(key)
+                detail = self._refresh_detail(league, event_id)   # re-guarda (consolidado)
+                if detail is not None and any(l.starters for l in detail.lineups.values()):
+                    self._post_refreshed.add(key)
+                else:
+                    self._post_seen[key] = now  # sin alineaciones todavía: reintentar en la próxima ronda
 
     # ── poller en hilo de fondo ───────────────────────────────────────────────
 
