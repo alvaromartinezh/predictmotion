@@ -6,6 +6,8 @@ partida sean idénticos a los que ve el usuario en el dashboard.
 
 import json
 import re
+import time
+import urllib.error
 import urllib.request
 
 _BASE_V2   = "https://site.api.espn.com/apis/v2/sports/soccer"
@@ -16,12 +18,24 @@ _BASE_SITE = "https://site.api.espn.com/apis/site/v2/sports/soccer"
 # _HEADERS va vacío (urllib añade su UA por defecto).
 _HEADERS   = {}
 _TIMEOUT   = 25
+_RETRY_BACKOFF_S = 3.0
 
 
 def _get_json(url):
+    """GET + parseo JSON, con 1 reintento si el 403/429/5xx es un blip puntual del
+    bot-management de ESPN/Cloudflare y no un bloqueo sostenido (visto 2026-08-27:
+    solo 2 de ~15 llamadas a standings fallaron con 403 en la misma pasada del
+    cron — las demás, mismo UA, pasaron)."""
     req = urllib.request.Request(url, headers=_HEADERS)
-    with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    for attempt in range(2):
+        try:
+            with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            if attempt == 0 and (e.code in (403, 429) or e.code >= 500):
+                time.sleep(_RETRY_BACKOFF_S)
+                continue
+            raise
 
 
 def _stat(entry, name):
