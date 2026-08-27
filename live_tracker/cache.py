@@ -18,6 +18,10 @@ from .providers.base import MatchDataProvider
 log = logging.getLogger("live_tracker.cache")
 
 
+def _has_lineups(detail_dict: dict) -> bool:
+    return any(l.get("starters") for l in detail_dict.get("lineups", {}).values())
+
+
 class LiveStore:
     def __init__(self, provider: MatchDataProvider):
         self.provider = provider
@@ -47,12 +51,18 @@ class LiveStore:
             entry = self._details.get(key)
         if entry and time.time() - entry[0] < config.DETAIL_TTL_SECONDS:
             return entry[1].to_dict()
-        # Partidos finalizados ya persistidos: se sirven de disco (no cambian).
+        # Partidos finalizados ya persistidos: se sirven de disco (no cambian),
+        # salvo que se persistieran sin alineaciones (ESPN tardó en consolidar y
+        # el partido ya salió del scoreboard de hoy, así que el poller dejó de
+        # reintentar) — ahí se reintenta un fetch on-demand en vez de servir el
+        # snapshot corrupto para siempre.
         disk = persist.load(league, event_id)
-        if disk is not None:
+        if disk is not None and _has_lineups(disk):
             return disk
         md = self._refresh_detail(league, event_id)
-        return md.to_dict() if md else None
+        if md is not None:
+            return md.to_dict()
+        return disk
 
     # ── refresco (defensivo) ──────────────────────────────────────────────────
 
