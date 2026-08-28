@@ -36,6 +36,12 @@
     f.title = "Publicidad";
     f.setAttribute("scrolling", "no");
     f.setAttribute("loading", "lazy");
+    // Sin esto, un creativo agresivo puede hacer top.location = ... o window.open()
+    // y secuestrar toda la pestaña ("anuncio a pantalla completa" pese a que el
+    // panel de Adsterra solo tiene banner/nativo activado — algún sub-afiliado se
+    // lo salta). El navegador bloquea la navegación/popup a nivel estructural,
+    // no dependen de que el script del anuncio "respete" nada.
+    f.setAttribute("sandbox", "allow-scripts allow-same-origin");
     if (slot.w) f.style.maxWidth = slot.w + "px";
     f.style.height = (slot.h || 250) + "px";
     el.appendChild(f);

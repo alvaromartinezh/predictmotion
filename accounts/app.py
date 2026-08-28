@@ -274,6 +274,15 @@ class Handler(BaseHTTPRequestHandler):
 
     def _guard(self, fn):
         try:
+            # HTTP/1.1 keep-alive: BaseHTTPRequestHandler.handle() reutiliza esta
+            # MISMA instancia para cada petición de la conexión, y Caddy reutiliza
+            # conexiones al backend entre clientes distintos (pool normal de un
+            # reverse proxy). Sin este reset, un `_renew_cookie` puesto por la
+            # sesión de un usuario (expiración deslizante) sobrevivía a esa
+            # petición y `_send`/`_redirect` lo reenviaban en la respuesta de la
+            # SIGUIENTE petición de esa conexión — que podía ser de otro usuario
+            # real, dejándole con la cookie de sesión ajena.
+            self._renew_cookie = []
             if self._drain_body() is not None:   # cuerpo consumido SIEMPRE
                 return
 

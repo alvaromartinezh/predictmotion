@@ -109,6 +109,42 @@ def main():
     # ── Tope de votos: era la única tabla del usuario sin límite ──
     assert isinstance(config.MAX_VOTES, int) and config.MAX_VOTES > 0
 
+    # ── _guard debe resetear _renew_cookie en cada petición (2026-08-28) ──
+    # HTTP/1.1 keep-alive reutiliza la MISMA instancia de Handler para varias
+    # peticiones de una conexión, y Caddy reutiliza conexiones al backend entre
+    # clientes distintos. Sin el reset, el Set-Cookie de renovación de la sesión
+    # de un usuario sobrevivía a su petición y se colaba en la respuesta de la
+    # SIGUIENTE petición de esa conexión — de OTRO usuario real, que terminaba
+    # con la cookie de sesión ajena.
+    class _Conn:
+        _guard = Handler._guard
+        _drain_body = Handler._drain_body
+
+        def __init__(self):
+            self.headers = {}
+            self.path = "/api/x"
+
+        def send_response(self, *a):
+            pass
+
+        def send_header(self, *a):
+            pass
+
+        def end_headers(self):
+            pass
+
+        def _send(self, *a, **k):
+            pass
+
+    conn = _Conn()
+    conn._guard(lambda rest: setattr(conn, "_renew_cookie",
+                                      [("Set-Cookie", "pm_session=AJENA")]))
+    assert conn._renew_cookie == [("Set-Cookie", "pm_session=AJENA")]
+    visto = {}
+    conn._guard(lambda rest: visto.__setitem__("renew_cookie", conn._renew_cookie))
+    assert visto["renew_cookie"] == [], \
+        "una petición sin renovación no debe arrastrar el Set-Cookie de la anterior"
+
     print("OK")
     return 0
 
