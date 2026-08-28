@@ -88,16 +88,22 @@
     });
   }
   // ── ESPN: calendario de un equipo (para su último/próximo/en vivo) ──
-  // El endpoint por equipo puede venir con 0 eventos aunque la liga ya esté en
-  // juego (visto en vivo el 2026-08-15: esp.1/esp.2/eng.1 con la jornada 1 en
-  // curso y `teams/{id}/schedule` vacío) — ESPN no lo repuebla siempre a tiempo.
-  // Si viene vacío, se filtra del calendario completo de la liga.
+  // El endpoint por equipo puede venir sin ningún partido pendiente (visto en
+  // vivo el 2026-08-28: solo devuelve los 2 últimos jugados, todos `post`, sin
+  // el próximo) aunque la liga siga en juego — ESPN no lo repuebla siempre a
+  // tiempo. No basta con mirar si el array está vacío: hay que comprobar que
+  // trae algo pendiente/en vivo. Si no, se filtra del calendario completo de
+  // la liga (si tiene próximo partido, ahí sí sale).
   function schedule(slug, teamId) {
     var code = codeOf(slug); if (!code || !teamId) return Promise.resolve([]);
     return memo('sch:' + code + ':' + teamId, function () {
       return getJSON(ESPN + code + '/teams/' + teamId + '/schedule').then(function (j) {
         var evs = (j && j.events) || [];
-        if (evs.length) return evs;
+        var hasUpcoming = evs.some(function (e) {
+          var st = ((e.status || ((e.competitions || [])[0] || {}).status || {}).type || {}).state;
+          return st === 'pre' || st === 'in';
+        });
+        if (hasUpcoming) return evs;
         return seasonEvents(slug).then(function (all) {
           return all.filter(function (e) {
             var cs = (((e.competitions || [])[0] || {}).competitors) || [];
