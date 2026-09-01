@@ -16,9 +16,8 @@ import json
 from seo.chrome import esc
 from seo.config import SITE
 
-from . import illustration
 from .config import ARTICLES_OUT_DIR
-from .render import _ads_html, _footer_html, _illo_html, _masthead_html, _page_html
+from .render import _ads_html, _footer_html, _masthead_html, _page_html
 
 SLUG = "sancho-palmeiras"
 CANON = f"{SITE}/articulos/{SLUG}"
@@ -26,11 +25,11 @@ TITLE = "Jadon Sancho firma por el Palmeiras hasta 2039 y cobrará parte del sue
 DESC = ("Sátira. El fichaje no existe, las fuentes tampoco: la crónica del rumor de internet "
         "más persistente del mercado, contada como si hubiera pasado de verdad.")
 
-seen = set()
-def illo(v):
-    i = illustration.pick("satira", "2026-09-01", v, avoid=seen)
-    seen.add(i["file"])
-    return i
+# El montaje del meme hace de portada. Los tres grabados vintage del banco de
+# illustration.py se cambiaron por huecos de anuncio (petición del dueño,
+# 2026-09-01): van en la columna central porque las laterales miden ~250px y
+# el formato `box` de Adsterra es de 300px.
+COVER_IMG = "/media/sancho-palmeiras.jpg"
 
 def prose(*paras):
     return '<div class="bs-prose">' + "".join(f"<p>{p}</p>" for p in paras) + "</div>"
@@ -55,7 +54,6 @@ DISCLAIMER = note(
 fuentes = f"""<div class="bs-col-explainer">
 <div class="bs-section-label">Las fuentes</div>
 <h2>Cinco medios que <span>no existen</span></h2>
-{_illo_html(illo("explainer"), "bs-illo bs-illo--sm", caption_cls="bs-illo__caption")}
 {prose(
  "<strong>Rádio Verdão AM 1130.</strong> Emite desde un garaje de Barra Funda. Su lema, repetido cada "
  "hora en punto: «aquí no se confirma nada, aquí se siente». No ha acertado un fichaje desde 1997, pero "
@@ -78,7 +76,10 @@ fuentes = f"""<div class="bs-col-explainer">
 
 # ── Columna central: la historia ─────────────────────────────────────────
 centro = f"""<div class="bs-col-main">
-{_illo_html(illo("cover"), "bs-cover", caption_cls="bs-cover__caption")}
+<figure class="bs-cover" style="max-width:360px;margin:0 auto 18px">
+<img src="{COVER_IMG}" alt="Montaje de Jadon Sancho con la camiseta del Palmeiras" style="height:auto" loading="lazy">
+<figcaption class="bs-cover__caption">Montaje de autor desconocido que circula desde hace años. No es una presentación oficial de nada.</figcaption>
+</figure>
 <div class="bs-main-label">Mercado de fichajes · Exclusiva que no lo es</div>
 <h2>Jadon <span>Sancho</span> firma por el <span>Palmeiras</span> hasta 2039 y cobrará parte del sueldo en açaí</h2>
 <div class="bs-teaser"><p>Estaba escrito en las estrellas, en la pared de un baño de la Estação Barra
@@ -92,7 +93,9 @@ ha ocurrido.</p></div>
  "de Instagram y a quien la directiva acabó dando credenciales de negociador «para que parara».",
  "El acuerdo se firmó en una servilleta de una pastelaria de Perdizes. La servilleta ya está plastificada "
  "y expuesta en el museo del club, junto a una nota que aclara que la mancha de la esquina es de pastel "
- "de carne y no de tinta.",
+ "de carne y no de tinta.")}
+{_ads_html()}
+{prose(
  "El reconocimiento médico se realizó, por un error de agenda que nadie ha querido explicar, en una "
  "clínica veterinaria de Itaquaquecetuba. El informe confirma que el jugador está en perfecto estado, no "
  "presenta pulgas y que «el rabo se encuentra dentro de parámetros normales para su raza». El veterinario "
@@ -111,6 +114,7 @@ ha ocurrido.</p></div>
       "involucre. Su única aportación al asunto es recordar que la probabilidad de este fichaje, "
       "calculada con cualquier método conocido, es exactamente cero — y que llevamos cuatro mercados "
       "explicándolo sin que sirva de nada.")}
+{_ads_html()}
 </div>"""
 
 # ── Columna derecha: cláusulas y dinero ──────────────────────────────────
@@ -133,7 +137,6 @@ del club comprador.</p>
 <p><strong>4.</strong> Si el Palmeiras gana la Libertadores, el jugador pasa a llamarse legalmente
 <strong>Jadinho</strong>. El trámite ya está preaprobado en el registro civil.</p>
 </div>
-{_illo_html(illo("footer"), "bs-illo bs-illo--footer", caption_cls="bs-illo__caption")}
 <div class="bs-side-brief">
 <h3>Por qué <span>vuelve cada año</span></h3>
 <p>El rumor no tiene origen conocido. No hay un tuit cero, no hay un periodista que lo lanzara, no hay
@@ -172,6 +175,9 @@ json_ld = {
 
 html = _page_html(TITLE + " | PredictMotion", DESC, CANON, None, json_ld, body)
 html = html.replace('content="index, follow', 'content="noindex, follow')
+# og:image/twitter:image = el montaje, no el logo: la pieza se comparte por la imagen.
+html = html.replace(f'{SITE}/media/logo.jpeg"', f'{SITE}{COVER_IMG}"', 2)
+html = html.replace('name="twitter:card" content="summary"', 'name="twitter:card" content="summary_large_image"')
 out = ARTICLES_OUT_DIR / f"{SLUG}.html"
 out.write_text(html, encoding="utf-8")
 print("escrito", out, len(html), "bytes")
