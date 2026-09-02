@@ -137,20 +137,26 @@
       getJSON(ESPN_V2 + code + '/standings'),
       scoreboard(slug),
     ]).then(function (r) {
-      var entries = r[0] && r[0].children && r[0].children[0]
-        && r[0].children[0].standings && r[0].children[0].standings.entries;
+      // Grupo de ESPN de ESTA liga: usa.1 y arg.1 sirven dos (conferencias, zonas)
+      // y con el 0 fijo el Oeste y la Zona B enseñaban la tabla de la otra mitad.
+      var grp = (L[slug] || {}).child || 0;
+      var entries = r[0] && r[0].children && r[0].children[grp]
+        && r[0].children[grp].standings && r[0].children[grp].standings.entries;
       if (!entries || !entries.length) return null;
       var rows = entries.map(function (e, i) {
         function stat(n) { return ((e.stats || []).filter(function (s) { return s.name === n; })[0] || {}).value || 0; }
         var t = e.team || {}, tId = String(t.id || '');
         return {
-          rank: i + 1, id: tId, name: t.displayName || t.shortDisplayName || '',
+          rank: stat('rank') || (i + 1), id: tId, name: t.displayName || t.shortDisplayName || '',
           logo: (window.PM_TEAM_LOGOS && window.PM_TEAM_LOGOS[tId])
             || (t.logos && t.logos[0] && t.logos[0].href) || t.logo || '',
           gp: stat('gamesPlayed'), pts: stat('points'),
           gf: stat('pointsFor'), gc: stat('pointsAgainst'), live: null,
         };
       });
+      // Por el `rank` OFICIAL, no por el orden de llegada: usa.1 y arg.1 llegan
+      // casi alfabéticas (mismo criterio que seo/espn.py y que los dashboards).
+      rows.sort(function (x, y) { return x.rank - y.rank; });
       var byId = {}; rows.forEach(function (t) { byId[t.id] = t; });
       var any = false;
       (r[1] || []).forEach(function (ev) {

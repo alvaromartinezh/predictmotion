@@ -261,6 +261,32 @@ def _notas_de_zona():
     print("notas de zona: el 'relegation playoff' no es descenso en cron ni cliente")
 
 
+def _grupo_y_orden_de_la_tabla():
+    """El cliente leía `data.children[0]` a fuego y numeraba con el ORDEN DE LLEGADA
+    (`rank: i + 1`). En las 15 europeas da igual (un solo grupo, ya ordenado), pero
+    usa.1 y arg.1 sirven DOS grupos y llegan casi alfabéticas: la MLS Este salía con
+    la clasificación barajada en cuanto el JS relevaba al rows.html, y el Oeste y la
+    Zona B pintaban el grupo del Este. `seo/espn.py:fetch_table` ya usaba el `rank`
+    oficial y el `child` de la liga; esto exige lo mismo del HTML que se sirve."""
+    from .config import LEAGUES
+
+    for lg in LEAGUES:
+        f = ROOT / f'{lg["slug"]}.html'
+        if not f.exists():
+            continue
+        html = f.read_text(encoding="utf-8")
+        esperado = "data.children[%d]" % (lg.get("child") or 0)
+        assert esperado in html, (
+            "%s.html no lee el grupo %s de ESPN (child de config.py)"
+            % (lg["slug"], esperado))
+        assert "rank:   stat('rank') || (i + 1)" in html, (
+            "%s.html numera por orden de llegada en vez de por el rank de ESPN"
+            % lg["slug"])
+        assert ".sort((a, b) => a.rank - b.rank)" in html, (
+            "%s.html no ordena la tabla por rank" % lg["slug"])
+    print("tabla del cliente: grupo de ESPN por liga y orden por rank oficial")
+
+
 def main():
     _temporada_terminada()
     _consumidores_del_modelo()
@@ -268,6 +294,7 @@ def main():
     _cortes_de_zona_fijos()
     _claves_de_prob()
     _notas_de_zona()
+    _grupo_y_orden_de_la_tabla()
     if not shutil.which("node"):
         print("node no está en el PATH — prueba omitida")
         return 0

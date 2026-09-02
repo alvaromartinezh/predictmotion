@@ -20,9 +20,9 @@
     brasileirao:  { name: 'Brasileirão',     code: 'bra.1',            country: 'Brasil',       logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/85.png' },
     ligamx:       { name: 'Liga MX',         code: 'mex.1',            country: 'México',       logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/22.png' },
     'mls-este':   { name: 'MLS · Este',      code: 'usa.1',            country: 'Estados Unidos', logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/19.png' },
-    'mls-oeste':  { name: 'MLS · Oeste',     code: 'usa.1',            country: 'Estados Unidos', logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/19.png' },
+    'mls-oeste':  { name: 'MLS · Oeste',     code: 'usa.1', child: 1,            country: 'Estados Unidos', logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/19.png' },
     'argentina-a':{ name: 'LPF · Zona A',    code: 'arg.1',            country: 'Argentina',    logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/1.png' },
-    'argentina-b':{ name: 'LPF · Zona B',    code: 'arg.1',            country: 'Argentina',    logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/1.png' },
+    'argentina-b':{ name: 'LPF · Zona B',    code: 'arg.1', child: 1,            country: 'Argentina',    logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/1.png' },
     champions:    { name: 'Champions',       code: 'uefa.champions',   country: 'Europa',       logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2.png' },
     europa:       { name: 'Europa League',   code: 'uefa.europa',      country: 'Europa',       logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2310.png' },
     conference:   { name: 'Conference',      code: 'uefa.europa.conf', country: 'Europa',       logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/20296.png' }

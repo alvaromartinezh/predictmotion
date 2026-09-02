@@ -27,15 +27,15 @@
   <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
   <link rel="dns-prefetch" href="https://site.api.espn.com" />
   <link rel="dns-prefetch" href="https://a.espncdn.com" />
-  <link rel="stylesheet" href="/styles.css?v=20260902a" />
-<link rel="stylesheet" href="/assets/shell.css?v=20260902a" />
-  <link rel="stylesheet" href="/assets/account.css?v=20260902a" />
-  <link rel="stylesheet" href="/assets/fixtures.css?v=20260902a" />
-  <link rel="stylesheet" href="/assets/ads.css?v=20260902a" />
-  <script src="/assets/espn-proxy.js?v=20260902a"></script>
-  <script src="/theme.js?v=20260902a"></script>
-  <script src="/assets/league-engine.js?v=20260902a"></script>
-  <script src="/assets/fixtures.js?v=20260902a"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260902b" />
+<link rel="stylesheet" href="/assets/shell.css?v=20260902b" />
+  <link rel="stylesheet" href="/assets/account.css?v=20260902b" />
+  <link rel="stylesheet" href="/assets/fixtures.css?v=20260902b" />
+  <link rel="stylesheet" href="/assets/ads.css?v=20260902b" />
+  <script src="/assets/espn-proxy.js?v=20260902b"></script>
+  <script src="/theme.js?v=20260902b"></script>
+  <script src="/assets/league-engine.js?v=20260902b"></script>
+  <script src="/assets/fixtures.js?v=20260902b"></script>
 
   <title>{{if fileExists "/data/ligue2/head_title.txt"}}{{readFile "/data/ligue2/head_title.txt"}}{{else}}Ligue 2 2025-26 · Probabilidades de Ascenso y Descenso{{end}}</title>
   <style>
@@ -500,7 +500,9 @@ async function fetchStandings() {
                  || ((e.team.logos && e.team.logos[0]) ? e.team.logos[0].href : null)
                  || null;
     return {
-      rank:   i + 1,
+      // El `rank` OFICIAL de ESPN, NO el orden de llegada (mismo criterio que
+      // seo/espn.py:fetch_table). usa.1 y arg.1 llegan casi alfabéticas.
+      rank:   stat('rank') || (i + 1),
       id:     e.team.id,
       name:   e.team.displayName,
       logo,
@@ -513,7 +515,7 @@ async function fetchStandings() {
       draws:  stat('ties'),
       losses: stat('losses'),
     };
-  });
+  }).sort((a, b) => a.rank - b.rank);
 }
 
 // ─── Render ───────────────────────────────────────────────────────────────
@@ -838,12 +840,12 @@ updateSeason();
     if (e.detail === 'partidos') PMFixtures.init('fra.2', '#fx-mount');
   });
 </script>
-<script src="/assets/account.js?v=20260902a"></script>
-  <script src="/assets/pm-leagues.js?v=20260902a"></script>
-  <script src="/assets/shell.js?v=20260902a"></script>
+<script src="/assets/account.js?v=20260902b"></script>
+  <script src="/assets/pm-leagues.js?v=20260902b"></script>
+  <script src="/assets/shell.js?v=20260902b"></script>
   <script>PMShell.chrome({ active: null });</script>
-  <script src="/assets/ads-config.js?v=20260902a"></script>
-<script src="/assets/ads.js?v=20260902a"></script>
-<script src="/assets/nav.js?v=20260902a"></script>
+  <script src="/assets/ads-config.js?v=20260902b"></script>
+<script src="/assets/ads.js?v=20260902b"></script>
+<script src="/assets/nav.js?v=20260902b"></script>
 </body>
 </html>

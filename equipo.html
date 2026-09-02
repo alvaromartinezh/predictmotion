@@ -17,12 +17,12 @@
   <link rel="dns-prefetch" href="https://site.api.espn.com" />
   <link rel="dns-prefetch" href="https://sports.core.api.espn.com" />
   <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
-  <link rel="stylesheet" href="/styles.css?v=20260902a" />
-  <link rel="stylesheet" href="/assets/shell.css?v=20260902a" />
-  <link rel="stylesheet" href="/assets/account.css?v=20260902a" />
-  <script src="/assets/espn-proxy.js?v=20260902a"></script>
-  <script src="/theme.js?v=20260902a"></script>
-  <script src="/assets/league-engine.js?v=20260902a"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260902b" />
+  <link rel="stylesheet" href="/assets/shell.css?v=20260902b" />
+  <link rel="stylesheet" href="/assets/account.css?v=20260902b" />
+  <script src="/assets/espn-proxy.js?v=20260902b"></script>
+  <script src="/theme.js?v=20260902b"></script>
+  <script src="/assets/league-engine.js?v=20260902b"></script>
   <title>Equipo · PredictMotion</title>
   <!-- Vista de app con parámetros (?id&league&name): infinitas variantes de una misma
        página vacía sin JS. La versión indexable es la estática /equipos/<liga>/<slug>,
@@ -355,9 +355,9 @@
   </style>
 
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3055585323326983" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="/assets/ads.css?v=20260902a" />
-  <script src="/assets/ads-config.js?v=20260902a"></script>
-  <script src="/assets/ads.js?v=20260902a"></script>
+  <link rel="stylesheet" href="/assets/ads.css?v=20260902b" />
+  <script src="/assets/ads-config.js?v=20260902b"></script>
+  <script src="/assets/ads.js?v=20260902b"></script>
 </head>
 <body>
 <!-- Google Tag Manager (noscript) -->
@@ -697,7 +697,7 @@ const LEAGUES = {
     ],
   },
   'mls-oeste': {
-    slug: 'mls-oeste', code: 'usa.1', name: 'MLS · Oeste', dashboard: '/mls-oeste',
+    slug: 'mls-oeste', code: 'usa.1', child: 1, name: 'MLS · Oeste', dashboard: '/mls-oeste',
     pHome: 0.44, pDraw: 0.26,
     zones: [
       { key: 'promo',   label: 'MLS Cup Playoffs', sub: 'top 7',   cls: 'green', test: (p, n) => p <= 7 },
@@ -714,7 +714,7 @@ const LEAGUES = {
     ],
   },
   'argentina-b': {
-    slug: 'argentina-b', code: 'arg.1', name: 'LPF · Zona B', dashboard: '/argentina-b',
+    slug: 'argentina-b', code: 'arg.1', child: 1, name: 'LPF · Zona B', dashboard: '/argentina-b',
     pHome: 0.43, pDraw: 0.33,
     zones: [
       { key: 'promo',  label: 'Octavos de final', sub: 'top 8',  cls: 'green', test: (p, n) => p <= 8 },
@@ -1019,16 +1019,18 @@ async function fetchStandings() {
   const res  = await fetch(ESPN_STAND);
   if (!res.ok) throw new Error(`Standings ${res.status}`);
   const data = await res.json();
-  const entries = data.children[0].standings.entries;
+  const entries = data.children[LG.child || 0].standings.entries;
   return entries.map((e,i) => {
     const stat = name => (e.stats.find(s=>s.name===name)||{}).value||0;
     const logo = ((e.team.logos && e.team.logos[0]) ? e.team.logos[0].href : null)
                  || LOGO_OVERRIDES[e.team.id] || null;
-    return { rank:i+1, id:e.team.id, name:e.team.displayName, logo,
+    // rank OFICIAL de ESPN, no el orden de llegada (usa.1/arg.1 no vienen
+    // ordenadas); ver seo/espn.py:fetch_table.
+    return { rank:stat('rank')||(i+1), id:e.team.id, name:e.team.displayName, logo,
       gp:stat('gamesPlayed'), pts:stat('points'),
       gf:stat('pointsFor'), gc:stat('pointsAgainst'),
       wins:stat('wins'), draws:stat('ties'), losses:stat('losses') };
-  });
+  }).sort((a, b) => a.rank - b.rank);
 }
 
 // Partidos en vivo → ajuste provisional de la tabla, igual que en los dashboards.
@@ -1314,7 +1316,7 @@ async function computeProbsForSlug(entry) {
       const standRes = await fetch(`https://site.api.espn.com/apis/v2/sports/soccer/${entry.code}/standings`);
       if (!standRes.ok) throw new Error('standings');
       const standData = await standRes.json();
-      const numTeams = standData.children[0].standings.entries.length;
+      const numTeams = standData.children[entry.child || 0].standings.entries.length;
       const snapRes = await fetch(`/data/${entry.slug}/latest.json`, { cache: 'no-store' });
       const snap = snapRes.ok ? await snapRes.json() : null;
       const zones = (snap && Array.isArray(snap.bands) && snap.bands.length) ? zonesFromBands(snap.bands, numTeams) : entry.zones;
@@ -1970,10 +1972,10 @@ if (TEAM_ID) { triggerUpdate(); updateSeason(); }
   document.addEventListener('pm-follows-changed', render);
 })();
 </script>
-<script src="/assets/account.js?v=20260902a"></script>
-<script src="/assets/pm-leagues.js?v=20260902a"></script>
-<script src="/assets/shell.js?v=20260902a"></script>
+<script src="/assets/account.js?v=20260902b"></script>
+<script src="/assets/pm-leagues.js?v=20260902b"></script>
+<script src="/assets/shell.js?v=20260902b"></script>
 <script>PMShell.chrome({ active: null });</script>
-  <script src="/assets/nav.js?v=20260902a"></script>
+  <script src="/assets/nav.js?v=20260902b"></script>
 </body>
 </html>

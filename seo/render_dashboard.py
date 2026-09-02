@@ -128,6 +128,7 @@ def render(league):
         "{{PLAYOFF_TOP}}":         str(slots[1]),
         "{{RELEG_SLOTS}}":         str(slots[-1]),
         "{{MATCHES_PER_TEAM}}":    str(league.get("matches_per_team") or "null"),
+        "{{CHILD}}":               str(league.get("child") or 0),
         "{{PROB_PROMO}}":          bkeys[0],
         "{{PROB_EUROPA}}":         bkeys[1] if len(bkeys) > 1 else "",
         "{{PROB_PLAYOFF}}":        bkeys[1] if len(bkeys) > 2 else "",
