@@ -30,7 +30,8 @@ for _stream in (sys.stdout, sys.stderr):
         pass
 
 from . import espn, render_table, sitemap, predictions, zone_predictions, notify, links
-from .config import LEAGUES, ROOT, SIM_N_TABLE, league_by_slug, SCORE_MODEL
+from .config import (LEAGUES, ROOT, SIM_N_TABLE, league_by_slug, SCORE_MODEL,
+                     CALENDAR_YEAR_CODES)
 from .snapshots import (build_table_snapshot, save_snapshot, load_all,
                         save_offseason_latest)
 from . import sim_table
@@ -256,7 +257,15 @@ def _run(args):
         if current_year:
             break
     active_codes = {lg["espn_code"] for lg in leagues}
-    ratings = espn.build_strength_ratings(current_year, active_codes)
+    # Ligas de AÑO NATURAL: `current_year` sale de la primera liga de la lista
+    # (europea) y para ellas se desfasa medio año. Una llamada extra por liga de
+    # este tipo, solo si está activa. Ver espn.build_strength_ratings.
+    year_by_code = {}
+    for code in sorted(CALENDAR_YEAR_CODES & active_codes):
+        y = espn.fetch_current_season_year(code)
+        if y:
+            year_by_code[code] = y
+    ratings = espn.build_strength_ratings(current_year, active_codes, year_by_code)
     print(f"Prior de fuerza: {len(ratings)} equipos con rating"
           f" (temporada previa {current_year - 1 if current_year else '??'})")
 
@@ -265,7 +274,8 @@ def _run(args):
     # activo es poisson; con SCORE_MODEL='legacy' (rollback) no se descarga nada.
     goal_strengths = None
     if SCORE_MODEL == "poisson":
-        goal_strengths = espn.build_attack_defense(current_year, active_codes)
+        goal_strengths = espn.build_attack_defense(current_year, active_codes,
+                                                   year_by_code)
         print(f"Prior de goles (att/def): {len(goal_strengths)} equipos"
               f" (v3, temporadas previas {current_year - 1 if current_year else '??'})")
 

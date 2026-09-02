@@ -276,6 +276,23 @@ _ZONE_DATA = {"promo": "up", "playoff": "po", "europa": "eu", "conf": "cf", "rel
 _BAND_ZONE_BY_INDEX = ("promo", "playoff", "relega")
 
 
+def _pills_for(league, template, bands):
+    """Columnas de probabilidad de una liga. `_PILLS` va por PLANTILLA, y `top1` la
+    comparten las 7 europeas (champions/europa/conference) con el Brasileirão
+    (libertadores/…/sudamericana): con las claves europeas a fuego, el rows.html sin
+    JS del Brasileirão salía con las tres columnas positivas a "—" y con las
+    etiquetas de la Champions. Cuando la liga declara sus zonas, las columnas salen
+    de SUS bandas; si no, de los valores de siempre (las 15 no cambian)."""
+    base = _PILLS.get(template)
+    short = league.get("zone_labels_short")
+    if template != "top1" or not short or len(bands) != 4:
+        return base
+    keys = [b["key"] for b in bands]
+    return ([("first", "gold", "Título")]
+            + [(keys[i], cls, short[i]) for i, cls in enumerate(("up", "eu", "cf"))]
+            + [(keys[3], "down", "Descenso")])
+
+
 def _prob_pill(pct, kind, label):
     """Réplica de probPill() del dashboard: misma marca para píldora vacía,
     bloqueada (>=99.5) o con barra. Sin JS, sin animación (solo el HTML)."""
@@ -300,13 +317,13 @@ def render_rows_html(league, snap):
     dashboard (sin badge de en vivo: el fragmento es el estado del precálculo).
     Sin equipos (snapshot de offseason) devuelve '' → tbody vacío."""
     template = league.get("dashboard_template", "top2")
-    pills = _PILLS.get(template)
     palette = _PALETTES.get(template, _PALETTES["top2"])
     slug = league["slug"]
     teams = sorted(snap.get("teams", []), key=lambda t: t["rank"])
     if not teams:
         return ""
     bands = sorted(snap.get("bands", []), key=lambda b: (b["lo"], b["hi"]))
+    pills = _pills_for(league, template, bands)
 
     def zone_of(rank):
         for idx, b in enumerate(bands):

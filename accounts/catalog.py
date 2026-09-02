@@ -18,6 +18,7 @@ log = logging.getLogger("accounts.catalog")
 _FALLBACK_SLUGS = {
     "laliga", "hypermotion", "premier", "championship", "seriea", "serieb",
     "bundesliga", "bundesliga2", "ligue1", "ligue2", "primeira", "eredivisie",
+    "brasileirao",
     "champions", "europa", "conference",
 }
 

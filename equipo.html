@@ -661,6 +661,20 @@ const LEAGUES = {
     ],
   },
 
+  // ── 1a division sudamericana. Sin notas de zona en ESPN (bra.1 no trae ninguna),
+  //    asi que estos cortes NO son fallback: mandan toda la temporada. Deben cuadrar
+  //    con conmebol_top1_bands() de seo/config.py. ────────────────────────────────
+  brasileirao: {
+    slug: 'brasileirao', code: 'bra.1', name: 'Brasileirão', dashboard: '/brasileirao',
+    pHome: 0.49, pDraw: 0.26,
+    zones: [
+      { key: 'libertadores',  label: 'Libertadores',          sub: 'top 4',     cls: 'green',  test: (p, n) => p <= 4 },
+      { key: 'libertadores2', label: 'Libertadores (previa)', sub: '5º–6º',     cls: 'blue',   test: (p, n) => p >= 5 && p <= 6 },
+      { key: 'sudamericana',  label: 'Sudamericana',          sub: '7º–12º',    cls: 'violet', test: (p, n) => p >= 7 && p <= 12 },
+      { key: 'descenso',      label: 'Descenso',              sub: 'últimos 4', cls: 'red',    test: (p, n) => p > n - 4 },
+    ],
+  },
+
   // ── 2as divisiones europeas (plantilla tier2). Ascenso/Play-off/Descenso; cortes
   //    reales por notas en el snapshot, estos son fallback. ────────────────────────
   championship: {
@@ -1429,12 +1443,13 @@ const LIVE_SLUG_BY_CODE = {
   'ita.1':'seriea', 'ita.2':'serieb',
   'ger.1':'bundesliga', 'ger.2':'bundesliga2',
   'fra.1':'ligue1', 'fra.2':'ligue2',
-  'por.1':'primeira', 'ned.1':'eredivisie',
+  'por.1':'primeira', 'ned.1':'eredivisie', 'bra.1':'brasileirao',
   'uefa.champions':'champions', 'uefa.europa':'europa', 'uefa.europa.conf':'conference',
   // Slugs cortos ya normalizados (backwards-compat con season.slug de la liga).
   laliga:'laliga', hypermotion:'hypermotion', premier:'premier', championship:'championship',
   seriea:'seriea', serieb:'serieb', bundesliga:'bundesliga', bundesliga2:'bundesliga2',
   ligue1:'ligue1', ligue2:'ligue2', primeira:'primeira', eredivisie:'eredivisie',
+  brasileirao:'brasileirao',
   champions:'champions', europa:'europa', conference:'conference',
 };
 function partidoSlugFor(m) {

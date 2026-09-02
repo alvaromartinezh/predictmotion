@@ -240,7 +240,7 @@ def fetch_current_season_year(espn_code):
         return None
 
 
-def build_strength_ratings(current_year, active_codes=None):
+def build_strength_ratings(current_year, active_codes=None, year_by_code=None):
     """Rating de fuerza por equipo desde la tabla FINAL de la temporada anterior.
 
     Recorre las escaleras de país (STRENGTH_LADDERS): dentro de cada escalera,
@@ -254,6 +254,13 @@ def build_strength_ratings(current_year, active_codes=None):
     liga activa → no se descargan temporadas previas de países que no se generan.
     Con None se procesan todas (compatibilidad).
 
+    `year_by_code`: año de temporada POR CÓDIGO, para las ligas cuya temporada no
+    es la europea. `current_year` sale de UNA sola llamada (la primera liga de la
+    lista, europea), y para una liga de año natural como bra.1 eso se desfasa medio
+    año: en marzo de 2027, esp.1 sigue en season.year=2026 (la 2026-27) mientras el
+    Brasileirão ya va por el 2027, así que su prior pediría 2025 en vez de 2026. Ver
+    config.CALENDAR_YEAR_CODES.
+
     Best-effort y robusto: si el fetch de una temporada previa falla (p. ej. 403),
     esa división se salta; el resto sigue.
     """
@@ -263,7 +270,7 @@ def build_strength_ratings(current_year, active_codes=None):
 
     if not current_year:
         return {}
-    prev = current_year - 1
+    year_by_code = year_by_code or {}
     # Modelo v2 (flag): rating absoluto por diferencia de goles/partido (conserva la
     # dominancia). OFF: z-score de puntos de siempre (ruta INTACTA).
     gap = STRENGTH_LEVEL_GAP_ABS if USE_ABSOLUTE_RATING else STRENGTH_LEVEL_GAP
@@ -277,6 +284,7 @@ def build_strength_ratings(current_year, active_codes=None):
             continue  # ninguna liga activa usa esta escalera → sin peticiones
         for level, code in enumerate(ladder):
             offset = -level * gap
+            prev = year_by_code.get(code, current_year) - 1
             if not USE_ABSOLUTE_RATING:
                 try:
                     rows = fetch_table(code, season=prev)
@@ -311,7 +319,7 @@ def build_strength_ratings(current_year, active_codes=None):
     return ratings
 
 
-def build_attack_defense(current_year, active_codes=None):
+def build_attack_defense(current_year, active_codes=None, year_by_code=None):
     """Fuerza de ataque/defensa por equipo (v3, Poisson).
 
     {team_id: {"att": gf/partido, "def": gc/partido}} — blend multi-temporada real
@@ -329,7 +337,7 @@ def build_attack_defense(current_year, active_codes=None):
 
     if not current_year:
         return {}
-    prev = current_year - 1
+    year_by_code = year_by_code or {}   # ligas de año natural; ver build_strength_ratings
     att = {}
     wsum = {}
     for ladder in STRENGTH_LADDERS:
@@ -338,6 +346,7 @@ def build_attack_defense(current_year, active_codes=None):
         for level, code in enumerate(ladder):
             off_att = -level * POISSON_LEVEL_GAP_ATT
             off_def = +level * POISSON_LEVEL_GAP_DEF
+            prev = year_by_code.get(code, current_year) - 1
             for k in range(PRIOR_SEASONS):
                 w = PRIOR_DECAY ** k
                 try:

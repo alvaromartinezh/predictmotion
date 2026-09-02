@@ -12,6 +12,7 @@
     'ger.1':'bundesliga', 'ger.2':'bundesliga2',
     'fra.1':'ligue1', 'fra.2':'ligue2',
     'por.1':'primeira', 'ned.1':'eredivisie',
+    'bra.1':'brasileirao',
     'uefa.champions':'champions', 'uefa.europa':'europa', 'uefa.europa.conf':'conference'
   };
   var currentSlug = '';

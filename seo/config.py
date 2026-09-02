@@ -61,7 +61,16 @@ STRENGTH_LADDERS = [
     ["fra.1", "fra.2"],   # Francia
     ["por.1"],            # Portugal (solo 1ª cubierta)
     ["ned.1"],            # Países Bajos (solo 1ª cubierta)
+    ["bra.1"],            # Brasil (solo Série A cubierta)
 ]
+
+# Ligas cuya temporada es el AÑO NATURAL, no la europea (agosto→mayo). El año
+# global del prior se toma de la primera liga de la lista (europea) y para estas
+# se desfasa medio año: en marzo de 2027 esp.1 sigue en season.year=2026 (la
+# 2026-27) mientras el Brasileirão ya va por el 2027. generate_site pide el año
+# de cada una por separado (una llamada extra, solo si la liga está activa).
+# Cuando entren arg.1 y usa.1 van aquí también.
+CALENDAR_YEAR_CODES = {"bra.1"}
 STRENGTH_LEVEL_GAP   = 2.5    # separación entre divisiones, en unidades z de puntos
 STRENGTH_SCALE       = 0.28   # cuánto sesga el partido una diferencia de 1 unidad
                               # (0.28: Barça ~38% título/~79% top-4; equilibra
@@ -193,6 +202,24 @@ def euro_top2_bands():
         ("ascenso",  "Ascenso directo",     "green", lambda n: 1,     lambda n: 2, "promo"),
         ("playoff",  "Play-off de ascenso", "blue",  lambda n: 3,     lambda n: 6, "playoff"),
         ("descenso", "Descenso",            "red",   lambda n: n - 2, lambda n: n, "relega"),
+    ])
+
+
+def conmebol_top1_bands():
+    """1ª división sudamericana: Libertadores (grupos / previa) / Sudamericana /
+    descenso. Mapea a las MISMAS tres zonas positivas que la plantilla `top1`
+    (promo/europa/conf) para reusarla sin lógica nueva; solo cambian las etiquetas
+    y los cortes. Los lo/hi NO son fallback aquí: ESPN no trae notas de zona en
+    bra.1 (comprobado 2026-09-02), así que `bands_from_notes` va a False y estos
+    cortes mandan toda la temporada, como en hypermotion. El 6º campo (`zone`) SÍ se
+    pone aunque no haya notas que derivar: `render_rows_html` lo usa para el color de
+    fila del rows.html sin JS, y sin él cae al reparto por índice
+    (promo/playoff/relega) que pintaría la Sudamericana de ROJO."""
+    return _table_bands([
+        ("libertadores",  "Libertadores",          "green",  lambda n: 1,      lambda n: 4,  "promo"),
+        ("libertadores2", "Libertadores (previa)", "blue",   lambda n: 5,      lambda n: 6,  "europa"),
+        ("sudamericana",  "Sudamericana",          "violet", lambda n: 7,      lambda n: 12, "conf"),
+        ("descenso",      "Descenso",              "red",    lambda n: n - 3,  lambda n: n,  "relega"),
     ])
 
 
@@ -351,6 +378,30 @@ LEAGUES = [
         "about": "La Eredivisie, máxima categoría del fútbol neerlandés, enfrenta cada temporada a 18 clubes por el título y las plazas europeas de Champions League y Europa League. Los tres últimos descienden, mientras el penúltimo juega una promoción por la permanencia. En PredictMotion se simula el resto de la temporada para estimar la probabilidad de cada equipo de clasificarse para Europa o descender.",
         "p_home": 0.46, "p_draw": 0.24, "playoff_top": None,
         "bands_from_notes": True, "bands": euro_top1_bands(),
+    },
+
+    # ── Fase 3: 1ª división sudamericana (plantilla top1 con etiquetas propias) ──
+    # Sin notas de zona en ESPN → bands_from_notes NO se pone (los cortes de
+    # conmebol_top1_bands mandan toda la temporada). 38 jornadas = el doble
+    # round-robin por defecto, así que no hace falta matches_per_team.
+    {
+        "slug": "brasileirao", "espn_code": "bra.1", "kind": "table",
+        "name": "Brasileirão", "article": "el", "season": "2026",
+        "country": "Brasil", "dashboard": "/brasileirao",
+        "dashboard_template": "top1", "subtitle": "Brasil",
+        "about": "El Brasileirão, la Série A del fútbol brasileño, reúne a 20 clubes que disputan 38 jornadas por el título y por las plazas continentales. Los seis primeros entran en la Copa Libertadores —los cuatro primeros directos a la fase de grupos— y del séptimo al duodécimo se clasifican para la Copa Sudamericana, mientras los cuatro últimos descienden a la Série B. En PredictMotion se simula el resto de la temporada para estimar la probabilidad de cada equipo de ser campeón, jugar la Libertadores o descender.",
+        # MEDIDOS sobre los resultados reales de ESPN, no heurísticos: 380 partidos
+        # de 2025 (0.503/0.261) y 380 de 2024 (0.474/0.266). La localía en Brasil es
+        # bastante más fuerte que en Europa (esp.1 2024-25, mismo cálculo: 0.445).
+        "p_home": 0.49, "p_draw": 0.26, "playoff_top": None,
+        "bands": conmebol_top1_bands(),
+        # Etiquetas y cortes de zona del dashboard (plantilla top1). Deben cuadrar
+        # con conmebol_top1_bands(); lo comprueba seo.test_engine_parity.
+        "zone_labels": ("Libertadores", "Libertadores (previa)", "Sudamericana"),
+        "zone_labels_short": ("Libertadores", "Previa", "Sudamericana"),
+        "zone_slots":  (4, 6, 12, 4),
+        # En prosa la Libertadores se nombra una vez, no las dos columnas.
+        "zones_text":  "Libertadores, Sudamericana",
     },
 
     # ── Fase 1b: 2ª división europea (plantilla tier2, slots por notas, SIN

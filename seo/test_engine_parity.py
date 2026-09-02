@@ -166,6 +166,34 @@ def _registros_cliente():
           % len(LEAGUES))
 
 
+def _cortes_de_zona_fijos():
+    """Las ligas SIN notas de ESPN (`bands_from_notes` apagado) llevan sus cortes
+    escritos en dos sitios: `bands()` en config.py (cron: %, rows.html, páginas de
+    equipo) y `zone_slots` en LEAGUES (que el dashboard inyecta en LEAGUE.*). Ahí
+    los cortes NO son un fallback de arranque: mandan la temporada entera, así que
+    si se separan, el dashboard pinta una zona y el cron calcula otra —el mismo
+    patrón de copia divergente que el fallo v1/v2 del 2026-08-10.
+
+    Las que sí derivan de notas (las europeas) quedan fuera: ahí manda
+    `derive_bands_from_notes` / `deriveSlots` en vivo y el fallback apenas se ve.
+    """
+    from .config import LEAGUES
+
+    for lg in LEAGUES:
+        slots = lg.get("zone_slots")
+        if not slots or lg.get("bands_from_notes"):
+            continue
+        for n in (18, 20, 22):
+            bandas = lg["bands"](n)
+            assert len(bandas) == 4, "%s: zone_slots asume 3 zonas + descenso" % lg["slug"]
+            esperado = (bandas[0]["hi"], bandas[1]["hi"], bandas[2]["hi"],
+                        n - bandas[3]["lo"] + 1)
+            assert tuple(slots) == esperado, (
+                "%s con %d equipos: zone_slots %s y bands() %s"
+                % (lg["slug"], n, tuple(slots), esperado))
+    print("cortes de zona fijos: zone_slots cuadra con bands() en config.py")
+
+
 def _notas_de_zona():
     """El mapeo nota de ESPN → zona debe ser el MISMO en el cron y en las plantillas
     de dashboard. El "relegation playoff" (puesto 16 en ger.1/fra.1/ned.1/por.1) no
@@ -191,6 +219,7 @@ def main():
     _temporada_terminada()
     _consumidores_del_modelo()
     _registros_cliente()
+    _cortes_de_zona_fijos()
     _notas_de_zona()
     if not shutil.which("node"):
         print("node no está en el PATH — prueba omitida")

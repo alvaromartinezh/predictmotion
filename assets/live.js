@@ -28,6 +28,7 @@
     bundesliga: 'Bundesliga', bundesliga2: '2. Bundesliga',
     ligue1: 'Ligue 1', ligue2: 'Ligue 2',
     primeira: 'Primeira Liga', eredivisie: 'Eredivisie',
+    brasileirao: 'Brasileirão',
     champions: 'Champions League', europa: 'Europa League', conference: 'Conference League'
   };
   function leagueName(slug) { return LEAGUE_NAMES[slug] || ''; }

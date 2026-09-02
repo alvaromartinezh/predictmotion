@@ -37,7 +37,7 @@
   <script src="/assets/league-engine.js?v=20260826a"></script>
   <script src="/assets/fixtures.js?v=20260826a"></script>
 
-  <title>{{if fileExists "/data/{{SLUG}}/head_title.txt"}}{{readFile "/data/{{SLUG}}/head_title.txt"}}{{else}}{{NAME}} 2025-26 · Probabilidades de Ascenso y Descenso{{end}}</title>
+  <title>{{if fileExists "/data/{{SLUG}}/head_title.txt"}}{{readFile "/data/{{SLUG}}/head_title.txt"}}{{else}}{{NAME}} {{SEASON}} · Probabilidades de Ascenso y Descenso{{end}}</title>
   <style>
   /* ===== {{SLUG}}.html · estilos de página (sistema base en styles.css) ===== */
   /* Alias de variables heredadas que usan los strings inline del JS (bracket) */
@@ -133,8 +133,8 @@
   </style>
 
   <!-- SEO principal -->
-  <meta name="description" content="{{if fileExists "/data/{{SLUG}}/head_desc.txt"}}{{readFile "/data/{{SLUG}}/head_desc.txt"}}{{else}}Simulación Monte Carlo de la {{NAME}} 2025-26. Probabilidades en tiempo real de ascenso directo, play-off y descenso para los 22 equipos de {{SUBTITLE}} española.{{end}}" />
-  <meta name="keywords" content="{{NAME}}, {{SUBTITLE}} probabilidades, ascenso {{SUBTITLE}}, play-off ascenso, descenso {{NAME}}, predicción fútbol, simulación {{SUBTITLE}} 2025-26" />
+  <meta name="description" content="{{if fileExists "/data/{{SLUG}}/head_desc.txt"}}{{readFile "/data/{{SLUG}}/head_desc.txt"}}{{else}}Simulación Monte Carlo de la {{NAME}} {{SEASON}}. Probabilidades en tiempo real de ascenso directo, play-off y descenso para los 22 equipos de {{SUBTITLE}} española.{{end}}" />
+  <meta name="keywords" content="{{NAME}}, {{SUBTITLE}} probabilidades, ascenso {{SUBTITLE}}, play-off ascenso, descenso {{NAME}}, predicción fútbol, simulación {{SUBTITLE}} {{SEASON}}" />
   <meta name="author" content="PredictMotion" />
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
   <meta name="theme-color" content="#060916" />
@@ -146,8 +146,8 @@
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://predictmotion.com/{{SLUG}}" />
-  <meta property="og:title" content="{{if fileExists "/data/{{SLUG}}/head_title.txt"}}{{readFile "/data/{{SLUG}}/head_title.txt"}}{{else}}{{NAME}} 2025-26 · Probabilidades de Ascenso y Descenso{{end}}" />
-  <meta property="og:description" content="{{if fileExists "/data/{{SLUG}}/head_desc.txt"}}{{readFile "/data/{{SLUG}}/head_desc.txt"}}{{else}}Simulación Monte Carlo de la {{NAME}} 2025-26. Probabilidades en tiempo real de ascenso directo, play-off y descenso para los 22 equipos de {{SUBTITLE}}.{{end}}" />
+  <meta property="og:title" content="{{if fileExists "/data/{{SLUG}}/head_title.txt"}}{{readFile "/data/{{SLUG}}/head_title.txt"}}{{else}}{{NAME}} {{SEASON}} · Probabilidades de Ascenso y Descenso{{end}}" />
+  <meta property="og:description" content="{{if fileExists "/data/{{SLUG}}/head_desc.txt"}}{{readFile "/data/{{SLUG}}/head_desc.txt"}}{{else}}Simulación Monte Carlo de la {{NAME}} {{SEASON}}. Probabilidades en tiempo real de ascenso directo, play-off y descenso para los 22 equipos de {{SUBTITLE}}.{{end}}" />
   <meta property="og:image" content="{{if fileExists "/data/{{SLUG}}/head_image.txt"}}{{readFile "/data/{{SLUG}}/head_image.txt"}}{{else}}https://predictmotion.com/media/og-default.png{{end}}" />
   <meta property="og:image:alt" content="Logo PredictMotion" />
   <meta property="og:locale" content="es_ES" />
@@ -155,7 +155,7 @@
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="{{if fileExists "/data/{{SLUG}}/head_title.txt"}}{{readFile "/data/{{SLUG}}/head_title.txt"}}{{else}}{{NAME}} 2025-26 · Probabilidades de Ascenso y Descenso{{end}}" />
+  <meta name="twitter:title" content="{{if fileExists "/data/{{SLUG}}/head_title.txt"}}{{readFile "/data/{{SLUG}}/head_title.txt"}}{{else}}{{NAME}} {{SEASON}} · Probabilidades de Ascenso y Descenso{{end}}" />
   <meta name="twitter:description" content="{{if fileExists "/data/{{SLUG}}/head_desc.txt"}}{{readFile "/data/{{SLUG}}/head_desc.txt"}}{{else}}20 000 simulaciones Monte Carlo para predecir el final de la temporada en {{SUBTITLE}} española.{{end}}" />
   <meta name="twitter:image" content="{{if fileExists "/data/{{SLUG}}/head_image.txt"}}{{readFile "/data/{{SLUG}}/head_image.txt"}}{{else}}https://predictmotion.com/media/og-default.png{{end}}" />
   <meta name="twitter:image:alt" content="Logo PredictMotion" />
@@ -165,8 +165,8 @@
   {
     "@context": "https://schema.org",
     "@type": "WebApplication",
-    "name": "PredictMotion – {{NAME}} 2025-26",
-    "description": "Simulador Monte Carlo para la {{NAME}} 2025-26. Probabilidades de ascenso directo, play-off y descenso para los 22 equipos de {{SUBTITLE}} española.",
+    "name": "PredictMotion – {{NAME}} {{SEASON}}",
+    "description": "Simulador Monte Carlo para la {{NAME}} {{SEASON}}. Probabilidades de ascenso directo, play-off y descenso para los 22 equipos de {{SUBTITLE}} española.",
     "url": "https://predictmotion.com/{{SLUG}}",
     "applicationCategory": "SportsApplication",
     "operatingSystem": "Web",
@@ -213,7 +213,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="league-head__meta">
         <p class="eyebrow">{{SUBTITLE}} · España</p>
         <h1 class="league-head__title">{{NAME}} 2025‑26</h1>
-        <p class="league-head__sub">Temporada <b id="league-season">2025-26</b> · Jornada <b id="badge-jornada">—</b> · <span class="num">20.000</span> simulaciones</p>
+        <p class="league-head__sub">Temporada <b id="league-season">{{SEASON}}</b> · Jornada <b id="badge-jornada">—</b> · <span class="num">20.000</span> simulaciones</p>
       </div>
     </div>
 

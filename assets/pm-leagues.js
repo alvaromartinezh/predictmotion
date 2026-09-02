@@ -17,11 +17,12 @@
     ligue2:       { name: 'Ligue 2',         code: 'fra.2',            country: 'Francia',      logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/96.png' },
     primeira:     { name: 'Primeira Liga',   code: 'por.1',            country: 'Portugal',     logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/14.png' },
     eredivisie:   { name: 'Eredivisie',      code: 'ned.1',            country: 'Países Bajos', logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/11.png' },
+    brasileirao:  { name: 'Brasileirão',     code: 'bra.1',            country: 'Brasil',       logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/85.png' },
     champions:    { name: 'Champions',       code: 'uefa.champions',   country: 'Europa',       logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2.png' },
     europa:       { name: 'Europa League',   code: 'uefa.europa',      country: 'Europa',       logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2310.png' },
     conference:   { name: 'Conference',      code: 'uefa.europa.conf', country: 'Europa',       logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/20296.png' }
   };
-  window.PM_LEAGUES_ORDER = ['laliga','hypermotion','premier','seriea','bundesliga','ligue1','primeira','eredivisie','championship','serieb','bundesliga2','ligue2','champions','europa','conference'];
+  window.PM_LEAGUES_ORDER = ['laliga','hypermotion','premier','seriea','bundesliga','ligue1','primeira','eredivisie','brasileirao','championship','serieb','bundesliga2','ligue2','champions','europa','conference'];
   /* PM_TEAM_LOGOS — sobreescrituras de escudo por id de equipo ESPN (espejo
    * cliente de seo/config.py → TEAM_LOGOS) para equipos cuyo escudo oficial de
    * ESPN es 404/no se sirve. Clave = id ESPN, valor = URL válida del escudo. */

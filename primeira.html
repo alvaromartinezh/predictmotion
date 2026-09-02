@@ -119,8 +119,8 @@
   </style>
 
   <!-- SEO principal -->
-  <meta name="description" content="{{if fileExists "/data/primeira/head_desc.txt"}}{{readFile "/data/primeira/head_desc.txt"}}{{else}}Simulación Monte Carlo de Primeira Liga 2025-26. Probabilidades en tiempo real de Champions League, Europa League, Conference League y descenso para los 20 equipos de Portugal española.{{end}}" />
-  <meta name="keywords" content="Primeira Liga probabilidades, Portugal clasificación, Champions League probabilidad, descenso Primeira Liga, predicción Primeira Liga 2025-26, simulación fútbol español" />
+  <meta name="description" content="{{if fileExists "/data/primeira/head_desc.txt"}}{{readFile "/data/primeira/head_desc.txt"}}{{else}}Simulación Monte Carlo de Primeira Liga 2025-26. Probabilidades en tiempo real de Champions League, Europa League, Conference League y descenso para todos los equipos de Portugal.{{end}}" />
+  <meta name="keywords" content="Primeira Liga probabilidades, Portugal clasificación, Champions League probabilidad, descenso Primeira Liga, predicción Primeira Liga 2025-26, simulación Primeira Liga" />
   <meta name="author" content="PredictMotion" />
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
   <meta name="theme-color" content="#060916" />
@@ -133,7 +133,7 @@
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://predictmotion.com/primeira" />
   <meta property="og:title" content="{{if fileExists "/data/primeira/head_title.txt"}}{{readFile "/data/primeira/head_title.txt"}}{{else}}Primeira Liga 2025-26 · Probabilidades Champions, Europa y Descenso{{end}}" />
-  <meta property="og:description" content="{{if fileExists "/data/primeira/head_desc.txt"}}{{readFile "/data/primeira/head_desc.txt"}}{{else}}Simulación Monte Carlo de Primeira Liga 2025-26. Probabilidades en tiempo real de Champions League, Europa League y descenso para los 20 equipos de Portugal.{{end}}" />
+  <meta property="og:description" content="{{if fileExists "/data/primeira/head_desc.txt"}}{{readFile "/data/primeira/head_desc.txt"}}{{else}}Simulación Monte Carlo de Primeira Liga 2025-26. Probabilidades en tiempo real de Champions League, Europa League, Conference League y descenso para todos los equipos de Portugal.{{end}}" />
   <meta property="og:image" content="{{if fileExists "/data/primeira/head_image.txt"}}{{readFile "/data/primeira/head_image.txt"}}{{else}}https://predictmotion.com/media/og-default.png{{end}}" />
   <meta property="og:image:alt" content="Logo PredictMotion" />
   <meta property="og:locale" content="es_ES" />
@@ -152,7 +152,7 @@
     "@context": "https://schema.org",
     "@type": "WebApplication",
     "name": "PredictMotion – Primeira Liga 2025-26",
-    "description": "Simulador Monte Carlo para Primeira Liga 2025-26. Probabilidades de Champions League, Europa League, Conference League y descenso para los 20 equipos de Portugal española.",
+    "description": "Simulador Monte Carlo para Primeira Liga 2025-26. Probabilidades de Champions League, Europa League, Conference League y descenso para todos los equipos de Portugal.",
     "url": "https://predictmotion.com/primeira",
     "applicationCategory": "SportsApplication",
     "operatingSystem": "Web",
@@ -252,7 +252,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <h2>Sobre Primeira Liga Portugal</h2>
       <p>La Primeira Liga, primera división del fútbol portugués, la disputan 18 clubes cada temporada. Además del título, los puestos de cabeza dan acceso a la Champions League y a la Europa League, mientras los tres últimos descienden a la segunda categoría. En PredictMotion se simula el resto de la temporada para estimar la probabilidad de cada equipo de clasificarse para Europa o descender.</p>
       <h2>Cómo se calculan las probabilidades</h2>
-      <p>El porcentaje que acompaña a cada equipo indica la probabilidad de que termine la temporada en cada zona: campeón, plazas de Champions League, Europa League y Conference League, permanencia o descenso. Los cortes exactos de cada zona se toman de los datos en vivo de la propia competición y pueden cambiar de una temporada a otra.</p>
+      <p>El porcentaje que acompaña a cada equipo indica la probabilidad de que termine la temporada en cada zona: campeón, plazas de Champions League, Europa League, Conference League, permanencia o descenso. Los cortes exactos de cada zona se toman de los datos en vivo de la propia competición y pueden cambiar de una temporada a otra.</p>
       <p>Las probabilidades se obtienen con una simulación Monte Carlo que proyecta el resto de la temporada partido a partido. Por cada partido pendiente se estima la victoria local, el empate o la victoria visitante a partir de la fuerza de cada equipo y de las estadísticas históricas de la competición, y la simulación completa se repite miles de veces para contar con qué frecuencia acaba cada club en cada posición. Los resultados se recalculan en cada jornada, y también en directo mientras hay partidos en juego.</p>
       <p><a href="/acerca">Conoce la metodología completa</a></p>
     </div>

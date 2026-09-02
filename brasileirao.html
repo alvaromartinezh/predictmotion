@@ -36,9 +36,9 @@
   <script src="/assets/league-engine.js?v=20260826a"></script>
   <script src="/assets/fixtures.js?v=20260826a"></script>
 
-  <title>{{if fileExists "/data/bundesliga/head_title.txt"}}{{readFile "/data/bundesliga/head_title.txt"}}{{else}}Bundesliga 2025-26 · Probabilidades Champions, Europa y Descenso{{end}}</title>
+  <title>{{if fileExists "/data/brasileirao/head_title.txt"}}{{readFile "/data/brasileirao/head_title.txt"}}{{else}}Brasileirão 2026 · Probabilidades Libertadores, Previa y Descenso{{end}}</title>
   <style>
-  /* ===== bundesliga.html · estilos de página (sistema base en styles.css) ===== */
+  /* ===== brasileirao.html · estilos de página (sistema base en styles.css) ===== */
   body {
     --gold: #f0a92a;  /* Título / quedar 1º (dorado) */
     --champ: #4a90ff; /* Champions League (azul) */
@@ -119,47 +119,47 @@
   </style>
 
   <!-- SEO principal -->
-  <meta name="description" content="{{if fileExists "/data/bundesliga/head_desc.txt"}}{{readFile "/data/bundesliga/head_desc.txt"}}{{else}}Simulación Monte Carlo de Bundesliga 2025-26. Probabilidades en tiempo real de Champions League, Europa League, Conference League y descenso para todos los equipos de Alemania.{{end}}" />
-  <meta name="keywords" content="Bundesliga probabilidades, Alemania clasificación, Champions League probabilidad, descenso Bundesliga, predicción Bundesliga 2025-26, simulación Bundesliga" />
+  <meta name="description" content="{{if fileExists "/data/brasileirao/head_desc.txt"}}{{readFile "/data/brasileirao/head_desc.txt"}}{{else}}Simulación Monte Carlo de Brasileirão 2026. Probabilidades en tiempo real de Libertadores, Sudamericana y descenso para todos los equipos de Brasil.{{end}}" />
+  <meta name="keywords" content="Brasileirão probabilidades, Brasil clasificación, Libertadores probabilidad, descenso Brasileirão, predicción Brasileirão 2026, simulación Brasileirão" />
   <meta name="author" content="PredictMotion" />
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
   <meta name="theme-color" content="#060916" />
   <meta name="application-name" content="PredictMotion" />
   <meta name="geo.region" content="ES" />
-  <link rel="canonical" href="https://predictmotion.com/bundesliga" />
-  <link rel="alternate" hreflang="es" href="https://predictmotion.com/bundesliga" />
+  <link rel="canonical" href="https://predictmotion.com/brasileirao" />
+  <link rel="alternate" hreflang="es" href="https://predictmotion.com/brasileirao" />
 
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://predictmotion.com/bundesliga" />
-  <meta property="og:title" content="{{if fileExists "/data/bundesliga/head_title.txt"}}{{readFile "/data/bundesliga/head_title.txt"}}{{else}}Bundesliga 2025-26 · Probabilidades Champions, Europa y Descenso{{end}}" />
-  <meta property="og:description" content="{{if fileExists "/data/bundesliga/head_desc.txt"}}{{readFile "/data/bundesliga/head_desc.txt"}}{{else}}Simulación Monte Carlo de Bundesliga 2025-26. Probabilidades en tiempo real de Champions League, Europa League, Conference League y descenso para todos los equipos de Alemania.{{end}}" />
-  <meta property="og:image" content="{{if fileExists "/data/bundesliga/head_image.txt"}}{{readFile "/data/bundesliga/head_image.txt"}}{{else}}https://predictmotion.com/media/og-default.png{{end}}" />
+  <meta property="og:url" content="https://predictmotion.com/brasileirao" />
+  <meta property="og:title" content="{{if fileExists "/data/brasileirao/head_title.txt"}}{{readFile "/data/brasileirao/head_title.txt"}}{{else}}Brasileirão 2026 · Probabilidades Libertadores, Previa y Descenso{{end}}" />
+  <meta property="og:description" content="{{if fileExists "/data/brasileirao/head_desc.txt"}}{{readFile "/data/brasileirao/head_desc.txt"}}{{else}}Simulación Monte Carlo de Brasileirão 2026. Probabilidades en tiempo real de Libertadores, Sudamericana y descenso para todos los equipos de Brasil.{{end}}" />
+  <meta property="og:image" content="{{if fileExists "/data/brasileirao/head_image.txt"}}{{readFile "/data/brasileirao/head_image.txt"}}{{else}}https://predictmotion.com/media/og-default.png{{end}}" />
   <meta property="og:image:alt" content="Logo PredictMotion" />
   <meta property="og:locale" content="es_ES" />
   <meta property="og:site_name" content="PredictMotion" />
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="{{if fileExists "/data/bundesliga/head_title.txt"}}{{readFile "/data/bundesliga/head_title.txt"}}{{else}}Bundesliga 2025-26 · Probabilidades Champions, Europa y Descenso{{end}}" />
-  <meta name="twitter:description" content="{{if fileExists "/data/bundesliga/head_desc.txt"}}{{readFile "/data/bundesliga/head_desc.txt"}}{{else}}20 000 simulaciones Monte Carlo para predecir el final de la temporada en Bundesliga 2025-26.{{end}}" />
-  <meta name="twitter:image" content="{{if fileExists "/data/bundesliga/head_image.txt"}}{{readFile "/data/bundesliga/head_image.txt"}}{{else}}https://predictmotion.com/media/og-default.png{{end}}" />
+  <meta name="twitter:title" content="{{if fileExists "/data/brasileirao/head_title.txt"}}{{readFile "/data/brasileirao/head_title.txt"}}{{else}}Brasileirão 2026 · Probabilidades Libertadores, Previa y Descenso{{end}}" />
+  <meta name="twitter:description" content="{{if fileExists "/data/brasileirao/head_desc.txt"}}{{readFile "/data/brasileirao/head_desc.txt"}}{{else}}20 000 simulaciones Monte Carlo para predecir el final de la temporada en Brasileirão 2026.{{end}}" />
+  <meta name="twitter:image" content="{{if fileExists "/data/brasileirao/head_image.txt"}}{{readFile "/data/brasileirao/head_image.txt"}}{{else}}https://predictmotion.com/media/og-default.png{{end}}" />
   <meta name="twitter:image:alt" content="Logo PredictMotion" />
 
   <!-- Structured Data (JSON-LD) -->
-  {{if fileExists "/data/bundesliga/head_jsonld.html"}}{{readFile "/data/bundesliga/head_jsonld.html"}}{{else}}<script type="application/ld+json">
+  {{if fileExists "/data/brasileirao/head_jsonld.html"}}{{readFile "/data/brasileirao/head_jsonld.html"}}{{else}}<script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "WebApplication",
-    "name": "PredictMotion – Bundesliga 2025-26",
-    "description": "Simulador Monte Carlo para Bundesliga 2025-26. Probabilidades de Champions League, Europa League, Conference League y descenso para todos los equipos de Alemania.",
-    "url": "https://predictmotion.com/bundesliga",
+    "name": "PredictMotion – Brasileirão 2026",
+    "description": "Simulador Monte Carlo para Brasileirão 2026. Probabilidades de Libertadores, Sudamericana y descenso para todos los equipos de Brasil.",
+    "url": "https://predictmotion.com/brasileirao",
     "applicationCategory": "SportsApplication",
     "operatingSystem": "Web",
     "inLanguage": "es-ES",
     "about": {
       "@type": "SportsOrganization",
-      "name": "Bundesliga",
+      "name": "Brasileirão",
       "sport": "Soccer"
     },
     "offers": {
@@ -176,7 +176,7 @@
   <!-- Umami Analytics -->
   <script async src="https://umami.predictmotion.com/script.js" data-website-id="08e9969f-6743-48f3-bdf5-b69dff0a8a84"></script>
 </head>
-<body class="theme-bundesliga">
+<body class="theme-brasileirao">
 <!-- Google Tag Manager (noscript) -->
 <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NG2T7CM4"
 height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
@@ -194,12 +194,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <a class="back-link" href="/">← Todas las competiciones</a>
     <div class="league-head__row">
       <span class="league-shield">
-        <img id="league-logo" src="https://a.espncdn.com/i/leaguelogos/soccer/500-dark/15.png" alt="Bundesliga" />
+        <img id="league-logo" src="https://a.espncdn.com/i/leaguelogos/soccer/500-dark/15.png" alt="Brasileirão" />
       </span>
       <div class="league-head__meta">
-        <p class="eyebrow">Alemania · España</p>
-        <h1 class="league-head__title">Bundesliga 2025‑26</h1>
-        <p class="league-head__sub">Temporada <b id="league-season">2025-26</b> · Jornada <b id="badge-jornada">—</b> · <span class="num">20.000</span> simulaciones</p>
+        <p class="eyebrow">Brasil · España</p>
+        <h1 class="league-head__title">Brasileirão 2025‑26</h1>
+        <p class="league-head__sub">Temporada <b id="league-season">2026</b> · Jornada <b id="badge-jornada">—</b> · <span class="num">20.000</span> simulaciones</p>
       </div>
     </div>
 
@@ -229,7 +229,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="table-scroll">
         <table class="table-clasif" aria-label="Clasificación con probabilidades">
           <thead id="thead"></thead>
-          <tbody id="tbody">{{if fileExists "/data/bundesliga/rows.html"}}{{readFile "/data/bundesliga/rows.html"}}{{end}}</tbody>
+          <tbody id="tbody">{{if fileExists "/data/brasileirao/rows.html"}}{{readFile "/data/brasileirao/rows.html"}}{{end}}</tbody>
         </table>
       </div>
     </div>
@@ -249,10 +249,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <section class="league-about" aria-label="Sobre esta competición">
   <div class="wrap">
     <div class="league-about__inner">
-      <h2>Sobre Bundesliga Alemania</h2>
-      <p>La Bundesliga, primera división del fútbol alemán, cuenta con 18 clubes en lugar de los 20 habituales en otras grandes ligas. Cada temporada se disputan el título, las plazas de Champions League, Europa League y Conference League, y la permanencia; los dos últimos descienden y el antepenúltimo juega una promoción. En PredictMotion se simula el resto de la temporada para estimar la probabilidad de cada equipo de clasificarse para Europa o descender.</p>
+      <h2>Sobre Brasileirão Brasil</h2>
+      <p>El Brasileirão, la Série A del fútbol brasileño, reúne a 20 clubes que disputan 38 jornadas por el título y por las plazas continentales. Los seis primeros entran en la Copa Libertadores —los cuatro primeros directos a la fase de grupos— y del séptimo al duodécimo se clasifican para la Copa Sudamericana, mientras los cuatro últimos descienden a la Série B. En PredictMotion se simula el resto de la temporada para estimar la probabilidad de cada equipo de ser campeón, jugar la Libertadores o descender.</p>
       <h2>Cómo se calculan las probabilidades</h2>
-      <p>El porcentaje que acompaña a cada equipo indica la probabilidad de que termine la temporada en cada zona: campeón, plazas de Champions League, Europa League, Conference League, permanencia o descenso. Los cortes exactos de cada zona se toman de los datos en vivo de la propia competición y pueden cambiar de una temporada a otra.</p>
+      <p>El porcentaje que acompaña a cada equipo indica la probabilidad de que termine la temporada en cada zona: campeón, plazas de Libertadores, Sudamericana, permanencia o descenso. Los cortes exactos de cada zona se toman de los datos en vivo de la propia competición y pueden cambiar de una temporada a otra.</p>
       <p>Las probabilidades se obtienen con una simulación Monte Carlo que proyecta el resto de la temporada partido a partido. Por cada partido pendiente se estima la victoria local, el empate o la victoria visitante a partir de la fuerza de cada equipo y de las estadísticas históricas de la competición, y la simulación completa se repite miles de veces para contar con qué frecuencia acaba cada club en cada posición. Los resultados se recalculan en cada jornada, y también en directo mientras hay partidos en juego.</p>
       <p><a href="/acerca">Conoce la metodología completa</a></p>
     </div>
@@ -267,7 +267,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <a href="/acerca">Cómo funciona</a>
       <a href="mailto:contact@predictmotion.com">contact@predictmotion.com</a>
       <a href="/privacy">Política de privacidad</a>
-      <a href="/equipos/bundesliga">Probabilidades por equipo</a>
+      <a href="/equipos/brasileirao">Probabilidades por equipo</a>
     </nav>
   </div>
 </footer>
@@ -279,16 +279,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <script>
 // ─── League config ────────────────────────────────────────────────────────
 const LEAGUE = {
-  espnCode: 'ger.1',
+  espnCode: 'bra.1',
   // Slots de fallback — solo se usan si la API no devuelve notas de zona
   promoSlots:  4,
-  europaSlots: 5,
-  confSlots:   6,
-  relegSlots:  3,
+  europaSlots: 6,
+  confSlots:   12,
+  relegSlots:  4,
   labels: {
-    promo:   'Champions League',
-    europa:  'Europa League',
-    conf:    'Conference League',
+    promo:   'Libertadores',
+    europa:  'Libertadores (previa)',
+    conf:    'Sudamericana',
     perma:   'Permanencia',
     relega:  'Descenso',
   },
@@ -338,10 +338,10 @@ const ESPN_SCOREBOARD = `https://site.api.espn.com/apis/site/v2/sports/soccer/${
 // lo LEE en lugar de simular en cada carga; solo re-simula en cliente cuando el
 // snapshot no cuadra con la tabla actual (partido en vivo o resultado aún no
 // recogido por el cron). SIM_N alineado a la escala del generador (20000).
-const SNAPSHOT_URL = '/data/bundesliga/latest.json';
+const SNAPSHOT_URL = '/data/brasileirao/latest.json';
 const SIM_N  = 20000;
-const P_HOME = 0.44;
-const P_DRAW = 0.24;
+const P_HOME = 0.49;
+const P_DRAW = 0.26;
 
 const COLOR_PALETTE = [
   '#e11d48','#7c3aed','#2563eb','#0891b2','#059669','#ca8a04','#ea580c',
@@ -577,16 +577,16 @@ function render(standings, results, slots) {
             <img class="team__crest" src="${t.logo || ''}" alt="${t.name}" loading="lazy"
               onerror="fallbackAvatar(${i},'${nameEsc}','${color}')" />
           </span>
-          <a class="team__name team-link" href="/equipo?id=${t.id}&name=${encodeURIComponent(t.name)}&league=bundesliga">${t.name}</a>
-          ${t.live ? `<a class="live-dot-link" href="/partido?league=bundesliga&id=${t.live.eventId}" title="${t.live.label}" aria-label="${t.live.label}"><span class="live-dot ${t.live.res}"></span></a>` : ''}
+          <a class="team__name team-link" href="/equipo?id=${t.id}&name=${encodeURIComponent(t.name)}&league=brasileirao">${t.name}</a>
+          ${t.live ? `<a class="live-dot-link" href="/partido?league=brasileirao&id=${t.live.eventId}" title="${t.live.label}" aria-label="${t.live.label}"><span class="live-dot ${t.live.res}"></span></a>` : ''}
         </span>
       </td>
       <td class="col-pj col-dim"><span class="num">${t.gp}</span></td>
       <td class="col-pts${t.live ? ' pts-live' : ''}"><span class="num">${t.pts}</span></td>
       ${probPill(res.first,  'gold', 'Título')}
-      ${probPill(res.champ,  'up',   'Champions')}
-      ${probPill(res.europa, 'eu',   'Europa')}
-      ${probPill(res.conf,   'cf',   'Conference')}
+      ${probPill(res.champ,  'up',   'Libertadores')}
+      ${probPill(res.europa, 'eu',   'Previa')}
+      ${probPill(res.conf,   'cf',   'Sudamericana')}
       ${probPill(res.relega, 'down', 'Descenso')}
     </tr>`;
   });
@@ -704,7 +704,7 @@ async function triggerUpdate(silent = false) {
     const adjusted = applyLiveScores(standings, liveMatches);
     // Guard: si fixtures.js no cargó, un ReferenceError aquí lo tragaría el
     // catch de triggerUpdate() y la clasificación no se pintaría nunca.
-    if (window.PMLiveStrip) PMLiveStrip.render('#live-strip', liveMatches, 'bundesliga');
+    if (window.PMLiveStrip) PMLiveStrip.render('#live-strip', liveMatches, 'brasileirao');
 
     if (liveMatches.length > 0) {
       adjusted.sort((a, b) =>
@@ -772,7 +772,7 @@ updateSeason();
 <script>
   PMTabs.init();
   window.addEventListener('pmtab', function (e) {
-    if (e.detail === 'partidos') PMFixtures.init('ger.1', '#fx-mount');
+    if (e.detail === 'partidos') PMFixtures.init('bra.1', '#fx-mount');
   });
 </script>
 <script src="/assets/account.js?v=20260826a"></script>

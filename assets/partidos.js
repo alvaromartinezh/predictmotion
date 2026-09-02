@@ -17,6 +17,7 @@
   var MATCH_LEAGUES = {
     hypermotion:1, laliga:1, premier:1, championship:1, seriea:1, serieb:1,
     bundesliga:1, bundesliga2:1, ligue1:1, ligue2:1, primeira:1, eredivisie:1,
+    brasileirao:1,
     champions:1, europa:1, conference:1
   };
 

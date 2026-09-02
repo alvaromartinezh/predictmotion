@@ -94,6 +94,15 @@ def _zones(slug):
         return []
     t = lg.get("dashboard_template")
     if t == "top1":
+        # `top1` la comparten las 7 europeas y el Brasileirão, con claves de zona
+        # distintas. Si la liga declara las suyas, salen de SUS bandas (mismo motivo
+        # que snapshots._pills_for: con ZONES_TOP1 a fuego el tuit saldría vacío).
+        etiquetas = lg.get("zone_labels")
+        if etiquetas:
+            claves = [b["key"] for b in lg["bands"](20)]
+            return ([("first", "Título")]
+                    + list(zip(claves[:3], etiquetas))
+                    + [(claves[3], "Descenso")])
         return ZONES_TOP1
     if t in ("top2", "tier2"):
         return ZONES_TIER2
@@ -121,6 +130,7 @@ HASHTAGS = {
     "ligue1":      ["#Ligue1", "#futbol", "#predicciones"],
     "primeira":    ["#LigaPortugal", "#futbol", "#predicciones"],
     "eredivisie":  ["#Eredivisie", "#futbol", "#predicciones"],
+    "brasileirao": ["#Brasileirao", "#futbol", "#predicciones"],
     "championship": ["#Championship", "#futbol", "#predicciones"],
     "serieb":      ["#SerieB", "#futbol", "#predicciones"],
     "bundesliga2": ["#2Bundesliga", "#futbol", "#predicciones"],

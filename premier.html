@@ -119,8 +119,8 @@
   </style>
 
   <!-- SEO principal -->
-  <meta name="description" content="{{if fileExists "/data/premier/head_desc.txt"}}{{readFile "/data/premier/head_desc.txt"}}{{else}}Simulación Monte Carlo de Premier League 2025-26. Probabilidades en tiempo real de Champions League, Europa League, Conference League y descenso para los 20 equipos de Inglaterra española.{{end}}" />
-  <meta name="keywords" content="Premier League probabilidades, Inglaterra clasificación, Champions League probabilidad, descenso Premier League, predicción Premier League 2025-26, simulación fútbol español" />
+  <meta name="description" content="{{if fileExists "/data/premier/head_desc.txt"}}{{readFile "/data/premier/head_desc.txt"}}{{else}}Simulación Monte Carlo de Premier League 2025-26. Probabilidades en tiempo real de Champions League, Europa League, Conference League y descenso para todos los equipos de Inglaterra.{{end}}" />
+  <meta name="keywords" content="Premier League probabilidades, Inglaterra clasificación, Champions League probabilidad, descenso Premier League, predicción Premier League 2025-26, simulación Premier League" />
   <meta name="author" content="PredictMotion" />
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
   <meta name="theme-color" content="#060916" />
@@ -133,7 +133,7 @@
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://predictmotion.com/premier" />
   <meta property="og:title" content="{{if fileExists "/data/premier/head_title.txt"}}{{readFile "/data/premier/head_title.txt"}}{{else}}Premier League 2025-26 · Probabilidades Champions, Europa y Descenso{{end}}" />
-  <meta property="og:description" content="{{if fileExists "/data/premier/head_desc.txt"}}{{readFile "/data/premier/head_desc.txt"}}{{else}}Simulación Monte Carlo de Premier League 2025-26. Probabilidades en tiempo real de Champions League, Europa League y descenso para los 20 equipos de Inglaterra.{{end}}" />
+  <meta property="og:description" content="{{if fileExists "/data/premier/head_desc.txt"}}{{readFile "/data/premier/head_desc.txt"}}{{else}}Simulación Monte Carlo de Premier League 2025-26. Probabilidades en tiempo real de Champions League, Europa League, Conference League y descenso para todos los equipos de Inglaterra.{{end}}" />
   <meta property="og:image" content="{{if fileExists "/data/premier/head_image.txt"}}{{readFile "/data/premier/head_image.txt"}}{{else}}https://predictmotion.com/media/og-default.png{{end}}" />
   <meta property="og:image:alt" content="Logo PredictMotion" />
   <meta property="og:locale" content="es_ES" />
@@ -152,7 +152,7 @@
     "@context": "https://schema.org",
     "@type": "WebApplication",
     "name": "PredictMotion – Premier League 2025-26",
-    "description": "Simulador Monte Carlo para Premier League 2025-26. Probabilidades de Champions League, Europa League, Conference League y descenso para los 20 equipos de Inglaterra española.",
+    "description": "Simulador Monte Carlo para Premier League 2025-26. Probabilidades de Champions League, Europa League, Conference League y descenso para todos los equipos de Inglaterra.",
     "url": "https://predictmotion.com/premier",
     "applicationCategory": "SportsApplication",
     "operatingSystem": "Web",
@@ -252,7 +252,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <h2>Sobre Premier League Inglaterra</h2>
       <p>La Premier League, primera división del fútbol inglés, es una de las competiciones más seguidas del mundo con 20 clubes. El título, las plazas de Champions League, Europa League y Conference League, y la permanencia se deciden jornada a jornada; los tres últimos descienden al Championship. En PredictMotion se simula el resto de la temporada para estimar la probabilidad de cada equipo de clasificarse para Europa o descender.</p>
       <h2>Cómo se calculan las probabilidades</h2>
-      <p>El porcentaje que acompaña a cada equipo indica la probabilidad de que termine la temporada en cada zona: campeón, plazas de Champions League, Europa League y Conference League, permanencia o descenso. Los cortes exactos de cada zona se toman de los datos en vivo de la propia competición y pueden cambiar de una temporada a otra.</p>
+      <p>El porcentaje que acompaña a cada equipo indica la probabilidad de que termine la temporada en cada zona: campeón, plazas de Champions League, Europa League, Conference League, permanencia o descenso. Los cortes exactos de cada zona se toman de los datos en vivo de la propia competición y pueden cambiar de una temporada a otra.</p>
       <p>Las probabilidades se obtienen con una simulación Monte Carlo que proyecta el resto de la temporada partido a partido. Por cada partido pendiente se estima la victoria local, el empate o la victoria visitante a partir de la fuerza de cada equipo y de las estadísticas históricas de la competición, y la simulación completa se repite miles de veces para contar con qué frecuencia acaba cada club en cada posición. Los resultados se recalculan en cada jornada, y también en directo mientras hay partidos en juego.</p>
       <p><a href="/acerca">Conoce la metodología completa</a></p>
     </div>
