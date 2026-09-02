@@ -164,12 +164,9 @@ def _process_table(league, today, dry_run, ratings=None, goal_strengths=None):
     if dry_run and snaps[-1]["date"] != today:
         snaps = snaps + [snap]
 
-    # Calendario restante (best-effort, no se persiste en el snapshot).
-    extras = {}
-    for t in snap["teams"]:
-        sched = espn.fetch_remaining_schedule(league["espn_code"], t["id"])
-        if sched:
-            extras[t["id"]] = sched
+    # Calendario restante (best-effort, no se persiste en el snapshot). UNA llamada
+    # para toda la liga; antes era una por equipo (ver fetch_remaining_schedules).
+    extras = espn.fetch_remaining_schedules(league["espn_code"])
 
     # Registro append-only de predicciones 1X2 (para Brier / calibración).
     if not dry_run:

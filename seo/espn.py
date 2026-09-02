@@ -4,6 +4,7 @@ Mismos endpoints y mismo parseo que el JS del navegador, para que los datos de
 partida sean idénticos a los que ve el usuario en el dashboard.
 """
 
+import datetime
 import json
 import re
 import time
@@ -93,7 +94,15 @@ def fetch_table(espn_code, season=None):
         tid = str(team["id"])
         logos = team.get("logos") or []
         rows.append({
-            "rank":   i + 1,
+            # El `rank` OFICIAL de ESPN, NO el orden de llegada. En las 15 ligas
+            # actuales coinciden (comprobado: rank == i+1 en todas), así que esto
+            # es bit-idéntico para ellas; pero hay ligas cuyas entradas NO vienen
+            # ordenadas por puntos (usa.1 y arg.1 llegan casi alfabéticas: Chicago
+            # 37 pts en el índice 0, Columbus 20 pts en el 1). Con `i + 1` esas
+            # ligas salían con la clasificación entera mal, y el error se propagaba
+            # al rows.html servido sin JS y a la rama de temporada terminada de
+            # sim_table.simulate(), que confía en `rank`.
+            "rank":   int(_stat(e, "rank")) or (i + 1),
             "id":     tid,
             "name":   team["displayName"],
             "abbr":   team.get("abbreviation", ""),
@@ -107,6 +116,7 @@ def fetch_table(espn_code, season=None):
             "draws":  int(_stat(e, "ties")),
             "losses": int(_stat(e, "losses")),
         })
+    rows.sort(key=lambda r: r["rank"])
     return rows
 
 
@@ -131,8 +141,14 @@ def fetch_league_meta(espn_code):
         if href and href.startswith("http://"):
             href = "https://" + href[len("http://"):]
         out["logo"] = href
+    # 'YYYY-YY' (ligas europeas: "2026-27 Spanish LALIGA") o 'YYYY' a secas (ligas
+    # de año natural: "2026 MLS", "2026 Futebol Brasileiro", "2026 Argentine Liga
+    # Profesional de Fútbol"). La alternativa 'YYYY-YY' va PRIMERA para que las 15
+    # ligas europeas sigan devolviendo exactamente el mismo valor que antes. Sin
+    # esto, _process_table lanza RuntimeError con las ligas de año natural y las
+    # salta en TODAS las pasadas del cron, en silencio.
     dn = (lg.get("season") or {}).get("displayName") or ""
-    m = re.search(r"\d{4}-\d{2}", dn)
+    m = re.search(r"\d{4}-\d{2}|\d{4}", dn)
     if m:
         out["season"] = m.group(0)
     return out
@@ -341,16 +357,39 @@ def build_attack_defense(current_year, active_codes=None):
             for tid in att}
 
 
-def fetch_remaining_schedule(espn_code, team_id):
-    """Próximos partidos de un equipo (estado 'pre').
+# Topes de la API del scoreboard, ambos COMPROBADOS contra ESPN (2026-09-02):
+# un rango de fechas de más de 365 días devuelve 400 Bad Request, y sin `limit`
+# el corte está en 100 eventos (esp.1: 100 con el default, 350 con limit=1000).
+_SCOREBOARD_MAX_DAYS = 364
+_SCOREBOARD_LIMIT    = 1000
 
-    Best-effort: si falla o no hay datos, devuelve []. Nunca inventa partidos.
+
+def fetch_remaining_schedules(espn_code, today=None):
+    """Próximos partidos ('pre') de TODOS los equipos: {team_id: [partidos]}.
+
+    UNA sola llamada al scoreboard con rango de fechas, en lugar de una llamada por
+    equipo al endpoint /teams/<id>/schedule. Eran ~20-36 peticiones por liga, ~300
+    por pasada del cron: con diferencia la mayor fuente de tráfico contra ESPN y de
+    exposición a los 403 del bot-management (ver docs/incidentes). Ahora son 15, una
+    por liga. El scoreboard devuelve la temporada restante ENTERA (comprobado:
+    esp.1 → 350 eventos, todos 'pre', hasta 2027-05-30).
+
+    Cada partido aparece en la lista de SUS DOS equipos, con `home` relativo a cada
+    uno. Las listas van ordenadas por fecha (el endpoint por equipo ya venía en
+    orden cronológico y la página de equipo las pinta tal cual).
+
+    Best-effort: si falla devuelve {} y las páginas de equipo salen sin calendario,
+    igual que antes cuando fallaba el fetch por equipo. Nunca inventa partidos.
     """
+    today = today or datetime.date.today()
+    end = today + datetime.timedelta(days=_SCOREBOARD_MAX_DAYS)
+    url = (f"{_BASE_SITE}/{espn_code}/scoreboard"
+           f"?limit={_SCOREBOARD_LIMIT}&dates={today:%Y%m%d}-{end:%Y%m%d}")
     try:
-        data = _get_json(f"{_BASE_SITE}/{espn_code}/teams/{team_id}/schedule")
+        data = _get_json(url)
     except Exception:
-        return []
-    out = []
+        return {}
+    out = {}
     for ev in data.get("events", []):
         comp = (ev.get("competitions") or [{}])[0]
         status = (comp.get("status") or ev.get("status") or {}).get("type", {})
@@ -361,12 +400,17 @@ def fetch_remaining_schedule(espn_code, team_id):
         away = next((c for c in competitors if c.get("homeAway") == "away"), None)
         if not home or not away:
             continue
-        is_home = str(home["team"]["id"]) == str(team_id)
-        opp = away if is_home else home
-        out.append({
-            "date":     ev.get("date", "")[:10],
-            "opponent": opp["team"].get("displayName", ""),
-            "opp_id":   str(opp["team"].get("id", "")),
-            "home":     is_home,
-        })
+        date = ev.get("date", "")[:10]
+        for side, opp, is_home in ((home, away, True), (away, home, False)):
+            tid = str(side["team"].get("id", ""))
+            if not tid:
+                continue
+            out.setdefault(tid, []).append({
+                "date":     date,
+                "opponent": opp["team"].get("displayName", ""),
+                "opp_id":   str(opp["team"].get("id", "")),
+                "home":     is_home,
+            })
+    for sched in out.values():
+        sched.sort(key=lambda m: m["date"])
     return out
