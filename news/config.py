@@ -85,6 +85,13 @@ LEAGUES = {
     "primeira":    "por.1",
     "eredivisie":  "ned.1",
     "brasileirao":  "bra.1",
+    "ligamx":       "mex.1",
+    # usa.1 y arg.1 tienen un slug por conferencia/zona, pero aquí solo hace falta
+    # UNA entrada por código: build_alias_index las fusiona (child=None) y usa el
+    # slug para etiquetar la noticia. Un equipo del Oeste quedaría etiquetado como
+    # "mls-este"; es aproximado a propósito y no hay feeds de estas ligas todavía.
+    "mls-este":     "usa.1",
+    "argentina-a":  "arg.1",
     "championship": "eng.2",
     "serieb":       "ita.2",
     "bundesliga2":  "ger.2",

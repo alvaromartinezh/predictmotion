@@ -61,6 +61,13 @@ def _note_to_zone(desc):
     # domésticas, así que su mapeo aquí no cambia el de ninguna otra liga.
     # 'promo' = zona verde de cabeza (octavos, como Champions en 1ª); reusa
     # derive_bands_from_notes sin lógica nueva.
+    # MLS (usa.1): "Qualifies for MLS Cup Playoffs - Round One Best-of-3 series"
+    # (plazas directas) y "- Wild Card Matches" (repesca). Ninguno de los dos
+    # strings aparece en las ligas europeas, así que no cambia su mapeo. Van antes
+    # que el resto porque ambos contienen "playoffs".
+    if "wild card" in d:              return "playoff"
+    if "best-of-3" in d or "round one" in d:
+        return "promo"
     if "round of 16" in d:            return "promo"
     if "knockout" in d:               return "playoff"   # play-off de eliminatorias
     if "eliminat" in d:               return "relega"    # eliminado (zona roja de cola)
@@ -76,18 +83,36 @@ def _note_to_zone(desc):
     return "none"
 
 
-def fetch_table(espn_code, season=None):
+def fetch_table(espn_code, season=None, seasontype=None, child=0):
     """Clasificación de una liga regular. Port de fetchStandings().
 
     Con `season` (año de inicio, p. ej. 2025 → 2025-26) devuelve la tabla FINAL de
     esa temporada pasada (mismo endpoint + ?season=), usado por el prior de fuerza.
+
+    `seasontype`: torneo dentro del año, para las ligas de temporada PARTIDA. Sin
+    él, `mex.1?season=2024` y `?season=2025` devuelven LA MISMA tabla (el Clausura
+    2025) y el Apertura es inalcanzable. Comprobado 2026-09-02: mex.1 → 1 Apertura /
+    8 Clausura; arg.1 → 1 Apertura / 6 Clausura. Ver config.SPLIT_SEASON_TYPES.
+
+    `child`: qué grupo de `children` leer. ESPN sirve **más de uno** en las ligas
+    por conferencias o zonas (usa.1 Este/Oeste, arg.1 Group A/B); con el 0 de
+    siempre se leería MEDIA LIGA en silencio. Cada zona es su propio slug
+    (`mls-este`, `argentina-a`), así que la liga declara su índice con `child` en
+    LEAGUES. `child=None` concatena TODOS los grupos: es lo que necesita el prior
+    de fuerza, al que solo le importan los equipos y sus goles, no el orden.
     """
     from .config import TEAM_LOGOS
     url = f"{_BASE_V2}/{espn_code}/standings"
-    if season is not None:
-        url += f"?season={season}"
+    query = [(k, v) for k, v in (("season", season), ("seasontype", seasontype))
+             if v is not None]
+    if query:
+        url += "?" + "&".join(f"{k}={v}" for k, v in query)
     data = _get_json(url)
-    entries = data["children"][0]["standings"]["entries"]
+    children = data.get("children") or []
+    if child is None:
+        entries = [e for c in children for e in c["standings"]["entries"]]
+    else:
+        entries = children[child]["standings"]["entries"]
     rows = []
     for i, e in enumerate(entries):
         team = e["team"]
@@ -128,7 +153,7 @@ def fetch_league_meta(espn_code):
       fondo oscuro); si no, la 'default'.
     - season: de `leagues[0].season.displayName`, extraído como 'YYYY-YY'.
     """
-    out = {"logo": None, "season": None}
+    out = {"logo": None, "season": None, "tournament": None}
     try:
         data = _get_json(f"{_BASE_SITE}/{espn_code}/scoreboard")
     except Exception:
@@ -147,10 +172,26 @@ def fetch_league_meta(espn_code):
     # ligas europeas sigan devolviendo exactamente el mismo valor que antes. Sin
     # esto, _process_table lanza RuntimeError con las ligas de año natural y las
     # salta en TODAS las pasadas del cron, en silencio.
-    dn = (lg.get("season") or {}).get("displayName") or ""
+    season = lg.get("season") or {}
+    dn = season.get("displayName") or ""
     m = re.search(r"\d{4}-\d{2}|\d{4}", dn)
     if m:
         out["season"] = m.group(0)
+    # Torneo vivo de una liga de temporada partida: "Apertura 2026" / "Clausura
+    # 2026". El nombre sale de `type.name` ("Torneo Apertura") y el año de
+    # `type.abbreviation` ("2026 Liga MX Apertura"), que es el del TORNEO —en mex.1
+    # el displayName es "2026-27" pero el Apertura es el de 2026. Sirve de clave de
+    # partición: sin él, el Apertura y el Clausura escribirían en la misma carpeta y
+    # per_period_series cruzaría sus jornadas, justo lo que la partición evita.
+    tipo = season.get("type") or {}
+    nombre = (tipo.get("name") or "").strip()
+    # Solo las ligas de temporada partida traen "Torneo X"; el resto pone aquí el
+    # nombre de la competición ("2026-27 LALIGA", "Regular Season") y no es un
+    # torneo. Se exige el prefijo para no inventarse una partición.
+    nombre = nombre[len("Torneo"):].strip() if nombre.startswith("Torneo") else ""
+    if nombre:
+        anio = re.search(r"\d{4}", tipo.get("abbreviation") or "")
+        out["tournament"] = f"{nombre} {anio.group(0)}" if anio else nombre
     return out
 
 
@@ -224,23 +265,63 @@ def fetch_scoreboard_range(espn_code, start_yyyymmdd, end_yyyymmdd, strict=False
     return out
 
 
-def fetch_current_season_year(espn_code):
-    """Año de inicio de la temporada actual (p. ej. 2026 para 2026-27), de ESPN.
+def fetch_current_season(espn_code):
+    """(año, seasontype) de la competición VIVA según ESPN, best-effort (None, None).
 
-    Best-effort: None si falla. Se usa para pedir la temporada previa (year-1).
+    El `type.id` dice qué torneo se juega ahora en las ligas de temporada partida
+    (mex.1 → 1 'Torneo Apertura'; arg.1 → 6 'Torneo Clausura') y el endpoint de
+    standings por defecto ya sirve ESE torneo: el ciclo Apertura/Clausura rueda
+    solo, sin tocar nada a mano.
     """
     try:
         data = _get_json(f"{_BASE_SITE}/{espn_code}/scoreboard")
     except Exception:
-        return None
-    year = ((data.get("leagues") or [{}])[0].get("season") or {}).get("year")
+        return None, None
+    season = (data.get("leagues") or [{}])[0].get("season") or {}
     try:
-        return int(year)
+        year = int(season.get("year"))
     except (TypeError, ValueError):
-        return None
+        year = None
+    try:
+        stype = int((season.get("type") or {}).get("id"))
+    except (TypeError, ValueError):
+        stype = None
+    return year, stype
 
 
-def build_strength_ratings(current_year, active_codes=None, year_by_code=None):
+def fetch_current_season_year(espn_code):
+    """Año de inicio de la temporada actual (p. ej. 2026 para 2026-27), de ESPN."""
+    return fetch_current_season(espn_code)[0]
+
+
+def prior_tournaments(espn_code, current_year, current_type, count):
+    """Los `count` torneos ya TERMINADOS de una liga, del más reciente al más
+    antiguo, como pares (season, seasontype) para `fetch_table`.
+
+    Liga normal (no está en SPLIT_SEASON_TYPES) → [(Y-1, None), (Y-2, None), …],
+    exactamente lo de siempre. Liga de temporada partida → recorre los torneos
+    hacia atrás saltándose el que está en juego, así el blend multi-temporada son
+    los 3 últimos TORNEOS y no tres veces la misma tabla.
+    """
+    from .config import SPLIT_SEASON_TYPES
+
+    order = SPLIT_SEASON_TYPES.get(espn_code)   # tipos en orden cronológico del año
+    if not order:
+        return [(current_year - 1 - k, None) for k in range(count)]
+    # Posición del torneo vivo dentro del año; si ESPN no lo dice, se empieza por
+    # el último del año en curso.
+    idx = order.index(current_type) if current_type in order else len(order)
+    out, year = [], current_year
+    while len(out) < count and year > current_year - count - 2:
+        idx -= 1
+        if idx < 0:
+            year -= 1
+            idx = len(order) - 1
+        out.append((year, order[idx]))
+    return out
+
+
+def build_strength_ratings(current_year, active_codes=None, season_by_code=None):
     """Rating de fuerza por equipo desde la tabla FINAL de la temporada anterior.
 
     Recorre las escaleras de país (STRENGTH_LADDERS): dentro de cada escalera,
@@ -254,12 +335,14 @@ def build_strength_ratings(current_year, active_codes=None, year_by_code=None):
     liga activa → no se descargan temporadas previas de países que no se generan.
     Con None se procesan todas (compatibilidad).
 
-    `year_by_code`: año de temporada POR CÓDIGO, para las ligas cuya temporada no
-    es la europea. `current_year` sale de UNA sola llamada (la primera liga de la
-    lista, europea), y para una liga de año natural como bra.1 eso se desfasa medio
-    año: en marzo de 2027, esp.1 sigue en season.year=2026 (la 2026-27) mientras el
-    Brasileirão ya va por el 2027, así que su prior pediría 2025 en vez de 2026. Ver
-    config.CALENDAR_YEAR_CODES.
+    `season_by_code`: {code: (año, seasontype)} de la temporada VIVA de esa liga,
+    para las que no siguen el calendario europeo. `current_year` sale de UNA sola
+    llamada (la primera liga de la lista, europea) y se desfasa medio año con las de
+    año natural: en marzo de 2027, esp.1 sigue en season.year=2026 (la 2026-27)
+    mientras el Brasileirão ya va por el 2027, así que su prior pediría 2025 en vez
+    de 2026. El `seasontype` además identifica el torneo vivo en las ligas de
+    temporada partida, para que `prior_tournaments` empiece por el anterior. Ver
+    config.CALENDAR_YEAR_CODES y SPLIT_SEASON_TYPES.
 
     Best-effort y robusto: si el fetch de una temporada previa falla (p. ej. 403),
     esa división se salta; el resto sigue.
@@ -270,7 +353,7 @@ def build_strength_ratings(current_year, active_codes=None, year_by_code=None):
 
     if not current_year:
         return {}
-    year_by_code = year_by_code or {}
+    season_by_code = season_by_code or {}
     # Modelo v2 (flag): rating absoluto por diferencia de goles/partido (conserva la
     # dominancia). OFF: z-score de puntos de siempre (ruta INTACTA).
     gap = STRENGTH_LEVEL_GAP_ABS if USE_ABSOLUTE_RATING else STRENGTH_LEVEL_GAP
@@ -284,10 +367,15 @@ def build_strength_ratings(current_year, active_codes=None, year_by_code=None):
             continue  # ninguna liga activa usa esta escalera → sin peticiones
         for level, code in enumerate(ladder):
             offset = -level * gap
-            prev = year_by_code.get(code, current_year) - 1
+            year, stype = season_by_code.get(code, (current_year, None))
+            # child=None: fusiona TODOS los grupos. En usa.1/arg.1 el prior con el
+            # grupo 0 solo dejaría a media liga sin rating (y con el default de
+            # fondo de tabla de resolve_strengths).
+            temporadas = prior_tournaments(code, year, stype, n_seasons)
             if not USE_ABSOLUTE_RATING:
                 try:
-                    rows = fetch_table(code, season=prev)
+                    rows = fetch_table(code, season=temporadas[0][0],
+                                       seasontype=temporadas[0][1], child=None)
                 except Exception:
                     continue  # una división falla → se salta; las demás siguen
                 if len(rows) < 2:
@@ -302,10 +390,10 @@ def build_strength_ratings(current_year, active_codes=None, year_by_code=None):
             # Rating absoluto, mezclado sobre las últimas n_seasons temporadas. El offset
             # de nivel se aplica por la división de CADA temporada (un equipo pudo alternar
             # 1ª/2ª); los ids de ESPN son globales, así que el blend acumula por equipo.
-            for k in range(n_seasons):
+            for k, (yr, st) in enumerate(temporadas):
                 w = PRIOR_DECAY ** k
                 try:
-                    rows = fetch_table(code, season=prev - k)
+                    rows = fetch_table(code, season=yr, seasontype=st, child=None)
                 except Exception:
                     continue  # una temporada/división falla → se salta; el resto sigue
                 if len(rows) < 2:
@@ -319,7 +407,7 @@ def build_strength_ratings(current_year, active_codes=None, year_by_code=None):
     return ratings
 
 
-def build_attack_defense(current_year, active_codes=None, year_by_code=None):
+def build_attack_defense(current_year, active_codes=None, season_by_code=None):
     """Fuerza de ataque/defensa por equipo (v3, Poisson).
 
     {team_id: {"att": gf/partido, "def": gc/partido}} — blend multi-temporada real
@@ -337,7 +425,7 @@ def build_attack_defense(current_year, active_codes=None, year_by_code=None):
 
     if not current_year:
         return {}
-    year_by_code = year_by_code or {}   # ligas de año natural; ver build_strength_ratings
+    season_by_code = season_by_code or {}   # ver build_strength_ratings
     att = {}
     wsum = {}
     for ladder in STRENGTH_LADDERS:
@@ -346,11 +434,12 @@ def build_attack_defense(current_year, active_codes=None, year_by_code=None):
         for level, code in enumerate(ladder):
             off_att = -level * POISSON_LEVEL_GAP_ATT
             off_def = +level * POISSON_LEVEL_GAP_DEF
-            prev = year_by_code.get(code, current_year) - 1
-            for k in range(PRIOR_SEASONS):
+            year, stype = season_by_code.get(code, (current_year, None))
+            for k, (yr, st) in enumerate(
+                    prior_tournaments(code, year, stype, PRIOR_SEASONS)):
                 w = PRIOR_DECAY ** k
                 try:
-                    rows = fetch_table(code, season=prev - k)
+                    rows = fetch_table(code, season=yr, seasontype=st, child=None)
                 except Exception:
                     continue  # una temporada/división falla → se salta; el resto sigue
                 if len(rows) < 2:

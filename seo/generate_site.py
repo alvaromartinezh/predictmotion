@@ -31,7 +31,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 from . import espn, render_table, sitemap, predictions, zone_predictions, notify, links
 from .config import (LEAGUES, ROOT, SIM_N_TABLE, league_by_slug, SCORE_MODEL,
-                     CALENDAR_YEAR_CODES)
+                     CALENDAR_YEAR_CODES, SPLIT_SEASON_TYPES)
 from .snapshots import (build_table_snapshot, save_snapshot, load_all,
                         save_offseason_latest)
 from . import sim_table
@@ -129,8 +129,19 @@ def _process_table(league, today, dry_run, ratings=None, goal_strengths=None):
         raise RuntimeError(
             "ESPN no devolvió la temporada (scoreboard caído): no se archiva el "
             "snapshot para no mezclarlo con la temporada de config.py")
+    # Ligas de temporada PARTIDA (Apertura/Clausura): la clave de partición es el
+    # TORNEO, no el año. Con el año solo, los dos torneos del mismo ciclo caerían en
+    # la misma carpeta y per_period_series cruzaría sus jornadas — el mismo cruce
+    # que la partición por temporada existe para evitar. Si ESPN deja de etiquetar
+    # el torneo, se salta la liga esta pasada en vez de mezclar en silencio.
+    if league.get("split_season"):
+        if not meta.get("tournament"):
+            raise RuntimeError(
+                "liga de temporada partida sin torneo en ESPN: no se archiva el "
+                "snapshot para no mezclar el Apertura con el Clausura")
+        meta = {**meta, "season": meta["tournament"]}
 
-    rows = espn.fetch_table(league["espn_code"])
+    rows = espn.fetch_table(league["espn_code"], child=league.get("child", 0))
     # use_strength=False (UEFA) → modelo uniforme, sin prior. Se fuerza ratings=None
     # para NO heredar un prior parcial e inconsistente (los clubes que además juegan
     # su liga doméstica activa sí estarían en `ratings`). Ver config.py / Fase 4.
@@ -257,15 +268,17 @@ def _run(args):
         if current_year:
             break
     active_codes = {lg["espn_code"] for lg in leagues}
-    # Ligas de AÑO NATURAL: `current_year` sale de la primera liga de la lista
-    # (europea) y para ellas se desfasa medio año. Una llamada extra por liga de
-    # este tipo, solo si está activa. Ver espn.build_strength_ratings.
-    year_by_code = {}
-    for code in sorted(CALENDAR_YEAR_CODES & active_codes):
-        y = espn.fetch_current_season_year(code)
+    # Ligas que no siguen el calendario europeo: `current_year` sale de la primera
+    # liga de la lista (europea) y para ellas se desfasa medio año; y las de torneo
+    # partido necesitan además saber qué torneo se juega ahora, para que el prior
+    # arranque en el ANTERIOR. Una llamada extra por liga de estas, solo si está
+    # activa. Ver espn.build_strength_ratings / prior_tournaments.
+    season_by_code = {}
+    for code in sorted((CALENDAR_YEAR_CODES | set(SPLIT_SEASON_TYPES)) & active_codes):
+        y, st = espn.fetch_current_season(code)
         if y:
-            year_by_code[code] = y
-    ratings = espn.build_strength_ratings(current_year, active_codes, year_by_code)
+            season_by_code[code] = (y, st)
+    ratings = espn.build_strength_ratings(current_year, active_codes, season_by_code)
     print(f"Prior de fuerza: {len(ratings)} equipos con rating"
           f" (temporada previa {current_year - 1 if current_year else '??'})")
 
@@ -275,7 +288,7 @@ def _run(args):
     goal_strengths = None
     if SCORE_MODEL == "poisson":
         goal_strengths = espn.build_attack_defense(current_year, active_codes,
-                                                   year_by_code)
+                                                   season_by_code)
         print(f"Prior de goles (att/def): {len(goal_strengths)} equipos"
               f" (v3, temporadas previas {current_year - 1 if current_year else '??'})")
 

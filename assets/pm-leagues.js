@@ -18,11 +18,16 @@
     primeira:     { name: 'Primeira Liga',   code: 'por.1',            country: 'Portugal',     logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/14.png' },
     eredivisie:   { name: 'Eredivisie',      code: 'ned.1',            country: 'Países Bajos', logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/11.png' },
     brasileirao:  { name: 'Brasileirão',     code: 'bra.1',            country: 'Brasil',       logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/85.png' },
+    ligamx:       { name: 'Liga MX',         code: 'mex.1',            country: 'México',       logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/22.png' },
+    'mls-este':   { name: 'MLS · Este',      code: 'usa.1',            country: 'Estados Unidos', logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/19.png' },
+    'mls-oeste':  { name: 'MLS · Oeste',     code: 'usa.1',            country: 'Estados Unidos', logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/19.png' },
+    'argentina-a':{ name: 'LPF · Zona A',    code: 'arg.1',            country: 'Argentina',    logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/1.png' },
+    'argentina-b':{ name: 'LPF · Zona B',    code: 'arg.1',            country: 'Argentina',    logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/1.png' },
     champions:    { name: 'Champions',       code: 'uefa.champions',   country: 'Europa',       logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2.png' },
     europa:       { name: 'Europa League',   code: 'uefa.europa',      country: 'Europa',       logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2310.png' },
     conference:   { name: 'Conference',      code: 'uefa.europa.conf', country: 'Europa',       logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/20296.png' }
   };
-  window.PM_LEAGUES_ORDER = ['laliga','hypermotion','premier','seriea','bundesliga','ligue1','primeira','eredivisie','brasileirao','championship','serieb','bundesliga2','ligue2','champions','europa','conference'];
+  window.PM_LEAGUES_ORDER = ['laliga','hypermotion','premier','seriea','bundesliga','ligue1','primeira','eredivisie','brasileirao','ligamx','argentina-a','argentina-b','mls-este','mls-oeste','championship','serieb','bundesliga2','ligue2','champions','europa','conference'];
   /* PM_TEAM_LOGOS — sobreescrituras de escudo por id de equipo ESPN (espejo
    * cliente de seo/config.py → TEAM_LOGOS) para equipos cuyo escudo oficial de
    * ESPN es 404/no se sirve. Clave = id ESPN, valor = URL válida del escudo. */

@@ -27,15 +27,15 @@
   <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
   <link rel="dns-prefetch" href="https://site.api.espn.com" />
   <link rel="dns-prefetch" href="https://a.espncdn.com" />
-  <link rel="stylesheet" href="/styles.css?v=20260826a" />
-<link rel="stylesheet" href="/assets/shell.css?v=20260826a" />
-  <link rel="stylesheet" href="/assets/account.css?v=20260826a" />
-  <link rel="stylesheet" href="/assets/fixtures.css?v=20260826a" />
-  <link rel="stylesheet" href="/assets/ads.css?v=20260826a" />
-  <script src="/assets/espn-proxy.js?v=20260826a"></script>
-  <script src="/theme.js?v=20260826a"></script>
-  <script src="/assets/league-engine.js?v=20260826a"></script>
-  <script src="/assets/fixtures.js?v=20260826a"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260902a" />
+<link rel="stylesheet" href="/assets/shell.css?v=20260902a" />
+  <link rel="stylesheet" href="/assets/account.css?v=20260902a" />
+  <link rel="stylesheet" href="/assets/fixtures.css?v=20260902a" />
+  <link rel="stylesheet" href="/assets/ads.css?v=20260902a" />
+  <script src="/assets/espn-proxy.js?v=20260902a"></script>
+  <script src="/theme.js?v=20260902a"></script>
+  <script src="/assets/league-engine.js?v=20260902a"></script>
+  <script src="/assets/fixtures.js?v=20260902a"></script>
 
   <title>{{if fileExists "/data/ligue2/head_title.txt"}}{{readFile "/data/ligue2/head_title.txt"}}{{else}}Ligue 2 2025-26 · Probabilidades de Ascenso y Descenso{{end}}</title>
   <style>
@@ -115,8 +115,8 @@
   </style>
 
   <!-- SEO principal -->
-  <meta name="description" content="{{if fileExists "/data/ligue2/head_desc.txt"}}{{readFile "/data/ligue2/head_desc.txt"}}{{else}}Simulación Monte Carlo de la Ligue 2 2025-26. Probabilidades en tiempo real de ascenso directo, play-off y descenso para los 22 equipos de Francia española.{{end}}" />
-  <meta name="keywords" content="Ligue 2, Francia probabilidades, ascenso Francia, play-off ascenso, descenso Ligue 2, predicción fútbol, simulación Francia 2025-26" />
+  <meta name="description" content="{{if fileExists "/data/ligue2/head_desc.txt"}}{{readFile "/data/ligue2/head_desc.txt"}}{{else}}Simulación Monte Carlo de la Ligue 2 2025-26. Probabilidades en tiempo real de ascenso directo, play-off y descenso para todos los equipos de Francia.{{end}}" />
+  <meta name="keywords" content="Ligue 2, Francia probabilidades, Ascenso directo Francia, Play-off de ascenso, Descenso Ligue 2, predicción fútbol, simulación Francia 2025-26" />
   <meta name="author" content="PredictMotion" />
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
   <meta name="theme-color" content="#060916" />
@@ -129,7 +129,7 @@
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://predictmotion.com/ligue2" />
   <meta property="og:title" content="{{if fileExists "/data/ligue2/head_title.txt"}}{{readFile "/data/ligue2/head_title.txt"}}{{else}}Ligue 2 2025-26 · Probabilidades de Ascenso y Descenso{{end}}" />
-  <meta property="og:description" content="{{if fileExists "/data/ligue2/head_desc.txt"}}{{readFile "/data/ligue2/head_desc.txt"}}{{else}}Simulación Monte Carlo de la Ligue 2 2025-26. Probabilidades en tiempo real de ascenso directo, play-off y descenso para los 22 equipos de Francia.{{end}}" />
+  <meta property="og:description" content="{{if fileExists "/data/ligue2/head_desc.txt"}}{{readFile "/data/ligue2/head_desc.txt"}}{{else}}Simulación Monte Carlo de la Ligue 2 2025-26. Probabilidades en tiempo real de ascenso directo, play-off y descenso para todos los equipos de Francia.{{end}}" />
   <meta property="og:image" content="{{if fileExists "/data/ligue2/head_image.txt"}}{{readFile "/data/ligue2/head_image.txt"}}{{else}}https://predictmotion.com/media/og-default.png{{end}}" />
   <meta property="og:image:alt" content="Logo PredictMotion" />
   <meta property="og:locale" content="es_ES" />
@@ -148,7 +148,7 @@
     "@context": "https://schema.org",
     "@type": "WebApplication",
     "name": "PredictMotion – Ligue 2 2025-26",
-    "description": "Simulador Monte Carlo para la Ligue 2 2025-26. Probabilidades de ascenso directo, play-off y descenso para los 22 equipos de Francia española.",
+    "description": "Simulador Monte Carlo para la Ligue 2 2025-26. Probabilidades de ascenso directo, play-off y descenso para todos los equipos de Francia.",
     "url": "https://predictmotion.com/ligue2",
     "applicationCategory": "SportsApplication",
     "operatingSystem": "Web",
@@ -294,8 +294,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 // ─── League config — añadir aquí nuevas ligas cuando se expanda ───────────
 const LEAGUE = {
   espnCode:    'fra.2',
-  promoSlots:  2,   // ascenso directo (top N)
-  playoffTop:  6,   // clasifican al play-off (incluye los directos)
+  // matchesPerTeam: partidos por equipo cuando NO es doble round-robin (mex.1 17,
+  // arg.1 16, usa.1 34). null → 2·(n−1) de siempre.
+  matchesPerTeam: null,
+  promoSlots:  2,   // zona de cabeza (top N)
+  playoffTop:  6,   // hasta aquí llega la zona intermedia (incluye la de cabeza)
   relegSlots:  3,   // fallback; se deriva de notas (deriveSlots)
   labels: {
     promo:   'Ascenso directo',
@@ -338,6 +341,11 @@ function zoneOf(pos, numTeams) {
 // ─── Zonas por notas de ESPN (2ª división: Promotion / Promotion playoffs) ──
 function noteToZone(desc) {
   const d = (desc || '').toLowerCase();
+  // MLS: "…Round One Best-of-3 series" (plaza directa) y "…Wild Card Matches"
+  // (repesca). Deben coincidir con seo/espn.py:_note_to_zone o el cliente pinta
+  // una zona y el cron calcula otra; lo comprueba seo.test_engine_parity.
+  if (d.indexOf('wild card') >= 0) return 'playoff';
+  if (d.indexOf('best-of-3') >= 0 || d.indexOf('round one') >= 0) return 'promo';
   if (d.indexOf('promotion') >= 0) return d.indexOf('playoff') >= 0 ? 'playoff' : 'promo';
   if (d.indexOf('relegat') >= 0)   return d.indexOf('playoff') >= 0 ? 'none' : 'relega';
   return 'none';
@@ -387,7 +395,7 @@ function renderLegend(numTeams) {
 // Paridad bit-idéntica con el motor embebido anterior verificada.
 function simulate(standings, sc) {
   const numTeams = standings.length;
-  const totalMd  = 2 * (numTeams - 1);
+  const totalMd  = LEAGUE.matchesPerTeam || 2 * (numTeams - 1);
   const minGp    = Math.min(...standings.map(t => t.gp));
 
   // Temporada terminada: usar el orden oficial de ESPN (ya aplica los desempates
@@ -405,7 +413,7 @@ function simulate(standings, sc) {
   }
 
   const res = PMEngine.simulate(standings, {
-    pHome: P_HOME, pDraw: P_DRAW, simN: SIM_N,
+    pHome: P_HOME, pDraw: P_DRAW, simN: SIM_N, totalMd: totalMd,
     playoffTop: null, promoSlots: LEAGUE.promoSlots, sc: sc,
   });
   const out = {};
@@ -717,15 +725,19 @@ function buildStrengthCtx(snapshot, standings) {
   return PMEngine.buildStrengthCtx(snapshot, standings, P_HOME, P_DRAW);
 }
 
-// Adapta el bloque `prob` del snapshot a las claves que espera render().
+// Adapta el bloque `prob` del snapshot a las claves que espera render(). Las
+// claves del snapshot son las de las BANDAS de la liga (config.py) y no son las
+// mismas en todas las que usan esta plantilla: ascenso/playoff/descenso en las
+// 2as europeas, promo/playoff/relega en Liga MX, MLS y Argentina. Se inyectan
+// como tokens; a fuego, el dashboard leería undefined y pintaría 0%.
 function resultsFromSnapshot(snap) {
   const out = {};
   for (const t of snap.teams) {
     const p = t.prob || {};
     out[t.name] = {
-      top2:    p.ascenso  || 0,
-      playoff: p.playoff  || 0,
-      relega:  p.descenso || 0,
+      top2:    p['ascenso'] || 0,
+      playoff: p['playoff'] || 0,
+      relega:  p['descenso'] || 0,
       pSemi:   p.pSemi || 0,
       pFinal:  p.pFinal || 0,
       pWin:    p.pWin || 0,
@@ -826,12 +838,12 @@ updateSeason();
     if (e.detail === 'partidos') PMFixtures.init('fra.2', '#fx-mount');
   });
 </script>
-<script src="/assets/account.js?v=20260826a"></script>
-  <script src="/assets/pm-leagues.js?v=20260826a"></script>
-  <script src="/assets/shell.js?v=20260826a"></script>
+<script src="/assets/account.js?v=20260902a"></script>
+  <script src="/assets/pm-leagues.js?v=20260902a"></script>
+  <script src="/assets/shell.js?v=20260902a"></script>
   <script>PMShell.chrome({ active: null });</script>
-  <script src="/assets/ads-config.js?v=20260826a"></script>
-<script src="/assets/ads.js?v=20260826a"></script>
-<script src="/assets/nav.js?v=20260826a"></script>
+  <script src="/assets/ads-config.js?v=20260902a"></script>
+<script src="/assets/ads.js?v=20260902a"></script>
+<script src="/assets/nav.js?v=20260902a"></script>
 </body>
 </html>

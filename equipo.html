@@ -17,12 +17,12 @@
   <link rel="dns-prefetch" href="https://site.api.espn.com" />
   <link rel="dns-prefetch" href="https://sports.core.api.espn.com" />
   <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
-  <link rel="stylesheet" href="/styles.css?v=20260826a" />
-  <link rel="stylesheet" href="/assets/shell.css?v=20260826a" />
-  <link rel="stylesheet" href="/assets/account.css?v=20260826a" />
-  <script src="/assets/espn-proxy.js?v=20260826a"></script>
-  <script src="/theme.js?v=20260826a"></script>
-  <script src="/assets/league-engine.js?v=20260826a"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260902a" />
+  <link rel="stylesheet" href="/assets/shell.css?v=20260902a" />
+  <link rel="stylesheet" href="/assets/account.css?v=20260902a" />
+  <script src="/assets/espn-proxy.js?v=20260902a"></script>
+  <script src="/theme.js?v=20260902a"></script>
+  <script src="/assets/league-engine.js?v=20260902a"></script>
   <title>Equipo · PredictMotion</title>
   <!-- Vista de app con parámetros (?id&league&name): infinitas variantes de una misma
        página vacía sin JS. La versión indexable es la estática /equipos/<liga>/<slug>,
@@ -355,9 +355,9 @@
   </style>
 
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3055585323326983" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="/assets/ads.css?v=20260826a" />
-  <script src="/assets/ads-config.js?v=20260826a"></script>
-  <script src="/assets/ads.js?v=20260826a"></script>
+  <link rel="stylesheet" href="/assets/ads.css?v=20260902a" />
+  <script src="/assets/ads-config.js?v=20260902a"></script>
+  <script src="/assets/ads.js?v=20260902a"></script>
 </head>
 <body>
 <!-- Google Tag Manager (noscript) -->
@@ -672,6 +672,53 @@ const LEAGUES = {
       { key: 'libertadores2', label: 'Libertadores (previa)', sub: '5º–6º',     cls: 'blue',   test: (p, n) => p >= 5 && p <= 6 },
       { key: 'sudamericana',  label: 'Sudamericana',          sub: '7º–12º',    cls: 'violet', test: (p, n) => p >= 7 && p <= 12 },
       { key: 'descenso',      label: 'Descenso',              sub: 'últimos 4', cls: 'red',    test: (p, n) => p > n - 4 },
+    ],
+  },
+
+  // ── Ligas de América con fase final (plantilla tier2). La zona de cola es
+  //    "eliminado", no descenso: ninguna expone descenso en esta tabla. Las claves
+  //    deben cuadrar con las bandas de seo/config.py (playoff_bands). ───────────
+  ligamx: {
+    slug: 'ligamx', code: 'mex.1', name: 'Liga MX', dashboard: '/ligamx',
+    pHome: 0.48, pDraw: 0.25,
+    zones: [
+      { key: 'promo',   label: 'Liguilla',  sub: 'top 6',   cls: 'green', test: (p, n) => p <= 6 },
+      { key: 'playoff', label: 'Play-In',   sub: '7º–10º',  cls: 'blue',  test: (p, n) => p >= 7 && p <= 10 },
+      { key: 'relega',  label: 'Eliminado', sub: '11º–18º', cls: 'red',   test: (p, n) => p >= 11 },
+    ],
+  },
+  'mls-este': {
+    slug: 'mls-este', code: 'usa.1', name: 'MLS · Este', dashboard: '/mls-este',
+    pHome: 0.44, pDraw: 0.26,
+    zones: [
+      { key: 'promo',   label: 'MLS Cup Playoffs', sub: 'top 7',   cls: 'green', test: (p, n) => p <= 7 },
+      { key: 'playoff', label: 'Wild Card',        sub: '8º–9º',   cls: 'blue',  test: (p, n) => p >= 8 && p <= 9 },
+      { key: 'relega',  label: 'Eliminado',        sub: '10º–15º', cls: 'red',   test: (p, n) => p >= 10 },
+    ],
+  },
+  'mls-oeste': {
+    slug: 'mls-oeste', code: 'usa.1', name: 'MLS · Oeste', dashboard: '/mls-oeste',
+    pHome: 0.44, pDraw: 0.26,
+    zones: [
+      { key: 'promo',   label: 'MLS Cup Playoffs', sub: 'top 7',   cls: 'green', test: (p, n) => p <= 7 },
+      { key: 'playoff', label: 'Wild Card',        sub: '8º–9º',   cls: 'blue',  test: (p, n) => p >= 8 && p <= 9 },
+      { key: 'relega',  label: 'Eliminado',        sub: '10º–15º', cls: 'red',   test: (p, n) => p >= 10 },
+    ],
+  },
+  'argentina-a': {
+    slug: 'argentina-a', code: 'arg.1', name: 'LPF · Zona A', dashboard: '/argentina-a',
+    pHome: 0.43, pDraw: 0.33,
+    zones: [
+      { key: 'promo',  label: 'Octavos de final', sub: 'top 8',  cls: 'green', test: (p, n) => p <= 8 },
+      { key: 'relega', label: 'Eliminado',        sub: '9º–15º', cls: 'red',   test: (p, n) => p >= 9 },
+    ],
+  },
+  'argentina-b': {
+    slug: 'argentina-b', code: 'arg.1', name: 'LPF · Zona B', dashboard: '/argentina-b',
+    pHome: 0.43, pDraw: 0.33,
+    zones: [
+      { key: 'promo',  label: 'Octavos de final', sub: 'top 8',  cls: 'green', test: (p, n) => p <= 8 },
+      { key: 'relega', label: 'Eliminado',        sub: '9º–15º', cls: 'red',   test: (p, n) => p >= 9 },
     ],
   },
 
@@ -1444,12 +1491,15 @@ const LIVE_SLUG_BY_CODE = {
   'ger.1':'bundesliga', 'ger.2':'bundesliga2',
   'fra.1':'ligue1', 'fra.2':'ligue2',
   'por.1':'primeira', 'ned.1':'eredivisie', 'bra.1':'brasileirao',
+  'mex.1':'ligamx', 'usa.1':'mls-este', 'arg.1':'argentina-a',
   'uefa.champions':'champions', 'uefa.europa':'europa', 'uefa.europa.conf':'conference',
   // Slugs cortos ya normalizados (backwards-compat con season.slug de la liga).
   laliga:'laliga', hypermotion:'hypermotion', premier:'premier', championship:'championship',
   seriea:'seriea', serieb:'serieb', bundesliga:'bundesliga', bundesliga2:'bundesliga2',
   ligue1:'ligue1', ligue2:'ligue2', primeira:'primeira', eredivisie:'eredivisie',
-  brasileirao:'brasileirao',
+  brasileirao:'brasileirao', ligamx:'ligamx',
+  'mls-este':'mls-este', 'mls-oeste':'mls-oeste',
+  'argentina-a':'argentina-a', 'argentina-b':'argentina-b',
   champions:'champions', europa:'europa', conference:'conference',
 };
 function partidoSlugFor(m) {
@@ -1920,10 +1970,10 @@ if (TEAM_ID) { triggerUpdate(); updateSeason(); }
   document.addEventListener('pm-follows-changed', render);
 })();
 </script>
-<script src="/assets/account.js?v=20260826a"></script>
-<script src="/assets/pm-leagues.js?v=20260826a"></script>
-<script src="/assets/shell.js?v=20260826a"></script>
+<script src="/assets/account.js?v=20260902a"></script>
+<script src="/assets/pm-leagues.js?v=20260902a"></script>
+<script src="/assets/shell.js?v=20260902a"></script>
 <script>PMShell.chrome({ active: null });</script>
-  <script src="/assets/nav.js?v=20260826a"></script>
+  <script src="/assets/nav.js?v=20260902a"></script>
 </body>
 </html>

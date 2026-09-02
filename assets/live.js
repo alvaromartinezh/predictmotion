@@ -28,7 +28,9 @@
     bundesliga: 'Bundesliga', bundesliga2: '2. Bundesliga',
     ligue1: 'Ligue 1', ligue2: 'Ligue 2',
     primeira: 'Primeira Liga', eredivisie: 'Eredivisie',
-    brasileirao: 'Brasileirão',
+    brasileirao: 'Brasileirão', ligamx: 'Liga MX',
+    'mls-este': 'MLS · Este', 'mls-oeste': 'MLS · Oeste',
+    'argentina-a': 'LPF · Zona A', 'argentina-b': 'LPF · Zona B',
     champions: 'Champions League', europa: 'Europa League', conference: 'Conference League'
   };
   function leagueName(slug) { return LEAGUE_NAMES[slug] || ''; }

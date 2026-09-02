@@ -12,7 +12,11 @@
     'ger.1':'bundesliga', 'ger.2':'bundesliga2',
     'fra.1':'ligue1', 'fra.2':'ligue2',
     'por.1':'primeira', 'ned.1':'eredivisie',
-    'bra.1':'brasileirao',
+    'bra.1':'brasileirao', 'mex.1':'ligamx',
+    // usa.1 y arg.1 tienen un slug por conferencia/zona; el fixture no dice cuál,
+    // así que el enlace a /partido apunta a la primera (el live_tracker solo usa
+    // el slug para las medias p_home/p_draw, iguales en las dos).
+    'usa.1':'mls-este', 'arg.1':'argentina-a',
     'uefa.champions':'champions', 'uefa.europa':'europa', 'uefa.europa.conf':'conference'
   };
   var currentSlug = '';

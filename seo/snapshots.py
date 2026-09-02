@@ -277,20 +277,29 @@ _BAND_ZONE_BY_INDEX = ("promo", "playoff", "relega")
 
 
 def _pills_for(league, template, bands):
-    """Columnas de probabilidad de una liga. `_PILLS` va por PLANTILLA, y `top1` la
-    comparten las 7 europeas (champions/europa/conference) con el Brasileirão
-    (libertadores/…/sudamericana): con las claves europeas a fuego, el rows.html sin
-    JS del Brasileirão salía con las tres columnas positivas a "—" y con las
-    etiquetas de la Champions. Cuando la liga declara sus zonas, las columnas salen
-    de SUS bandas; si no, de los valores de siempre (las 15 no cambian)."""
+    """Columnas de probabilidad de una liga. `_PILLS` va por PLANTILLA, y las
+    plantillas las comparten familias de liga con claves de zona DISTINTAS: `top1`
+    las 7 europeas (champions/europa/conference) y el Brasileirão
+    (libertadores/…/sudamericana); `tier2` las 4 segundas europeas
+    (ascenso/playoff/descenso) y Liga MX, MLS y Argentina (promo/playoff/relega).
+    Con las claves a fuego, el rows.html SIN JS salía con las columnas de zona a
+    "—" y con las etiquetas de la otra familia. Cuando la liga declara sus zonas,
+    las columnas salen de SUS bandas; si no, de los valores de siempre."""
     base = _PILLS.get(template)
     short = league.get("zone_labels_short")
-    if template != "top1" or not short or len(bands) != 4:
+    if not short:
         return base
     keys = [b["key"] for b in bands]
-    return ([("first", "gold", "Título")]
-            + [(keys[i], cls, short[i]) for i, cls in enumerate(("up", "eu", "cf"))]
-            + [(keys[3], "down", "Descenso")])
+    if template == "top1" and len(bands) == 4:
+        return ([("first", "gold", "Título")]
+                + [(keys[i], cls, short[i]) for i, cls in enumerate(("up", "eu", "cf"))]
+                + [(keys[3], "down", "Descenso")])
+    if template == "tier2" and len(bands) in (2, 3):
+        # 3 zonas (cabeza / intermedia / cola) o 2 (Argentina: clasifica o no).
+        clases = ("up", "po") if len(bands) == 3 else ("up",)
+        return ([(keys[i], cls, short[i]) for i, cls in enumerate(clases)]
+                + [(keys[-1], "down", short[-1])])
+    return base
 
 
 def _prob_pill(pct, kind, label):
@@ -374,8 +383,16 @@ def render_rows_html(league, snap):
 # mantiene ADEMÁS en la raíz data/<slug>/latest.json — ese es el contrato que leen
 # los dashboards (/data/<slug>/latest.json), no se toca.
 
+def _season_key(season):
+    """Nombre de carpeta de una temporada. Las de torneo partido llevan espacio
+    ("Apertura 2026", que es como se llama de verdad y como se muestra en los
+    títulos); en disco va con guion. No-op para 'YYYY-YY'/'YYYY', así que ninguna
+    carpeta existente se mueve."""
+    return str(season).replace(" ", "-")
+
+
 def _season_dir(slug, season):
-    d = DATA_DIR / slug / season
+    d = DATA_DIR / slug / _season_key(season)
     (d / "snapshots").mkdir(parents=True, exist_ok=True)
     return d
 
@@ -455,7 +472,7 @@ def save_offseason_latest(slug, snap):
 
 def load_all(slug, season):
     """Snapshots de UNA temporada de una liga, ordenados por fecha ascendente."""
-    d = DATA_DIR / slug / season / "snapshots"
+    d = DATA_DIR / slug / _season_key(season) / "snapshots"
     if not d.exists():
         return []
     snaps = []

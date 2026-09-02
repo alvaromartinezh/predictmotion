@@ -26,15 +26,15 @@
   <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
   <link rel="dns-prefetch" href="https://site.api.espn.com" />
   <link rel="dns-prefetch" href="https://a.espncdn.com" />
-  <link rel="stylesheet" href="/styles.css?v=20260826a" />
-<link rel="stylesheet" href="/assets/shell.css?v=20260826a" />
-  <link rel="stylesheet" href="/assets/account.css?v=20260826a" />
-  <link rel="stylesheet" href="/assets/fixtures.css?v=20260826a" />
-  <link rel="stylesheet" href="/assets/ads.css?v=20260826a" />
-  <script src="/assets/espn-proxy.js?v=20260826a"></script>
-  <script src="/theme.js?v=20260826a"></script>
-  <script src="/assets/league-engine.js?v=20260826a"></script>
-  <script src="/assets/fixtures.js?v=20260826a"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260902a" />
+<link rel="stylesheet" href="/assets/shell.css?v=20260902a" />
+  <link rel="stylesheet" href="/assets/account.css?v=20260902a" />
+  <link rel="stylesheet" href="/assets/fixtures.css?v=20260902a" />
+  <link rel="stylesheet" href="/assets/ads.css?v=20260902a" />
+  <script src="/assets/espn-proxy.js?v=20260902a"></script>
+  <script src="/theme.js?v=20260902a"></script>
+  <script src="/assets/league-engine.js?v=20260902a"></script>
+  <script src="/assets/fixtures.js?v=20260902a"></script>
 
   <title>{{if fileExists "/data/primeira/head_title.txt"}}{{readFile "/data/primeira/head_title.txt"}}{{else}}Primeira Liga 2025-26 · Probabilidades Champions, Europa y Descenso{{end}}</title>
   <style>
@@ -661,17 +661,21 @@ function buildStrengthCtx(snapshot, standings) {
   return PMEngine.buildStrengthCtx(snapshot, standings, P_HOME, P_DRAW);
 }
 
-// Adapta el bloque `prob` del snapshot a las claves que espera render().
+// Adapta el bloque `prob` del snapshot a las claves que espera render(). Las
+// claves del snapshot son las de las BANDAS de la liga (config.py), que no son
+// las mismas en todas las que usan esta plantilla: champions/europa/conference
+// en las europeas, libertadores/… en el Brasileirão. Se inyectan como tokens; si
+// se dejan a fuego, el dashboard lee undefined y pinta 0% en las tres columnas.
 function resultsFromSnapshot(snap) {
   const out = {};
   for (const t of snap.teams) {
     const p = t.prob || {};
     out[t.name] = {
-      first:  p.first      || 0,
-      champ:  p.champions  || 0,
-      europa: p.europa     || 0,
-      conf:   p.conference || 0,
-      relega: p.descenso   || 0,
+      first:  p.first || 0,
+      champ:  p['champions']  || 0,
+      europa: p['europa'] || 0,
+      conf:   p['conference']   || 0,
+      relega: p['descenso'] || 0,
     };
   }
   return out;
@@ -775,12 +779,12 @@ updateSeason();
     if (e.detail === 'partidos') PMFixtures.init('por.1', '#fx-mount');
   });
 </script>
-<script src="/assets/account.js?v=20260826a"></script>
-  <script src="/assets/pm-leagues.js?v=20260826a"></script>
-  <script src="/assets/shell.js?v=20260826a"></script>
+<script src="/assets/account.js?v=20260902a"></script>
+  <script src="/assets/pm-leagues.js?v=20260902a"></script>
+  <script src="/assets/shell.js?v=20260902a"></script>
   <script>PMShell.chrome({ active: null });</script>
-  <script src="/assets/ads-config.js?v=20260826a"></script>
-<script src="/assets/ads.js?v=20260826a"></script>
-<script src="/assets/nav.js?v=20260826a"></script>
+  <script src="/assets/ads-config.js?v=20260902a"></script>
+<script src="/assets/ads.js?v=20260902a"></script>
+<script src="/assets/nav.js?v=20260902a"></script>
 </body>
 </html>

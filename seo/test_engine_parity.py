@@ -154,7 +154,8 @@ def _registros_cliente():
 
     texto = (ROOT / "equipo.html").read_text(encoding="utf-8")
     vistos = {m[0]: (float(m[1]), float(m[2])) for m in re.findall(
-        r"^\s{2}(\w+): \{\n(?:.*?\n)*?\s{4}pHome: ([\d.]+), pDraw: ([\d.]+)",
+        # La clave va entre comillas cuando el slug lleva guion ('mls-este').
+        r"^\s{2}'?([\w-]+)'?: \{\n(?:.*?\n)*?\s{4}pHome: ([\d.]+), pDraw: ([\d.]+)",
         texto, re.M)}
     for lg in LEAGUES:
         par = vistos.get(lg["slug"])
@@ -181,17 +182,62 @@ def _cortes_de_zona_fijos():
 
     for lg in LEAGUES:
         slots = lg.get("zone_slots")
-        if not slots or lg.get("bands_from_notes"):
+        if not slots:
             continue
-        for n in (18, 20, 22):
+        # Nº de equipos con el que las zonas embaldosan la tabla exactamente: el
+        # último corte de cabeza más los puestos de cola. Es el tamaño real de la
+        # liga y el único n en el que la comprobación tiene sentido para las que
+        # llevan la cola en cortes ABSOLUTOS (Liga MX: 11º-18º) y no relativos a n.
+        for n in (slots[-2] + slots[-1],):
             bandas = lg["bands"](n)
-            assert len(bandas) == 4, "%s: zone_slots asume 3 zonas + descenso" % lg["slug"]
-            esperado = (bandas[0]["hi"], bandas[1]["hi"], bandas[2]["hi"],
-                        n - bandas[3]["lo"] + 1)
+            # Cabeza(s) por su `hi`, cola por cuántos puestos ocupa. Una liga de DOS
+            # zonas (Argentina) repite el corte de cabeza en el hueco intermedio:
+            # así `playoffTop == promoSlots` y la zona de en medio queda vacía, que
+            # es justo lo que hace que la plantilla le quite la columna.
+            cabezas = tuple(b["hi"] for b in bandas[:-1])
+            cabezas += cabezas[-1:] * (len(slots) - 1 - len(cabezas))
+            esperado = cabezas + (n - bandas[-1]["lo"] + 1,)
             assert tuple(slots) == esperado, (
                 "%s con %d equipos: zone_slots %s y bands() %s"
                 % (lg["slug"], n, tuple(slots), esperado))
-    print("cortes de zona fijos: zone_slots cuadra con bands() en config.py")
+    print("cortes de zona fijos: zone_slots cuadra con bands() en %d ligas"
+          % sum(1 for lg in LEAGUES if lg.get("zone_slots")))
+
+
+def _claves_de_prob():
+    """El dashboard lee `prob` del snapshot POR CLAVE, y las claves son las de las
+    bandas de la liga. Cuando `resultsFromSnapshot` las llevaba a fuego, cualquier
+    liga con otras zonas en la misma plantilla leía `undefined` y pintaba 0% en
+    todas sus columnas — con el snapshot presente y sin ningún error. Ahora se
+    inyectan como tokens desde `bands()`; esto comprueba el resultado en el HTML
+    generado, que es lo que se sirve."""
+    import re
+    from .config import LEAGUES
+
+    for lg in LEAGUES:
+        f = ROOT / f'{lg["slug"]}.html'
+        if not f.exists():
+            continue
+        html = f.read_text(encoding="utf-8")
+        bloque = re.search(r"function resultsFromSnapshot\(snap\)\s*\{.*?\n\}",
+                           html, re.S)
+        assert bloque, "%s: sin resultsFromSnapshot" % lg["slug"]
+        leidas = set(re.findall(r"p\['([^']+)'\]", bloque.group(0)))
+        leidas |= set(re.findall(r"\bp\.(\w+)", bloque.group(0)))
+        esperadas = {b["key"] for b in lg["bands"](20)}
+        # `first`/`last` no son bandas; y la zona intermedia se recorta en las ligas
+        # de dos zonas, así que solo se exige que lo leído sea un subconjunto válido
+        # y que ninguna banda con columna propia se quede sin leer.
+        faltan = esperadas - leidas - {"playoff"} if len(esperadas) == 2 else esperadas - leidas
+        assert not faltan, (
+            "%s.html no lee del snapshot las claves %s (bandas de config.py)"
+            % (lg["slug"], sorted(faltan)))
+        sobran = leidas - esperadas - {"first", "last", "pSemi", "pFinal", "pWin",
+                                       "ascenso_total"}
+        assert not sobran, (
+            "%s.html lee claves que su bands() no escribe: %s"
+            % (lg["slug"], sorted(sobran)))
+    print("claves de prob: cada dashboard lee las claves de banda de su liga")
 
 
 def _notas_de_zona():
@@ -220,6 +266,7 @@ def main():
     _consumidores_del_modelo()
     _registros_cliente()
     _cortes_de_zona_fijos()
+    _claves_de_prob()
     _notas_de_zona()
     if not shutil.which("node"):
         print("node no está en el PATH — prueba omitida")

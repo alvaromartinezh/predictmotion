@@ -56,7 +56,9 @@ def build_alias_index():
     teams = []          # {id, name, slug, norm, core}
     for slug, code in LEAGUES.items():
         try:
-            rows = espn.fetch_table(code)
+            # child=None: fusiona todos los grupos. usa.1 y arg.1 sirven la tabla
+            # por conferencia/zona y con el grupo 0 se indexaría media liga.
+            rows = espn.fetch_table(code, child=None)
         except Exception:
             continue    # una liga sin datos (p. ej. pretemporada) → se salta
         for r in rows:

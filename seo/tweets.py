@@ -93,16 +93,18 @@ def _zones(slug):
     if not lg:
         return []
     t = lg.get("dashboard_template")
+    # `top1` la comparten las europeas y el Brasileirão, y `tier2` las 2as europeas
+    # con Liga MX, MLS y Argentina, cada familia con SUS claves de zona. Si la liga
+    # declara las suyas, las columnas salen de sus bandas (mismo motivo que
+    # snapshots._pills_for: con las claves a fuego el tuit saldría a cero).
+    etiquetas = lg.get("zone_labels")
+    if etiquetas and t in ("top1", "tier2"):
+        claves = [b["key"] for b in lg["bands"](20)]
+        pares = list(zip(claves, etiquetas))
+        if len(claves) > len(etiquetas):     # top1: la cola no va en zone_labels
+            pares.append((claves[-1], "Descenso"))
+        return ([("first", "Título")] if t == "top1" else []) + pares
     if t == "top1":
-        # `top1` la comparten las 7 europeas y el Brasileirão, con claves de zona
-        # distintas. Si la liga declara las suyas, salen de SUS bandas (mismo motivo
-        # que snapshots._pills_for: con ZONES_TOP1 a fuego el tuit saldría vacío).
-        etiquetas = lg.get("zone_labels")
-        if etiquetas:
-            claves = [b["key"] for b in lg["bands"](20)]
-            return ([("first", "Título")]
-                    + list(zip(claves[:3], etiquetas))
-                    + [(claves[3], "Descenso")])
         return ZONES_TOP1
     if t in ("top2", "tier2"):
         return ZONES_TIER2
@@ -131,6 +133,11 @@ HASHTAGS = {
     "primeira":    ["#LigaPortugal", "#futbol", "#predicciones"],
     "eredivisie":  ["#Eredivisie", "#futbol", "#predicciones"],
     "brasileirao": ["#Brasileirao", "#futbol", "#predicciones"],
+    "ligamx":      ["#LigaMX", "#futbol", "#predicciones"],
+    "mls-este":    ["#MLS", "#futbol", "#predicciones"],
+    "mls-oeste":   ["#MLS", "#futbol", "#predicciones"],
+    "argentina-a": ["#LigaProfesional", "#futbol", "#predicciones"],
+    "argentina-b": ["#LigaProfesional", "#futbol", "#predicciones"],
     "championship": ["#Championship", "#futbol", "#predicciones"],
     "serieb":      ["#SerieB", "#futbol", "#predicciones"],
     "bundesliga2": ["#2Bundesliga", "#futbol", "#predicciones"],

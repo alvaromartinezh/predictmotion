@@ -51,6 +51,31 @@
     <priority>0.9</priority>
   </url>
   <url>
+    <loc>https://predictmotion.com/ligamx</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://predictmotion.com/mls-este</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://predictmotion.com/mls-oeste</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://predictmotion.com/argentina-a</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://predictmotion.com/argentina-b</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
     <loc>https://predictmotion.com/championship</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>

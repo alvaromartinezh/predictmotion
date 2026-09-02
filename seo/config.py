@@ -62,6 +62,9 @@ STRENGTH_LADDERS = [
     ["por.1"],            # Portugal (solo 1ª cubierta)
     ["ned.1"],            # Países Bajos (solo 1ª cubierta)
     ["bra.1"],            # Brasil (solo Série A cubierta)
+    ["mex.1"],            # México (solo Liga MX cubierta)
+    ["arg.1"],            # Argentina (solo LPF cubierta)
+    ["usa.1"],            # Estados Unidos (solo MLS cubierta)
 ]
 
 # Ligas cuya temporada es el AÑO NATURAL, no la europea (agosto→mayo). El año
@@ -70,7 +73,30 @@ STRENGTH_LADDERS = [
 # 2026-27) mientras el Brasileirão ya va por el 2027. generate_site pide el año
 # de cada una por separado (una llamada extra, solo si la liga está activa).
 # Cuando entren arg.1 y usa.1 van aquí también.
-CALENDAR_YEAR_CODES = {"bra.1"}
+CALENDAR_YEAR_CODES = {"bra.1", "arg.1", "usa.1"}
+
+# Ligas de temporada PARTIDA en dos torneos, con sus `seasontype` de ESPN en orden
+# CRONOLÓGICO dentro del año natural. Sirve para dos cosas:
+#   1. `espn.prior_tournaments` recorre los torneos hacia atrás desde el que está en
+#      juego, así el blend multi-temporada son los 3 últimos TORNEOS. Sin esto,
+#      `mex.1?season=2024` y `?season=2025` devuelven LA MISMA tabla (el Clausura
+#      2025) y el prior mezclaría una temporada consigo misma.
+#   2. `generate_site` pide su torneo vivo para arrancar la secuencia en el anterior.
+# Comprobado contra ESPN (2026-09-02) recorriendo la rejilla season × seasontype:
+#   arg.1 → 1 Apertura (primer semestre), 6 Clausura (segundo). Los dos responden
+#     bien a cualquier `season`: (2026,1), (2025,6) y (2025,1) devuelven sus 30
+#     equipos con gp=16. Van los dos.
+#   mex.1 → solo el APERTURA (1) es direccionable de forma fiable: season=Y&st=1
+#     devuelve siempre "Y Torneo Apertura". El Clausura (8) está roto en ESPN —
+#     season=2025 y season=2024 devuelven AMBOS el "2025 Torneo Clausura", y
+#     season=2026 y 2023 vienen vacíos. Pedirlo metería una temporada duplicada en
+#     el blend y desperdiciaría el peso de la más reciente, así que el prior de
+#     Liga MX usa los 3 últimos Aperturas. Es la mitad del histórico disponible, y
+#     es la mitad en la que se puede confiar.
+SPLIT_SEASON_TYPES = {
+    "mex.1": (1,),
+    "arg.1": (1, 6),
+}
 STRENGTH_LEVEL_GAP   = 2.5    # separación entre divisiones, en unidades z de puntos
 STRENGTH_SCALE       = 0.28   # cuánto sesga el partido una diferencia de 1 unidad
                               # (0.28: Barça ~38% título/~79% top-4; equilibra
@@ -221,6 +247,23 @@ def conmebol_top1_bands():
         ("sudamericana",  "Sudamericana",          "violet", lambda n: 7,      lambda n: 12, "conf"),
         ("descenso",      "Descenso",              "red",    lambda n: n - 3,  lambda n: n,  "relega"),
     ])
+
+
+def playoff_bands(promo_hi, playoff_hi, promo_label, playoff_label, out_label):
+    """Liga que se juega una FASE FINAL por posición: zona de clasificación directa,
+    zona intermedia (repesca/play-in) y eliminados. Mapea a las mismas tres zonas
+    internas que `tier2` (promo/playoff/relega) para reusar esa plantilla.
+
+    `playoff_hi=None` → solo DOS zonas (clasifica o no; Argentina). La plantilla
+    quita la columna de en medio en tiempo de render (ver render_dashboard).
+    """
+    slots = [(("promo", promo_label, "green", lambda n: 1, lambda n: promo_hi, "promo"))]
+    if playoff_hi is not None:
+        slots.append(("playoff", playoff_label, "blue",
+                      lambda n: promo_hi + 1, lambda n: playoff_hi, "playoff"))
+    fuera_lo = (playoff_hi or promo_hi) + 1
+    slots.append(("relega", out_label, "red", lambda n: fuera_lo, lambda n: n, "relega"))
+    return _table_bands(slots)
 
 
 def euro_league_phase_bands():
@@ -446,6 +489,105 @@ LEAGUES = [
         "about": "La Ligue 2, segunda categoría del fútbol francés, la disputan 18 clubes cada temporada. Los dos primeros ascienden directos a la Ligue 1 y del tercero al sexto se juegan el ascenso en un play-off, mientras los dos últimos descienden al National. En PredictMotion se simula la temporada completa para estimar la probabilidad real de cada equipo de ascender, jugar el play-off o descender.",
         "p_home": 0.45, "p_draw": 0.28, "playoff_top": None,
         "bands_from_notes": True, "bands": euro_top2_bands(),
+    },
+
+    # ── Fase 4: ligas de América con fase final (plantilla tier2 con etiquetas
+    #    propias). NINGUNA tiene descenso que ESPN exponga en la tabla: la zona de
+    #    cola es "eliminado", no "descenso". Sin notas de zona salvo la MLS.
+    #
+    # ⚠️ CORTES A MANO. mex.1 y arg.1 no traen NINGUNA nota de zona en ESPN (ni
+    # siquiera en torneos ya terminados, comprobado 2026-09-02), así que estos
+    # números no se auto-corrigen: si la Liga MX cambia el número de plazas de
+    # Liguilla o la LPF el de clasificados, hay que tocarlos aquí. La MLS sí trae
+    # notas y va con bands_from_notes.
+    {
+        "slug": "ligamx", "espn_code": "mex.1", "kind": "table",
+        "name": "Liga MX", "article": "la", "season": "2026-27",
+        "country": "México", "dashboard": "/ligamx",
+        "dashboard_template": "tier2", "subtitle": "México",
+        "about": "La Liga MX, primera división del fútbol mexicano, reparte su temporada en dos torneos cortos —Apertura y Clausura— de 17 jornadas cada uno entre 18 clubes. Los seis primeros de la fase regular pasan directos a la Liguilla y del séptimo al décimo se juegan las dos plazas restantes en el Play-In. En PredictMotion se simula el resto del torneo para estimar la probabilidad real de cada equipo de entrar en la Liguilla, caer en el Play-In o quedarse fuera.",
+        # MEDIDOS sobre resultados reales: 340 partidos de 2025 (0.491/0.232) y 340
+        # de 2024 (0.462/0.268).
+        "p_home": 0.48, "p_draw": 0.25, "playoff_top": None,
+        "matches_per_team": 17,      # vuelta simple: n-1, no 2·(n-1)
+        "split_season": True,        # partición por torneo (Apertura/Clausura)
+        "bands": playoff_bands(6, 10, "Liguilla", "Play-In", "Eliminado"),
+        "zone_labels": ("Liguilla", "Play-In", "Eliminado"),
+        "zone_labels_short": ("Liguilla", "Play-In", "Fuera"),
+        "zone_slots": (6, 10, 8),
+        "zones_text": "Liguilla, Play-In y eliminación",
+        "zones_text_largo": "Liguilla directa, Play-In o eliminación",
+    },
+    {
+        "slug": "mls-este", "espn_code": "usa.1", "kind": "table", "child": 0,
+        "name": "MLS · Este", "article": "la", "season": "2026",
+        "country": "Estados Unidos", "dashboard": "/mls-este",
+        "dashboard_template": "tier2", "subtitle": "Conferencia Este",
+        "about": "La Conferencia Este de la MLS reúne a 15 franquicias que disputan 34 partidos por las nueve plazas de los MLS Cup Playoffs. Los siete primeros entran directos en la Primera Ronda, al mejor de tres partidos, y el octavo y el noveno se juegan la última plaza en el Wild Card. En PredictMotion se simula el resto de la temporada regular para estimar la probabilidad real de cada equipo de clasificarse, caer en el Wild Card o quedarse fuera.",
+        # MEDIDOS: 537 partidos de 2025 (0.441/0.255) y 520 de 2024 (0.444/0.256).
+        "p_home": 0.44, "p_draw": 0.26, "playoff_top": None,
+        "matches_per_team": 34,      # calendario desequilibrado, no round-robin
+        "bands_from_notes": True,    # la MLS SÍ marca las zonas en las notas
+        "bands": playoff_bands(7, 9, "MLS Cup Playoffs", "Wild Card", "Eliminado"),
+        "zone_labels": ("MLS Cup Playoffs", "Wild Card", "Eliminado"),
+        "zone_labels_short": ("Playoffs", "Wild Card", "Fuera"),
+        "zone_slots": (7, 9, 6),
+        "zones_text": "playoffs, Wild Card y eliminación",
+        "zones_text_largo": "plaza directa en los playoffs, Wild Card o eliminación",
+    },
+    {
+        "slug": "mls-oeste", "espn_code": "usa.1", "kind": "table", "child": 1,
+        "name": "MLS · Oeste", "article": "la", "season": "2026",
+        "country": "Estados Unidos", "dashboard": "/mls-oeste",
+        "dashboard_template": "tier2", "subtitle": "Conferencia Oeste",
+        "about": "La Conferencia Oeste de la MLS reúne a 15 franquicias que disputan 34 partidos por las nueve plazas de los MLS Cup Playoffs. Los siete primeros entran directos en la Primera Ronda, al mejor de tres partidos, y el octavo y el noveno se juegan la última plaza en el Wild Card. En PredictMotion se simula el resto de la temporada regular para estimar la probabilidad real de cada equipo de clasificarse, caer en el Wild Card o quedarse fuera.",
+        "p_home": 0.44, "p_draw": 0.26, "playoff_top": None,
+        "matches_per_team": 34,
+        "bands_from_notes": True,
+        "bands": playoff_bands(7, 9, "MLS Cup Playoffs", "Wild Card", "Eliminado"),
+        "zone_labels": ("MLS Cup Playoffs", "Wild Card", "Eliminado"),
+        "zone_labels_short": ("Playoffs", "Wild Card", "Fuera"),
+        "zone_slots": (7, 9, 6),
+        "zones_text": "playoffs, Wild Card y eliminación",
+        "zones_text_largo": "plaza directa en los playoffs, Wild Card o eliminación",
+    },
+    # Argentina: DOS zonas, sin nada en medio (se clasifica a octavos o no). La
+    # plantilla quita la columna intermedia porque `zone_labels` trae 2 etiquetas.
+    # El descenso NO sale aquí: en la LPF va por promedios y por la tabla anual,
+    # tablas distintas que ESPN no expone.
+    {
+        "slug": "argentina-a", "espn_code": "arg.1", "kind": "table", "child": 0,
+        "name": "LPF · Zona A", "article": "la", "season": "2026",
+        "country": "Argentina", "dashboard": "/argentina-a",
+        "dashboard_template": "tier2", "subtitle": "Zona A",
+        "about": "La Liga Profesional argentina reparte a sus 30 clubes en dos zonas de 15 que juegan 16 jornadas cada torneo. Los ocho primeros de cada zona pasan a los octavos de final, que se resuelven a partido único. El descenso no se decide en esta tabla, sino por promedios y por la tabla anual. En PredictMotion se simula el resto del torneo para estimar la probabilidad real de cada equipo de clasificarse para los octavos.",
+        # MEDIDOS: 510 partidos de 2025 (0.408/0.316) y 378 de 2024 (0.450/0.336).
+        # El empate en Argentina es muy alto (1,95 goles por partido en 2025).
+        "p_home": 0.43, "p_draw": 0.33, "playoff_top": None,
+        "matches_per_team": 16,
+        "split_season": True,
+        "bands": playoff_bands(8, None, "Octavos de final", None, "Eliminado"),
+        "zone_labels": ("Octavos de final", "Eliminado"),
+        "zone_labels_short": ("Octavos", "Fuera"),
+        "zone_slots": (8, 8, 7),
+        "zones_text": "clasificación a octavos y eliminación",
+        "zones_text_largo": "clasificación para los octavos de final o eliminación",
+    },
+    {
+        "slug": "argentina-b", "espn_code": "arg.1", "kind": "table", "child": 1,
+        "name": "LPF · Zona B", "article": "la", "season": "2026",
+        "country": "Argentina", "dashboard": "/argentina-b",
+        "dashboard_template": "tier2", "subtitle": "Zona B",
+        "about": "La Liga Profesional argentina reparte a sus 30 clubes en dos zonas de 15 que juegan 16 jornadas cada torneo. Los ocho primeros de cada zona pasan a los octavos de final, que se resuelven a partido único. El descenso no se decide en esta tabla, sino por promedios y por la tabla anual. En PredictMotion se simula el resto del torneo para estimar la probabilidad real de cada equipo de clasificarse para los octavos.",
+        "p_home": 0.43, "p_draw": 0.33, "playoff_top": None,
+        "matches_per_team": 16,
+        "split_season": True,
+        "bands": playoff_bands(8, None, "Octavos de final", None, "Eliminado"),
+        "zone_labels": ("Octavos de final", "Eliminado"),
+        "zone_labels_short": ("Octavos", "Fuera"),
+        "zone_slots": (8, 8, 7),
+        "zones_text": "clasificación a octavos y eliminación",
+        "zones_text_largo": "clasificación para los octavos de final o eliminación",
     },
 
     # ── Fase 2: competiciones UEFA (fase de liga, plantilla `uefa`) ─────────────
