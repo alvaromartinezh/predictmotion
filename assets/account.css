@@ -26,7 +26,7 @@
   transition: transform .08s ease, color .15s ease, border-color .15s ease;
 }
 .pm-star:hover { transform: scale(1.08); border-color: var(--accent); color: var(--text); }
-.pm-star.is-on { color: #ffcf3f; border-color: #ffcf3f; }
+.pm-star.is-on { color: var(--fav); border-color: var(--fav); }
 .comp-card { position: relative; }  /* ancla para la estrella */
 
 /* ── Tiras personalizadas en la home ── */
@@ -43,8 +43,8 @@
 }
 .pm-chip:hover { border-color: var(--accent); }
 .pm-chip img { width: 20px; height: 20px; object-fit: contain; }
-.pm-chip--fav { border-color: #ffcf3f; }
-.pm-chip__star { color: #ffcf3f; }
+.pm-chip--fav { border-color: var(--fav); }
+.pm-chip__star { color: var(--fav); }
 .pm-mine__hint { color: var(--muted); font-size: var(--fs-13); }
 
 /* ── Botones de seguir en la página de equipo ── */
@@ -58,4 +58,4 @@
 }
 .pm-fbtn:hover { border-color: var(--accent); }
 .pm-fbtn.is-on { border-color: var(--accent); color: var(--accent); }
-.pm-fbtn--fav.is-on { border-color: #ffcf3f; color: #ffcf3f; }
+.pm-fbtn--fav.is-on { border-color: var(--fav); color: var(--fav); }
