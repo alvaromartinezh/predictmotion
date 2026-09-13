@@ -44,6 +44,7 @@
   --po:        #f3b23f;   /* play-off */
   --po-soft:   rgba(243,178,63,.12);
   --down:      #ff556b;   /* descenso */
+  --fav:       #ffcf3f;   /* favorito (estrella de seguir) */
   --down-soft: rgba(255,85,107,.12);
 
   /* Tipografía */
@@ -496,6 +497,8 @@ html[data-theme="light"] {
   --up:        #0f9e68; --up-soft:   rgba(15,158,104,.13);
   --po:        #c4860f; --po-soft:   rgba(196,134,15,.14);
   --down:      #e23a52; --down-soft: rgba(226,58,82,.12);
+  /* el ámbar del tema oscuro da 1.30:1 aquí: invisible. Oscurecido hasta AA (5.04:1). */
+  --fav:       #8a5e06;
 
   --shadow-sm: 0 1px 2px rgba(20,30,60,.07);
   --shadow-md: 0 10px 28px rgba(20,30,60,.12);
