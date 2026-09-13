@@ -247,7 +247,7 @@ a.hero-match:hover { border-color: var(--accent-line); }
 .cta-card .btns { display: flex; gap: var(--sp-3); justify-content: center; flex-wrap: wrap; }
 
 .methodology-callout { border-top: 1px solid var(--line); padding: var(--sp-6) var(--sp-5); text-align: center; color: var(--text-2); }
-.methodology-callout h3 { font-family: var(--font-display); font-size: var(--fs-16); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-1); margin-bottom: var(--sp-2); }
+.methodology-callout h3 { font-family: var(--font-display); font-size: var(--fs-16); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text); margin-bottom: var(--sp-2); }
 .methodology-callout p { max-width: 520px; margin: 0 auto; font-size: var(--fs-14); line-height: 1.6; }
 
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: .03em; padding: 12px 22px; border-radius: var(--r-pill); font-size: var(--fs-15); }
