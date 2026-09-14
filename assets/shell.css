@@ -25,12 +25,19 @@
   background: color-mix(in oklab, var(--bg) 82%, transparent);
   backdrop-filter: blur(16px) saturate(1.3); border-bottom: 1px solid var(--line-soft);
 }
-.appbar__brand { display: inline-flex; align-items: center; gap: .3em; font-family: var(--font-display); font-weight: 800; font-size: var(--fs-22); text-transform: uppercase; letter-spacing: .01em; }
-.appbar__brand .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent-glow); }
+/* min-width:0 deja que el wordmark ceda espacio al CTA de login en vez de
+   desbordar el appbar en móvil (328px de hueco vs ~360px que pide el conjunto
+   dot+wordmark+toggle+CTA sin encoger); el texto trunca con ellipsis en vez de
+   recortarse a lo bruto. */
+.appbar__brand { display: inline-flex; align-items: center; gap: .3em; min-width: 0; font-family: var(--font-display); font-weight: 800; font-size: var(--fs-22); text-transform: uppercase; letter-spacing: .01em; }
+.appbar__brand .dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent-glow); }
+.appbar__brand-text { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .appbar__brand b { color: var(--accent); }
 .appbar__spacer { flex: 1; }
 
-.iconbtn { width: 38px; height: 38px; display: grid; place-items: center; border-radius: var(--r-pill); color: var(--text-2); border: 1px solid transparent; transition: background .16s var(--ease), color .16s var(--ease); }
+/* flex-shrink:0: es un control de tamaño fijo (tap target 38×38); sin esto el
+   flexbox del appbar lo comprime en vez de encoger el wordmark (ver arriba). */
+.iconbtn { flex-shrink: 0; width: 38px; height: 38px; display: grid; place-items: center; border-radius: var(--r-pill); color: var(--text-2); border: 1px solid transparent; transition: background .16s var(--ease), color .16s var(--ease); }
 .iconbtn:hover { background: var(--surface-2); color: var(--text); }
 .iconbtn svg { width: 20px; height: 20px; }
 .avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; overflow: hidden; font-family: var(--font-display); font-weight: 700; font-size: var(--fs-14); background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: var(--accent-ink); }
