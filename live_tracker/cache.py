@@ -17,6 +17,14 @@ from .providers.base import MatchDataProvider
 
 log = logging.getLogger("live_tracker.cache")
 
+# Cadencia y retención del barrido de _details/_post_seen/_post_refreshed. Sin
+# esto, cada partido que pasa por 'post' se queda ahí para siempre: pasado su
+# DETAIL_TTL_SECONDS, get_detail() ya no vuelve a leer esa entrada de _details
+# (cae a disco), así que solo ocupa memoria — con 21 ligas y meses sin reinicio
+# (el servicio no se reinicia solo) los tres dicts crecen sin límite.
+_GC_INTERVAL_SECONDS = 3600
+_GC_MAX_AGE_SECONDS = 6 * 3600  # generoso: muy por encima de FINAL_REFRESH_SECONDS
+
 
 def _has_lineups(detail_dict: dict) -> bool:
     return any(l.get("starters") for l in detail_dict.get("lineups", {}).values())
@@ -31,6 +39,7 @@ class LiveStore:
         self._post_refreshed: set = set()          # claves ya re-guardadas tras el final
         self._lock = threading.RLock()
         self._stop = threading.Event()
+        self._last_gc = 0.0
 
     # ── lectura (la usa el servidor) ──────────────────────────────────────────
 
@@ -119,6 +128,23 @@ class LiveStore:
                 else:
                     self._post_seen[key] = now  # sin alineaciones todavía: reintentar en la próxima ronda
 
+    # ── limpieza (evita crecimiento sin límite en meses de uptime) ─────────────
+
+    def _gc(self, now: float, live_keys: set):
+        if now - self._last_gc < _GC_INTERVAL_SECONDS:
+            return
+        self._last_gc = now
+        with self._lock:
+            dead_details = [k for k, (ts, _) in self._details.items()
+                             if k not in live_keys and now - ts > config.DETAIL_TTL_SECONDS]
+            for k in dead_details:
+                del self._details[k]
+            dead_seen = [k for k, ts in self._post_seen.items()
+                         if k not in live_keys and now - ts > _GC_MAX_AGE_SECONDS]
+            for k in dead_seen:
+                del self._post_seen[k]
+                self._post_refreshed.discard(k)
+
     # ── poller en hilo de fondo ───────────────────────────────────────────────
 
     def start_poller(self):
@@ -158,4 +184,5 @@ class LiveStore:
                 if self._stop.is_set():
                     break
                 self._refresh_detail(league, eid)
+            self._gc(now, set(live_ids))
             self._stop.wait(config.LIVE_POLL_SECONDS)
