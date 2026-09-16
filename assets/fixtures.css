@@ -4,12 +4,13 @@
 /* ── Pestañas (estilo subrayado del sistema de diseño) ── */
 .page-tabs {
   display: flex; gap: var(--sp-1); border-bottom: 1px solid var(--line);
-  margin-top: var(--sp-2);
+  margin-top: var(--sp-2); overflow-x: auto; -webkit-overflow-scrolling: touch;
 }
 .page-tab {
   position: relative; padding: var(--sp-4); background: none; border: none; cursor: pointer;
   font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
   font-size: var(--fs-16); color: var(--muted); transition: color .18s var(--ease);
+  flex: none; white-space: nowrap;
 }
 .page-tab:hover:not(.active) { color: var(--text-2); }
 .page-tab.active { color: var(--text); }

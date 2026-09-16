@@ -11,7 +11,7 @@
 }
 .pm-account:hover { border-color: var(--accent); }
 .pm-account__pic { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; }
-.pm-account__pic--ph { background: var(--panel-2); border: 1px solid var(--line); }
+.pm-account__pic--ph { background: var(--surface-2); border: 1px solid var(--line); }
 .pm-account__name { max-width: 8ch; overflow: hidden; text-overflow: ellipsis; }
 .pm-account__login { color: var(--accent); }
 
@@ -39,7 +39,7 @@
 .pm-chip {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px;
-  color: var(--text); text-decoration: none; font-size: var(--fs-14); background: var(--panel);
+  color: var(--text); text-decoration: none; font-size: var(--fs-14); background: var(--surface);
 }
 .pm-chip:hover { border-color: var(--accent); }
 .pm-chip img { width: 20px; height: 20px; object-fit: contain; }
@@ -52,7 +52,7 @@
 .pm-fbtn {
   display: inline-flex; align-items: center; gap: 7px;
   padding: 8px 14px; border-radius: 10px; cursor: pointer;
-  border: 1px solid var(--line); background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--line); background: var(--surface-2); color: var(--text);
   font-family: var(--font-display); font-weight: 700; font-size: var(--fs-13);
   text-transform: uppercase; letter-spacing: .03em;
 }

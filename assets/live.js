@@ -249,7 +249,8 @@
     function btn(s) {
       var team = m[s];
       var crest = team.logo ? '<img src="' + esc(team.logo) + '" alt="">' : '';
-      return '<button type="button" class="side-switch__btn' + (s === side ? ' is-active' : '') +
+      var active = s === side;
+      return '<button type="button" role="tab" aria-selected="' + active + '" class="side-switch__btn' + (active ? ' is-active' : '') +
         '" data-side="' + s + '" style="--sw-col:' + COL[s] + '">' +
         '<span class="side-switch__crest">' + crest + '</span>' +
         '<span class="side-switch__name">' + esc(team.abbr || team.name) + '</span></button>';
