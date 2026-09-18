@@ -19,7 +19,6 @@
 
   var DATA_ARTICLES = "/data/articles/index.json";
   var DATA_NEWS = "/data/news/latest.json";
-  var LEAGUE_NAMES = { laliga: "LaLiga", hypermotion: "Hypermotion" };
   var MAX_PER_GROUP = 12;
   var MAX_PRESS_ROWS = 40;
   var DAY_RANGE = 6; // días hacia atrás que muestra la tira rápida (hoy incluido = 7)
@@ -92,6 +91,10 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
   }
+
+  // Nombre a mostrar por chip de liga: PM_LEAGUES (pm-leagues.js) es la fuente
+  // única de slug→nombre en cliente. Fallback al slug si aún no ha cargado.
+  function leagueName(l) { return ((window.PM_LEAGUES || {})[l] || {}).name || l; }
 
   function timeAgo(ts) {
     if (!ts) return "";
@@ -181,7 +184,7 @@
     state.items.forEach(function (it) {
       (it.leagues || []).forEach(function (l) { seen[l] = true; });
     });
-    return ["laliga", "hypermotion"].filter(function (l) { return seen[l]; });
+    return (window.PM_LEAGUES_ORDER || []).filter(function (l) { return seen[l]; });
   }
 
   function filteredItems() {
@@ -215,7 +218,7 @@
       parts.push('<button class="news-filter' + (state.league === "all" ? " is-active" : "") + '" data-league="all">Todas las ligas</button>');
       leagues.forEach(function (l) {
         var active = state.league === l ? " is-active" : "";
-        parts.push('<button class="news-filter' + active + '" data-league="' + l + '">' + esc(LEAGUE_NAMES[l] || l) + "</button>");
+        parts.push('<button class="news-filter' + active + '" data-league="' + l + '">' + esc(leagueName(l)) + "</button>");
       });
     }
 
@@ -330,7 +333,7 @@
 
     if (!html) {
       var when = state.day === ymd(today) ? "hoy" : "el " + fechaLabel(ymdToInput(state.day));
-      var msg = "No hay contenido " + when + (state.league !== "all" ? " para " + esc(LEAGUE_NAMES[state.league] || state.league) : "") + ". Prueba con otro día.";
+      var msg = "No hay contenido " + when + (state.league !== "all" ? " para " + esc(leagueName(state.league)) : "") + ". Prueba con otro día.";
       els.mount.innerHTML = '<p class="news-empty">' + msg + "</p>";
       return;
     }
