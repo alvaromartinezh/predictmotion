@@ -17,12 +17,12 @@
   <link rel="dns-prefetch" href="https://site.api.espn.com" />
   <link rel="dns-prefetch" href="https://sports.core.api.espn.com" />
   <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
-  <link rel="stylesheet" href="/styles.css?v=20260914a" />
-  <link rel="stylesheet" href="/assets/shell.css?v=20260914a" />
-  <link rel="stylesheet" href="/assets/account.css?v=20260914a" />
-  <script src="/assets/espn-proxy.js?v=20260914a"></script>
-  <script src="/theme.js?v=20260914a"></script>
-  <script src="/assets/league-engine.js?v=20260914a"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260918a" />
+  <link rel="stylesheet" href="/assets/shell.css?v=20260918a" />
+  <link rel="stylesheet" href="/assets/account.css?v=20260918a" />
+  <script src="/assets/espn-proxy.js?v=20260918a"></script>
+  <script src="/theme.js?v=20260918a"></script>
+  <script src="/assets/league-engine.js?v=20260918a"></script>
   <title>Equipo · PredictMotion</title>
   <!-- Vista de app con parámetros (?id&league&name): infinitas variantes de una misma
        página vacía sin JS. La versión indexable es la estática /equipos/<liga>/<slug>,
@@ -355,9 +355,9 @@
   </style>
 
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3055585323326983" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="/assets/ads.css?v=20260914a" />
-  <script src="/assets/ads-config.js?v=20260914a"></script>
-  <script src="/assets/ads.js?v=20260914a"></script>
+  <link rel="stylesheet" href="/assets/ads.css?v=20260918a" />
+  <script src="/assets/ads-config.js?v=20260918a"></script>
+  <script src="/assets/ads.js?v=20260918a"></script>
 </head>
 <body>
 <!-- Google Tag Manager (noscript) -->
@@ -843,9 +843,14 @@ if (!TEAM_ID) {
 }
 
 // ─── Noticias del equipo (pestaña /equipo/news) ────────────────────────────
-// Lee el agregador /data/news/latest.json (cron news.aggregate) y se queda solo
-// con los ítems etiquetados con este equipo (teams[].id). Maquetación propia
-// (destacada + titulares), no la de /noticias. Degrada limpio si el JSON no está.
+// Lee el agregador de news.aggregate y se queda solo con los ítems etiquetados
+// con este equipo (teams[].id). Primero /data/news/<liga>.json (set COMPLETO de
+// la liga, hasta PER_SLUG_MAX) y solo si no hay nada ahí cae a latest.json (top-90
+// GLOBAL por fecha): los feeds españoles dominan ese top-90, así que un equipo de
+// una liga sin feed propio dominante podía salir "sin noticias" con la portada
+// llena de ítems suyos en su fichero de liga (ver news/aggregate.py _write).
+// Maquetación propia (destacada + titulares), no la de /noticias. Degrada limpio
+// si ningún JSON está.
 const NEWS_MAX = 7;
 let teamNewsSetName = null;
 function teamNewsEscape(s) {
@@ -874,13 +879,15 @@ function loadTeamNews() {
   };
   teamNewsSetName = setName;
   setName();
-  fetch('/data/news/latest.json', { cache: 'no-store' })
+  const fetchTeamItems = url => fetch(url, { cache: 'no-store' })
     .then(r => r.ok ? r.json() : null)
-    .then(d => {
-      if (!d || !Array.isArray(d.items)) throw new Error('no-news');
-      const mine = d.items
-        .filter(it => (it.teams || []).some(t => String(t.id) === String(TEAM_ID)))
-        .slice(0, NEWS_MAX);
+    .then(d => (d && Array.isArray(d.items))
+      ? d.items.filter(it => (it.teams || []).some(t => String(t.id) === String(TEAM_ID)))
+      : []);
+  fetchTeamItems('/data/news/' + LG.slug + '.json')
+    .then(mine => mine.length ? mine : fetchTeamItems('/data/news/latest.json'))
+    .then(all => {
+      const mine = all.slice(0, NEWS_MAX);
       setName();
       if (!mine.length) { mount.innerHTML = '<p class="news-empty">Todavía no hay noticias etiquetadas con este equipo.</p>'; return; }
       // Una destacada grande + el resto como lista de titulares.
@@ -1972,10 +1979,10 @@ if (TEAM_ID) { triggerUpdate(); updateSeason(); }
   document.addEventListener('pm-follows-changed', render);
 })();
 </script>
-<script src="/assets/account.js?v=20260914a"></script>
-<script src="/assets/pm-leagues.js?v=20260914a"></script>
-<script src="/assets/shell.js?v=20260914a"></script>
+<script src="/assets/account.js?v=20260918a"></script>
+<script src="/assets/pm-leagues.js?v=20260918a"></script>
+<script src="/assets/shell.js?v=20260918a"></script>
 <script>PMShell.chrome({ active: null });</script>
-  <script src="/assets/nav.js?v=20260914a"></script>
+  <script src="/assets/nav.js?v=20260918a"></script>
 </body>
 </html>
