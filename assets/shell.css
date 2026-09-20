@@ -79,7 +79,7 @@ html[data-theme="light"] .pm-theme-toggle .tt-dark  { display: none; }
    ya llevan su propio logo de liga (partidos) para no duplicar el ancla visual. */
 .feed-sec__title:not(:has(img))::before { content: ""; width: 4px; align-self: stretch; min-height: 1em; border-radius: var(--r-pill); background: var(--accent); box-shadow: 0 0 10px var(--accent-glow); }
 .feed-sec__title .tag { font-family: var(--font-mono); font-size: var(--fs-11); font-weight: 500; letter-spacing: .1em; color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent-line); padding: 2px 7px; border-radius: var(--r-pill); text-transform: none; }
-.feed-sec__title .tag--live { color: var(--live); background: rgba(255,77,109,.12); border-color: rgba(255,77,109,.4); }
+.feed-sec__title .tag--live { color: var(--live); background: var(--live-soft); border-color: var(--live-line); }
 .feed-sec__more { font-size: var(--fs-13); color: var(--muted); font-weight: 600; }
 .feed-sec__more:hover { color: var(--accent); }
 
