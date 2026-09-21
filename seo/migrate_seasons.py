@@ -20,6 +20,7 @@ import shutil
 import sys
 
 from .config import DATA_DIR
+from .snapshots import _season_key
 
 
 def _season_of(path):
@@ -52,7 +53,13 @@ def migrate(dry_run=False):
         print(f"→ {slug_dir.name}: {len(files)} snapshots"
               + (f" ({skipped} sin season, se dejan)" if skipped else ""))
         for season, fs in sorted(by_season.items()):
-            dest = slug_dir / season / "snapshots"
+            # Mismo saneado que snapshots.py:_season_dir() — las temporadas de
+            # torneo partido llevan espacio ("Apertura 2026") pero en disco van
+            # con guion. Sin esto, una liga de temporada partida migraba a una
+            # carpeta con espacio y el cron seguía escribiendo en la de guion:
+            # el histórico de esa temporada quedaba partido en dos para siempre.
+            season_dir = slug_dir / _season_key(season)
+            dest = season_dir / "snapshots"
             latest_src = max(fs, key=lambda p: p.name)   # fecha más alta de la temporada
             print(f"   {season}: {len(fs)} → {dest.relative_to(DATA_DIR)}"
                   f"  (latest {latest_src.name})")
@@ -61,7 +68,7 @@ def migrate(dry_run=False):
             dest.mkdir(parents=True, exist_ok=True)
             for f in fs:
                 shutil.move(str(f), str(dest / f.name))
-            shutil.copy(str(dest / latest_src.name), str(slug_dir / season / "latest.json"))
+            shutil.copy(str(dest / latest_src.name), str(season_dir / "latest.json"))
             total_moved += len(fs)
         # limpiar la carpeta vieja solo si quedó vacía (no había 'sin season')
         if not dry_run and not any(old.iterdir()):

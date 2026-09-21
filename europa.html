@@ -497,6 +497,14 @@ function probPill(pct, kind, label) {
   return `<td class="col-prob"><span class="prob-label">${label}</span><span class="prob ${kind}"><span class="prob__fill" style="width:${w}%"></span><span class="prob__val">${disp}<span class="pct">%</span></span></span></td>`;
 }
 
+// Nombre de equipo → HTML seguro. Sale de ESPN, no de un usuario, pero ESPN no
+// garantiza que displayName esté libre de '&'/'<'/'"': sin esto, un nombre con
+// una comilla rompía el atributo `alt`/`onerror` que lo envuelve y el navegador
+// tiraba el resto del marcado como si fuera JS suelto (SyntaxError en consola).
+function escAttr(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 function initials(name) {
   return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
 }
@@ -518,10 +526,10 @@ function render(standings, results) {
       <td class="col-team">
         <span class="team">
           <span class="team__crest-box" id="av${i}">
-            <img class="team__crest" src="${t.logo || ''}" alt="${t.name}" loading="lazy"
-              onerror="fallbackAvatar(${i},'${nameEsc}','${color}')" />
+            <img class="team__crest" src="${t.logo || ''}" alt="${escAttr(t.name)}" loading="lazy"
+              onerror="fallbackAvatar(${i},'${escAttr(nameEsc)}','${color}')" />
           </span>
-          <a class="team__name team-link" href="/equipo?id=${t.id}&name=${encodeURIComponent(t.name)}&league=europa">${t.name}</a>
+          <a class="team__name team-link" href="/equipo?id=${t.id}&name=${encodeURIComponent(t.name)}&league=europa">${escAttr(t.name)}</a>
           ${t.live ? `<a class="live-dot-link" href="/partido?league=europa&id=${t.live.eventId}" title="${t.live.label}" aria-label="${t.live.label}"><span class="live-dot ${t.live.res}"></span></a>` : ''}
         </span>
       </td>
