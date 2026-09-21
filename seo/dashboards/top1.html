@@ -584,11 +584,11 @@ function render(standings, results, slots) {
       <td class="col-team">
         <span class="team">
           <span class="team__crest-box" id="av${i}">
-            <img class="team__crest" src="${t.logo || ''}" alt="${escAttr(t.name)}" loading="lazy"
+            <img class="team__crest" src="${escAttr(t.logo || '')}" alt="${escAttr(t.name)}" loading="lazy"
               onerror="fallbackAvatar(${i},'${escAttr(nameEsc)}','${color}')" />
           </span>
           <a class="team__name team-link" href="/equipo?id=${t.id}&name=${encodeURIComponent(t.name)}&league={{SLUG}}">${escAttr(t.name)}</a>
-          ${t.live ? `<a class="live-dot-link" href="/partido?league={{SLUG}}&id=${t.live.eventId}" title="${t.live.label}" aria-label="${t.live.label}"><span class="live-dot ${t.live.res}"></span></a>` : ''}
+          ${t.live ? `<a class="live-dot-link" href="/partido?league={{SLUG}}&id=${t.live.eventId}" title="${escAttr(t.live.label)}" aria-label="${escAttr(t.live.label)}"><span class="live-dot ${t.live.res}"></span></a>` : ''}
         </span>
       </td>
       <td class="col-pj col-dim"><span class="num">${t.gp}</span></td>

@@ -563,11 +563,11 @@ function render(standings, results) {
       <td class="col-team">
         <span class="team">
           <span class="team__crest-box" id="av${i}">
-            <img class="team__crest" src="${t.logo || ''}" alt="${escAttr(t.name)}" loading="lazy"
+            <img class="team__crest" src="${escAttr(t.logo || '')}" alt="${escAttr(t.name)}" loading="lazy"
               onerror="fallbackAvatar(${i},'${escAttr(nameEsc)}','${color}')" />
           </span>
           <a class="team__name team-link" href="/equipo?id=${t.id}&name=${encodeURIComponent(t.name)}&league=championship">${escAttr(t.name)}</a>
-          ${t.live ? `<a class="live-dot-link" href="/partido?league=championship&id=${t.live.eventId}" title="${t.live.label}" aria-label="${t.live.label}"><span class="live-dot ${t.live.res}"></span></a>` : ''}
+          ${t.live ? `<a class="live-dot-link" href="/partido?league=championship&id=${t.live.eventId}" title="${escAttr(t.live.label)}" aria-label="${escAttr(t.live.label)}"><span class="live-dot ${t.live.res}"></span></a>` : ''}
         </span>
       </td>
       <td class="col-pj col-dim"><span class="num">${t.gp}</span></td>
@@ -625,7 +625,7 @@ function renderBracket(standings, results) {
     return `<div class="bk-team">
       <div class="bk-team-pos">${t.rank}º</div>
       <div class="bk-team-logo" id="${avId}">
-        <img src="${t.logo || ''}" alt="${escAttr(t.name)}" loading="lazy"
+        <img src="${escAttr(t.logo || '')}" alt="${escAttr(t.name)}" loading="lazy"
           onerror="fallbackBkAvatar('${avId}','${escAttr(t.name.replace(/'/g,"\\'"))}','${color}')" />
       </div>
       <div class="bk-team-info">
@@ -649,7 +649,7 @@ function renderBracket(standings, results) {
     const pw    = res.pWin || 0;
     return `<div class="bk-finalist" id="${id}">
       <div class="bk-team-logo" id="${avId}" style="width:18px;height:18px">
-        <img src="${t.logo || ''}" alt="${escAttr(t.name)}" loading="lazy"
+        <img src="${escAttr(t.logo || '')}" alt="${escAttr(t.name)}" loading="lazy"
           onerror="fallbackBkAvatar('${avId}','${escAttr(t.name.replace(/'/g,"\\'"))}','${color}')" style="width:18px;height:18px" />
       </div>
       <span class="fin-name">${escAttr(t.name)}</span>
