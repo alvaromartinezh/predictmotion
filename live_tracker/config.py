@@ -56,6 +56,15 @@ ESPN_PROXY_ENABLED   = _flag("ESPN_PROXY_ENABLED", True)
 ESPN_PROXY_CACHE_TTL = _int("ESPN_PROXY_CACHE_TTL", 30)
 ESPN_PROXY_TIMEOUT   = _int("ESPN_PROXY_TIMEOUT", 20)
 
+# TTL largo para las llamadas `scoreboard?dates=AÑO` (temporada completa: desde
+# que ESPN retiró el rango de fechas el 2026-09-26, es la única forma de sacar
+# próximos partidos, ver equipo.html/fixtures.js/pm-data.js/bracket.js). Cada
+# respuesta pesa ~4-5 MB (todo el calendario de la liga con odds/venue/links),
+# así que con TTL de 30 s cada visitante repetía la descarga completa. Los
+# horarios y resultados de esa ventana no cambian con esa frecuencia; el
+# marcador en vivo ya sale de un scoreboard sin `dates` con TTL corto aparte.
+ESPN_PROXY_SEASON_CACHE_TTL = _int("ESPN_PROXY_SEASON_CACHE_TTL", 900)
+
 # Ligas seguidas (códigos ESPN). El provider es agnóstico de liga. Las 15
 # competiciones con dashboard (12 ligas + fase de liga UEFA); las copas no
 # entran (sin seguimiento).

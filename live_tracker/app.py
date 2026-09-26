@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 import urllib.error
 import urllib.request
@@ -34,14 +35,24 @@ _ESPN_PROXY_HOSTS = {
 }
 _espn_cache: dict[str, tuple[float, int, str, bytes]] = {}
 
+# `scoreboard?dates=AÑO` (año suelto, sin rango): la temporada completa de esa
+# liga, ~4-5 MB. Ver comentario de ESPN_PROXY_SEASON_CACHE_TTL en config.py.
+_SEASON_QUERY_RE = re.compile(r"[?&]dates=\d{4}(&|$)")
 
-def _espn_fetch(url: str) -> tuple[int, str, bytes]:
+
+def _cache_ttl(url: str) -> int:
+    return (config.ESPN_PROXY_SEASON_CACHE_TTL if _SEASON_QUERY_RE.search(url)
+            else config.ESPN_PROXY_CACHE_TTL)
+
+
+def _espn_fetch(url: str) -> tuple[int, str, bytes, int]:
     """GET a la API de ESPN con el UA por defecto de urllib (sí pasa el 403
     que ESPN/Cloudflare da a los UA de navegador; NO volver a un UA tipo browser)."""
+    ttl = _cache_ttl(url)
     now = time.time()
     hit = _espn_cache.get(url)
-    if hit and now - hit[0] < config.ESPN_PROXY_CACHE_TTL:
-        return hit[1], hit[2], hit[3]
+    if hit and now - hit[0] < ttl:
+        return hit[1], hit[2], hit[3], ttl
     req = urllib.request.Request(url, headers={"Accept": "application/json"})
     with urllib.request.urlopen(req, timeout=config.ESPN_PROXY_TIMEOUT) as r:
         status = r.status
@@ -50,7 +61,7 @@ def _espn_fetch(url: str) -> tuple[int, str, bytes]:
     _espn_cache[url] = (now, status, ctype, body)
     if len(_espn_cache) > 256:
         _espn_cache.pop(next(iter(_espn_cache)))
-    return status, ctype, body
+    return status, ctype, body, ttl
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -69,12 +80,16 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _send_raw(self, status, ctype, body):
+    def _send_raw(self, status, ctype, body, max_age=None):
         self.send_response(status)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Cache-Control", "no-store")
+        # El proxy ya deduplica estas respuestas en su propia caché (TTL en
+        # _cache_ttl); dejar que el navegador también las cachee evita que cada
+        # visita vuelva a descargar los mismos bytes (hasta ~5 MB en las
+        # consultas de temporada completa, ver ESPN_PROXY_SEASON_CACHE_TTL).
+        self.send_header("Cache-Control", f"public, max-age={max_age}" if max_age else "no-store")
         self.end_headers()
         self.wfile.write(body)
 
@@ -140,15 +155,16 @@ class Handler(BaseHTTPRequestHandler):
         query = self.path.split("?", 1)[1] if "?" in self.path else ""
         url = "https://" + host + sub + (("?" + query) if query else "")
         try:
-            status, ctype, body = _espn_fetch(url)
+            status, ctype, body, max_age = _espn_fetch(url)
         except urllib.error.HTTPError as e:
             status = e.code
             ctype = e.headers.get("Content-Type", "application/json; charset=utf-8")
             body = e.read()
+            max_age = None  # error de ESPN: no lo cachee el navegador
         except Exception as e:
             log.warning("proxy ESPN: falló %s: %s", url[:120], e)
             return self._send(502, {"ok": False, "reason": "upstream-error"})
-        return self._send_raw(status, ctype, body)
+        return self._send_raw(status, ctype, body, max_age)
 
 
 def serve(store: LiveStore):
