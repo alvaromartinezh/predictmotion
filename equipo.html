@@ -1146,23 +1146,38 @@ async function fetchSchedule() {
 // Próximos partidos por competición (scoreboard a +3 meses, filtrado por equipo).
 // Antes solo se consultaba el scoreboard de la liga actual: los cruces de copas/
 // champions de otras competiciones no aparecían en el timeline.
+//
+// ESPN retiró el filtro por RANGO de fechas (`dates=INICIO-FIN`): desde el
+// 2026-09-26 devuelve 400 para cualquier rango, incluso de 1 día. Solo
+// `dates=AÑO` suelto sigue sirviendo la temporada de ese año natural, así que
+// se pide un año por cada año que toque la ventana (1-2 llamadas) y se filtra
+// al rango exacto en cliente (ver commit 733fb77, assets/fixtures.js).
 async function fetchUpcoming(sched) {
   const comps = (sched && sched.comps && sched.comps.size) ? [...sched.comps] : [LG.code];
   const today = new Date();
   const fmt = d => d.toISOString().slice(0,10).replace(/-/g,'');
   const end = new Date(today); end.setMonth(end.getMonth() + 3);
+  const startYmd = fmt(today), endYmd = fmt(end);
+  const years = [];
+  for (let y = today.getUTCFullYear(); y <= end.getUTCFullYear(); y++) years.push(y);
   const jobs = comps.map(async slug => {
-    try {
-      const url = `${ESPN_SITE}/${slug}/scoreboard?dates=${fmt(today)}-${fmt(end)}&limit=200`;
-      const res = await fetch(url);
-      if (!res.ok) return [];
-      const data = await res.json();
-      return (data.events || []).filter(ev => {
-        const comp = ev.competitions && ev.competitions[0];
-        if (!comp) return false;
-        return comp.competitors.some(c => String(c.team.id) === String(TEAM_ID));
-      }).map(ev => { ev._comp = slug; return ev; });
-    } catch { return []; }
+    const byId = {};
+    await Promise.all(years.map(async y => {
+      try {
+        const url = `${ESPN_SITE}/${slug}/scoreboard?dates=${y}&limit=700`;
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const data = await res.json();
+        for (const ev of (data.events || [])) byId[ev.id] = ev;
+      } catch {}
+    }));
+    return Object.values(byId).filter(ev => {
+      const ymd = fmt(new Date(ev.date));
+      if (ymd < startYmd || ymd > endYmd) return false;
+      const comp = ev.competitions && ev.competitions[0];
+      if (!comp) return false;
+      return comp.competitors.some(c => String(c.team.id) === String(TEAM_ID));
+    }).map(ev => { ev._comp = slug; return ev; });
   });
   const lists = await Promise.all(jobs);
   const out = [], seen = new Set();
