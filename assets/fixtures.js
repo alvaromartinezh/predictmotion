@@ -52,6 +52,26 @@
   }
   function logo(t) { var tid = String((t && t.id) || ''); var over = (window.PM_TEAM_LOGOS && window.PM_TEAM_LOGOS[tid]); return over || (t && t.logo) || ((t && t.logos && t.logos[0] && t.logos[0].href)) || ''; }
 
+  // ESPN retiró el filtro por RANGO de fechas (`dates=INICIO-FIN`): desde el
+  // 2026-09-26 devuelve 400 para cualquier rango, incluso de 1 día, en
+  // cualquier deporte. Solo `dates=AÑO` suelto sigue sirviendo la temporada de
+  // ese año natural, así que se pide un año por cada año que toque el rango
+  // (1-2 llamadas) y se fusiona (dedupe por id; el filtro al rango exacto lo
+  // hace quien llama).
+  function fetchSeasonEvents(code, startDate, endDate) {
+    var years = [];
+    for (var y = startDate.getUTCFullYear(); y <= endDate.getUTCFullYear(); y++) years.push(y);
+    return Promise.all(years.map(function (y) {
+      return getJSON(ESPN + code + '/scoreboard?dates=' + y + '&limit=700');
+    })).then(function (results) {
+      var byId = {};
+      results.forEach(function (d) {
+        ((d && d.events) || []).forEach(function (ev) { byId[ev.id] = ev; });
+      });
+      return Object.keys(byId).map(function (id) { return byId[id]; });
+    });
+  }
+
   function matchCard(ev) {
     var c = (ev.competitions && ev.competitions[0]) || {};
     var cs = c.competitors || [];
@@ -177,8 +197,13 @@
           }
           var start = ymd(new Date(cal[0]));
           var end = ymd(new Date(cal[cal.length - 1]));
-          return getJSON(ESPN + code + '/scoreboard?dates=' + start + '-' + end + '&limit=700')
-            .then(function (d) { render(buildRounds(d.events || [])); });
+          return fetchSeasonEvents(code, new Date(cal[0]), new Date(cal[cal.length - 1]))
+            .then(function (events) {
+              render(buildRounds(events.filter(function (ev) {
+                var d = ymd(new Date(ev.date));
+                return d >= start && d <= end;
+              })));
+            });
         }).catch(function () {
           // Fallo transitorio (reinicio del proxy, 403/502 puntual del upstream):
           // reintenta una vez antes de rendirse.

@@ -25,6 +25,23 @@
     });
   }
 
+  // ESPN retiró el filtro por RANGO de fechas (`dates=INICIO-FIN`, 400 desde el
+  // 2026-09-26, cualquier rango). Solo `dates=AÑO` suelto sigue sirviendo la
+  // temporada de ese año natural: se pide un año por cada año del rango y se
+  // fusiona (dedupe por id).
+  function fetchSeasonEvents(code, y0, y1) {
+    var years = []; for (var y = y0; y <= y1; y++) years.push(y);
+    return Promise.all(years.map(function (y) {
+      return getJSON(ESPN + code + '/scoreboard?dates=' + y + '&limit=700');
+    })).then(function (results) {
+      var byId = {};
+      results.forEach(function (d) {
+        ((d && d.events) || []).forEach(function (ev) { byId[ev.id] = ev; });
+      });
+      return Object.keys(byId).map(function (id) { return byId[id]; });
+    });
+  }
+
   // ── Parseo: eventos → rondas → cruces ──────────────────────────────────────
   function collectTies(events) {
     var byRound = {}; ORDER.forEach(function (r) { byRound[r] = {}; });
@@ -246,10 +263,9 @@
         var season = (((sb.leagues || [])[0] || {}).season) || sb.season || {};
         var year = season.year;
         if (!year) { var m = String(season.displayName || '').match(/(\d{4})/); year = m ? +m[1] : new Date().getFullYear(); }
-        var start = year + '0801', end = (year + 1) + '0701';
-        return getJSON(ESPN + code + '/scoreboard?dates=' + start + '-' + end + '&limit=700');
-      }).then(function (d) {
-        var rounds = collectTies((d && d.events) || []);
+        return fetchSeasonEvents(code, year, year + 1);
+      }).then(function (events) {
+        var rounds = collectTies(events || []);
         var any = ORDER.some(function (r) { return rounds[r].length > 0; });
         if (!any) { el.dataset.loaded = ''; el.innerHTML = '<div class="bk-empty">La eliminatoria aún no está definida. Los cruces aparecerán aquí en cuanto se sorteen.</div>'; return; }
         render(el, rounds);

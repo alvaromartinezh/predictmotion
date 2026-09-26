@@ -227,14 +227,26 @@ def fetch_scoreboard_range(espn_code, start_yyyymmdd, end_yyyymmdd, strict=False
     `strict=True` PROPAGA el error en vez de devolver []. Para el llamante que
     necesita distinguir "no hay partidos" de "no pude preguntar": tragarse el fallo
     hace que un 403 parezca calma y se congele una fila de calibración a mitad de
-    jornada."""
-    try:
-        data = _get_json(f"{_BASE_SITE}/{espn_code}/scoreboard"
-                         f"?dates={start_yyyymmdd}-{end_yyyymmdd}&limit=500")
-    except Exception:
-        if strict:
-            raise
-        return []
+    jornada.
+
+    ESPN retiró el filtro por RANGO (`dates=INICIO-FIN`): desde el 2026-09-26
+    devuelve 400 "Failed to get events endpoint" para CUALQUIER rango (incluso
+    de 1 día), en cualquier deporte — no es cosa de soccer ni de esta liga. Solo
+    `dates=` con un AÑO suelto (`dates=2026`) sigue devolviendo la temporada
+    completa de ese año natural, así que se pide un año por cada año que toque
+    el rango (1-2 llamadas, no una por día) y se filtra al rango pedido."""
+    start = datetime.datetime.strptime(start_yyyymmdd, "%Y%m%d").date()
+    end = datetime.datetime.strptime(end_yyyymmdd, "%Y%m%d").date()
+    by_id = {}
+    for year in range(start.year, end.year + 1):
+        try:
+            data = _get_json(f"{_BASE_SITE}/{espn_code}/scoreboard?dates={year}&limit=1000")
+        except Exception:
+            if strict:
+                raise
+            data = {}
+        for ev in (data or {}).get("events", []):
+            by_id[ev.get("id")] = ev
 
     def _score(c):
         try:
@@ -243,7 +255,10 @@ def fetch_scoreboard_range(espn_code, start_yyyymmdd, end_yyyymmdd, strict=False
             return None
 
     out = []
-    for ev in data.get("events", []):
+    for ev in by_id.values():
+        ev_date = (ev.get("date") or "")[:10].replace("-", "")
+        if not (start_yyyymmdd <= ev_date <= end_yyyymmdd):
+            continue
         comp = (ev.get("competitions") or [{}])[0]
         cs = comp.get("competitors", [])
         home = next((c for c in cs if c.get("homeAway") == "home"), None)
@@ -455,9 +470,12 @@ def build_attack_defense(current_year, active_codes=None, season_by_code=None):
             for tid in att}
 
 
-# Topes de la API del scoreboard, ambos COMPROBADOS contra ESPN (2026-09-02):
-# un rango de fechas de más de 365 días devuelve 400 Bad Request, y sin `limit`
-# el corte está en 100 eventos (esp.1: 100 con el default, 350 con limit=1000).
+# Topes de la API del scoreboard, COMPROBADOS contra ESPN: sin `limit` el
+# corte está en 100 eventos (esp.1: 100 con el default, 350 con limit=1000,
+# 2026-09-02). `dates=INICIO-FIN` (rango) devolvía 400 con más de 365 días;
+# desde el 2026-09-26 devuelve 400 con CUALQUIER rango (ver
+# fetch_scoreboard_range) — `_SCOREBOARD_MAX_DAYS` ya no es un tope de la API,
+# solo el tamaño de la ventana "temporada restante" que se pide por años.
 _SCOREBOARD_MAX_DAYS = 364
 _SCOREBOARD_LIMIT    = 1000
 
@@ -478,17 +496,31 @@ def fetch_remaining_schedules(espn_code, today=None):
 
     Best-effort: si falla devuelve {} y las páginas de equipo salen sin calendario,
     igual que antes cuando fallaba el fetch por equipo. Nunca inventa partidos.
+
+    ESPN retiró el filtro por RANGO de fechas (ver `fetch_scoreboard_range`): la
+    única llamada `dates=INICIO-FIN` de aquí también empezó a devolver 400 el
+    2026-09-26 y esta función pasaba a devolver {} SIEMPRE — sin calendario en
+    ninguna página de equipo, de ninguna liga. Sustituida por 1-2 llamadas
+    `dates=AÑO` (una por cada año natural que toque la ventana), que siguen
+    sirviendo la temporada entera de ese año; sigue siendo ~15-30 peticiones
+    por pasada del cron, no las ~300 por equipo de antes de esta función.
     """
     today = today or datetime.date.today()
     end = today + datetime.timedelta(days=_SCOREBOARD_MAX_DAYS)
-    url = (f"{_BASE_SITE}/{espn_code}/scoreboard"
-           f"?limit={_SCOREBOARD_LIMIT}&dates={today:%Y%m%d}-{end:%Y%m%d}")
-    try:
-        data = _get_json(url)
-    except Exception:
-        return {}
+    by_id = {}
+    for year in range(today.year, end.year + 1):
+        url = f"{_BASE_SITE}/{espn_code}/scoreboard?limit={_SCOREBOARD_LIMIT}&dates={year}"
+        try:
+            data = _get_json(url)
+        except Exception:
+            continue
+        for ev in (data or {}).get("events", []):
+            by_id[ev.get("id")] = ev
     out = {}
-    for ev in data.get("events", []):
+    for ev in by_id.values():
+        ev_date = (ev.get("date") or "")[:10]
+        if not (f"{today:%Y-%m-%d}" <= ev_date <= f"{end:%Y-%m-%d}"):
+            continue
         comp = (ev.get("competitions") or [{}])[0]
         status = (comp.get("status") or ev.get("status") or {}).get("type", {})
         if status.get("state") != "pre":

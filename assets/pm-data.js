@@ -75,6 +75,10 @@
   // ── ESPN: TODOS los partidos de la temporada de una liga (rango del `calendar`
   // del scoreboard) — mismo patrón que assets/fixtures.js. Sirve de fallback cuando
   // el endpoint por equipo viene vacío (ver más abajo).
+  // ESPN retiró el filtro por RANGO de fechas (`dates=INICIO-FIN`, 400 desde el
+  // 2026-09-26, cualquier rango). Solo `dates=AÑO` suelto sigue sirviendo la
+  // temporada de ese año natural: se pide un año por cada año del rango y se
+  // fusiona (dedupe por id, filtro al rango exacto del calendar).
   function seasonEvents(slug) {
     var code = codeOf(slug); if (!code) return Promise.resolve([]);
     return memo('season:' + code, function () {
@@ -82,8 +86,19 @@
         var cal = (((sb && sb.leagues) || [])[0] || {}).calendar || [];
         cal = cal.filter(function (x) { return typeof x === 'string'; });
         if (!cal.length) return (sb && sb.events) || [];
-        return getJSON(ESPN + code + '/scoreboard?dates=' + ymd(cal[0]) + '-' + ymd(cal[cal.length - 1]) + '&limit=700')
-          .then(function (d) { return (d && d.events) || []; });
+        var start = ymd(cal[0]), end = ymd(cal[cal.length - 1]);
+        var years = [];
+        for (var y = new Date(cal[0]).getFullYear(); y <= new Date(cal[cal.length - 1]).getFullYear(); y++) years.push(y);
+        return Promise.all(years.map(function (y) {
+          return getJSON(ESPN + code + '/scoreboard?dates=' + y + '&limit=700');
+        })).then(function (results) {
+          var byId = {};
+          results.forEach(function (d) {
+            ((d && d.events) || []).forEach(function (ev) { byId[ev.id] = ev; });
+          });
+          return Object.keys(byId).map(function (id) { return byId[id]; })
+            .filter(function (ev) { var dd = ymd(ev.date); return dd >= start && dd <= end; });
+        });
       });
     });
   }

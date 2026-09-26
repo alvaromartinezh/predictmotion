@@ -134,13 +134,15 @@ def _check_table_rank():
 
 
 def _check_remaining_schedules():
-    """Una llamada por liga: el partido debe aparecer en los DOS equipos con su
-    `home` relativo, ordenado por fecha, y solo los 'pre'."""
+    """Una llamada por AÑO natural cubierto (ESPN ya no admite `dates=INICIO-FIN`,
+    solo `dates=AÑO` suelto, ver fetch_remaining_schedules): el partido debe
+    aparecer en los DOS equipos con su `home` relativo, ordenado por fecha, y
+    solo los 'pre' dentro de la ventana."""
     real = espn._get_json
     seen = []
 
-    def ev(date, hid, hname, aid, aname, state="pre"):
-        return {"date": date + "T19:00Z", "competitions": [{
+    def ev(eid, date, hid, hname, aid, aname, state="pre"):
+        return {"id": eid, "date": date + "T19:00Z", "competitions": [{
             "status": {"type": {"state": state}},
             "competitors": [
                 {"homeAway": "home", "team": {"id": hid, "displayName": hname}},
@@ -148,9 +150,10 @@ def _check_remaining_schedules():
             ]}]}
 
     payload = {"events": [
-        ev("2026-10-01", "10", "Local", "20", "Visita"),
-        ev("2026-09-01", "20", "Visita", "10", "Local"),
-        ev("2026-08-01", "10", "Local", "30", "Otro", state="post"),  # jugado → fuera
+        ev("1", "2026-10-01", "10", "Local", "20", "Visita"),
+        ev("2", "2026-09-03", "20", "Visita", "10", "Local"),
+        ev("3", "2026-08-01", "10", "Local", "30", "Otro", state="post"),  # jugado → fuera
+        ev("4", "2026-08-15", "10", "Local", "40", "Antes", state="pre"),  # anterior a `today` → fuera
     ]}
     try:
         espn._get_json = _fake_json(payload, seen)
@@ -158,22 +161,22 @@ def _check_remaining_schedules():
 
         assert set(out) == {"10", "20"}, "el partido va en los dos equipos"
         assert "30" not in out, "los 'post' no cuentan"
+        assert "40" not in out, "lo anterior a `today` no cuenta"
         # Ordenado por fecha, no por orden de llegada.
-        assert [m["date"] for m in out["10"]] == ["2026-09-01", "2026-10-01"]
+        assert [m["date"] for m in out["10"]] == ["2026-09-03", "2026-10-01"]
         # `home` relativo a cada equipo.
         assert [m["home"] for m in out["10"]] == [False, True]
         assert [m["home"] for m in out["20"]] == [True, False]
         assert out["10"][1]["opponent"] == "Visita"
 
-        # La URL debe llevar `limit` (sin él ESPN corta en 100) y un rango de como
-        # mucho 365 días (más devuelve 400 Bad Request).
-        url = seen[0]
-        assert f"limit={espn._SCOREBOARD_LIMIT}" in url, url
-        assert "dates=20260902-" in url, url
-        ini, fin = url.split("dates=")[1].split("-")
-        span = (datetime.datetime.strptime(fin, "%Y%m%d").date()
-                - datetime.datetime.strptime(ini, "%Y%m%d").date()).days
-        assert span <= 365, f"rango de {span} días: ESPN devuelve 400"
+        # Una llamada por año natural de la ventana (2026 y 2027, 364 días desde
+        # el 2026-09-02), cada una con `limit` y `dates=AÑO` suelto (sin rango:
+        # ESPN devuelve 400 con `dates=INICIO-FIN`, incluso de 1 día).
+        assert len(seen) == 2, seen
+        for url in seen:
+            assert f"limit={espn._SCOREBOARD_LIMIT}" in url, url
+        assert any(u.endswith("dates=2026") for u in seen), seen
+        assert any(u.endswith("dates=2027") for u in seen), seen
 
         # Fallo de red → {} (best-effort), las páginas de equipo salen sin calendario.
         def _boom(url):
