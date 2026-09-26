@@ -27,15 +27,15 @@
   <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
   <link rel="dns-prefetch" href="https://site.api.espn.com" />
   <link rel="dns-prefetch" href="https://a.espncdn.com" />
-  <link rel="stylesheet" href="/styles.css?v=20260914a" />
-<link rel="stylesheet" href="/assets/shell.css?v=20260914a" />
-  <link rel="stylesheet" href="/assets/account.css?v=20260914a" />
-  <link rel="stylesheet" href="/assets/fixtures.css?v=20260914a" />
-  <link rel="stylesheet" href="/assets/ads.css?v=20260914a" />
-  <script src="/assets/espn-proxy.js?v=20260914a"></script>
-  <script src="/theme.js?v=20260914a"></script>
-  <script src="/assets/league-engine.js?v=20260914a"></script>
-  <script src="/assets/fixtures.js?v=20260914a"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260926a" />
+<link rel="stylesheet" href="/assets/shell.css?v=20260926a" />
+  <link rel="stylesheet" href="/assets/account.css?v=20260926a" />
+  <link rel="stylesheet" href="/assets/fixtures.css?v=20260926a" />
+  <link rel="stylesheet" href="/assets/ads.css?v=20260926a" />
+  <script src="/assets/espn-proxy.js?v=20260926a"></script>
+  <script src="/theme.js?v=20260926a"></script>
+  <script src="/assets/league-engine.js?v=20260926a"></script>
+  <script src="/assets/fixtures.js?v=20260926a"></script>
 
   <title>{{if fileExists "/data/{{SLUG}}/head_title.txt"}}{{readFile "/data/{{SLUG}}/head_title.txt"}}{{else}}{{NAME}} {{SEASON}} · Probabilidades de Ascenso y Descenso{{end}}</title>
   <style>
@@ -521,6 +521,14 @@ function probPill(pct, kind, label) {
   return `<td class="col-prob"><span class="prob-label">${label}</span><span class="prob ${kind}"><span class="prob__fill" style="width:${w}%"></span><span class="prob__val">${disp}<span class="pct">%</span></span></span></td>`;
 }
 
+// Nombre de equipo → HTML seguro. Sale de ESPN, no de un usuario, pero ESPN no
+// garantiza que displayName esté libre de '&'/'<'/'"': sin esto, un nombre con
+// una comilla rompía el atributo `alt`/`onerror` que lo envuelve y el navegador
+// tiraba el resto del marcado como si fuera JS suelto (SyntaxError en consola).
+function escAttr(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 function initials(name) {
   return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
 }
@@ -607,11 +615,11 @@ function render(standings, results) {
       <td class="col-team">
         <span class="team">
           <span class="team__crest-box" id="av${i}">
-            <img class="team__crest" src="${t.logo || ''}" alt="${t.name}" loading="lazy"
-              onerror="fallbackAvatar(${i},'${nameEsc}','${color}')" />
+            <img class="team__crest" src="${escAttr(t.logo || '')}" alt="${escAttr(t.name)}" loading="lazy"
+              onerror="fallbackAvatar(${i},'${escAttr(nameEsc)}','${color}')" />
           </span>
-          <a class="team__name team-link" href="/equipo?id=${t.id}&name=${encodeURIComponent(t.name)}&league={{SLUG}}">${t.name}</a>
-          ${t.live ? `<a class="live-dot-link" href="/partido?league={{SLUG}}&id=${t.live.eventId}" title="${t.live.label}" aria-label="${t.live.label}"><span class="live-dot ${t.live.res}"></span></a>` : ''}
+          <a class="team__name team-link" href="/equipo?id=${t.id}&name=${encodeURIComponent(t.name)}&league={{SLUG}}">${escAttr(t.name)}</a>
+          ${t.live ? `<a class="live-dot-link" href="/partido?league={{SLUG}}&id=${t.live.eventId}" title="${escAttr(t.live.label)}" aria-label="${escAttr(t.live.label)}"><span class="live-dot ${t.live.res}"></span></a>` : ''}
         </span>
       </td>
       <td class="col-pj col-dim"><span class="num">${t.gp}</span></td>
@@ -670,11 +678,11 @@ function renderBracket(standings, results) {
     return `<div class="bk-team">
       <div class="bk-team-pos">${t.rank}º</div>
       <div class="bk-team-logo" id="${avId}">
-        <img src="${t.logo || ''}" alt="${t.name}" loading="lazy"
-          onerror="fallbackBkAvatar('${avId}','${t.name.replace(/'/g,"\\'")}','${color}')" />
+        <img src="${escAttr(t.logo || '')}" alt="${escAttr(t.name)}" loading="lazy"
+          onerror="fallbackBkAvatar('${avId}','${escAttr(t.name.replace(/'/g,"\\'"))}','${color}')" />
       </div>
       <div class="bk-team-info">
-        <div class="bk-team-name">${t.name}</div>
+        <div class="bk-team-name">${escAttr(t.name)}</div>
         <div class="bk-team-p">
           <span class="pf">${pf > 0 ? pf.toFixed(1) + '%' : '—'}</span> final
           &nbsp;·&nbsp;
@@ -694,10 +702,10 @@ function renderBracket(standings, results) {
     const pw    = res.pWin || 0;
     return `<div class="bk-finalist" id="${id}">
       <div class="bk-team-logo" id="${avId}" style="width:18px;height:18px">
-        <img src="${t.logo || ''}" alt="${t.name}" loading="lazy"
-          onerror="fallbackBkAvatar('${avId}','${t.name.replace(/'/g,"\\'")}','${color}')" style="width:18px;height:18px" />
+        <img src="${escAttr(t.logo || '')}" alt="${escAttr(t.name)}" loading="lazy"
+          onerror="fallbackBkAvatar('${avId}','${escAttr(t.name.replace(/'/g,"\\'"))}','${color}')" style="width:18px;height:18px" />
       </div>
-      <span class="fin-name">${t.name}</span>
+      <span class="fin-name">${escAttr(t.name)}</span>
       <span style="margin-left:auto;font-family:var(--font-mono);font-size:.7rem;color:var(--up);white-space:nowrap">${pw > 0 ? pw.toFixed(1) + '%' : ''}</span>
     </div>`;
   }
@@ -887,12 +895,12 @@ updateSeason();
     if (e.detail === 'partidos') PMFixtures.init('{{ESPN_CODE}}', '#fx-mount');
   });
 </script>
-<script src="/assets/account.js?v=20260914a"></script>
-  <script src="/assets/pm-leagues.js?v=20260914a"></script>
-  <script src="/assets/shell.js?v=20260914a"></script>
+<script src="/assets/account.js?v=20260926a"></script>
+  <script src="/assets/pm-leagues.js?v=20260926a"></script>
+  <script src="/assets/shell.js?v=20260926a"></script>
   <script>PMShell.chrome({ active: null });</script>
-  <script src="/assets/ads-config.js?v=20260914a"></script>
-<script src="/assets/ads.js?v=20260914a"></script>
-<script src="/assets/nav.js?v=20260914a"></script>
+  <script src="/assets/ads-config.js?v=20260926a"></script>
+<script src="/assets/ads.js?v=20260926a"></script>
+<script src="/assets/nav.js?v=20260926a"></script>
 </body>
 </html>

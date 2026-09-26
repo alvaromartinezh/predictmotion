@@ -127,9 +127,21 @@ def main():
         log("[dry-run] no se aplica nada")
         return 0
 
-    rebuild(new)
-    ensure_jump()
-    save()
+    try:
+        rebuild(new)
+        ensure_jump()
+        save()
+    except Exception as e:  # noqa: BLE001 — aplicar/persistir
+        log(f"aplicar/persistir falló: {e}")
+        notify.send_alert(
+            "[PredictMotion] cf_firewall: fallo aplicando la allowlist",
+            f"Se validaron {len(new)} rangos nuevos pero aplicarlos o persistirlos "
+            f"falló:\n\n{e}\n\n"
+            "La cadena CF_WEB puede haber quedado reconstruida en memoria sin "
+            "persistir (se perdería en el próximo reinicio). Revisa "
+            "/home/ubuntu/cf_firewall.log.",
+            dedup_key="cf-firewall-apply", dedup_hours=20)
+        return 1
     log(f"CF_WEB actualizada a {len(new)} rangos y persistida")
     return 0
 

@@ -105,7 +105,12 @@ def _write(all_items, dry_run):
 def _run(args):
     items, failures = _collect()
     final = _dedup_sort(items)
-    _write(final, args.dry_run)
+    # Si TODOS los feeds fallaron/quedaron vacíos, no pisar latest.json ni los
+    # JSON por liga: la alerta de abajo promete que /kiosco "se queda con el
+    # último JSON válido", así que un `final` vacío no debe escribirse (salvo
+    # en --dry-run, donde no toca ficheros de todos modos y sirve para depurar).
+    if final or args.dry_run:
+        _write(final, args.dry_run)
 
     tagged = sum(1 for it in final if it.get("teams"))
     print(f"\nFin — {len(final)} noticias únicas ({tagged} con equipo etiquetado; "

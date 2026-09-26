@@ -37,6 +37,8 @@
   --brand:       #f0a92a;         /* oro de marca (= acento global heredado) */
   --brand-soft:  rgba(240,169,42,.14);
   --live:        #ff4d6d;
+  --live-soft:   rgba(255,77,109,.12);
+  --live-line:   rgba(255,77,109,.40);
 
   /* Semánticos de probabilidad (fijos en todas las ligas) */
   --up:        #2ec98a;   /* ascenso directo */
@@ -73,9 +75,12 @@
   --ease: cubic-bezier(.2,.7,.3,1);
 }
 
-/* Superficies del REDISEÑO (shell app): acento esmeralda. Se declara ANTES que los
-   .theme-* por-liga para que, cuando un dashboard viva dentro del shell (CP-R6), su
-   acento por-liga (misma especificidad) gane por orden. */
+/* Superficies del REDISEÑO (shell app): acento esmeralda. .pm-app vive DENTRO de
+   <body class="theme-x">, no en el mismo elemento, así que el orden/especificidad
+   entre .pm-app y .theme-x de aquí abajo no decide nada (son elementos distintos:
+   .theme-x nunca gana por herencia lo que .pm-app redeclara en sí mismo). Los
+   dashboards recuperan su acento por-liga vía los selectores descendientes
+   `.theme-x .pm-app` de más abajo, que sí compiten por el MISMO elemento. */
 .pm-app {
   --accent:      #24d08a;
   --accent-2:    #2fe0d0;
@@ -94,6 +99,20 @@
   --accent-line:rgba(240,169,42,.42); --accent-glow:rgba(240,169,42,.22); --accent-ink:#1a1204;
 }
 .theme-laliga {
+  --accent:#ff4a5a; --accent-soft:rgba(255,74,90,.14);
+  --accent-line:rgba(255,74,90,.42); --accent-glow:rgba(255,74,90,.22); --accent-ink:#1c0408;
+}
+/* .pm-app hereda de <body>, pero como también REDECLARA --accent en sí mismo (arriba),
+   la herencia de .theme-x en el body nunca llega: hace falta pisarlo en el propio
+   .pm-app con un selector descendiente, o el dashboard siempre sale con el esmeralda
+   del shell (bug real: `getComputedStyle(.pm-app)` daba #24d08a en TODAS las ligas,
+   .theme-hypermotion/.theme-laliga incluidas, pese a que el body sí calculaba bien
+   #f0a92a/#ff4a5a). */
+.theme-hypermotion .pm-app {
+  --accent:#f0a92a; --accent-soft:rgba(240,169,42,.14);
+  --accent-line:rgba(240,169,42,.42); --accent-glow:rgba(240,169,42,.22); --accent-ink:#1a1204;
+}
+.theme-laliga .pm-app {
   --accent:#ff4a5a; --accent-soft:rgba(255,74,90,.14);
   --accent-line:rgba(255,74,90,.42); --accent-glow:rgba(255,74,90,.22); --accent-ink:#1c0408;
 }
@@ -493,6 +512,8 @@ html[data-theme="light"] {
   --brand:       #c5860f;
   --brand-soft:  rgba(197,134,15,.14);
   --live:        #e11d48;
+  --live-soft:   rgba(225,29,72,.12);
+  --live-line:   rgba(225,29,72,.40);
 
   --up:        #0f9e68; --up-soft:   rgba(15,158,104,.13);
   --po:        #c4860f; --po-soft:   rgba(196,134,15,.14);
@@ -521,6 +542,14 @@ html[data-theme="light"] .theme-hypermotion {
   --accent:#c5860f; --accent-soft:rgba(197,134,15,.14); --accent-line:rgba(197,134,15,.45); --accent-glow:rgba(197,134,15,.16); --accent-ink:#ffffff;
 }
 html[data-theme="light"] .theme-laliga {
+  --accent:#dd2f43; --accent-soft:rgba(221,47,67,.12); --accent-line:rgba(221,47,67,.42); --accent-glow:rgba(221,47,67,.14); --accent-ink:#ffffff;
+}
+/* Mismo problema de herencia que en oscuro (ver arriba): .pm-app redeclara --accent
+   para el claro también, así que hace falta el mismo pisado por descendiente. */
+html[data-theme="light"] .theme-hypermotion .pm-app {
+  --accent:#c5860f; --accent-soft:rgba(197,134,15,.14); --accent-line:rgba(197,134,15,.45); --accent-glow:rgba(197,134,15,.16); --accent-ink:#ffffff;
+}
+html[data-theme="light"] .theme-laliga .pm-app {
   --accent:#dd2f43; --accent-soft:rgba(221,47,67,.12); --accent-line:rgba(221,47,67,.42); --accent-glow:rgba(221,47,67,.14); --accent-ink:#ffffff;
 }
 /* En claro, los estados "lock" usan texto blanco sobre el color sólido */
