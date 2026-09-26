@@ -2,14 +2,19 @@
    Usa los tokens del sistema de diseño (styles.css). Sin tocar el JS de PMTabs/PMFixtures. */
 
 /* ── Pestañas (estilo subrayado del sistema de diseño) ── */
+/* overflow-x:auto + flex-shrink:0 en .page-tab: en las 3 competiciones UEFA hay
+   una pestaña más ("Cuadro") y las tres ya no caben a 360px; sin esto desbordan
+   la página entera en vez de la tira de pestañas (mismo patrón que .table-scroll
+   para la tabla de clasificación). */
 .page-tabs {
   display: flex; gap: var(--sp-1); border-bottom: 1px solid var(--line);
-  margin-top: var(--sp-2);
+  margin-top: var(--sp-2); overflow-x: auto; -webkit-overflow-scrolling: touch;
 }
 .page-tab {
   position: relative; padding: var(--sp-4); background: none; border: none; cursor: pointer;
   font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
   font-size: var(--fs-16); color: var(--muted); transition: color .18s var(--ease);
+  flex-shrink: 0; white-space: nowrap;
 }
 .page-tab:hover:not(.active) { color: var(--text-2); }
 .page-tab.active { color: var(--text); }

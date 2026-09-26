@@ -137,7 +137,7 @@
       ? themeToggle() + '<button class="iconbtn" aria-label="Notificaciones">' + svg(IC.bell) + '</button>'
         + '<a href="' + LOGIN + '" aria-label="Mi cuenta">' + avatar(s.user) + '</a>'
       : themeToggle() + '<a class="btn btn--primary" style="padding:8px 16px;font-size:var(--fs-13)" href="' + LOGIN + '">Entrar</a>';
-    return '<a class="appbar__brand" href="/"><span class="dot"></span>Predict<b>Motion</b></a>'
+    return '<a class="appbar__brand" href="/"><span class="dot"></span><span class="appbar__brand-text">Predict<b>Motion</b></span></a>'
       + '<span class="appbar__spacer"></span>' + right;
   }
   function appbar(s) { return '<header class="appbar">' + appbarInner(s) + '</header>'; }
