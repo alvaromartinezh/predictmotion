@@ -145,6 +145,21 @@ def main():
     assert visto["renew_cookie"] == [], \
         "una petición sin renovación no debe arrastrar el Set-Cookie de la anterior"
 
+    # ── catálogo de competiciones ────────────────────────────────────────────
+    # Una competición que no esté aquí no se puede seguir ni votar (400
+    # invalid-slug) aunque su página funcione. Pasó el 2026-10-08: el catálogo
+    # solo leía LEAGUES y las cuatro de selecciones (GROUP_PAGES) quedaron fuera.
+    from seo.config import GROUP_PAGES, LEAGUES
+    from . import catalog
+    catalog._cache = None
+    slugs = catalog.valid_league_slugs()
+    esperados = {c["slug"] for c in list(LEAGUES) + list(GROUP_PAGES)}
+    assert slugs == esperados, \
+        f"el catálogo no cubre todos los registros de seo/config.py: {esperados ^ slugs}"
+    assert catalog._FALLBACK_SLUGS == esperados, \
+        ("el fallback fijo se ha quedado atrás; si seo.config no importara, esas "
+         f"competiciones dejarían de poder seguirse: {esperados ^ catalog._FALLBACK_SLUGS}")
+
     print("OK")
     return 0
 
