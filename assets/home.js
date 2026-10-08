@@ -344,6 +344,12 @@
     var f = s.f, favId = f.favorite_team && String(f.favorite_team.espn_team_id);
     var teams = (f.teams || []).slice(0, 4).sort(function (a, b) { return (String(b.espn_team_id) === favId) - (String(a.espn_team_id) === favId); });
     var fav = teams[0], primary = fav ? fav.league_slug : (f.competitions || [])[0];
+    // Competiciones de selecciones (`nosnap`): ESPN las sirve en N grupos y no
+    // tienen snapshot del cron, así que no hay ni mini-tabla ni previa de liga que
+    // pintar. `liveTable` devolvería el PRIMER grupo (p. ej. el A1 de la Nations
+    // League) etiquetado con el nombre de la competición, que es una tabla falsa.
+    // El partido del favorito sí sale (viene de su calendario en ESPN).
+    if ((L[primary] || {}).nosnap) primary = null;
     // Solo el equipo favorito lleva partido/tabla en el feed: se pide únicamente
     // la liga y el equipo que realmente se van a pintar.
     Promise.all([D.news(), D.previaArticle(primary), primary ? D.snapshot(primary) : Promise.resolve(null)]).then(function (r) {

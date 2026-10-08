@@ -111,6 +111,26 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://predictmotion.com/nations-league</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://predictmotion.com/copa-africa-clasificacion</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://predictmotion.com/concacaf-nations</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://predictmotion.com/amistosos</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://predictmotion.com/kiosco</loc>
     <changefreq>hourly</changefreq>
     <priority>0.8</priority>

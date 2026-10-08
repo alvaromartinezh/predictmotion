@@ -4,7 +4,7 @@
   'use strict';
   var ESPN = 'https://site.api.espn.com/apis/site/v2/sports/soccer/';
   // Código ESPN -> slug de liga, para enlazar a la vista de partido (/partido).
-  // Las 15 competiciones con dashboard + seguimiento en vivo (backend live_tracker).
+  // Las competiciones con seguimiento en vivo (backend live_tracker).
   var SLUG_BY_CODE = {
     'esp.1':'laliga', 'esp.2':'hypermotion',
     'eng.1':'premier', 'eng.2':'championship',
@@ -17,7 +17,10 @@
     // así que el enlace a /partido apunta a la primera (el live_tracker solo usa
     // el slug para las medias p_home/p_draw, iguales en las dos).
     'usa.1':'mls-este', 'arg.1':'argentina-a',
-    'uefa.champions':'champions', 'uefa.europa':'europa', 'uefa.europa.conf':'conference'
+    'uefa.champions':'champions', 'uefa.europa':'europa', 'uefa.europa.conf':'conference',
+    // Selecciones (páginas de grupos, ver assets/groups.js)
+    'uefa.nations':'nations-league', 'concacaf.nations.league':'concacaf-nations',
+    'caf.nations_qual':'copa-africa-clasificacion', 'fifa.friendly':'amistosos'
   };
   var currentSlug = '';
 
@@ -70,6 +73,21 @@
       });
       return Object.keys(byId).map(function (id) { return byId[id]; });
     });
+  }
+
+  // Rango [inicioISO, finISO] de la temporada de un scoreboard. El `calendar` solo
+  // trae fechas cuando `calendarType` es "day" (ligas domésticas). Las UEFA y las
+  // competiciones de selecciones lo sirven como "list" (fases: fase de liga,
+  // cuartos…) y el filtro de strings lo dejaba VACÍO → se caía a los partidos del
+  // día y la pestaña "Partidos" nunca enseñaba el calendario completo (visto en
+  // champions/europa/conference y en uefa.nations). Para esas, el rango es el de
+  // `season`. Espejo del seasonRange() de assets/pm-data.js.
+  function seasonRange(sb) {
+    var lg = (((sb && sb.leagues) || [])[0] || {});
+    var cal = (lg.calendar || []).filter(function (x) { return typeof x === 'string'; });
+    if (cal.length) return [cal[0], cal[cal.length - 1]];
+    var s = lg.season || {};
+    return (s.startDate && s.endDate) ? [s.startDate, s.endDate] : null;
   }
 
   function matchCard(ev) {
@@ -190,14 +208,14 @@
       function load(attempt) {
         el.innerHTML = '<div class="fx-loading">Cargando partidos…</div>';
         return getJSON(ESPN + code + '/scoreboard').then(function (sb) {
-          var cal = (((sb.leagues || [])[0] || {}).calendar || []).filter(function (x) { return typeof x === 'string'; });
-          if (!cal.length) {
+          var range = seasonRange(sb);
+          if (!range) {
             render(buildRounds(sb.events || []));
             return;
           }
-          var start = ymd(new Date(cal[0]));
-          var end = ymd(new Date(cal[cal.length - 1]));
-          return fetchSeasonEvents(code, new Date(cal[0]), new Date(cal[cal.length - 1]))
+          var start = ymd(new Date(range[0]));
+          var end = ymd(new Date(range[1]));
+          return fetchSeasonEvents(code, new Date(range[0]), new Date(range[1]))
             .then(function (events) {
               render(buildRounds(events.filter(function (ev) {
                 var d = ymd(new Date(ev.date));

@@ -75,20 +75,32 @@
   // ── ESPN: TODOS los partidos de la temporada de una liga (rango del `calendar`
   // del scoreboard) — mismo patrón que assets/fixtures.js. Sirve de fallback cuando
   // el endpoint por equipo viene vacío (ver más abajo).
+  // Rango [inicioISO, finISO] de la temporada de un scoreboard. El `calendar` solo
+  // trae fechas cuando `calendarType` es "day" (ligas domésticas). Las UEFA y las
+  // competiciones de selecciones lo sirven como "list" (fases: fase de liga,
+  // cuartos, …) y el filtro de strings lo dejaba VACÍO → se caía a los partidos
+  // del día y el calendario completo no salía nunca (visto en champions/europa/
+  // conference y en uefa.nations). Para esas, el rango es el de `season`.
+  function seasonRange(sb) {
+    var lg = (((sb && sb.leagues) || [])[0] || {});
+    var cal = (lg.calendar || []).filter(function (x) { return typeof x === 'string'; });
+    if (cal.length) return [cal[0], cal[cal.length - 1]];
+    var s = lg.season || {};
+    return (s.startDate && s.endDate) ? [s.startDate, s.endDate] : null;
+  }
   // ESPN retiró el filtro por RANGO de fechas (`dates=INICIO-FIN`, 400 desde el
   // 2026-09-26, cualquier rango). Solo `dates=AÑO` suelto sigue sirviendo la
   // temporada de ese año natural: se pide un año por cada año del rango y se
-  // fusiona (dedupe por id, filtro al rango exacto del calendar).
+  // fusiona (dedupe por id, filtro al rango exacto de la temporada).
   function seasonEvents(slug) {
     var code = codeOf(slug); if (!code) return Promise.resolve([]);
     return memo('season:' + code, function () {
       return getJSON(ESPN + code + '/scoreboard').then(function (sb) {
-        var cal = (((sb && sb.leagues) || [])[0] || {}).calendar || [];
-        cal = cal.filter(function (x) { return typeof x === 'string'; });
-        if (!cal.length) return (sb && sb.events) || [];
-        var start = ymd(cal[0]), end = ymd(cal[cal.length - 1]);
+        var range = seasonRange(sb);
+        if (!range) return (sb && sb.events) || [];
+        var start = ymd(range[0]), end = ymd(range[1]);
         var years = [];
-        for (var y = new Date(cal[0]).getFullYear(); y <= new Date(cal[cal.length - 1]).getFullYear(); y++) years.push(y);
+        for (var y = new Date(range[0]).getFullYear(); y <= new Date(range[1]).getFullYear(); y++) years.push(y);
         return Promise.all(years.map(function (y) {
           return getJSON(ESPN + code + '/scoreboard?dates=' + y + '&limit=700');
         })).then(function (results) {
@@ -129,20 +141,84 @@
     });
   }
   // ── ESPN: marcador del día de una liga ──
-  function scoreboard(slug, yyyymmdd) {
+  // `fresh` salta la memo: lo necesita quien hace polling de marcadores (la
+  // página de selecciones refresca cada 60 s mientras hay partidos en juego y
+  // con la memo se quedaba con el marcador de la carga).
+  function scoreboard(slug, yyyymmdd, fresh) {
     var code = codeOf(slug); if (!code) return Promise.resolve([]);
     var u = ESPN + code + '/scoreboard' + (yyyymmdd ? '?dates=' + yyyymmdd : '');
-    return memo('sb:' + u, function () { return getJSON(u).then(function (j) { return (j && j.events) || []; }); });
+    function get() { return getJSON(u).then(function (j) { return (j && j.events) || []; }); }
+    return fresh ? get() : memo('sb:' + u, get);
   }
 
-  // ── ESPN: clasificación REAL de una liga, con los partidos en juego aplicados ──
+  // ── ESPN: clasificación REAL, con los partidos en juego aplicados ─────────
   // El snapshot del cron se queda congelado durante un partido (y hasta 3 h después
   // de acabar), así que las tablas del home enseñaban posiciones viejas mientras la
   // página de liga ya mostraba las provisionales. Mismo cálculo que los dashboards:
   // clasificación de ESPN + puntos provisionales de los partidos `in` + reordenar.
-  // Devuelve null si ESPN falla → quien llama se queda con el snapshot.
-  function liveTable(slug) {
-    var code = codeOf(slug); if (!code) return Promise.resolve(null);
+  // Etiqueta de temporada de un `season` de ESPN. No se usa su `displayName`: con
+  // `lang=es` (competiciones de selecciones, ver espn-proxy.js) ESPN deja de servir
+  // el "2026-27" que trae en inglés y manda solo el año de inicio. Se reconstruye:
+  // la temporada que arranca a mitad de año cruza dos ('2026-27'); la que arranca
+  // en enero es de un solo año ('2026').
+  function seasonLabel(season) {
+    var s = season || {};
+    var y = s.year || (s.startDate ? +String(s.startDate).slice(0, 4) : 0);
+    if (!y) return '';
+    var crossYear = s.startDate && +String(s.startDate).slice(5, 7) >= 6;
+    return crossYear ? y + '-' + ('0' + ((y + 1) % 100)).slice(-2) : String(y);
+  }
+  function mapEntries(entries) {
+    var rows = entries.map(function (e, i) {
+      function stat(n) { return ((e.stats || []).filter(function (s) { return s.name === n; })[0] || {}).value || 0; }
+      var t = e.team || {}, tId = String(t.id || '');
+      return {
+        rank: stat('rank') || (i + 1), id: tId, name: t.displayName || t.shortDisplayName || '',
+        logo: (window.PM_TEAM_LOGOS && window.PM_TEAM_LOGOS[tId])
+          || (t.logos && t.logos[0] && t.logos[0].href) || t.logo || '',
+        gp: stat('gamesPlayed'), pts: stat('points'),
+        gf: stat('pointsFor'), gc: stat('pointsAgainst'), live: null,
+      };
+    });
+    // Por el `rank` OFICIAL, no por el orden de llegada: usa.1 y arg.1 llegan
+    // casi alfabéticas (mismo criterio que seo/espn.py y que los dashboards).
+    rows.sort(function (x, y) { return x.rank - y.rank; });
+    return rows;
+  }
+  // Puntos provisionales de los partidos `in` sobre unas filas ya mapeadas.
+  // Reordena y renumera solo si alguno de los directos toca esta tabla.
+  function applyLive(rows, events, slug) {
+    var byId = {}; rows.forEach(function (t) { byId[t.id] = t; });
+    var any = false;
+    (events || []).forEach(function (ev) {
+      var m = parseEvent(ev, slug);
+      if (!m || m.state !== 'in' || m.home.score == null || m.away.score == null) return;
+      var h = byId[m.home.id], a = byId[m.away.id]; if (!h || !a) return;
+      var hp = m.home.score > m.away.score ? 3 : m.home.score === m.away.score ? 1 : 0;
+      var ap = m.away.score > m.home.score ? 3 : (hp === 1 ? 1 : 0);
+      h.pts += hp; h.gp += 1; h.gf += m.home.score; h.gc += m.away.score;
+      a.pts += ap; a.gp += 1; a.gf += m.away.score; a.gc += m.home.score;
+      h.live = { eventId: m.id, res: hp === 3 ? 'win' : hp === 1 ? 'draw' : 'loss' };
+      a.live = { eventId: m.id, res: ap === 3 ? 'win' : ap === 1 ? 'draw' : 'loss' };
+      any = true;
+    });
+    if (any) {
+      rows.sort(function (x, y) {
+        return y.pts !== x.pts ? y.pts - x.pts
+          : (y.gf - y.gc) !== (x.gf - x.gc) ? (y.gf - y.gc) - (x.gf - x.gc) : y.gf - x.gf;
+      });
+      rows.forEach(function (t, i) { t.rank = i + 1; });
+    }
+    return any;
+  }
+  // TODOS los grupos (`children`) de ESPN de una competición, con los directos
+  // aplicados: { season, groups: [{ name, rows }] }. Las ligas domésticas traen un
+  // grupo (o dos: conferencias/zonas); las de selecciones, uno por grupo (14 en
+  // uefa.nations). groups=[] si ESPN no sirve clasificación (p. ej. amistosos).
+  // `season` es la etiqueta de ESPN ('2026-27', '2027'): la ponen las páginas de
+  // selecciones en la cabecera para no llevar el ciclo escrito en el HTML.
+  function groupTables(slug, fresh) {
+    var code = codeOf(slug); if (!code) return Promise.resolve({ season: '', groups: [] });
     // Scoreboard SIN fecha: el "hoy" lo decide ESPN, como en los dashboards. Con la
     // fecha del reloj del visitante, quien va por delante del huso de la jornada (o
     // mira pasada su medianoche) pedía el día equivocado y no veía ningún directo.
@@ -150,51 +226,26 @@
     // trae el marcador de ese momento y no el de la carga.
     return Promise.all([
       getJSON(ESPN_V2 + code + '/standings'),
-      scoreboard(slug),
+      scoreboard(slug, null, fresh),
     ]).then(function (r) {
-      // Grupo de ESPN de ESTA liga: usa.1 y arg.1 sirven dos (conferencias, zonas)
-      // y con el 0 fijo el Oeste y la Zona B enseñaban la tabla de la otra mitad.
-      var grp = (L[slug] || {}).child || 0;
-      var entries = r[0] && r[0].children && r[0].children[grp]
-        && r[0].children[grp].standings && r[0].children[grp].standings.entries;
-      if (!entries || !entries.length) return null;
-      var rows = entries.map(function (e, i) {
-        function stat(n) { return ((e.stats || []).filter(function (s) { return s.name === n; })[0] || {}).value || 0; }
-        var t = e.team || {}, tId = String(t.id || '');
-        return {
-          rank: stat('rank') || (i + 1), id: tId, name: t.displayName || t.shortDisplayName || '',
-          logo: (window.PM_TEAM_LOGOS && window.PM_TEAM_LOGOS[tId])
-            || (t.logos && t.logos[0] && t.logos[0].href) || t.logo || '',
-          gp: stat('gamesPlayed'), pts: stat('points'),
-          gf: stat('pointsFor'), gc: stat('pointsAgainst'), live: null,
-        };
-      });
-      // Por el `rank` OFICIAL, no por el orden de llegada: usa.1 y arg.1 llegan
-      // casi alfabéticas (mismo criterio que seo/espn.py y que los dashboards).
-      rows.sort(function (x, y) { return x.rank - y.rank; });
-      var byId = {}; rows.forEach(function (t) { byId[t.id] = t; });
-      var any = false;
-      (r[1] || []).forEach(function (ev) {
-        var m = parseEvent(ev, slug);
-        if (!m || m.state !== 'in' || m.home.score == null || m.away.score == null) return;
-        var h = byId[m.home.id], a = byId[m.away.id]; if (!h || !a) return;
-        var hp = m.home.score > m.away.score ? 3 : m.home.score === m.away.score ? 1 : 0;
-        var ap = m.away.score > m.home.score ? 3 : (hp === 1 ? 1 : 0);
-        h.pts += hp; h.gp += 1; h.gf += m.home.score; h.gc += m.away.score;
-        a.pts += ap; a.gp += 1; a.gf += m.away.score; a.gc += m.home.score;
-        h.live = { eventId: m.id, res: hp === 3 ? 'win' : hp === 1 ? 'draw' : 'loss' };
-        a.live = { eventId: m.id, res: ap === 3 ? 'win' : ap === 1 ? 'draw' : 'loss' };
-        any = true;
-      });
-      if (any) {
-        rows.sort(function (x, y) {
-          return y.pts !== x.pts ? y.pts - x.pts
-            : (y.gf - y.gc) !== (x.gf - x.gc) ? (y.gf - y.gc) - (x.gf - x.gc) : y.gf - x.gf;
-        });
-        rows.forEach(function (t, i) { t.rank = i + 1; });
-      }
-      return rows;
+      var ss = ((r[0] || {}).season) || {};
+      var groups = (((r[0] || {}).children) || []).map(function (ch) {
+        var entries = ((ch.standings || {}).entries) || [];
+        if (!entries.length) return null;
+        var rows = mapEntries(entries);
+        applyLive(rows, r[1], slug);
+        return { name: ch.name || ch.abbreviation || '', rows: rows };
+      }).filter(Boolean);
+      return { season: seasonLabel(ss), groups: groups };
     });
+  }
+  // La tabla de UNA liga. Devuelve null si ESPN falla → quien llama se queda con
+  // el snapshot.
+  function liveTable(slug) {
+    // Grupo de ESPN de ESTA liga: usa.1 y arg.1 sirven dos (conferencias, zonas)
+    // y con el 0 fijo el Oeste y la Zona B enseñaban la tabla de la otra mitad.
+    var grp = (L[slug] || {}).child || 0;
+    return groupTables(slug).then(function (r) { return (r.groups[grp] && r.groups[grp].rows) || null; });
   }
 
   // Normaliza un event de ESPN (schedule o scoreboard) a nuestro modelo mínimo.
@@ -253,8 +304,9 @@
   window.PMData = {
     L: L, codeOf: codeOf,
     snapshot: snapshot, news: news, articles: articles, articlesIndex: articlesIndex, previaArticle: previaArticle,
-    schedule: schedule, scoreboard: scoreboard,
-    liveTable: liveTable, liveMatch: liveMatch,
+    schedule: schedule, scoreboard: scoreboard, seasonEvents: seasonEvents,
+    liveTable: liveTable, groupTables: groupTables, liveMatch: liveMatch,
+    seasonLabel: seasonLabel,
     parseEvent: parseEvent, pickTeamMatch: pickTeamMatch
   };
 })();

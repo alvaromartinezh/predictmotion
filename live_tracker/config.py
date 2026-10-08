@@ -65,9 +65,9 @@ ESPN_PROXY_TIMEOUT   = _int("ESPN_PROXY_TIMEOUT", 20)
 # marcador en vivo ya sale de un scoreboard sin `dates` con TTL corto aparte.
 ESPN_PROXY_SEASON_CACHE_TTL = _int("ESPN_PROXY_SEASON_CACHE_TTL", 900)
 
-# Ligas seguidas (códigos ESPN). El provider es agnóstico de liga. Las 15
-# competiciones con dashboard (12 ligas + fase de liga UEFA); las copas no
-# entran (sin seguimiento).
+# Ligas seguidas (códigos ESPN). El provider es agnóstico de liga: los
+# dashboards de club (ligas + fase de liga UEFA) y las competiciones de
+# selecciones; las copas de clubes no entran (sin seguimiento).
 LEAGUES = {
     "hypermotion": "esp.2",
     "laliga":      "esp.1",
@@ -90,6 +90,14 @@ LEAGUES = {
     "champions":   "uefa.champions",
     "europa":      "uefa.europa",
     "conference":  "uefa.europa.conf",
+    # Selecciones (páginas de grupos, ver seo/config.py → GROUP_PAGES). No tienen
+    # snapshot del cron, así que strength.py no encuentra fuerza por equipo y la
+    # probabilidad pre-partido cae a LEAGUE_BASE_PROBS de abajo (degradado limpio,
+    # mismo camino que una liga cuyo snapshot falta).
+    "nations-league":            "uefa.nations",
+    "concacaf-nations":          "concacaf.nations.league",
+    "copa-africa-clasificacion": "caf.nations_qual",
+    "amistosos":                 "fifa.friendly",
 }
 
 # ── Probabilidad pre-partido por liga (base de calibración) ───────────────────
@@ -123,6 +131,12 @@ LEAGUE_BASE_PROBS = {
     "champions":   (0.45, 0.25),
     "europa":      (0.45, 0.25),
     "conference":  (0.45, 0.25),
+    # Selecciones: HEURÍSTICOS (la localía internacional es menor que la de clubes
+    # y hay más empates), espejo del COMPS de assets/groups.js. Sin calibrar.
+    "nations-league":            (0.42, 0.26),
+    "concacaf-nations":          (0.44, 0.26),
+    "copa-africa-clasificacion": (0.45, 0.28),
+    "amistosos":                 (0.42, 0.26),
 }
 DEFAULT_BASE_PROBS = (0.42, 0.27)
 

@@ -1,5 +1,6 @@
-/* Partidos (CP-R5) — TODOS los partidos del día, de las 15 competiciones, con datos
- * REALES de ESPN (scoreboard vía PMData). Selector de día, filtro por competición y
+/* Partidos (CP-R5) — TODOS los partidos del día, de todas las competiciones de
+ * PM_LEAGUES (clubes y selecciones), con datos REALES de ESPN (scoreboard vía
+ * PMData). Selector de día, filtro por competición y
  * sección "En vivo". En 3 grupos: 1º tus equipos seguidos, 2º tus competiciones
  * seguidas, 3º el resto de competiciones por importancia (PM_LEAGUES_ORDER).
  * SIN 1X2 por partido (D3): solo marcador/estado. Shell, pestaña 'matches'. */
@@ -12,14 +13,16 @@
   // Ligas con página de partido en vivo propia (/partido lo sirve el live_tracker,
   // que SOLO cubre estas): solo en ellas la fila entera es enlace. El resto de
   // ligas queda sin enlace (la fila es un <div>).
-  // Slugs con seguimiento en vivo (/partido, backend live_tracker): las 15
-  // competiciones con dashboard. El resto de filas no son botones.
+  // Slugs con seguimiento en vivo (/partido, backend live_tracker): los
+  // dashboards de club + las competiciones de selecciones. El resto de filas
+  // no son botones.
   var MATCH_LEAGUES = {
     hypermotion:1, laliga:1, premier:1, championship:1, seriea:1, serieb:1,
     bundesliga:1, bundesliga2:1, ligue1:1, ligue2:1, primeira:1, eredivisie:1,
     brasileirao:1, ligamx:1, 'mls-este':1, 'mls-oeste':1,
     'argentina-a':1, 'argentina-b':1,
-    champions:1, europa:1, conference:1
+    champions:1, europa:1, conference:1,
+    'nations-league':1, 'concacaf-nations':1, 'copa-africa-clasificacion':1, amistosos:1
   };
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }

@@ -19,6 +19,22 @@ from ..winprob import DEFAULT_MODEL
 from .base import MatchDataProvider
 
 _BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer"
+
+# Competiciones de SELECCIONES: ESPN traduce los nombres de país con `lang=es`
+# (France → Francia, Czechia → Chequia) y la web es en español. Los CLUBES no se
+# traducen a propósito: el cron SEO guarda sus snapshots con el nombre por defecto
+# de ESPN (y de ahí salen rows.html, artículos y tuits), así que traducirlos aquí
+# los descuadraría. Espejo del `ES_LANG` de assets/espn-proxy.js, que hace lo mismo
+# con las llamadas del navegador.
+_SPANISH_LEAGUES = {
+    "uefa.nations", "concacaf.nations.league", "caf.nations_qual", "fifa.friendly",
+}
+
+
+def _lang(code, sep="?"):
+    return f"{sep}lang=es" if code in _SPANISH_LEAGUES else ""
+
+
 # NO poner un User-Agent tipo navegador ("Mozilla/..."): ESPN/Cloudflare lo
 # devuelve 403 desde IPs de datacenter. El UA por defecto de urllib sí pasa; por
 # eso _HEADERS va vacío (mismo motivo que en seo/espn.py).
@@ -141,7 +157,7 @@ class EspnProvider(MatchDataProvider):
         code = config.LEAGUES.get(league)
         if not code:
             return []
-        data = _get_json(f"{_BASE}/{code}/scoreboard")
+        data = _get_json(f"{_BASE}/{code}/scoreboard{_lang(code)}")
         out = []
         for ev in data.get("events", []):
             comp = (ev.get("competitions") or [{}])[0]
@@ -162,7 +178,7 @@ class EspnProvider(MatchDataProvider):
         code = config.LEAGUES.get(league)
         if not code:
             raise ValueError(f"liga desconocida: {league}")
-        data = _get_json(f"{_BASE}/{code}/summary?event={event_id}")
+        data = _get_json(f"{_BASE}/{code}/summary?event={event_id}{_lang(code, '&')}")
 
         comp = (data.get("header", {}).get("competitions") or [{}])[0]
         comps = comp.get("competitors", [])

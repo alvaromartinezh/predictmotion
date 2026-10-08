@@ -138,7 +138,10 @@
     return '<div class="sl-meta"><div class="sl-name">' + esc(t.name || t.abbr) + '</div></div>';
   }
   function slTeam(t, side, league) {
-    var linked = !!t.id;
+    // Sin id ESPN no hay página de equipo que enlazar; tampoco en competiciones
+    // SIN clasificación (`noTable`, los amistosos): /equipo se construye sobre la
+    // tabla de la competición y sin ella no tiene nada que mostrar.
+    var linked = !!t.id && !((window.PM_LEAGUES || {})[league] || {}).noTable;
     var inner = crest(t) + slMeta(t);   // escudo arriba, nombre debajo (mismo orden en los dos lados)
     if (!linked) return '<div class="sl-team ' + side + '">' + inner + '</div>';
     return '<a class="sl-team ' + side + '" href="' + esc(teamHref(t, league)) + '" title="Ver página de ' + esc(t.name || t.abbr) + '">' + inner + '</a>';

@@ -1,6 +1,7 @@
 /* PM_LEAGUES — catálogo de competiciones en cliente (fuente única del shell y del
- * feed). Debe casar con seo/config.py → LEAGUES y con el array COMPS de index.html;
- * a UNIFICAR en una fase posterior (hoy: mínimo viable, mismos 15 slugs).
+ * feed). Debe casar con seo/config.py → LEAGUES (clubes) y GROUP_PAGES
+ * (selecciones), y con el array COMPS de index.html; a UNIFICAR en una fase
+ * posterior.
  * code = código de liga ESPN. logo = leaguelogo dark de ESPN. */
 (function () {
   'use strict';
@@ -25,9 +26,20 @@
     'argentina-b':{ name: 'LPF · Zona B',    code: 'arg.1', child: 1,            country: 'Argentina',    logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/1.png' },
     champions:    { name: 'Champions',       code: 'uefa.champions',   country: 'Europa',       logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2.png' },
     europa:       { name: 'Europa League',   code: 'uefa.europa',      country: 'Europa',       logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2310.png' },
-    conference:   { name: 'Conference',      code: 'uefa.europa.conf', country: 'Europa',       logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/20296.png' }
+    conference:   { name: 'Conference',      code: 'uefa.europa.conf', country: 'Europa',       logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/20296.png' },
+    /* Selecciones. `nosnap`: no las toca el cron SEO (no hay
+     * /data/<slug>/latest.json), porque ESPN las sirve en N grupos y el pipeline
+     * de seo/ es una tabla = un snapshot. Sus páginas simulan en cliente
+     * (assets/groups.js). Quien lea snapshots debe saltárselas.
+     * `noTable`: ESPN no sirve NINGUNA clasificación (amistosos) → ni tabla ni
+     * página de equipo (que se construye sobre la tabla de la competición). */
+    'nations-league':            { name: 'Nations League',      code: 'uefa.nations',            country: 'Europa',      nosnap: true, logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2395.png' },
+    'concacaf-nations':          { name: 'Concacaf Nations',    code: 'concacaf.nations.league', country: 'Concacaf',    nosnap: true, logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2406.png' },
+    'copa-africa-clasificacion': { name: 'Clasif. Copa África', code: 'caf.nations_qual',        country: 'África',      nosnap: true, logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/76.png' },
+    amistosos:                   { name: 'Amistosos',           code: 'fifa.friendly',           country: 'Selecciones', nosnap: true, noTable: true, logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/53.png' }
   };
-  window.PM_LEAGUES_ORDER = ['laliga','hypermotion','premier','seriea','bundesliga','ligue1','primeira','eredivisie','brasileirao','ligamx','argentina-a','argentina-b','mls-este','mls-oeste','championship','serieb','bundesliga2','ligue2','champions','europa','conference'];
+  window.PM_LEAGUES_ORDER = ['laliga','hypermotion','premier','seriea','bundesliga','ligue1','primeira','eredivisie','brasileirao','ligamx','argentina-a','argentina-b','mls-este','mls-oeste','championship','serieb','bundesliga2','ligue2','champions','europa','conference',
+    'nations-league','concacaf-nations','copa-africa-clasificacion','amistosos'];
   /* PM_TEAM_LOGOS — sobreescrituras de escudo por id de equipo ESPN (espejo
    * cliente de seo/config.py → TEAM_LOGOS) para equipos cuyo escudo oficial de
    * ESPN es 404/no se sirve. Clave = id ESPN, valor = URL válida del escudo. */

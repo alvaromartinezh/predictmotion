@@ -17,12 +17,12 @@
   <link rel="dns-prefetch" href="https://site.api.espn.com" />
   <link rel="dns-prefetch" href="https://sports.core.api.espn.com" />
   <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
-  <link rel="stylesheet" href="/styles.css?v=20260926a" />
-  <link rel="stylesheet" href="/assets/shell.css?v=20260926a" />
-  <link rel="stylesheet" href="/assets/account.css?v=20260926a" />
-  <script src="/assets/espn-proxy.js?v=20260926a"></script>
-  <script src="/theme.js?v=20260926a"></script>
-  <script src="/assets/league-engine.js?v=20260926a"></script>
+  <link rel="stylesheet" href="/styles.css?v=20261008a" />
+  <link rel="stylesheet" href="/assets/shell.css?v=20261008a" />
+  <link rel="stylesheet" href="/assets/account.css?v=20261008a" />
+  <script src="/assets/espn-proxy.js?v=20261008a"></script>
+  <script src="/theme.js?v=20261008a"></script>
+  <script src="/assets/league-engine.js?v=20261008a"></script>
   <title>Equipo · PredictMotion</title>
   <!-- Vista de app con parámetros (?id&league&name): infinitas variantes de una misma
        página vacía sin JS. La versión indexable es la estática /equipos/<liga>/<slug>,
@@ -355,9 +355,9 @@
   </style>
 
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3055585323326983" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="/assets/ads.css?v=20260926a" />
-  <script src="/assets/ads-config.js?v=20260926a"></script>
-  <script src="/assets/ads.js?v=20260926a"></script>
+  <link rel="stylesheet" href="/assets/ads.css?v=20261008a" />
+  <script src="/assets/ads-config.js?v=20261008a"></script>
+  <script src="/assets/ads.js?v=20261008a"></script>
 </head>
 <body>
 <!-- Google Tag Manager (noscript) -->
@@ -760,12 +760,46 @@ const LEAGUES = {
       { key: 'descenso', label: 'Descenso',            sub: 'últimos 3', cls: 'red',   test: (p, n) => p > n - 3 },
     ],
   },
+
+  // ── Selecciones (ver seo/config.py → GROUP_PAGES y assets/groups.js) ───────────
+  // ESPN las sirve en N grupos de 3-6 selecciones, así que NO hay snapshot del cron
+  // ni una tabla única: el grupo del equipo lo busca fetchStandings() entre los
+  // `children`. Las zonas son por POSICIÓN en el grupo, no por nombre de zona: el
+  // premio depende de la liga/escalera del grupo (en la Nations League el 1º
+  // asciende en la B y pasa a cuartos en la A) y aquí no sabemos cuál es. La página
+  // de la competición (/nations-league…) sí pinta la zona con su nombre.
+  'nations-league': {
+    slug: 'nations-league', code: 'uefa.nations', name: 'Nations League', dashboard: '/nations-league',
+    pHome: 0.42, pDraw: 0.26,
+    zones: [
+      { key: 'primero', label: 'Primera de grupo', sub: '1º',      cls: 'green', test: (p, n) => p === 1 },
+      { key: 'segundo', label: 'Segunda',          sub: '2º',      cls: 'blue',  test: (p, n) => p === 2 },
+      { key: 'ultimo',  label: 'Última',           sub: 'último',  cls: 'red',   test: (p, n) => p === n },
+    ],
+  },
+  'concacaf-nations': {
+    slug: 'concacaf-nations', code: 'concacaf.nations.league', name: 'Concacaf Nations League', dashboard: '/concacaf-nations',
+    pHome: 0.44, pDraw: 0.26, matchesPerTeam: 4,
+    zones: [
+      { key: 'primero', label: 'Primera de grupo', sub: '1º',      cls: 'green', test: (p, n) => p === 1 },
+      { key: 'segundo', label: 'Segunda',          sub: '2º',      cls: 'blue',  test: (p, n) => p === 2 },
+      { key: 'ultimo',  label: 'Última',           sub: 'último',  cls: 'red',   test: (p, n) => p === n },
+    ],
+  },
+  'copa-africa-clasificacion': {
+    slug: 'copa-africa-clasificacion', code: 'caf.nations_qual', name: 'Clasificación Copa África', dashboard: '/copa-africa-clasificacion',
+    pHome: 0.45, pDraw: 0.28,
+    zones: [
+      { key: 'clasifica', label: 'Clasifica', sub: 'top 2',   cls: 'green', test: (p, n) => p <= 2 },
+      { key: 'eliminada', label: 'Eliminada', sub: '3º y 4º', cls: 'red',   test: (p, n) => p >= 3 },
+    ],
+  },
 };
 
 // Código ESPN → entrada de LEAGUES. Sirve para saber, de una competición
 // adicional descubierta en el calendario del equipo (p. ej. uefa.champions),
-// si es una de nuestras 15 competiciones con dashboard/snapshot (probabilidades
-// disponibles) o una copa/amistoso fuera de catálogo (solo estadísticas).
+// si es una de nuestras competiciones de catálogo (probabilidades disponibles)
+// o una copa/amistoso fuera de catálogo (solo estadísticas).
 const LEAGUE_BY_CODE = Object.fromEntries(Object.values(LEAGUES).map(l => [l.code, l]));
 
 // ─── URL params ───────────────────────────────────────────────────────────
@@ -1026,7 +1060,16 @@ async function fetchStandings() {
   const res  = await fetch(ESPN_STAND);
   if (!res.ok) throw new Error(`Standings ${res.status}`);
   const data = await res.json();
-  const entries = data.children[LG.child || 0].standings.entries;
+  const kids = data.children || [];
+  // Grupo del equipo. Con `child` declarado (MLS Oeste, LPF Zona B) manda ese. Si
+  // no, y ESPN sirve VARIOS grupos —las competiciones de selecciones vienen con uno
+  // por grupo: 14 en la Nations League—, se busca el que CONTIENE al equipo: con el
+  // 0 fijo, cualquier selección fuera del primer grupo no aparecía en la
+  // clasificación y la página entera fallaba con "Equipo no encontrado".
+  const idx = (LG.child != null) ? LG.child
+    : Math.max(0, kids.findIndex(c => (((c.standings || {}).entries) || [])
+        .some(e => String(e.team.id) === String(TEAM_ID))));
+  const entries = ((kids[idx] || {}).standings || {}).entries || [];
   return entries.map((e,i) => {
     const stat = name => (e.stats.find(s=>s.name===name)||{}).value||0;
     const logo = ((e.team.logos && e.team.logos[0]) ? e.team.logos[0].href : null)
@@ -1994,10 +2037,10 @@ if (TEAM_ID) { triggerUpdate(); updateSeason(); }
   document.addEventListener('pm-follows-changed', render);
 })();
 </script>
-<script src="/assets/account.js?v=20260926a"></script>
-<script src="/assets/pm-leagues.js?v=20260926a"></script>
-<script src="/assets/shell.js?v=20260926a"></script>
+<script src="/assets/account.js?v=20261008a"></script>
+<script src="/assets/pm-leagues.js?v=20261008a"></script>
+<script src="/assets/shell.js?v=20261008a"></script>
 <script>PMShell.chrome({ active: null });</script>
-  <script src="/assets/nav.js?v=20260926a"></script>
+  <script src="/assets/nav.js?v=20261008a"></script>
 </body>
 </html>

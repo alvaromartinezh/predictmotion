@@ -1,10 +1,15 @@
-"""Genera los dashboards estáticos por liga desde una plantilla + tokens.
+"""Genera las páginas estáticas de competición desde una plantilla + tokens.
 
 Los dashboards (`<slug>.html`) son HTML estático servido por Caddy (indexable).
 Se generan en **tiempo de commit**, NO en el cron: el cron (generate_site) solo
 escribe en `data/` (gitignored); si tocara ficheros trackeados rompería el
 `git pull` de auto-deploy del servidor. Añadir una liga = entrada en LEAGUES con
 `dashboard_template` + volver a ejecutar esto + commitear el `<slug>.html`.
+
+También genera las páginas de SELECCIONES (plantilla `groups`), que NO son
+dashboards: no tienen snapshot del cron y las tablas de sus grupos las pinta
+assets/groups.js en cliente. Se declaran en GROUP_PAGES, no en LEAGUES (el cron
+recorre LEAGUES). Ver docs/selecciones.
 
 Plantillas en seo/dashboards/ (top1 = 1ª división europea, top2 = 2ª). Reusan el
 motor compartido PMEngine; solo cambian por liga los tokens de abajo. Las
@@ -22,7 +27,7 @@ import re
 import sys
 from pathlib import Path
 
-from .config import LEAGUES, ROOT, league_by_slug
+from .config import GROUP_PAGES, LEAGUES, ROOT, group_page_by_slug, league_by_slug
 
 TMPL_DIR = Path(__file__).resolve().parent / "dashboards"
 
@@ -63,6 +68,9 @@ ZONE_DEFAULTS = {
 # Se recortan en tiempo de render (los dashboards son estáticos), así que el
 # cliente no lleva ningún condicional nuevo.
 _MID_ZONE_RE = re.compile(r"<!--z2-->(.*?)<!--/z2-->", re.S)
+# Bloque de CLASIFICACIÓN de la plantilla `groups`: se recorta en las
+# competiciones sin tabla en ESPN (amistosos), que son solo calendario.
+_TABLE_RE = re.compile(r"<!--tabla-->(.*?)<!--/tabla-->", re.S)
 
 
 def _zones_text(league, defaults, key="text"):
@@ -140,6 +148,40 @@ def render(league):
     return tmpl
 
 
+def render_groups(page):
+    """HTML de una página de competición de selecciones (plantilla `groups`).
+
+    No es un dashboard: no hay snapshot ni Monte Carlo en el cron. La plantilla es
+    la cáscara (shell, meta, textos) y `assets/groups.js` la rellena en cliente con
+    las tablas de TODOS los grupos de ESPN. Ver GROUP_PAGES en config.py.
+    """
+    tmpl = (TMPL_DIR / "groups.html").read_text(encoding="utf-8")
+    tables = page.get("tables", True)
+    tmpl = (_TABLE_RE.sub(lambda m: m.group(1), tmpl) if tables
+            else _TABLE_RE.sub("", tmpl))
+    # La temporada y la jornada las rellena groups.js con lo que sirva ESPN: no se
+    # escriben en el HTML para que la página no haya que tocarla cada ciclo
+    # (Principio 2). Sin tabla no hay jornada que mostrar.
+    subline = ('<p class="league-head__sub">Temporada <b id="league-season">—</b>'
+               ' · Jornada <b id="badge-jornada">—</b></p>') if tables else ""
+    vals = {
+        "{{SLUG}}":              page["slug"],
+        "{{NAME}}":              page["name"],
+        "{{EYEBROW}}":           page["eyebrow"],
+        "{{LOGO}}":              page["logo"],
+        "{{TITLE}}":             page["title"],
+        "{{DESC}}":              page["desc"],
+        "{{ABOUT}}":             page["about"],
+        "{{METHOD}}":            page["method"],
+        "{{SUBLINE}}":           subline,
+        "{{PARTIDOS_ACTIVE}}":   "" if tables else " active",
+        "{{PARTIDOS_HIDDEN}}":   " hidden" if tables else "",
+    }
+    for tok, val in vals.items():
+        tmpl = tmpl.replace(tok, val)
+    return tmpl
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--league", help="Solo esta liga (slug)")
@@ -149,21 +191,27 @@ def main(argv=None):
 
     if args.league:
         lg = league_by_slug(args.league)
+        pg = group_page_by_slug(args.league)
         leagues = [lg] if lg else []
+        pages = [pg] if pg else []
     else:
         leagues = list(LEAGUES)
+        pages = list(GROUP_PAGES)
+
+    # (slug, html) de todo lo que se genera: dashboards de liga + páginas de
+    # selecciones. Las dos familias se escriben y se comprueban igual.
+    out = [(lg["slug"], render(lg)) for lg in leagues
+           if lg and lg.get("dashboard_template")]
+    out += [(pg["slug"], render_groups(pg)) for pg in pages if pg]
 
     rc = 0
-    for lg in leagues:
-        if not lg or not lg.get("dashboard_template"):
-            continue
-        html = render(lg)
-        path = ROOT / f"{lg['slug']}.html"
+    for slug, html in out:
+        path = ROOT / f"{slug}.html"
         if args.check:
             cur = path.read_text(encoding="utf-8") if path.exists() else None
             ident = cur == html
             note = "" if cur is not None else " (no existe aún)"
-            print(f"{'✅' if ident else '❌'} {lg['slug']}.html: "
+            print(f"{'✅' if ident else '❌'} {slug}.html: "
                   f"{'byte-idéntico' if ident else 'DIVERGE'}{note}")
             if cur is not None and not ident:
                 rc = 1
@@ -175,7 +223,7 @@ def main(argv=None):
                     print(f"    longitudes: actual={len(cur)} generado={len(html)}")
         else:
             path.write_text(html, encoding="utf-8")
-            print(f"escrito {lg['slug']}.html ({len(html)} bytes)")
+            print(f"escrito {slug}.html ({len(html)} bytes)")
     return rc
 
 

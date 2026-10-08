@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-NG2T7CM4');</script>
+  <!-- End Google Tag Manager -->
+
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-YMRF085WZS"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-YMRF085WZS');
+  </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/jpeg" href="/media/logo.jpeg" />
+  <link rel="apple-touch-icon" href="/media/logo.jpeg" />
+  <!-- Performance: preconnect a recursos externos -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
+  <link rel="dns-prefetch" href="https://site.api.espn.com" />
+  <link rel="dns-prefetch" href="https://a.espncdn.com" />
+  <link rel="stylesheet" href="/styles.css?v=20261008a" />
+  <link rel="stylesheet" href="/assets/shell.css?v=20261008a" />
+  <link rel="stylesheet" href="/assets/account.css?v=20261008a" />
+  <link rel="stylesheet" href="/assets/fixtures.css?v=20261008a" />
+  <link rel="stylesheet" href="/assets/ads.css?v=20261008a" />
+  <script src="/assets/espn-proxy.js?v=20261008a"></script>
+  <script src="/theme.js?v=20261008a"></script>
+
+  <title>Clasificación Copa África · Grupos y probabilidades</title>
+  <meta name="description" content="Los 12 grupos de la fase de clasificación para la Copa África y la probabilidad de cada selección de clasificarse. Simulación Monte Carlo con datos en vivo." />
+  <link rel="canonical" href="https://predictmotion.com/copa-africa-clasificacion" />
+  <link rel="alternate" hreflang="es" href="https://predictmotion.com/copa-africa-clasificacion" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="PredictMotion" />
+  <meta property="og:locale" content="es_ES" />
+  <meta property="og:title" content="Clasificación Copa África · Grupos y probabilidades" />
+  <meta property="og:description" content="Los 12 grupos de la fase de clasificación para la Copa África y la probabilidad de cada selección de clasificarse. Simulación Monte Carlo con datos en vivo." />
+  <meta property="og:url" content="https://predictmotion.com/copa-africa-clasificacion" />
+  <meta property="og:image" content="https://predictmotion.com/media/logo.jpeg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Clasificación Copa África · Grupos y probabilidades" />
+  <meta name="twitter:description" content="Los 12 grupos de la fase de clasificación para la Copa África y la probabilidad de cada selección de clasificarse. Simulación Monte Carlo con datos en vivo." />
+  <meta name="twitter:image" content="https://predictmotion.com/media/logo.jpeg" />
+
+<style>
+  /* ===== copa-africa-clasificacion.html · estilos de página (sistema base en styles.css) ===== */
+  main.wrap { padding-bottom: var(--sp-9); }
+  .table-toolbar { margin-top: var(--sp-2); }
+
+  /* Tablas de grupo: una tarjeta por grupo, agrupadas por liga/escalera */
+  .grp-tier { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: .02em; font-size: var(--fs-18); margin: var(--sp-7) 0 var(--sp-3); padding-bottom: var(--sp-2); border-bottom: 1px solid var(--line); }
+  .grp-tier:first-child { margin-top: var(--sp-2); }
+  .grp { margin-bottom: var(--sp-5); }
+  .grp__title { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: .02em; font-size: var(--fs-14); color: var(--text-2); margin-bottom: var(--sp-2); }
+  .grp__done { font-family: var(--font-mono); font-weight: 400; text-transform: none; letter-spacing: 0; font-size: var(--fs-11); color: var(--muted); }
+  #groups:empty::after { content: 'Cargando clasificación…'; display: block; color: var(--muted); font-size: var(--fs-14); padding: var(--sp-6) 0; }
+
+  /* Texto editorial (SEO, indexable) */
+  .league-about { border-top: 1px solid var(--line); margin-top: var(--sp-8); padding-top: var(--sp-6); }
+  .league-about__inner { max-width: 74ch; }
+  .league-about h2 { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: .02em; font-size: var(--fs-16); margin: var(--sp-5) 0 var(--sp-2); }
+  .league-about h2:first-child { margin-top: 0; }
+  .league-about p { color: var(--text-2); line-height: 1.7; margin-bottom: var(--sp-3); }
+  .league-about a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+
+  /* Equipo: crest + fallback de iniciales */
+  .team__crest-box { width: 26px; height: 26px; flex: none; display: grid; place-items: center; }
+  .team__crest-box img { width: 100%; height: 100%; object-fit: contain; }
+  .team__crest-box.fallback { border-radius: var(--r-xs); background: var(--surface-3); color: var(--text-2); font-family: var(--font-mono); font-weight: 700; font-size: .62rem; }
+  .team-link { transition: color .15s; }
+  .team-link:hover { color: var(--accent); }
+  .col-pts.pts-live .num { color: var(--accent); }
+</style>
+</head>
+<body class="theme-copa-africa-clasificacion">
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NG2T7CM4"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+
+<!-- Shell del rediseño (modo chrome) alrededor del contenido de la página -->
+<div class="pm-app app">
+<aside class="sidenav" id="pm-sidenav"></aside>
+<div class="app__main">
+<header class="appbar" id="pm-appbar"></header>
+
+<!-- ===== CABECERA DE COMPETICIÓN ===== -->
+<section class="league-head">
+  <div class="wrap">
+    <a class="back-link" href="/">← Todas las competiciones</a>
+    <div class="league-head__row">
+      <span class="league-shield">
+        <img id="league-logo" src="https://a.espncdn.com/i/leaguelogos/soccer/500-dark/76.png" alt="Clasificación Copa África" />
+      </span>
+      <div class="league-head__meta">
+        <p class="eyebrow">Selecciones · CAF</p>
+        <h1 class="league-head__title">Clasificación Copa África</h1>
+        <p class="league-head__sub">Temporada <b id="league-season">—</b> · Jornada <b id="badge-jornada">—</b></p>
+      </div>
+    </div>
+
+    <div class="page-tabs">
+      <button class="page-tab active" type="button" data-section="clasificacion">Clasificación</button>
+      <button class="page-tab" type="button" data-section="partidos">Partidos</button>
+    </div>
+  </div>
+</section>
+
+<main class="wrap">
+
+  <div class="ad-wrap" data-ad-slot="leader"></div>
+  <div class="ad-wrap" data-ad-slot="leader-movil"></div>
+
+  <!-- ===== CLASIFICACIÓN (una tabla por grupo) ===== -->
+  <div class="tab-section" data-section="clasificacion">
+    <!-- Partidos en juego: marcadores AQUÍ, no dentro de las tablas -->
+    <div class="live-strip" id="live-strip" hidden></div>
+
+    <div class="table-toolbar">
+      <h2>Grupos &amp; probabilidades</h2>
+    </div>
+
+    <div id="groups"></div>
+
+    <div class="ad-wrap" data-ad-slot="box"></div>
+  </div><!-- /clasificacion -->
+
+  <!-- ===== PARTIDOS ===== -->
+  <div class="tab-section" data-section="partidos" hidden>
+    <div id="fx-mount" class="fx"></div>
+  </div>
+
+</main>
+
+<!-- ===== Texto editorial (SEO, indexable) ===== -->
+<section class="league-about" aria-label="Sobre esta competición">
+  <div class="wrap">
+    <div class="league-about__inner">
+      <h2>Sobre Clasificación Copa África</h2>
+      <p>La fase de clasificación para la Copa África reparte a las selecciones del continente en doce grupos que se juegan a doble partido. Los dos primeros de cada grupo se clasifican para el torneo final. En PredictMotion se simulan los partidos pendientes de cada grupo para estimar la probabilidad real de clasificación de cada selección.</p>
+      <h2>Cómo se calculan las probabilidades</h2>
+      <p>El porcentaje de cada selección es la probabilidad de acabar su grupo entre los dos primeros, los que se clasifican para el torneo final. Se obtiene con una simulación Monte Carlo que proyecta los partidos pendientes del grupo miles de veces, partiendo de la clasificación real en vivo y de las medias históricas de victoria local, empate y victoria visitante.</p>
+      <p><a href="/acerca">Conoce la metodología completa</a></p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== PIE ===== -->
+<footer class="footer">
+  <div class="wrap footer__inner">
+    <p>© 2025 PredictMotion · Todos los derechos reservados</p>
+    <nav class="footer__links" aria-label="Enlaces">
+      <a href="/acerca">Cómo funciona</a>
+      <a href="mailto:contact@predictmotion.com">contact@predictmotion.com</a>
+      <a href="/privacy">Política de privacidad</a>
+    </nav>
+  </div>
+</footer>
+
+</div><!-- /.app__main -->
+</div><!-- /.pm-app.app -->
+<div id="shell-tabbar"></div>
+
+<script src="/assets/account.js?v=20261008a"></script>
+<script src="/assets/pm-leagues.js?v=20261008a"></script>
+<script src="/assets/pm-data.js?v=20261008a"></script>
+<script src="/assets/shell.js?v=20261008a"></script>
+<script>PMShell.chrome({ active: null });</script>
+<script src="/assets/league-engine.js?v=20261008a"></script>
+<script src="/assets/fixtures.js?v=20261008a"></script>
+<script>window.PM_GROUPS_SLUG = 'copa-africa-clasificacion';</script>
+<script src="/assets/groups.js?v=20261008a"></script>
+<script src="/assets/ads-config.js?v=20261008a"></script>
+<script src="/assets/ads.js?v=20261008a"></script>
+<script src="/assets/nav.js?v=20261008a"></script>
+</body>
+</html>

@@ -13,13 +13,26 @@
     'site.api.espn.com': 1,
     'sports.core.api.espn.com': 1,
   };
+  // Competiciones de SELECCIONES: se les añade `lang=es` porque ESPN traduce los
+  // nombres de país (France → Francia, Czechia → Chequia) y la web es en español.
+  // Va AQUÍ, el único punto por el que pasan todas las llamadas a ESPN del
+  // navegador, para que clasificación, calendario y /partidos digan lo mismo.
+  // Los CLUBES no se traducen a propósito: el cron SEO guarda sus snapshots con el
+  // nombre por defecto de ESPN (y de ahí salen rows.html, artículos y tuits), así
+  // que traducirlos solo en cliente los descuadraría. Espejo del `_SPANISH_LEAGUES`
+  // de live_tracker/providers/espn.py, que sirve /partido.
+  var ES_LANG = /\/soccer\/(uefa\.nations|concacaf\.nations\.league|caf\.nations_qual|fifa\.friendly)(\/|$)/;
   window.fetch = function (input, init) {
     var url = typeof input === 'string' ? input : input && input.url;
     if (url) {
       try {
         var u = new URL(url, window.location.href);
         if (HOSTS[u.host]) {
-          input = '/api/espn/' + u.host + u.pathname + u.search;
+          var search = u.search;
+          if (ES_LANG.test(u.pathname) && search.indexOf('lang=') < 0) {
+            search += (search ? '&' : '?') + 'lang=es';
+          }
+          input = '/api/espn/' + u.host + u.pathname + search;
         }
       } catch (e) {}
     }

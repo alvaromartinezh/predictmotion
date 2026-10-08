@@ -634,6 +634,120 @@ LEAGUES = [
 ]
 
 
+# ── Competiciones de SELECCIONES (páginas de grupos) ───────────────────────
+# NO van en LEAGUES a propósito: el cron (generate_site) recorre LEAGUES y su
+# pipeline es *una tabla = un snapshot = una página*, y ESPN sirve estas
+# competiciones como N grupos de 3-6 selecciones (14 en la Nations League, 12 en
+# la clasificación de la Copa África). Catorce dashboards de grupos de cuatro no
+# son producto, así que estas páginas se resuelven EN CLIENTE con el motor
+# compartido (assets/groups.js + league-engine.js): sin snapshot y sin cron.
+# Aquí solo vive lo estático de cada página (meta, textos, logo); el formato de
+# cada competición —zonas, partidos por equipo, p_home/p_draw— está en el COMPS
+# de assets/groups.js, que es quien simula.
+#
+# `tables=False` (amistosos): ESPN no sirve clasificación, la página se genera
+# sin pestaña de clasificación.
+GROUP_PAGES = [
+    {
+        "slug": "nations-league",
+        "name": "Nations League",
+        "eyebrow": "Selecciones · UEFA",
+        "logo": "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2395.png",
+        "title": "Nations League · Grupos, clasificación y probabilidades",
+        "desc": "Clasificación de los 14 grupos de la UEFA Nations League y "
+                "probabilidad de cada selección de pasar a cuartos, ascender de "
+                "liga o descender. Simulación Monte Carlo con datos en vivo.",
+        "about": "La UEFA Nations League reparte a las 54 selecciones europeas en "
+                 "cuatro ligas por nivel (A, B, C y D) y cada una en grupos de tres "
+                 "o cuatro, que se juegan a doble partido. En la Liga A los dos "
+                 "primeros de cada grupo pasan a los cuartos de final; en el resto "
+                 "de ligas el primero asciende y el segundo juega un play-off de "
+                 "ascenso, mientras el último de cada grupo baja de categoría. En "
+                 "PredictMotion se simulan los partidos que quedan en cada grupo "
+                 "para estimar la probabilidad real de cada selección.",
+        "method": "El porcentaje de cada selección es la probabilidad de que termine "
+                  "su grupo en esa zona: clasificación, play-off o descenso, según el "
+                  "nivel de la liga en que juega. Se obtiene con una simulación Monte "
+                  "Carlo que proyecta los partidos pendientes del grupo miles de "
+                  "veces, partiendo de la clasificación real en vivo y de las medias "
+                  "históricas de victoria local, empate y victoria visitante de la "
+                  "competición. En los grupos cuya fase ya ha terminado no hay nada "
+                  "que simular: la zona es la que da la clasificación oficial.",
+    },
+    {
+        "slug": "concacaf-nations",
+        "name": "Concacaf Nations League",
+        "eyebrow": "Selecciones · Concacaf",
+        "logo": "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2406.png",
+        "title": "Concacaf Nations League · Grupos y clasificación",
+        "desc": "Clasificación de los grupos de la Concacaf Nations League (Ligas A, "
+                "B y C) y probabilidad de cada selección de pasar a cuartos, ascender "
+                "o descender de liga.",
+        "about": "La Concacaf Nations League ordena a las selecciones de Norteamérica, "
+                 "Centroamérica y el Caribe en tres ligas por nivel. En la Liga A los "
+                 "dos primeros de cada grupo pasan a los cuartos de final y los dos "
+                 "últimos bajan a la Liga B; en las ligas inferiores el primero de "
+                 "cada grupo asciende. En PredictMotion se muestran todos los grupos "
+                 "con la clasificación en vivo y la zona en la que acaba cada "
+                 "selección.",
+        "method": "El porcentaje de cada selección es la probabilidad de que termine "
+                  "su grupo en esa zona: cuartos de final, ascenso o descenso, según "
+                  "la liga en que juega. Se obtiene con una simulación Monte Carlo de "
+                  "los partidos pendientes del grupo, partiendo de la clasificación "
+                  "real en vivo. Cuando la fase de grupos ya ha terminado no hay nada "
+                  "que simular y la zona es la que da la clasificación oficial.",
+    },
+    {
+        "slug": "copa-africa-clasificacion",
+        "name": "Clasificación Copa África",
+        "eyebrow": "Selecciones · CAF",
+        "logo": "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/76.png",
+        "title": "Clasificación Copa África · Grupos y probabilidades",
+        "desc": "Los 12 grupos de la fase de clasificación para la Copa África y la "
+                "probabilidad de cada selección de clasificarse. Simulación Monte "
+                "Carlo con datos en vivo.",
+        "about": "La fase de clasificación para la Copa África reparte a las "
+                 "selecciones del continente en doce grupos que se juegan a doble "
+                 "partido. Los dos primeros de cada grupo se clasifican para el "
+                 "torneo final. En PredictMotion se simulan los partidos pendientes "
+                 "de cada grupo para estimar la probabilidad real de clasificación de "
+                 "cada selección.",
+        "method": "El porcentaje de cada selección es la probabilidad de acabar su "
+                  "grupo entre los dos primeros, los que se clasifican para el torneo "
+                  "final. Se obtiene con una simulación Monte Carlo que proyecta los "
+                  "partidos pendientes del grupo miles de veces, partiendo de la "
+                  "clasificación real en vivo y de las medias históricas de victoria "
+                  "local, empate y victoria visitante.",
+    },
+    {
+        "slug": "amistosos",
+        "name": "Amistosos internacionales",
+        "eyebrow": "Selecciones · Amistosos",
+        "logo": "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/53.png",
+        "title": "Amistosos internacionales · Calendario y resultados",
+        "desc": "Calendario y resultados de los amistosos internacionales de "
+                "selecciones, con seguimiento en vivo partido a partido.",
+        "about": "Los amistosos internacionales son los partidos de selecciones que "
+                 "se juegan fuera de competición oficial, en las ventanas FIFA. No "
+                 "hay clasificación ni grupos: cada partido es independiente, así que "
+                 "esta página es el calendario y los resultados de todos ellos, con "
+                 "enlace al seguimiento en vivo de cada uno.",
+        "method": "Un amistoso no forma parte de ninguna tabla, así que aquí no hay "
+                  "probabilidades de temporada que calcular. La probabilidad de "
+                  "victoria, empate y derrota de cada amistoso se estima partido a "
+                  "partido en su propia página de seguimiento en vivo.",
+        "tables": False,
+    },
+]
+
+
+def group_page_by_slug(slug):
+    for pg in GROUP_PAGES:
+        if pg["slug"] == slug:
+            return pg
+    return None
+
+
 def league_by_slug(slug):
     for lg in LEAGUES:
         if lg["slug"] == slug:
