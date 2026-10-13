@@ -59,12 +59,32 @@
   function randomMatchday(names) {
     var t = shuffle(names.slice());
     var md = [];
-    for (var i = 0; i < t.length; i += 2) md.push([t[i], t[i + 1]]);
+    // `t.length - 1`: con un número IMPAR de equipos (grupo de 3 de la Liga D,
+    // tablas de 15 de MLS y Argentina) el último se queda SIN pareja esa jornada,
+    // igual que hace el motor Python (`sim_table.py`: `range(0, len(order) - 1, 2)`).
+    // Antes se emparejaba con `undefined`: ni el guarda de `teamGp` lo filtraba
+    // (`undefined >= n` es false) ni la fuerza existía, así que `sc.str[undefined]`
+    // metía NaN en gd/gf del equipo real. Visto 2026-10-13.
+    for (var i = 0; i < t.length - 1; i += 2) md.push([t[i], t[i + 1]]);
     return md;
   }
+  // Jornadas virtuales a jugar. Con tabla IMPAR, cada jornada empareja solo
+  // ⌊n/2⌋ partidos (uno descansa), así que con las `totalMd - gp` de siempre a
+  // cada equipo le quedaban partidos de su temporada SIN simular — en un grupo
+  // de 3 de la Liga D, 2 de los 3 que faltaban, y el líder salía con 6,2% de
+  // acabar último cuando es 0,2% (visto 2026-10-13). Se juegan jornadas de más
+  // y el cupo por equipo (`simGp`) corta cuando cada uno llega a `totalMd`; el
+  // tope está por si el azar empareja una y otra vez a dos equipos completos.
+  // Con tabla PAR el tope vale lo mismo que antes y el resultado es
+  // byte-idéntico. Port de `seo/sim_table.py:_md_cap` — los dos motores tienen
+  // que coincidir (lo vigila seo/test_engine_parity.py).
+  function mdCap(names, totalMd, gp) {
+    var base = totalMd - gp;
+    return base + (names.length % 2 ? 4 * names.length : 0);
+  }
   function buildFixtures(names, gp, totalMd) {
-    var mds = [];
-    for (var md = gp + 1; md <= totalMd; md++) mds.push(randomMatchday(names));
+    var mds = [], cap = mdCap(names, totalMd, gp);
+    for (var i = 0; i < cap; i++) mds.push(randomMatchday(names));
     return mds;
   }
   // Play-off: eliminatoria a doble partido (verbatim; pHome/pDraw por parámetro).
@@ -167,13 +187,20 @@
       standings.forEach(function (t) { pts[t.name] = t.pts; gd[t.name] = t.gf - t.gc; gf[t.name] = t.gf; });
 
       var mdNum = minGp;
-      for (var mi = 0; mi < nMd; mi++) {
+      var simGp = {}; names.forEach(function (nm) { simGp[nm] = 0; });
+      var capMd = mdCap(names, totalMd, minGp);
+      for (var mi = 0; mi < capMd; mi++) {
+        if (names.every(function (nm) { return teamGp[nm] + simGp[nm] >= totalMd; })) break;
         mdNum++;
         var order = shuffle(names.slice());
-        var tab = tables[mi];
+        // Las jornadas de más (solo tabla impar) reusan la última tabla de λ: a
+        // esa altura el fade de proyección ya está en su suelo. Ver mdCap().
+        var tab = tables[Math.min(mi, nMd - 1)];
         for (var k = 0; k < order.length - 1; k += 2) {
           var hh = order[k], aa = order[k + 1];
           if (teamGp[hh] >= mdNum || teamGp[aa] >= mdNum) continue;
+          if (teamGp[hh] + simGp[hh] >= totalMd || teamGp[aa] + simGp[aa] >= totalMd) continue;
+          simGp[hh]++; simGp[aa]++;
           var cdfs = tab[idx[hh]][idx[aa]];
           var hg = poissonSample(cdfs[0]);
           var ag = poissonSample(cdfs[1]);
@@ -248,8 +275,10 @@
       standings.forEach(function (t) { pts[t.name] = t.pts; gd[t.name] = t.gf - t.gc; gf[t.name] = t.gf; });
 
       var mdNum = minGp;
+      var simGp = {}; names.forEach(function (nm) { simGp[nm] = 0; });
       var fixtures = buildFixtures(names, minGp, totalMd);
       for (var fi = 0; fi < fixtures.length; fi++) {
+        if (names.every(function (nm) { return teamGp[nm] + simGp[nm] >= totalMd; })) break;
         mdNum++;
         // Peso del prior en esta jornada proyectada (port de sim_table.simulate):
         // v2 con horizonte → el prior decae dentro de la temporada proyectada;
@@ -259,6 +288,8 @@
         for (var mi = 0; mi < md.length; mi++) {
           var hh = md[mi][0], aa = md[mi][1];
           if (teamGp[hh] >= mdNum || teamGp[aa] >= mdNum) continue;
+          if (teamGp[hh] + simGp[hh] >= totalMd || teamGp[aa] + simGp[aa] >= totalMd) continue;
+          simGp[hh]++; simGp[aa]++;
           // Prior de fuerza (fallback): sesga la cuota local por el rating con
           // desvanecimiento. Sin contexto → pHome/pDraw de siempre.
           var ph = pHome, pd = pDraw;

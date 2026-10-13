@@ -77,6 +77,26 @@ def _shuffle(rng, arr):
     return arr
 
 
+# ── Cupo de partidos por equipo con tabla IMPAR ──────────────────────────────
+# Con un número impar de equipos, cada jornada virtual empareja solo ⌊n/2⌋
+# partidos: uno descansa. Pero el bucle corría EXACTAMENTE `total_md - min_gp`
+# jornadas, así que a cada equipo le quedaban partidos de su temporada SIN
+# simular (en un grupo de 3 de la Liga D: 2 de los 3 que faltaban). Se notaba en
+# las zonas: el líder de un grupo de 3 salía con 6,2% de acabar último cuando es
+# 0,2%. Visto el 2026-10-13.
+#
+# Arreglo: se lleva el cupo simulado por equipo (`sim_gp`) y se siguen jugando
+# jornadas hasta que todos llegan a `total_md`, con un tope por si el azar
+# empareja una y otra vez a dos equipos ya completos. Con tabla PAR nada cambia
+# (todos se completan justo en la última jornada del rango de siempre, el tope
+# vale lo mismo que antes y el consumo del PRNG es idéntico → resultados
+# byte-idénticos; comprobado). `assets/league-engine.js` lleva el MISMO cupo:
+# son ports uno del otro y la divergencia la vigila seo/test_engine_parity.py.
+def _md_cap(names, total_md, min_gp):
+    base = total_md - min_gp
+    return base + (4 * len(names) if len(names) % 2 else 0)
+
+
 def resolve_strengths(rows, ratings):
     """{team_id: R} para los equipos de esta tabla, con default de FONDO DE TABLA
     (mínimo rating conocido) para los que no tienen histórico (decisión 1).
@@ -307,6 +327,7 @@ def simulate(rows, p_home, p_draw, playoff_top=None, sim_n=SIM_N_TABLE, ratings=
     sc = _strength_context(rows, ratings, p_home, p_draw, total_md)
 
     rng = make_rng(standings_seed(rows))
+    cap_md = _md_cap(names, total_md, min_gp)
 
     for _ in range(sim_n):
         pts = {r["name"]: r["pts"] for r in rows}
@@ -314,7 +335,10 @@ def simulate(rows, p_home, p_draw, playoff_top=None, sim_n=SIM_N_TABLE, ratings=
         gf  = {r["name"]: r["gf"] for r in rows}
 
         md_num = min_gp
-        for _md in range(min_gp + 1, total_md + 1):
+        sim_gp = {nm: 0 for nm in names}
+        for _md in range(min_gp + 1, min_gp + 1 + cap_md):
+            if all(team_gp[nm] + sim_gp[nm] >= total_md for nm in names):
+                break                                  # todos con su cupo hecho
             md_num += 1
             # Peso del prior para esta jornada proyectada. OFF (o sin fade de
             # proyección) → constante sc["w"], como siempre. v2 con horizonte → el
@@ -331,6 +355,10 @@ def simulate(rows, p_home, p_draw, playoff_top=None, sim_n=SIM_N_TABLE, ratings=
                 h, a = order[k], order[k + 1]
                 if team_gp[h] >= md_num or team_gp[a] >= md_num:
                     continue
+                if (team_gp[h] + sim_gp[h] >= total_md
+                        or team_gp[a] + sim_gp[a] >= total_md):
+                    continue                           # ya tiene su temporada completa
+                sim_gp[h] += 1; sim_gp[a] += 1
                 # Prior de fuerza: sesga la cuota local por el rating (con
                 # desvanecimiento). Sin prior aplicable → p_home/p_draw de siempre.
                 if sc is None:
@@ -429,20 +457,31 @@ def _simulate_poisson(rows, playoff_top, sim_n, adj, base, total_md,
         tables.append(tab)
 
     rng = make_rng(standings_seed(rows))
+    cap_md = _md_cap(names, total_md, min_gp)
     for _ in range(sim_n):
         pts = {r["name"]: r["pts"] for r in rows}
         gd  = {r["name"]: r["gf"] - r["gc"] for r in rows}
         gf  = {r["name"]: r["gf"] for r in rows}
 
         md_num = min_gp
-        for mi in range(n_md):
+        sim_gp = {nm: 0 for nm in names}
+        for mi in range(cap_md):
+            if all(team_gp[nm] + sim_gp[nm] >= total_md for nm in names):
+                break                                  # todos con su cupo hecho
             md_num += 1
-            tab = tables[mi]
+            # Las jornadas de más (solo tabla impar) reusan la última tabla de λ:
+            # a esa altura el fade de proyección ya está en su suelo, así que no
+            # hay nada que interpolar. Ver _md_cap().
+            tab = tables[min(mi, n_md - 1)]
             order = _shuffle(rng, list(names))
             for k in range(0, len(order) - 1, 2):
                 h, a = order[k], order[k + 1]
                 if team_gp[h] >= md_num or team_gp[a] >= md_num:
                     continue
+                if (team_gp[h] + sim_gp[h] >= total_md
+                        or team_gp[a] + sim_gp[a] >= total_md):
+                    continue                           # ya tiene su temporada completa
+                sim_gp[h] += 1; sim_gp[a] += 1
                 cdf_h, cdf_a = tab[idx[h]][idx[a]]
                 hg = poisson.sample(rng, cdf_h)
                 ag = poisson.sample(rng, cdf_a)
