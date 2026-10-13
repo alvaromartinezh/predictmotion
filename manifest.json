@@ -1,0 +1,24 @@
+{
+  "name": "PredictMotion",
+  "short_name": "PredictMotion",
+  "description": "Probabilidades y clasificaciones de fútbol en tiempo real.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "lang": "es",
+  "dir": "ltr",
+  "theme_color": "#c5860f",
+  "background_color": "#eef1f7",
+  "icons": [
+    {
+      "src": "/media/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/media/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
