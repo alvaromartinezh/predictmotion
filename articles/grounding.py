@@ -459,15 +459,22 @@ def _ground_zona_especifica(league, snap, kind, fecha, hour):
     """Probabilidad de una zona concreta del snapshot (descenso, ascenso directo,
     playoff, Champions, Europa). Si la liga no tiene esa banda, no se publica."""
     info = STAT_KINDS[kind]
-    zone_type = info["zone_type"]
     bands = snap["bands"]
     n = snap.get("num_teams") or len(snap["teams"])
 
-    target_band = None
-    for b in bands:
-        if b.get("zone") == zone_type or b.get("key") == zone_type:
-            target_band = b
-            break
+    # Se empareja por la CLAVE de la banda, nunca por su `zone`: `zone` es una
+    # etiqueta GENÉRICA de hueco ('promo'/'europa'/'conf'/'relega') compartida
+    # entre niveles, así que el kind `ascenso_directo` (zone_type 'promo') cazaba
+    # la banda de CHAMPIONS de las primeras divisiones, que también lleva
+    # zone='promo'. Resultado: artículos publicados titulando "Probabilidad de
+    # ascenso directo" sobre la probabilidad de Champions del Barça — 4 veces
+    # desde agosto de 2026, visto el 2026-10-13. De paso arregla Hypermotion, que
+    # define sus bandas sin `zone` a propósito (zonas fijas, ver [[docs/zonas]]) y
+    # por eso no podía publicar NUNCA `descenso` ni `ascenso_directo`.
+    # El resto del código de artículos ya se guía por `key` (_best_band,
+    # _effective_bands); esta función era la excepción.
+    keys_ok = info.get("band_keys") or (kind,)
+    target_band = next((b for b in bands if b.get("key") in keys_ok), None)
     if target_band is None:
         return None
 

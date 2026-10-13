@@ -50,7 +50,9 @@ import os
 import re
 import sys
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
+from email.utils import format_datetime
+from html import unescape
 from xml.sax.saxutils import escape as xesc
 from zoneinfo import ZoneInfo
 
@@ -303,6 +305,55 @@ def _write_sitemap():
     (ARTICLES_OUT_DIR.parent / "sitemap-articles.xml").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+_DESCRIPTION_RE = re.compile(r'<meta name="description" content="(.*?)">')
+
+
+def _write_rss():
+    """rss.xml: feed RSS 2.0 del kiosco (https://predictmotion.com/kiosco),
+    reconstruido escaneando los HTML ya en disco — mismo criterio
+    self-healing que _write_sitemap/_write_articles_index, reusando
+    _article_meta_from_file (slug -> tipo/liga/fecha/title) para no volver a
+    inventar ese parseo. Los 40 artículos más recientes, del más nuevo al
+    más viejo. title/description salen del <title>/<meta description> ya
+    escapados a HTML por seo.chrome.esc al renderizar la página — se
+    deshace con html.unescape antes de volver a escapar a XML (si no, un
+    '&' en un titular de Gemini saldría doblemente escapado)."""
+    items = []
+    for path in ARTICLES_OUT_DIR.glob("*.html"):
+        meta = _article_meta_from_file(path)
+        if not meta:
+            continue
+        _tipo, _liga, fecha, title = meta
+        text = path.read_text(encoding="utf-8")
+        desc_m = _DESCRIPTION_RE.search(text)
+        description = unescape(desc_m.group(1)) if desc_m else unescape(title)
+        items.append({"slug": path.stem, "fecha": fecha, "title": unescape(title), "description": description})
+    items.sort(key=lambda it: (it["fecha"], it["slug"]), reverse=True)
+
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>',
+             '<rss version="2.0"><channel>',
+             "<title>PredictMotion · Kiosco</title>",
+             f"<link>{SITE}/kiosco</link>",
+             "<description>Resúmenes, previas y crónicas de las ligas de PredictMotion, "
+             "generados por el modelo.</description>",
+             "<language>es-ES</language>",
+             f"<lastBuildDate>{format_datetime(datetime.now(timezone.utc))}</lastBuildDate>"]
+    for it in items[:40]:
+        url = f"{SITE}/articulos/{it['slug']}"
+        pub_date = format_datetime(datetime.strptime(it["fecha"], "%Y-%m-%d").replace(tzinfo=timezone.utc))
+        lines.append(
+            "<item>"
+            f"<title>{xesc(it['title'])}</title>"
+            f"<link>{xesc(url)}</link>"
+            f'<guid isPermaLink="true">{xesc(url)}</guid>'
+            f"<pubDate>{pub_date}</pubDate>"
+            f"<description>{xesc(it['description'])}</description>"
+            "</item>"
+        )
+    lines.append("</channel></rss>")
+    (ARTICLES_OUT_DIR.parent / "rss.xml").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def _run_finished_matches(league, snap, finished, today, dry_run):
     """Bucle best-effort sobre los partidos terminados de hoy — lo comparten
     _run_matches_only (cron frecuente) y _run (red de seguridad de las
@@ -349,6 +400,7 @@ def _run_matches_only(league_slug, dry_run, date_override=None):
     if not dry_run:
         _write_sitemap()  # para que la crónica sea descubrible ya, sin esperar a las 23:59
         _write_articles_index()
+        _write_rss()
     return 0
 
 
@@ -456,11 +508,31 @@ def _run_stat(league_slug, dry_run, date_override=None):
     season = snap.get("season")
     jornada = snap.get("jornada")
     used = _stat_kinds_used_for_matchday(league_slug, season, jornada)
-    kind = grounding.pick_stat_kind(hour, day=day, used=used)
-    payload = grounding.ground_stat(league, snap, kind, fecha, hour)
+    # Un kind sin datos NO puede cancelar la franja: `pick_stat_kind` devuelve el
+    # primer kind no usado a partir de la franja, y la rotación avanza hacia los
+    # que acaba de gastar, así que el candidato de delante es siempre el mismo
+    # mientras no cambie la jornada. Si ese kind no aplica a la liga (p. ej.
+    # `playoff` en LaLiga, que no tiene play-off) se quedaba atascado ahí y la
+    # liga no publicaba NADA el resto de la jornada, teniendo 20+ kinds válidos
+    # libres (visto 2026-10-13: laliga 24 h sin dato curioso repitiendo
+    # "sin datos suficientes (playoff)" cada franja). Ahora se descarta el kind
+    # sin datos y se prueba el siguiente.
+    payload, kind, descartados = None, None, []
+    for _ in range(len(STAT_KINDS)):
+        kind = grounding.pick_stat_kind(hour, day=day, used=list(used) + descartados)
+        if kind in descartados:
+            break  # pick_stat_kind ya no tiene nada nuevo que ofrecer
+        payload = grounding.ground_stat(league, snap, kind, fecha, hour)
+        if payload:
+            break
+        descartados.append(kind)
     if not payload:
-        print(f"{league_slug}: sin datos suficientes para el dato curioso ({kind})")
+        print(f"{league_slug}: sin datos suficientes para el dato curioso "
+              f"(descartados: {', '.join(descartados) or kind})")
         return 0
+    if descartados:
+        print(f"{league_slug}: dato curioso cae en '{kind}' "
+              f"(sin datos para: {', '.join(descartados)})")
 
     if _stat_already_handled(league_slug, fecha, hour, kind):
         return 0
@@ -508,6 +580,7 @@ def _run_stat(league_slug, dry_run, date_override=None):
     print(f"{league_slug}: publicado {article_url}")
     _write_sitemap()
     _write_articles_index()
+    _write_rss()
 
     # Registrar el kind como usado para esta jornada, para que la siguiente
     # franja horaria de la misma jornada deportiva no repita el mismo tipo.
@@ -652,6 +725,7 @@ def _run_previa(league_slug, dry_run, date_override=None):
     _write_atomic(ARTICLES_OUT_DIR / f"{render.slug_for_previa(league_slug, today)}.html", html)
     _write_sitemap()
     _write_articles_index()
+    _write_rss()
     print(f"{league_slug}: publicado {render.url_for_previa(league_slug, today)}")
 
     _notify_telegram(league_slug, headline, _pick_tweet_cta(f"{league_slug}|previa|{today}"),
@@ -766,6 +840,7 @@ def _run(league_slug, dry_run, date_override=None):
     _write_atomic(ARTICLES_OUT_DIR / f"{render.slug_for(league_slug, today)}.html", html)
     _write_sitemap()
     _write_articles_index()
+    _write_rss()
     _write_latest_pointer(league_slug, today, headline)
     print(f"{league_slug}: publicado {render.url_for(league_slug, today)}")
 

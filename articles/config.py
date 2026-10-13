@@ -220,12 +220,14 @@ STAT_KINDS = {
     # ── Zonas específicas ──
     "descenso": {
         "tipo": "zona_especifica", "zone_type": "relega",
+        "band_keys": ("descenso", "relega"),
         "eyebrow": "Cuesta abajo", "verbo": "descender de categoría",
         "verbo_largo": "descender de categoría al final de la temporada",
         "dato_label": "Probabilidad de descenso",
     },
     "ascenso_directo": {
         "tipo": "zona_especifica", "zone_type": "promo",
+        "band_keys": ("ascenso", "promo"),
         "eyebrow": "Ascenso en puerta", "verbo": "ascender de categoría de forma directa",
         "verbo_largo": "ascender de categoría de forma directa (sin playoff)",
         "dato_label": "Probabilidad de ascenso directo",
