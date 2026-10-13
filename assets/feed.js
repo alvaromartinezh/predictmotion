@@ -329,9 +329,13 @@
     var articles = list.filter(function (it) { return it.kind === "article"; });
     var news = list.filter(function (it) { return it.kind === "news"; });
     var arts = renderArticleSection(articles);
-    var html = arts + (arts ? AD_LEADER : "") + renderPressSection(news);
+    // Condicionar por los DATOS, no por el HTML: renderPressSection() siempre
+    // devuelve cabecera + AD_BOX aunque news esté vacío, así que `html` nunca
+    // era falsy y el mensaje "No hay contenido" era inalcanzable. Tampoco se
+    // pinta la sección de prensa (ni su hueco de anuncio) sin noticias.
+    var html = arts + (arts ? AD_LEADER : "") + (news.length ? renderPressSection(news) : "");
 
-    if (!html) {
+    if (!articles.length && !news.length) {
       var when = state.day === ymd(today) ? "hoy" : "el " + fechaLabel(ymdToInput(state.day));
       var msg = "No hay contenido " + when + (state.league !== "all" ? " para " + esc(leagueName(state.league)) : "") + ". Prueba con otro día.";
       els.mount.innerHTML = '<p class="news-empty">' + msg + "</p>";

@@ -12,7 +12,10 @@ const src = fs.readFileSync(require('path').join(__dirname, '..', 'assets', 'hom
   .replace(/\}\)\(\);\s*$/, '  module.exports = { miniTable: miniTable, rowsOf: rowsOf, buildUserHTML: buildUserHTML };\n})();\n');
 const module_ = { exports: {} };
 const ctx = { module: module_, window: { PMData: {}, PM_LEAGUES: { hypermotion: { name: 'Hypermotion', logo: '' } } },
-  document: { readyState: 'loading', addEventListener() {} }, console };
+  document: { readyState: 'loading', addEventListener() {} }, console,
+  // `icsHref()` entrega el .ics como blob (el `download` de un `data:` URI no
+  // funciona en Chrome de Android): el contexto vm no hereda los globales de node.
+  URL: URL, Blob: Blob };
 vm.createContext(ctx); vm.runInContext(src, ctx);
 const H = module_.exports;
 

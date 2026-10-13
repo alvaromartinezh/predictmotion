@@ -156,7 +156,7 @@
     var totalH = Math.floor(ms / 3600000), d = Math.floor(totalH / 24), h = totalH % 24;
     return '<span class="hero-match__cd">' + (d > 0 ? ('En ' + d + 'd ' + h + 'h') : ('En ' + h + 'h')) + '</span>';
   }
-  // .ics como data: URI (sin backend): "Añadir al calendario" de un partido futuro.
+  // .ics como blob (sin backend): "Añadir al calendario" de un partido futuro.
   function icsHref(m) {
     if (!m || m.state !== 'pre' || !m.date) return '';
     var d = new Date(m.date); if (isNaN(d)) return '';
@@ -165,7 +165,15 @@
     var title = (m.home.name || '') + ' - ' + (m.away.name || '');
     var ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT', 'UID:' + (m.id || Date.now()) + '@predictmotion.com',
       'DTSTART:' + fmt(d), 'DTEND:' + fmt(end), 'SUMMARY:' + title.replace(/[\r\n,;]/g, ' '), 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
-    return 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics);
+    // Chrome en Android IGNORA `download` en `data:` URIs (y bloquea navegar a
+    // ellas), así que el botón no hacía nada en móvil — visto 2026-10-13. Con un
+    // `blob:` sí descarga. La home se renderiza una vez por carga (no hay polling
+    // aquí), así que no hace falta revocar la URL.
+    // El botón es un extra: si el navegador no trae Blob/createObjectURL, se queda
+    // sin botón, pero el hero (y con él la home) se pinta igual.
+    try {
+      return URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
+    } catch (e) { return ''; }
   }
   function hero(m, pill, winbar, eyebrow) {
     var mid = m.state === 'pre' ? esc(kick(m.date)) : (m.state === 'in' ? esc(m.clock || 'EN VIVO') : ((m.home.score == null ? '' : m.home.score) + '–' + (m.away.score == null ? '' : m.away.score)));

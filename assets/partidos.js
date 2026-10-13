@@ -9,6 +9,16 @@
   var L = window.PM_LEAGUES || {}, D = window.PMData;
   // Todas las competiciones en orden de importancia (PM_LEAGUES_ORDER).
   var ALL = (window.PM_LEAGUES_ORDER || Object.keys(L)).filter(function (s) { return L[s]; });
+  // Slugs a los que SÍ se les pide el scoreboard: los `child` (mls-oeste,
+  // argentina-b…) comparten código ESPN con su slug padre (pm-leagues.js) y
+  // D.scoreboard memoiza por código, no por slug — pedirle también al child
+  // devolvería la MISMA lista ya traída por el padre y duplicaría cada partido.
+  var FETCH = ALL.filter(function (s) { return !(L[s] && L[s].child); });
+  // Códigos ESPN con más de un slug (las parejas padre/child de arriba): su
+  // grupo mezcla ambas conferencias/zonas bajo el slug padre, así que el
+  // sufijo " · Este"/" · Zona A" del nombre dejaría de ser cierto.
+  var SIBLING_CODE = {};
+  ALL.forEach(function (s) { var c = L[s] && L[s].code; if (c) SIBLING_CODE[c] = (SIBLING_CODE[c] || 0) + 1; });
   var DW = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
   // Ligas con página de partido en vivo propia (/partido lo sirve el live_tracker,
   // que SOLO cubre estas): solo en ellas la fila entera es enlace. El resto de
@@ -38,7 +48,15 @@
   function ymdToInput(y) { return y.slice(0, 4) + '-' + y.slice(4, 6) + '-' + y.slice(6, 8); }   // YYYYMMDD → YYYY-MM-DD (input date)
   function humanDate(y) { try { return new Date(+y.slice(0, 4), +y.slice(4, 6) - 1, +y.slice(6, 8)).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }); } catch (e) { return 'este día'; } }
   function kick(iso) { try { var d = new Date(iso); return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
-  function lname(s) { return (L[s] || {}).name || s; }
+  function lname(s) {
+    var nm = (L[s] || {}).name || s;
+    // Slug con hermano del mismo código (ver FETCH/SIBLING_CODE arriba): el
+    // grupo trae partidos de ambas conferencias/zonas, así que se corta el
+    // sufijo " · X" del nombre (sería falso para la mitad de los partidos).
+    var c = L[s] && L[s].code;
+    if (c && SIBLING_CODE[c] > 1) nm = nm.split(' · ')[0];
+    return nm;
+  }
   function llogo(s) { return (L[s] || {}).logo || ''; }
 
   // ── días (hoy-1 … hoy+6). ?date=YYYYMMDD fija el día inicial (deep-link) ──
@@ -182,7 +200,7 @@
 
   var loadTok = 0;
   function loadDay() {
-    var my = ++loadTok, ls = ALL;
+    var my = ++loadTok, ls = FETCH;
     // esqueleto inmediato del día (sin datos) para que el cambio de día responda ya
     state.loading = true; byLeague = {}; renderMain();
     Promise.all(ls.map(function (s) {
@@ -190,6 +208,22 @@
     })).then(function (res) {
       if (my !== loadTok) return;
       state.loading = false; byLeague = {}; res.forEach(function (r) { byLeague[r.s] = r.ms; });
+      renderMain();
+    });
+  }
+
+  // Refresco en vivo: cada 60s, igual que groups.js/dashboards (sin directos
+  // en pantalla, sin polling). `my` fija el día objetivo ANTES del fetch: si el
+  // usuario cambia de día mientras la llamada está en curso, loadDay() ya habrá
+  // subido loadTok y este resultado, ya viejo, se descarta.
+  function pollLive() {
+    if (!document.querySelector('.pm-time.live')) return;
+    var my = loadTok;
+    Promise.all(FETCH.map(function (s) {
+      return D.scoreboard(s, state.ymd, true).then(function (evs) { return { s: s, ms: (evs || []).map(function (e) { return D.parseEvent(e, s); }).filter(Boolean) }; });
+    })).then(function (res) {
+      if (my !== loadTok) return;
+      byLeague = {}; res.forEach(function (r) { byLeague[r.s] = r.ms; });
       renderMain();
     });
   }
@@ -210,7 +244,7 @@
       });
     }
   }
-  function start() { loadDay(); }
+  function start() { loadDay(); setInterval(pollLive, 60000); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
   document.addEventListener('pm-account-ready', loadDay);
   document.addEventListener('pm-follows-changed', loadDay);
