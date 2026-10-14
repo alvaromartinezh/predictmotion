@@ -73,6 +73,36 @@ _MID_ZONE_RE = re.compile(r"<!--z2-->(.*?)<!--/z2-->", re.S)
 _TABLE_RE = re.compile(r"<!--tabla-->(.*?)<!--/tabla-->", re.S)
 
 
+UEFA_SLUGS = {"champions", "europa", "conference"}
+
+
+def _goleadores_link(league):
+    """`<a>` a /goleadores/<liga>, o "" si esa liga no tiene página propia.
+
+    Cinco de las 21 no la tienen, y es consecuencia de cómo reparte jugadores
+    `seo/players.py`, no de un fallo:
+
+    - `mls-oeste` y `argentina-b` comparten `espn_code` con su hermana
+      (`usa.1`, `arg.1`): `fetch_table` devuelve LA MISMA tabla para las dos y
+      el dedup global ("la primera liga que ficha al jugador gana") se los
+      lleva todos a `mls-este`/`argentina-a`.
+    - En `champions`/`europa`/`conference` cada jugador ya pertenece a su liga
+      doméstica, que va antes en `LEAGUES`.
+
+    La regla se evalúa sobre `LEAGUES`, NO sobre `data/players/scorers.json`:
+    estos HTML se generan a mano y `--check` exige que sean byte-idénticos, así
+    que no pueden depender de un fichero que cambia cada tres horas.
+    """
+    seen = set()
+    for lg in LEAGUES:
+        propia = lg["espn_code"] not in seen and lg["slug"] not in UEFA_SLUGS
+        seen.add(lg["espn_code"])
+        if lg["slug"] == league["slug"]:
+            return (f'<a href="/goleadores/{lg["slug"]}">Máximos goleadores</a>'
+                    if propia else "")
+    return ""
+
+
 def _zones_text(league, defaults, key="text"):
     """Enumeración de zonas para las metas y el texto editorial. Va SIN 'y' final
     cuando la plantilla la cierra ella ("… y descenso"). Una liga la sobreescribe
@@ -106,6 +136,7 @@ def render(league):
     tmpl = (_MID_ZONE_RE.sub("", tmpl) if len(zl) < 3
             else _MID_ZONE_RE.sub(lambda m: m.group(1), tmpl))
     vals = {
+        "{{GOLEADORES_LINK}}": _goleadores_link(league),
         "{{SLUG}}":      league["slug"],
         "{{ESPN_CODE}}": league["espn_code"],
         "{{NAME}}":      league["name"],
