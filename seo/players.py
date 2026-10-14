@@ -169,6 +169,49 @@ def _fetch_roster(espn_code: str, team_row: dict, league_slug: str,
     return players
 
 
+SCORERS_TOP = 30
+SCORERS_FILE = "scorers.json"
+
+
+def _write_scorers(all_players):
+    """data/players/scorers.json: el pichichi de cada liga.
+
+    Se calcula AQUÍ y no leyendo las ~14 000 fichas desde fuera porque en este
+    punto ya están todas en memoria: el ranking sale sin una sola lectura de
+    disco extra. Lo consume seo/scorers.py para generar /goleadores/<liga>.
+
+    `stats.goals` puede venir como "--" cuando ESPN no publica el dato (igual
+    que `minutes`), así que solo entran los numéricos > 0: un ranking con
+    ceros no es un ranking.
+    """
+    by_league = {}
+    for p in all_players:
+        g = (p.get("stats") or {}).get("goals")
+        if not isinstance(g, (int, float)) or isinstance(g, bool) or g <= 0:
+            continue
+        a = (p.get("stats") or {}).get("assists")
+        by_league.setdefault(p["league_slug"], []).append({
+            "id": p["id"], "name": p["name"], "team": p["team"],
+            "team_logo": p.get("team_logo"), "headshot": p.get("headshot"),
+            "pos": p.get("position"), "goals": g,
+            "assists": a if isinstance(a, (int, float)) and not isinstance(a, bool) else None,
+            "matches": (p.get("stats") or {}).get("matches"),
+        })
+    out = {}
+    for slug, rows in by_league.items():
+        # Desempate por asistencias y luego por nombre: el orden tiene que ser
+        # estable entre runs o la página cambia sola sin que cambie el dato.
+        rows.sort(key=lambda r: (-r["goals"], -(r["assists"] or 0), r["name"]))
+        out[slug] = rows[:SCORERS_TOP]
+    path = os.path.join(DATA, SCORERS_FILE)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(out, fh, ensure_ascii=False)
+    os.rename(tmp, path)
+    print(f"players: scorers.json con {len(out)} ligas "
+          f"({sum(len(v) for v in out.values())} jugadores)")
+
+
 def run(league_slugs: list[str] | None = None, dry_run: bool = False,
         limit: int = 0) -> dict:
     from seo.config import LEAGUES
@@ -246,6 +289,9 @@ def run(league_slugs: list[str] | None = None, dry_run: bool = False,
         with open(tmp, "w", encoding="utf-8") as fh:
             json.dump(index, fh, ensure_ascii=False, indent=2)
         os.rename(tmp, idx_path)
+
+    if not dry_run:
+        _write_scorers(all_players)
 
     ok = len(all_players)
     print(f"\nplayers: {ok} fichas escritas, {len(errors)} errores.")

@@ -5,8 +5,9 @@ Lo escribe el mismo cron que genera los snapshots. Dos ficheros por temporada
 
   data/<slug>/<season>/predictions.jsonl  — una fila INMUTABLE por partido, emitida
       UNA vez mientras el partido está por jugar (state 'pre'), con la prob. 1X2 del
-      modelo (que ya incorpora el prior de fuerza y el desvanecimiento vigentes) y
-      la fuerza de cada equipo. Nunca se reescribe.
+      modelo (que ya incorpora el prior de fuerza y el desvanecimiento vigentes),
+      la fuerza de cada equipo y la cuota de mercado de ESPN si está disponible
+      (`market`, ver docs/seo.md — 2026-10-14). Nunca se reescribe.
   data/<slug>/<season>/results.jsonl      — una fila por partido ya jugado con el
       resultado real. Se añade una vez cuando ESPN lo marca 'post'.
 
@@ -53,6 +54,23 @@ def _logged_ids(path):
 def _append(path, obj):
     with path.open("a", encoding="utf-8") as f:
         f.write(json.dumps(obj, ensure_ascii=False) + "\n")
+
+
+def _ml_to_prob(ml):
+    """Moneyline americano → probabilidad implícita (incluye el margen/vig de la
+    casa: las tres implícitas de un partido suman >1, nunca 1)."""
+    ml = float(ml)
+    return 100.0 / (ml + 100.0) if ml > 0 else (-ml) / (-ml + 100.0)
+
+
+def _market_probs(moneyline):
+    """{home,draw,away} moneyline → probabilidades normalizadas a sumar 1 (quita
+    el margen de la casa). Es esto, no el moneyline crudo, lo que se compara con
+    el p_home/p_draw/p_away del modelo — el moneyline se guarda aparte solo como
+    dato de auditoría."""
+    raw = {k: _ml_to_prob(v) for k, v in moneyline.items()}
+    total = sum(raw.values())
+    return {k: round(v / total, 4) for k, v in raw.items()}
 
 
 def _net_strengths(snap):
@@ -113,6 +131,18 @@ def record_matchday(league, snap):
         ph, pd, pa = m1x2
         sh = sc["strength"][hid] if sc else net.get(hid, 0.0)
         sa = sc["strength"][aid] if sc else net.get(aid, 0.0)
+        # Cuota de mercado — 1 llamada extra a ESPN por partido EMITIDO (no por
+        # partido mirado: solo entra aquí tras pasar los `continue` de arriba).
+        # Best-effort: si ESPN no la trae (liga menor, partido ya iniciado, 403
+        # puntual), `market` queda None y la fila se graba igual.
+        odds = espn.fetch_match_odds(code, ev["event_id"])
+        market = None
+        if odds:
+            market = {
+                "provider": odds["provider"],
+                "moneyline": odds["moneyline"],
+                "implied_prob": _market_probs(odds["moneyline"]),
+            }
         _append(pred_path, {
             "event_id": ev["event_id"], "issued_at": issued, "season": season,
             "league": slug, "kickoff": ev["date"],
@@ -124,6 +154,9 @@ def record_matchday(league, snap):
             # fechas contra el git log (las del 2026-08-11 al 08-15 dicen v1 con el
             # cron ya en v2). La fila es inmutable: que se explique sola.
             "model": model or "uniform",
+            # Campo nuevo 2026-10-14 (ver docs/seo.md): ausente en las filas viejas,
+            # el lector trata su falta con .get() — None si ESPN no trae cuota.
+            "market": market,
         })
         logged.add(ev["event_id"])
         n_new += 1

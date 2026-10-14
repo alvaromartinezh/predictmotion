@@ -118,6 +118,7 @@
     resolveColors(m);
     lastMatch = m;
     renderHeader(m);
+    renderFormH2H(m);
     renderLineups(m);
     renderTimeline(m);
     renderStats(m);
@@ -188,6 +189,61 @@
         '</div>';
     }
     el('match-header').innerHTML = '<div class="match-hd">' + meta + scoreline + winbar + '</div>';
+  }
+
+  // ── Racha (últimos 5) + cara a cara: contexto previo, fuera de las pestañas ──
+  // Ambos bloques son best-effort (ligas menores/copas/jornada 1 pueden venir
+  // sin datos): si no hay nada que mostrar, la sección se queda vacía del todo
+  // (ni hueco ni "—").
+  var FORM_LETTER = { W: 'V', D: 'E', L: 'D' };
+  var FORM_CLASS = { W: 'w', D: 'd', L: 'l' };
+  function formChip(g) {
+    var letter = FORM_LETTER[g.result];
+    if (!letter) return '';
+    var title = (g.home ? 'vs ' : '@ ') + (g.opponent || '') + ' · ' + g.teamScore + '-' + g.oppScore;
+    return '<span class="fh2h-chip ' + (FORM_CLASS[g.result] || '') + '" title="' + esc(title) + '">' + letter + '</span>';
+  }
+  function formRow(team, games) {
+    if (!games || !games.length) return '';
+    return '<div class="fh2h-team">' +
+      '<span class="fh2h-team__name">' + esc((team && (team.abbr || team.name)) || '') + '</span>' +
+      '<div class="fh2h-strip">' + games.map(formChip).join('') + '</div>' +
+    '</div>';
+  }
+  function h2hDate(iso) {
+    try {
+      var dt = new Date(iso);
+      if (isNaN(dt.getTime())) return '';
+      return dt.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }).replace(/\.$/, '');
+    } catch (e) { return ''; }
+  }
+  function h2hRow(mt) {
+    return '<li class="h2h-row"><span class="h2h-row__date">' + esc(h2hDate(mt.date)) + '</span>' +
+      '<span class="h2h-row__score">' + esc(mt.home) + ' ' + mt.homeScore + '-' + mt.awayScore + ' ' + esc(mt.away) + '</span></li>';
+  }
+  function renderFormH2H(m) {
+    var host = el('lv-formh2h');
+    if (!host) return;
+    var form = m.form || {};
+    var hasForm = (form.home && form.home.length) || (form.away && form.away.length);
+    var h2h = m.h2h;
+    var hasH2H = !!(h2h && h2h.meetings && h2h.meetings.length);
+    if (!hasForm && !hasH2H) { host.innerHTML = ''; return; }
+
+    var formHtml = hasForm
+      ? '<div class="fh2h-form"><p class="fh2h-label">Racha · últimos 5</p>' +
+          formRow(m.home, form.home) + formRow(m.away, form.away) +
+        '</div>'
+      : '';
+
+    var h2hHtml = hasH2H
+      ? '<div class="fh2h-h2h"><p class="fh2h-label">Cara a cara' +
+          '<span class="fh2h-record">' + h2h.homeWins + 'V ' + h2h.draws + 'E ' + h2h.awayWins + 'D</span></p>' +
+          '<ul class="h2h-list">' + h2h.meetings.map(h2hRow).join('') + '</ul>' +
+        '</div>'
+      : '';
+
+    host.innerHTML = '<div class="fh2h">' + formHtml + h2hHtml + '</div>';
   }
 
   // ── Alineación: campo + dos columnas, cruzado con eventos ─────────────────
@@ -585,6 +641,7 @@
     resolveColors(m);
     lastMatch = m;
     renderHeader(m);
+    renderFormH2H(m);
     renderLineups(m);
     renderTimeline(m);
     renderStats(m);

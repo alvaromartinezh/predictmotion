@@ -280,6 +280,37 @@ def fetch_scoreboard_range(espn_code, start_yyyymmdd, end_yyyymmdd, strict=False
     return out
 
 
+def fetch_match_odds(espn_code, event_id):
+    """Cuota de mercado (moneyline 1X2) de un partido, best-effort → None.
+
+    `summary?event=` solo trae `odds` en partidos 'pre' y con casa de apuestas
+    cubriendo esa liga (ligas menores o partidos ya empezados vienen sin el
+    campo); cualquier ausencia o fallo de red es `None`, nunca una excepción —
+    quien llama decide si la fila se graba igual sin mercado. Verificado
+    2026-10-14 con Levante-Deportivo (esp.1): `odds[0]` trae
+    `provider.name`/`homeTeamOdds.moneyLine`/`drawOdds.moneyLine`/
+    `awayTeamOdds.moneyLine`. 1 llamada extra por partido EMITIDO (no por
+    partido mirado) — la pide `seo/predictions.py` solo al grabar una fila
+    nueva, nunca al releer predicciones ya escritas."""
+    try:
+        data = _get_json(f"{_BASE_SITE}/{espn_code}/summary?event={event_id}")
+    except Exception:
+        return None
+    odds_list = (data or {}).get("odds") or []
+    if not odds_list:
+        return None
+    o = odds_list[0] or {}
+    home_ml = (o.get("homeTeamOdds") or {}).get("moneyLine")
+    draw_ml = (o.get("drawOdds") or {}).get("moneyLine")
+    away_ml = (o.get("awayTeamOdds") or {}).get("moneyLine")
+    if home_ml is None or draw_ml is None or away_ml is None:
+        return None
+    return {
+        "provider": (o.get("provider") or {}).get("name"),
+        "moneyline": {"home": home_ml, "draw": draw_ml, "away": away_ml},
+    }
+
+
 def fetch_current_season(espn_code):
     """(año, seasontype) de la competición VIVA según ESPN, best-effort (None, None).
 

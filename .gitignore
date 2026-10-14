@@ -9,6 +9,7 @@ twitter_state.json
 data/
 equipos/
 jornadas/
+goleadores/
 grupos/
 historico/
 datos/
@@ -17,6 +18,7 @@ preview-articulos/
 sitemap-data.xml
 sitemap-articles.xml
 rss.xml
+acierto.html
 media/og/
 
 # Live tracker — partidos finalizados guardados (solo en el servidor)

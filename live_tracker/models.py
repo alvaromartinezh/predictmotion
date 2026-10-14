@@ -113,6 +113,50 @@ class Lineup:
 
 
 @dataclass
+class FormGame:
+    """Un partido de la racha reciente (lastFiveGames de ESPN), ya normalizado
+    al punto de vista del equipo (team_score/opp_score, no home/away)."""
+    result: str         # 'W' | 'D' | 'L'
+    opponent: str        # nombre del rival
+    team_score: int
+    opp_score: int
+    home: bool           # si ese partido se jugó en casa
+
+    def to_dict(self):
+        return {"result": self.result, "opponent": self.opponent,
+                "teamScore": self.team_score, "oppScore": self.opp_score,
+                "home": self.home}
+
+
+@dataclass
+class H2HMeeting:
+    date: str             # ISO, fecha del enfrentamiento
+    home: str              # nombre del equipo local EN ESE enfrentamiento
+    away: str
+    home_score: int
+    away_score: int
+
+    def to_dict(self):
+        return {"date": self.date, "home": self.home, "away": self.away,
+                "homeScore": self.home_score, "awayScore": self.away_score}
+
+
+@dataclass
+class HeadToHead:
+    """Balance cara a cara relativo al home/away del partido ACTUAL (no al de
+    cada enfrentamiento histórico, que puede estar invertido)."""
+    home_wins: int
+    draws: int
+    away_wins: int
+    meetings: list[H2HMeeting] = field(default_factory=list)   # más reciente primero
+
+    def to_dict(self):
+        return {"homeWins": self.home_wins, "draws": self.draws,
+                "awayWins": self.away_wins,
+                "meetings": [m.to_dict() for m in self.meetings]}
+
+
+@dataclass
 class StatPair:
     key: str
     label: str
@@ -165,6 +209,8 @@ class MatchDetail:
     win_probability: WinProbability | None = None
     stale: bool = False
     date: str = ""                    # kickoff ISO 8601 (UTC); solo en 'pre' tiene sentido
+    form: dict = field(default_factory=dict)     # {'home': [FormGame,...], 'away': [...]}; ausente si ESPN no lo trae
+    h2h: HeadToHead | None = None
 
     def to_dict(self):
         return {
@@ -177,4 +223,6 @@ class MatchDetail:
             "winProbability": self.win_probability.to_dict() if self.win_probability else None,
             "stale": self.stale,
             "date": self.date,
+            "form": {k: [g.to_dict() for g in v] for k, v in self.form.items()},
+            "h2h": self.h2h.to_dict() if self.h2h else None,
         }

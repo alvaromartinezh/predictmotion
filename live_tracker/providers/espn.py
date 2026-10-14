@@ -12,8 +12,9 @@ import re
 import urllib.request
 
 from .. import config
-from ..models import (Athlete, Lineup, LineupPlayer, Match, MatchDetail,
-                      MatchEvent, MatchStatus, StatPair, Team, EventType)
+from ..models import (Athlete, FormGame, H2HMeeting, HeadToHead, Lineup,
+                      LineupPlayer, Match, MatchDetail, MatchEvent,
+                      MatchStatus, StatPair, Team, EventType)
 from ..normalize import cross_reference, build_match_state
 from ..winprob import DEFAULT_MODEL
 from .base import MatchDataProvider
@@ -202,6 +203,8 @@ class EspnProvider(MatchDataProvider):
             id=str(event_id), league=league, status=status,
             home=home, away=away, events=events, lineups=lineups, stats=stats,
             date=kickoff,
+            form=self._parse_form(data.get("lastFiveGames"), home.id, away.id),
+            h2h=self._parse_h2h(data.get("seasonseries"), home.id, away.id),
         )
         # Probabilidad estimada SOLO mientras no ha terminado: un partido
         # finalizado se muestra completo pero sin bloque de probabilidad.
@@ -289,3 +292,83 @@ class EspnProvider(MatchDataProvider):
         for key in set(list(home.keys()) + list(away.keys())):
             numeric[key] = (_to_num(home.get(key, 0)), _to_num(away.get(key, 0)))
         return pairs, numeric
+
+    def _parse_form(self, last_five_games, home_id, away_id):
+        """`lastFiveGames` de ESPN -> {'home': [FormGame,...], 'away': [...]}.
+        Ausente/vacío en ligas menores, copas o inicio de temporada -> dict
+        vacío (ninguna clave), NUNCA una lista vacía bajo una clave: el
+        frontend decide si pinta la sección mirando si la clave existe."""
+        out = {}
+        for g in (last_five_games or []):
+            team = g.get("team") or {}
+            tid = str(team.get("id", ""))
+            if tid == home_id:
+                side = "home"
+            elif tid == away_id:
+                side = "away"
+            else:
+                continue
+            games = []
+            for e in (g.get("events") or []):
+                result = e.get("gameResult")
+                if result not in ("W", "D", "L"):
+                    continue
+                try:
+                    home_score = int(e.get("homeTeamScore"))
+                    away_score = int(e.get("awayTeamScore"))
+                except (TypeError, ValueError):
+                    continue
+                is_home = str(e.get("homeTeamId", "")) == tid
+                team_score = home_score if is_home else away_score
+                opp_score = away_score if is_home else home_score
+                games.append(FormGame(
+                    result=result, opponent=(e.get("opponent") or {}).get("displayName", ""),
+                    team_score=team_score, opp_score=opp_score, home=is_home,
+                ))
+            if games:
+                out[side] = games
+        return out
+
+    def _parse_h2h(self, seasonseries, home_id, away_id):
+        """`seasonseries` de ESPN -> balance SIEMPRE relativo al home/away del
+        partido actual (no al de cada enfrentamiento histórico, que puede
+        venir invertido). None si no hay bloque de tipo 'head-to-head' o
+        ningún enfrentamiento usable (copas/selecciones/primer cruce)."""
+        entry = next((s for s in (seasonseries or []) if s.get("type") == "head-to-head"), None)
+        if not entry:
+            return None
+        home_wins = draws = away_wins = 0
+        meetings = []
+        for ev in (entry.get("events") or []):
+            competitors = ev.get("competitors") or []
+            home_c = next((c for c in competitors if c.get("homeAway") == "home"), None)
+            away_c = next((c for c in competitors if c.get("homeAway") == "away"), None)
+            if not home_c or not away_c:
+                continue
+            try:
+                hs = int(home_c.get("score"))
+                aw = int(away_c.get("score"))
+            except (TypeError, ValueError):
+                continue
+            h_tid = str((home_c.get("team") or {}).get("id", ""))
+            if h_tid == home_id:
+                cur_home, cur_away = hs, aw
+            elif h_tid == away_id:
+                cur_home, cur_away = aw, hs
+            else:
+                continue  # equipo inesperado: no es este cruce
+            if cur_home > cur_away:
+                home_wins += 1
+            elif cur_away > cur_home:
+                away_wins += 1
+            else:
+                draws += 1
+            meetings.append(H2HMeeting(
+                date=ev.get("date") or "",
+                home=(home_c.get("team") or {}).get("displayName", ""),
+                away=(away_c.get("team") or {}).get("displayName", ""),
+                home_score=hs, away_score=aw,
+            ))
+        if not meetings:
+            return None
+        return HeadToHead(home_wins=home_wins, draws=draws, away_wins=away_wins, meetings=meetings)

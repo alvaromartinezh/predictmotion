@@ -29,7 +29,7 @@ for _stream in (sys.stdout, sys.stderr):
     except Exception:
         pass
 
-from . import espn, render_table, sitemap, predictions, zone_predictions, notify, links
+from . import accuracy, espn, render_table, scorers, sitemap, predictions, zone_predictions, notify, links
 from .config import (LEAGUES, ROOT, SIM_N_TABLE, league_by_slug, SCORE_MODEL,
                      CALENDAR_YEAR_CODES, SPLIT_SEASON_TYPES)
 from .snapshots import (build_table_snapshot, save_snapshot, load_all,
@@ -365,13 +365,21 @@ def _run(args):
     # El hub /datos y /datos/<slug> se retiró (ver CLAUDE.md): 301 → home en Caddy.
     # Las páginas de contenido (/equipos, /jornadas, /historico) se siguen generando.
 
-    # El sitemap-data.xml es global: solo se reescribe en ejecución completa
-    # (con --league sería parcial y borraría las URLs de las demás ligas).
-    if all_urls and not args.dry_run and not args.league:
-        sitemap.write_data_sitemap(ROOT, all_urls)
-        print(f"\n✓ sitemap-data.xml: {len(set(u for u, _ in all_urls))} URLs")
-    elif args.league:
-        print("\n(sitemap-data.xml no reescrito: ejecución parcial con --league)")
+    # /acierto: el expediente del modelo (Brier + calibración) sobre los
+    # predictions.jsonl/results.jsonl que ya escribe seo/predictions.py. Global
+    # como el sitemap, así que solo en ejecución completa. Best-effort: es una
+    # página de cortesía, no debe tumbar el cron que genera las 21 ligas.
+    if not args.dry_run and not args.league:
+        try:
+            out = accuracy.render()
+            if out:
+                _write_files({out[0]: out[1]}, dry_run=False)
+                all_urls.append((accuracy.URL, today))
+                print(f"\n✓ {accuracy.URL}")
+            else:
+                print("\n(acierto: aún no hay partidos puntuables, no se escribe)")
+        except Exception as exc:
+            print(f"  [SKIP] acierto: {exc}", file=sys.stderr)
 
     # Fotos de jugador (TheSportsDB): mantenimiento incremental dentro del cron.
     # Best-effort: si TheSportsDB falla o el backfill está en curso (lock), no
@@ -407,6 +415,31 @@ def _run(args):
             notify.send_alert(
                 "[PredictMotion] players: excepción",
                 f"players.run() lanzó: {exc}", dedup_key="players_crash")
+
+    # /goleadores/<liga>: el pichichi de cada liga, a partir del scorers.json que
+    # players.run() acaba de escribir con las fichas que ya tenía en memoria.
+    # Va DESPUÉS de players (necesita su salida) y por eso el sitemap se escribe
+    # al final: si no, estas URLs no entrarían. Best-effort como /acierto.
+    if not args.dry_run and not args.league:
+        try:
+            files, urls = scorers.render_all(leagues)
+            if files:
+                _write_files(files, dry_run=False)
+                all_urls.extend((u, today) for u in urls)
+                print(f"\n✓ goleadores: {len(files)} ligas")
+            else:
+                print("\n(goleadores: sin scorers.json todavía, no se escribe)")
+        except Exception as exc:
+            print(f"  [SKIP] goleadores: {exc}", file=sys.stderr)
+
+    # El sitemap-data.xml es global y va EL ÚLTIMO: recoge las URLs de las ligas,
+    # /acierto y /goleadores. Solo en ejecución completa (con --league sería
+    # parcial y borraría las URLs de las demás ligas).
+    if all_urls and not args.dry_run and not args.league:
+        sitemap.write_data_sitemap(ROOT, all_urls)
+        print(f"\n✓ sitemap-data.xml: {len(set(u for u, _ in all_urls))} URLs")
+    elif args.league:
+        print("\n(sitemap-data.xml no reescrito: ejecución parcial con --league)")
 
     print(f"\nFin — {ok}/{len(leagues)} ligas generadas.")
 
