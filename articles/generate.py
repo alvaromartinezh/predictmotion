@@ -170,6 +170,35 @@ def _article_meta_from_file(path):
     return tipo, m.group("liga"), m.group("fecha"), title
 
 
+_OLD_OG_IMG = f'content="{SITE}/media/logo.jpeg"'
+
+
+def _upgrade_og(path):
+    """Pone la tarjeta 1200×630 en un artículo YA escrito en disco.
+
+    render._page_html solo arregla los artículos NUEVOS: los ~600 publicados
+    antes del 2026-10-14 llevan el og:image del logo cuadrado horneado en su
+    HTML, y son justo el grueso del contenido indexable del sitio. Se reescribe
+    aquí, en el mismo barrido self-healing que ya lee todos los ficheros, en
+    vez de en un script de backfill de un solo uso que habría que acordarse de
+    lanzar (principio 2 de CLAUDE.md).
+
+    Solo toca la forma ABSOLUTA del logo, que es la que usan og:image y
+    twitter:image — el favicon y el apple-touch-icon la llevan relativa
+    (`/media/logo.jpeg`) y deben quedarse como están. Idempotente: en cuanto un
+    fichero está migrado, el `in` falla y no se vuelve a escribir."""
+    try:
+        html = path.read_text(encoding="utf-8")
+    except OSError:
+        return
+    if _OLD_OG_IMG not in html:
+        return
+    html = html.replace(_OLD_OG_IMG, f'content="{ogcard.url_for(path.stem)}"')
+    html = html.replace('name="twitter:card" content="summary"',
+                        'name="twitter:card" content="summary_large_image"')
+    _write_atomic(path, html)
+
+
 def _write_articles_index():
     """data/articles/index.json: TODOS los artículos publicados (diario/
     partido/dato), para que /kiosco (assets/articles.js) los liste y filtre
@@ -190,6 +219,7 @@ def _write_articles_index():
         # ponytail: el barrido es O(artículos) en cada publicación; si algún
         # día el directorio crece mucho, mirar solo los N más recientes.
         ogcard.ensure(path.stem, liga, title)
+        _upgrade_og(path)
         items.append({"slug": path.stem, "tipo": tipo, "liga": liga, "title": title,
                       "url": f"/articulos/{path.stem}", "fecha": fecha})
     items.sort(key=lambda it: (it["fecha"], it["slug"]), reverse=True)

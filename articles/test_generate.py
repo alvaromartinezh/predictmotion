@@ -4,6 +4,7 @@ Uso: python3 -m articles.test_generate
 """
 
 import json
+import pathlib
 import shutil
 
 from . import generate, grounding, illustration, layout_estimate, render, writer
@@ -519,6 +520,30 @@ def demo():
         assert generate._stat_already_handled("hypermotion", "1999-01-01", 10, "colista")
     finally:
         probe_path.unlink()
+
+    # ── _upgrade_og: los ~600 artículos escritos antes del 2026-10-14 llevan
+    # el og:image del logo cuadrado horneado en su HTML (render._page_html solo
+    # arregla los nuevos). El barrido del índice los migra, SIN tocar el
+    # favicon, que lleva la misma imagen en forma relativa ──
+    import tempfile
+    from seo.config import SITE as _SITE
+    with tempfile.TemporaryDirectory() as _d:
+        _p = pathlib.Path(_d) / "laliga-resumen-1999-01-01.html"
+        _p.write_text(
+            f'<meta property="og:image" content="{_SITE}/media/logo.jpeg">\n'
+            f'<meta name="twitter:card" content="summary">\n'
+            f'<meta name="twitter:image" content="{_SITE}/media/logo.jpeg">\n'
+            f'<link rel="icon" href="/media/logo.jpeg">\n'
+            f'<link rel="apple-touch-icon" href="/media/logo.jpeg">\n', encoding="utf-8")
+        generate._upgrade_og(_p)
+        _out = _p.read_text(encoding="utf-8")
+        assert _out.count(f"{_SITE}/media/og/laliga-resumen-1999-01-01.png") == 2, _out
+        assert 'content="summary_large_image"' in _out
+        assert _out.count('href="/media/logo.jpeg"') == 2, _out   # favicon intacto
+        assert f"{_SITE}/media/logo.jpeg" not in _out
+        _mt = _p.stat().st_mtime_ns
+        generate._upgrade_og(_p)
+        assert _p.stat().st_mtime_ns == _mt, "debe ser idempotente: no reescribir"
 
     # ── _article_meta_from_file / _write_articles_index: self-healing, se
     # reconstruye escaneando articulos/*.html (sin estado propio) — así un
