@@ -11,6 +11,7 @@ import json
 import re
 from datetime import date, datetime, timezone
 
+from seo import ogcard
 from seo.chrome import COLOR_PALETTE, GTM_BODY, GTM_HEAD, avatar, esc, team_avatar
 from seo.config import SIM_N_TABLE, SITE
 from seo.textutil import pct, signed, slugify
@@ -19,7 +20,6 @@ from . import grounding, illustration, writer
 from .config import STAT_KINDS
 
 _CSS_V = "13"
-_SITE_LOGO = SITE + "/media/logo.jpeg"
 _DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 _MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 ZONE_HEX = {"ascenso": "#2ec98a", "ascenso_total": "#2ec98a", "playoff": "#24d08a", "descenso": "#ff556b"}
@@ -335,9 +335,18 @@ def _ads_html():
     return '<div class="ad-wrap" data-ad-slot="box"></div>'
 
 
-def _page_html(title, description, canonical, league_logo, json_ld, body):
+def _page_html(title, description, canonical, league_logo, json_ld, body,
+               og_image=None):
     """Documento HTML completo (head+body) compartido por el broadsheet
-    diario y el de partido — solo cambian título/meta/JSON-LD/cuerpo."""
+    diario y el de partido — solo cambian título/meta/JSON-LD/cuerpo.
+
+    `og_image`: por defecto la tarjeta 1200×630 del artículo, cuya ruta sale
+    del propio canonical (`/articulos/<slug>` → `/media/og/<slug>.png`). Así
+    los 4 tipos la heredan sin tocar sus firmas; quien tenga imagen propia
+    (la pieza satírica) la pasa. El PNG lo escribe seo.ogcard.ensure() desde
+    articles.generate — aquí solo se nombra, que esto no hace E/S."""
+    og_image = og_image or ogcard.url_for(canonical.rstrip("/").rsplit("/", 1)[-1])
+    json_ld = {**json_ld, "image": og_image}
     return f"""<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -353,11 +362,13 @@ def _page_html(title, description, canonical, league_logo, json_ld, body):
 <meta property="og:title" content="{esc(title)}">
 <meta property="og:description" content="{esc(description)}">
 <meta property="og:url" content="{canonical}">
-<meta property="og:image" content="{_SITE_LOGO}">
+<meta property="og:image" content="{og_image}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta property="og:locale" content="es_ES">
 <meta property="og:site_name" content="PredictMotion">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="{_SITE_LOGO}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="{og_image}">
 <link rel="icon" type="image/jpeg" href="/media/logo.jpeg">
 <link rel="apple-touch-icon" href="/media/logo.jpeg">
 <link rel="preconnect" href="https://fonts.googleapis.com">

@@ -56,7 +56,7 @@ from html import unescape
 from xml.sax.saxutils import escape as xesc
 from zoneinfo import ZoneInfo
 
-from seo import espn, notify
+from seo import bluesky, espn, notify, ogcard
 from seo.config import SITE, league_by_slug
 from seo.textutil import pct
 from seo.tweets import _caption, _tg_send_message
@@ -183,6 +183,13 @@ def _write_articles_index():
         if not meta:
             continue
         tipo, liga, fecha, title = meta
+        # Tarjeta social 1200×630 del artículo. Aquí y no en render.py porque
+        # ese módulo solo monta strings (y lo llaman los tests). Idempotente:
+        # solo dibuja la que falte, así que el primer run rellena de golpe los
+        # ~600 artículos viejos (~1 min) y los siguientes solo el nuevo.
+        # ponytail: el barrido es O(artículos) en cada publicación; si algún
+        # día el directorio crece mucho, mirar solo los N más recientes.
+        ogcard.ensure(path.stem, liga, title)
         items.append({"slug": path.stem, "tipo": tipo, "liga": liga, "title": title,
                       "url": f"/articulos/{path.stem}", "fecha": fecha})
     items.sort(key=lambda it: (it["fecha"], it["slug"]), reverse=True)
@@ -205,6 +212,13 @@ def _notify_telegram(league_slug, headline, cta, article_url):
     tweet_text = f"{headline}\n{cta}\n{article_url}"
     if not _tg_send_message(chat_id, _caption(tweet_text)):
         print(f"{league_slug}: aviso a Telegram no confirmado", file=sys.stderr)
+    # Bluesky publica de verdad (Telegram solo avisa al dueño). Sin imagen: la
+    # tarjeta OG del artículo la pinta el propio enlace al desplegarse.
+    # ponytail: publica los 4 tipos de artículo (con el dato curioso son ~7 al
+    # día por liga). Si el feed sale demasiado cargado, filtrar aquí por tipo.
+    # Con la tarjeta del artículo: Bluesky NO despliega una preview sola, sin
+    # embed el post sale como texto pelado y el enlace se pierde en el feed.
+    bluesky.post(tweet_text, ogcard.read(article_url.rstrip("/").rsplit("/", 1)[-1]))
 
 
 def _match_flag_id(league_slug, payload):

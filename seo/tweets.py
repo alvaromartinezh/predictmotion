@@ -58,7 +58,7 @@ import uuid
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-from . import espn, notify
+from . import bluesky, espn, notify
 from .config import DATA_DIR, SITE, league_by_slug
 
 # Ligas sobre las que se tuitea. **Por decisión del dueño (2026-08-14) SOLO
@@ -719,6 +719,12 @@ def _process_league(slug, *, force=False, chat_id=None, dry_run=False):
         if _send_tweet(chat_id, caption, png, dry_run=dry_run,
                        slug=slug, zone_label=zlabel):
             sent += 1
+        # Bluesky: `text`, no `caption` — el caption lleva pegado el enlace al
+        # compositor de X, que ahí no pinta nada. Best-effort y fuera del
+        # recuento de `sent`: el canal que decide si la jornada queda marcada
+        # como tuiteada sigue siendo Telegram.
+        if not dry_run:
+            bluesky.post(text, png, alt=f"{snap.get('name') or slug}: {zlabel}")
         time.sleep(1)
 
     if not dry_run:

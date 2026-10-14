@@ -17,6 +17,7 @@ preview-articulos/
 sitemap-data.xml
 sitemap-articles.xml
 rss.xml
+media/og/
 
 # Live tracker — partidos finalizados guardados (solo en el servidor)
 live_data/

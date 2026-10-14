@@ -173,11 +173,12 @@ json_ld = {
     "url": CANON,
 }
 
-html = _page_html(TITLE + " | PredictMotion", DESC, CANON, None, json_ld, body)
+# og:image = el montaje, no la tarjeta genérica: la pieza se comparte por la
+# imagen. Se pasa por parámetro — antes era un .replace() sobre el HTML ya
+# montado, que se rompía en silencio en cuanto _page_html cambiaba el og:image.
+html = _page_html(TITLE + " | PredictMotion", DESC, CANON, None, json_ld, body,
+                  og_image=f"{SITE}{COVER_IMG}")
 html = html.replace('content="index, follow', 'content="noindex, follow')
-# og:image/twitter:image = el montaje, no el logo: la pieza se comparte por la imagen.
-html = html.replace(f'{SITE}/media/logo.jpeg"', f'{SITE}{COVER_IMG}"', 2)
-html = html.replace('name="twitter:card" content="summary"', 'name="twitter:card" content="summary_large_image"')
 out = ARTICLES_OUT_DIR / f"{SLUG}.html"
 out.write_text(html, encoding="utf-8")
 print("escrito", out, len(html), "bytes")
