@@ -173,7 +173,7 @@ SCORERS_TOP = 30
 SCORERS_FILE = "scorers.json"
 
 
-def _write_scorers(all_players):
+def _write_scorers(all_players, season=None):
     """data/players/scorers.json: el pichichi de cada liga.
 
     Se calcula AQUÍ y no leyendo las ~14 000 fichas desde fuera porque en este
@@ -183,6 +183,10 @@ def _write_scorers(all_players):
     `stats.goals` puede venir como "--" cuando ESPN no publica el dato (igual
     que `minutes`), así que solo entran los numéricos > 0: un ranking con
     ceros no es un ranking.
+
+    Lleva la temporada del DATO (`_season_label`), no la de `config.LEAGUES`,
+    que está congelada a mano en "2025-26" y no se autoactualiza — el mismo
+    motivo por el que `render_table.render` la pisa con la del snapshot.
     """
     by_league = {}
     for p in all_players:
@@ -203,13 +207,14 @@ def _write_scorers(all_players):
         # estable entre runs o la página cambia sola sin que cambie el dato.
         rows.sort(key=lambda r: (-r["goals"], -(r["assists"] or 0), r["name"]))
         out[slug] = rows[:SCORERS_TOP]
+    out = {"season": season or _season_label(), "leagues": out}
     path = os.path.join(DATA, SCORERS_FILE)
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as fh:
         json.dump(out, fh, ensure_ascii=False)
     os.rename(tmp, path)
-    print(f"players: scorers.json con {len(out)} ligas "
-          f"({sum(len(v) for v in out.values())} jugadores)")
+    print(f"players: scorers.json ({out['season']}) con {len(out['leagues'])} ligas "
+          f"({sum(len(v) for v in out['leagues'].values())} jugadores)")
 
 
 def run(league_slugs: list[str] | None = None, dry_run: bool = False,
@@ -291,7 +296,7 @@ def run(league_slugs: list[str] | None = None, dry_run: bool = False,
         os.rename(tmp, idx_path)
 
     if not dry_run:
-        _write_scorers(all_players)
+        _write_scorers(all_players, season)
 
     ok = len(all_players)
     print(f"\nplayers: {ok} fichas escritas, {len(errors)} errores.")

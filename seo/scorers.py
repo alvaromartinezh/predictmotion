@@ -44,15 +44,18 @@ def file_for(slug):
 
 
 def load():
-    """{liga: [jugador, ...]} del fichero que escribe seo/players.py. {} si aún
-    no existe (primer arranque) o está corrupto — la página simplemente no se
-    genera ese run."""
+    """(temporada, {liga: [jugador, ...]}) del fichero que escribe
+    seo/players.py. ("", {}) si aún no existe (primer arranque) o está
+    corrupto — la página simplemente no se genera ese run."""
     try:
         with open(DATA_DIR / "players" / "scorers.json", encoding="utf-8") as fh:
             data = json.load(fh)
-        return data if isinstance(data, dict) else {}
     except (OSError, ValueError):
-        return {}
+        return "", {}
+    if not isinstance(data, dict):
+        return "", {}
+    leagues = data.get("leagues")
+    return data.get("season") or "", leagues if isinstance(leagues, dict) else {}
 
 
 def _row(i, p):
@@ -74,10 +77,15 @@ def _row(i, p):
             f'<td class="r ptsv">{goles}</td></tr>')
 
 
-def render(league, rows):
-    """(ruta, html) del pichichi de una liga. None si no hay ranking que contar."""
+def render(league, rows, season=None):
+    """(ruta, html) del pichichi de una liga. None si no hay ranking que contar.
+
+    `season` pisa la de `config.LEAGUES`, congelada a mano y desfasada (decía
+    "2025-26" con ESPN ya en 2026-27). Mismo apaño que `render_table.render`."""
     if len(rows) < MIN_PLAYERS:
         return None
+    if season:
+        league = {**league, "season": season}
     slug = league["slug"]
     top = rows[0]
     body_rows = "".join(_row(i + 1, p) for i, p in enumerate(rows))
@@ -113,10 +121,10 @@ def render(league, rows):
 
 def render_all(leagues):
     """{ruta: html}, [(url, None)] de todas las ligas activas con ranking."""
-    data = load()
+    season, data = load()
     files, urls = {}, []
     for league in leagues:
-        out = render(league, data.get(league["slug"]) or [])
+        out = render(league, data.get(league["slug"]) or [], season)
         if out:
             files[out[0]] = out[1]
             urls.append(url_for(league["slug"]))
@@ -126,7 +134,9 @@ def render_all(leagues):
 def _self_check():
     """Lo no trivial es el umbral y el texto derivado del dato (concordancia de
     singular/plural y la liga sin ranking)."""
-    league = {"slug": "laliga", "name": "LaLiga", "season": "2026-27",
+    # season "2025-26" a propósito: es el valor congelado a mano en config.py,
+    # el que la temporada del dato tiene que pisar.
+    league = {"slug": "laliga", "name": "LaLiga", "season": "2025-26",
               "dashboard": "/laliga", "pais": "España"}
 
     def p(name, goals, assists=2, pos="F"):
@@ -136,14 +146,20 @@ def _self_check():
 
     assert render(league, []) is None
     assert render(league, [p("A", 5), p("B", 4)]) is None       # por debajo del mínimo
-    out = render(league, [p("A", 5), p("B", 4), p("C", 3)])
+    rows_ok = [p("A", 5), p("B", 4), p("C", 3)]
+    out = render(league, rows_ok)
     assert out and out[0] == "goleadores/laliga.html"
     assert "<b>5</b> goles" in out[1], "plural"
     out1 = render(league, [p("A", 1), p("B", 1), p("C", 1)])
     assert "<b>1</b> gol esta temporada" in out1[1], "singular"
 
+    # La temporada del dato pisa la de config (congelada a mano).
+    assert "2026-27" in render(league, rows_ok, "2026-27")[1]
+    assert "2025-26" in render(league, rows_ok)[1]
+
     # Un fichero inexistente no debe lanzar: ese run simplemente no genera nada.
-    assert isinstance(load(), dict)
+    s, d = load()
+    assert isinstance(s, str) and isinstance(d, dict)
 
     # Orden y filtrado los hace players._write_scorers; aquí se comprueba que el
     # render respeta el orden recibido y no reordena por su cuenta.
@@ -158,7 +174,8 @@ if __name__ == "__main__":
     if "--self-check" in sys.argv:
         _self_check()
     else:
-        d = load()
+        season, d = load()
+        print("temporada:", season or "(sin scorers.json)")
         for slug, rows in sorted(d.items()):
             top = rows[0] if rows else None
             print(f"{slug:14s} {len(rows):3d} jugadores"
