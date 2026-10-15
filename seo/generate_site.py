@@ -13,6 +13,7 @@ Uso:
     python -m seo.generate_site --league laliga # solo una liga
 """
 
+import json
 import argparse
 import contextlib
 import io
@@ -30,7 +31,7 @@ for _stream in (sys.stdout, sys.stderr):
         pass
 
 from . import accuracy, espn, render_table, scorers, sitemap, predictions, zone_predictions, notify, links
-from .config import (LEAGUES, ROOT, SIM_N_TABLE, league_by_slug, SCORE_MODEL,
+from .config import (DATA_DIR, LEAGUES, ROOT, SIM_N_TABLE, league_by_slug, SCORE_MODEL,
                      CALENDAR_YEAR_CODES, SPLIT_SEASON_TYPES)
 from .snapshots import (build_table_snapshot, save_snapshot, load_all,
                         save_offseason_latest)
@@ -70,6 +71,15 @@ def _upcoming_season_label(today):
     """Etiqueta 'YYYY-YY' de la temporada que está por empezar (la del calendario)."""
     y = _football_year(today)
     return f"{y}-{str(y + 1)[2:]}"
+
+
+def _load_latest(slug):
+    """Snapshot vivo de una liga (el que ya escribió _process_table en este
+    mismo run). {} si falta: la liga pudo fallar y el resto sigue."""
+    try:
+        return json.loads((DATA_DIR / slug / "latest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
 
 
 def _write_files(files, dry_run):
@@ -429,6 +439,21 @@ def _run(args):
                 print(f"\n✓ goleadores: {len(files)} ligas")
             else:
                 print("\n(goleadores: sin scorers.json todavía, no se escribe)")
+            # Fragmento de la pestaña "Estadísticas" de cada dashboard. Va a
+            # data/<slug>/stats.html y lo inyecta Caddy `templates`, igual que
+            # rows.html: contenido sin JS e indexable. Se escribe para TODAS las
+            # ligas (el ataque/defensa sale del snapshot, que siempre existe),
+            # no solo para las 16 con goleadores propios.
+            _, by_slug = scorers.load()
+            n_stats = 0
+            for lg in leagues:
+                snap = _load_latest(lg["slug"])
+                frag = scorers.render_stats(by_slug.get(lg["slug"]), snap)
+                if not frag:
+                    continue
+                (DATA_DIR / lg["slug"] / "stats.html").write_text(frag, encoding="utf-8")
+                n_stats += 1
+            print(f"✓ estadísticas: {n_stats} ligas")
         except Exception as exc:
             print(f"  [SKIP] goleadores: {exc}", file=sys.stderr)
 

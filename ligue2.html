@@ -204,6 +204,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="page-tabs">
       <button class="page-tab active" type="button" data-section="clasificacion">Clasificación</button>
       <button class="page-tab" type="button" data-section="partidos">Próximos partidos</button>
+      <button class="page-tab" type="button" data-section="estadisticas">Estadísticas</button>
     </div>
   </div>
 </section>
@@ -256,6 +257,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <!-- ===== PRÓXIMOS PARTIDOS ===== -->
   <div class="tab-section" data-section="partidos" hidden>
     <div id="fx-mount" class="fx"></div>
+  </div>
+
+  <!-- ===== ESTADÍSTICAS ===== -->
+  <!-- Inyectado por Caddy `templates` desde data/<slug>/stats.html, igual que
+       la clasificación: la pestaña trae contenido sin JS y es indexable. -->
+  <div class="tab-section" data-section="estadisticas" hidden>
+    {{if fileExists "/data/ligue2/stats.html"}}{{readFile "/data/ligue2/stats.html"}}{{else}}<p class="muted">Las estadísticas aparecerán cuando haya partidos jugados.</p>{{end}}
   </div>
 
 

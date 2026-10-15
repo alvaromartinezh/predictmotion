@@ -174,39 +174,51 @@ SCORERS_FILE = "scorers.json"
 
 
 def _write_scorers(all_players, season=None):
-    """data/players/scorers.json: el pichichi de cada liga.
+    """data/players/scorers.json: goleadores y asistentes de cada liga.
 
     Se calcula AQUÍ y no leyendo las ~14 000 fichas desde fuera porque en este
     punto ya están todas en memoria: el ranking sale sin una sola lectura de
-    disco extra. Lo consume seo/scorers.py para generar /goleadores/<liga>.
+    disco extra. Lo consume seo/scorers.py para la página /goleadores/<liga> y
+    para el fragmento de la pestaña "Estadísticas" del dashboard.
 
-    `stats.goals` puede venir como "--" cuando ESPN no publica el dato (igual
-    que `minutes`), así que solo entran los numéricos > 0: un ranking con
-    ceros no es un ranking.
+    `stats.goals`/`assists` pueden venir como "--" cuando ESPN no publica el
+    dato (igual que `minutes`): cuentan como 0. Entra quien aporte algo en
+    alguna de las dos columnas, y se guarda la UNIÓN de los dos top-30 — si se
+    recortara solo por goles, el máximo asistente sin goles no existiría.
 
     Lleva la temporada del DATO (`_season_label`), no la de `config.LEAGUES`,
     que está congelada a mano en "2025-26" y no se autoactualiza — el mismo
     motivo por el que `render_table.render` la pisa con la del snapshot.
     """
+    def _n(v):
+        return v if isinstance(v, (int, float)) and not isinstance(v, bool) else 0
+
     by_league = {}
     for p in all_players:
-        g = (p.get("stats") or {}).get("goals")
-        if not isinstance(g, (int, float)) or isinstance(g, bool) or g <= 0:
+        st = p.get("stats") or {}
+        g, a = _n(st.get("goals")), _n(st.get("assists"))
+        # Entra quien aporte algo en ALGUNA de las dos columnas: si solo se
+        # filtrara por goles, el máximo asistente sin goles no existiría.
+        if g <= 0 and a <= 0:
             continue
-        a = (p.get("stats") or {}).get("assists")
         by_league.setdefault(p["league_slug"], []).append({
             "id": p["id"], "name": p["name"], "team": p["team"],
             "team_logo": p.get("team_logo"), "headshot": p.get("headshot"),
-            "pos": p.get("position"), "goals": g,
-            "assists": a if isinstance(a, (int, float)) and not isinstance(a, bool) else None,
-            "matches": (p.get("stats") or {}).get("matches"),
+            "pos": p.get("position"), "goals": g, "assists": a,
+            "matches": st.get("matches"),
         })
     out = {}
     for slug, rows in by_league.items():
-        # Desempate por asistencias y luego por nombre: el orden tiene que ser
+        # Desempates explícitos y hasta el nombre: el orden tiene que ser
         # estable entre runs o la página cambia sola sin que cambie el dato.
-        rows.sort(key=lambda r: (-r["goals"], -(r["assists"] or 0), r["name"]))
-        out[slug] = rows[:SCORERS_TOP]
+        by_goals = sorted(rows, key=lambda r: (-r["goals"], -r["assists"], r["name"]))
+        by_assists = sorted(rows, key=lambda r: (-r["assists"], -r["goals"], r["name"]))
+        # Se guarda la UNIÓN de ambos top-30, no los 30 mejores goleadores:
+        # recortar solo por goles dejaría fuera a asistentes sin gol.
+        keep = {r["id"]: r for r in by_goals[:SCORERS_TOP]}
+        keep.update({r["id"]: r for r in by_assists[:SCORERS_TOP]})
+        out[slug] = sorted(keep.values(),
+                           key=lambda r: (-r["goals"], -r["assists"], r["name"]))
     out = {"season": season or _season_label(), "leagues": out}
     path = os.path.join(DATA, SCORERS_FILE)
     tmp = path + ".tmp"
