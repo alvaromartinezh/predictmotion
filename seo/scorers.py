@@ -202,8 +202,11 @@ STATS_TOP = 10
 
 def _player_cell(p):
     logo = p.get("team_logo") or ""
-    img = (f'<img class="team__crest" src="{esc(logo)}" alt="" loading="lazy">'
-           if logo else "")
+    # `onerror` que esconde la imagen: la clasificación usa fallbackAvatar() con
+    # un id por fila, que aquí no hay; sin esto, un logo caído de ESPN deja el
+    # icono de imagen rota en mitad de la tabla.
+    img = (f'<img class="team__crest" src="{esc(logo)}" alt="" loading="lazy" '
+           f'onerror="this.style.display=\'none\'">' if logo else "")
     return (f'<td class="col-team"><span class="team">'
             f'<span class="team__crest-box">{img}</span>'
             f'<a class="team__name" href="/jugador?id={esc(p["id"])}">{esc(p["name"])}</a>'
@@ -240,8 +243,8 @@ def _attack_defense(snap):
         body = ""
         for i, t in enumerate(rows, 1):
             logo = t.get("logo") or ""
-            img = (f'<img class="team__crest" src="{esc(logo)}" alt="" loading="lazy">'
-                   if logo else "")
+            img = (f'<img class="team__crest" src="{esc(logo)}" alt="" loading="lazy" '
+                   f'onerror="this.style.display=\'none\'">' if logo else "")
             body += (f'<tr><td class="col-pos"><span class="pos-badge">{i}</span></td>'
                      f'<td class="col-team"><span class="team">'
                      f'<span class="team__crest-box">{img}</span>'
